@@ -2,8 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, CalendarX2, RotateCcw, Star } from "lucide-react";
-import { cancelBooking, getMyBookings, leaveReview, type BookingReview, type CustomerBooking, type ReviewTarget } from "@/lib/api/customerBookings";
+import { CalendarPlus, CalendarX2, RotateCcw, Star, Trash2 } from "lucide-react";
+import {
+  cancelBooking,
+  deleteReview,
+  getMyBookings,
+  leaveReview,
+  updateReview,
+  type BookingReview,
+  type CustomerBooking,
+  type ReviewTarget,
+} from "@/lib/api/customerBookings";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { StarRatingInput, Stars } from "@/components/common/StarRating";
 import { SalonApiError } from "@/lib/api/salonApiClient";
@@ -58,6 +67,13 @@ export default function CustomerBookings({
   const [drafts, setDrafts] = useState<Record<ReviewTarget, Draft>>(EMPTY_DRAFTS);
   const [reviewing, setReviewing] = useState(false);
   const [sheetError, setSheetError] = useState<string | null>(null);
+
+  // Editing one of the customer's own reviews.
+  const [editing, setEditing] = useState<{ booking: CustomerBooking; review: BookingReview } | null>(null);
+  const [editDraft, setEditDraft] = useState<Draft>({ rating: 0, comment: "" });
+  const [editBusy, setEditBusy] = useState<"save" | "delete" | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     if (!token) return;
@@ -133,6 +149,55 @@ export default function CustomerBookings({
     }
   }
 
+  function openEdit(booking: CustomerBooking, review: BookingReview) {
+    setEditing({ booking, review });
+    setEditDraft({ rating: review.rating ?? 0, comment: review.comment ?? "" });
+    setConfirmDelete(false);
+    setEditError(null);
+  }
+
+  const editDirty =
+    editing !== null &&
+    ((editDraft.rating || null) !== editing.review.rating || (editDraft.comment.trim() || null) !== editing.review.comment);
+
+  async function saveEdit() {
+    if (!token || !editing) return;
+    if (editDraft.rating === 0 && editDraft.comment.trim() === "") {
+      setEditError("امتیاز بدهید یا چند کلمه بنویسید؛ برای پاک کردن کامل، «حذف نظر» را بزنید");
+      return;
+    }
+    setEditBusy("save");
+    setEditError(null);
+    try {
+      await updateReview(token, editing.review.id, { rating: editDraft.rating || null, comment: editDraft.comment.trim() || null });
+      setEditing(null);
+      reload();
+    } catch (err) {
+      setEditError(persianApiError(err, "ذخیره تغییرات انجام نشد"));
+    } finally {
+      setEditBusy(null);
+    }
+  }
+
+  async function removeReview() {
+    if (!token || !editing) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setEditBusy("delete");
+    setEditError(null);
+    try {
+      await deleteReview(token, editing.review.id);
+      setEditing(null);
+      reload();
+    } catch (err) {
+      setEditError(persianApiError(err, "حذف نظر انجام نشد"));
+    } finally {
+      setEditBusy(null);
+    }
+  }
+
   const list = tab === "upcoming" ? upcoming : past;
 
   return (
@@ -192,7 +257,13 @@ export default function CustomerBookings({
                 {b.reviews.length > 0 && (
                   <div className="mt-3 flex flex-col gap-2">
                     {REVIEW_TARGETS.flatMap((t) => b.reviews.filter((r) => r.target === t)).map((r) => (
-                      <div key={r.id} className="rounded-2xl border border-app-line px-3.5 py-2.5">
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => openEdit(b, r)}
+                        aria-label={`ویرایش نظر درباره ${r.target === "SALON" ? "سالن" : b.stylist.displayName}`}
+                        className="block w-full rounded-2xl border border-app-line px-3.5 py-2.5 text-start active:bg-app-card-2"
+                      >
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-app-muted">{r.target === "SALON" ? "سالن" : b.stylist.displayName}</span>
                           {r.rating !== null && <Stars value={r.rating} size={14} emptyClassName="text-app-line" />}
@@ -201,7 +272,7 @@ export default function CustomerBookings({
                           </span>
                         </div>
                         {r.comment && <p className="mt-1 line-clamp-2 text-sm text-app-ink">{r.comment}</p>}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -308,6 +379,65 @@ export default function CustomerBookings({
               می‌توانید فقط امتیاز بدهید، فقط نظر بنویسید یا هر دو؛ هر بخش را هم می‌توانید خالی بگذارید. نظر شما پس از تایید سالن یا آرایشگر در صفحه سالن نمایش داده می‌شود.
             </p>
             {sheetError && <p className="text-sm font-medium text-app-danger">{sheetError}</p>}
+          </div>
+        )}
+      </Sheet>
+      <Sheet
+        open={editing !== null}
+        onClose={() => editBusy === null && setEditing(null)}
+        title="ویرایش نظر"
+        footer={
+          editDirty ? (
+            <Button block busy={editBusy === "save"} disabled={editBusy !== null} onClick={saveEdit}>
+              ذخیره تغییرات
+            </Button>
+          ) : undefined
+        }
+      >
+        {editing && (
+          <div className="flex flex-col gap-4">
+            <section className="rounded-3xl border border-app-line bg-app-card p-4">
+              <p className="text-xs font-bold text-app-muted">{editing.review.target === "SALON" ? "سالن" : "آرایشگر"}</p>
+              <p className="mb-3 font-black text-app-ink">
+                {editing.review.target === "SALON" ? editing.booking.salon.name : editing.booking.stylist.displayName}
+              </p>
+              <StarRatingInput
+                value={editDraft.rating}
+                onChange={(rating) => setEditDraft((d) => ({ ...d, rating }))}
+                label="امتیاز"
+                size={36}
+                disabled={editBusy !== null}
+              />
+              {editDraft.rating > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setEditDraft((d) => ({ ...d, rating: 0 }))}
+                  disabled={editBusy !== null}
+                  className="mx-auto -mt-1 block rounded-full px-3 py-1 text-xs font-bold text-app-muted active:bg-app-card-2"
+                >
+                  حذف امتیاز
+                </button>
+              )}
+              <TextArea
+                rows={3}
+                maxLength={COMMENT_MAX}
+                className="mt-2"
+                value={editDraft.comment}
+                disabled={editBusy !== null}
+                onChange={(e) => setEditDraft((d) => ({ ...d, comment: e.target.value }))}
+                placeholder="نظرتان را بنویسید"
+                aria-label="متن نظر"
+              />
+            </section>
+            <p className="px-1 text-xs leading-6 text-app-muted">
+              {editing.review.status === "APPROVED"
+                ? "این نظر الان در صفحه سالن نمایش داده می‌شود. اگر ویرایشش کنید، تا تایید دوباره نمایش داده نمی‌شود."
+                : "بعد از ذخیره، نظر شما دوباره برای تایید فرستاده می‌شود."}
+            </p>
+            {editError && <p className="text-sm font-medium text-app-danger">{editError}</p>}
+            <Button variant="danger" block icon={Trash2} busy={editBusy === "delete"} disabled={editBusy !== null} onClick={removeReview}>
+              {confirmDelete ? "بله، این نظر حذف شود" : "حذف نظر"}
+            </Button>
           </div>
         )}
       </Sheet>

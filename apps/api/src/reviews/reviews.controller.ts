@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 import { Role } from "@appointment-scheduling/database";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
@@ -6,7 +6,7 @@ import { RolesGuard } from "../auth/guards/roles.guard.js";
 import { Roles } from "../auth/decorators/roles.decorator.js";
 import { JwtPayload } from "../auth/auth.service.js";
 import { ReviewsService } from "./reviews.service.js";
-import { CreateReviewDto, ListReviewsQueryDto, ModerateReviewDto } from "./dto/create-review.dto.js";
+import { CreateReviewDto, ListReviewsQueryDto, ModerateReviewDto, UpdateReviewDto } from "./dto/create-review.dto.js";
 
 const userId = (req: Request) => (req.user as JwtPayload).sub;
 
@@ -22,6 +22,20 @@ export class ReviewsController {
   }
 
   // Declared before salons/:slug/reviews so "mine" isn't taken for a slug.
+  @Patch("reviews/:id")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.CUSTOMER)
+  updateOwn(@Req() req: Request, @Param("id") id: string, @Body() dto: UpdateReviewDto) {
+    return this.reviewsService.updateOwn(userId(req), id, dto);
+  }
+
+  @Delete("reviews/:id")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.CUSTOMER)
+  removeOwn(@Req() req: Request, @Param("id") id: string) {
+    return this.reviewsService.removeOwn(userId(req), id);
+  }
+
   @Get("salons/mine/reviews")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SALON_OWNER)

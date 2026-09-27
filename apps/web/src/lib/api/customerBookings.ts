@@ -40,6 +40,15 @@ export function cancelBooking(token: string, id: string) {
   });
 }
 
+/** Edit your own review: omit a field to keep it, send null to clear it. It goes back to PENDING. */
+export function updateReview(token: string, reviewId: string, patch: { rating?: number | null; comment?: string | null }) {
+  return salonApiFetch<BookingReview>(`/reviews/${reviewId}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify(patch) });
+}
+
+export function deleteReview(token: string, reviewId: string) {
+  return salonApiFetch<{ ok: true }>(`/reviews/${reviewId}`, { method: "DELETE", headers: authHeaders(token) });
+}
+
 /** A review needs a rating, a comment, or both. Reviews start pending; they're public once the salon owner (or, for a stylist review, the stylist) approves. */
 export function leaveReview(token: string, appointmentId: string, review: { target: ReviewTarget; rating?: number; comment?: string }) {
   return salonApiFetch<BookingReview>(`/appointments/${appointmentId}/review`, {

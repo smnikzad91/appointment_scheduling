@@ -22,6 +22,20 @@ export class CreateReviewDto {
   comment?: string;
 }
 
+/** Customer editing their own review. Omit a field to keep it; send null to clear it. */
+export class UpdateReviewDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating?: number | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(REVIEW_COMMENT_MAX)
+  comment?: string | null;
+}
+
 export class ListReviewsQueryDto {
   @IsOptional()
   @IsIn([ReviewStatus.PENDING, ReviewStatus.APPROVED, ReviewStatus.REJECTED])
