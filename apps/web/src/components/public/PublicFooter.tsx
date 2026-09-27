@@ -52,14 +52,14 @@ export default function PublicFooter() {
           <div className="sm:col-span-2 lg:col-span-1">
             <Link href="/" className="inline-flex items-center gap-2.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-md bg-brand-500 text-base font-extrabold text-white shadow-theme-sm">
-                M
+                ن
               </span>
               <span className="text-base font-extrabold tracking-tight text-gray-900 dark:text-white">
-                mqttcloud<span className="font-normal text-brand-600 dark:text-brand-400">.ir</span>
+                نوبتا
               </span>
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-              بروکر MQTT امن و مقیاس‌پذیر برای دستگاه‌ها و پروژه‌های IoT شما — با TLS و namespace اختصاصی هر اکانت.
+              سامانه نوبت‌دهی آنلاین سالن‌های زیبایی — صفحه رزرو اختصاصی، پنل آرایشگر و مدیریت نوبت‌ها در یک جا.
             </p>
 
             {/* Dynamic social links */}
@@ -140,7 +140,7 @@ export default function PublicFooter() {
       <div className="border-t border-gray-200 dark:border-gray-800">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-5 sm:flex-row sm:px-6 lg:px-8">
           <p className="text-xs text-gray-500 dark:text-gray-500">
-            © ۱۴۰۴ mqttcloud.ir — تمام حقوق محفوظ است.
+            © ۱۴۰۵ نوبتا — تمام حقوق محفوظ است.
           </p>
           <div className="flex items-center gap-5">
             {links.legal.map((l) => (

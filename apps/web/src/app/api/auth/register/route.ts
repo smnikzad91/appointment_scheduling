@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiRegister } from "@/lib/apiAuth";
 import { ApiError } from "@/lib/apiClient";
+import { persianApiError } from "@/lib/api/errorMessages";
+import { logError } from "@/lib/errorLog";
 
 const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 
@@ -34,10 +36,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: message }, { status: 409 });
     }
     if (err instanceof ApiError && err.status === 400) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
+      return NextResponse.json({ error: persianApiError(err) }, { status: 400 });
     }
 
-    console.error("[register]", err);
+    await logError({ error: err, method: "POST", path: "/api/auth/register", statusCode: 500 });
     return NextResponse.json({ error: "خطای سرور. لطفاً دوباره تلاش کنید" }, { status: 500 });
   }
 }

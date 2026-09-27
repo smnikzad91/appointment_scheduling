@@ -18,16 +18,20 @@ export interface SelfStylist {
   displayName: string;
   bio: string | null;
   avatarUrl: string | null;
+  coverImageUrl: string | null;
   active: boolean;
   workingHours: { dayOfWeek: number; startMinute: number; endMinute: number }[];
   services: SelfStylistService[];
 }
 
+/** Dispatched on window after the stylist edits their profile, so the app bar refreshes. */
+export const STYLIST_UPDATED_EVENT = "stylist:updated";
+
 export function getMyStylistProfile(token: string) {
   return salonApiFetch<SelfStylist>("/stylists/me", { headers: authHeaders(token) });
 }
 
-export function updateMyStylistProfile(token: string, data: { bio?: string; avatarUrl?: string }) {
+export function updateMyStylistProfile(token: string, data: { bio?: string; avatarUrl?: string | null; coverImageUrl?: string | null }) {
   return salonApiFetch<SelfStylist>("/stylists/me", {
     method: "PATCH",
     headers: authHeaders(token),

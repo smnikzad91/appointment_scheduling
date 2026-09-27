@@ -3,15 +3,15 @@ import PublicFooter from "@/components/public/PublicFooter";
 import { PublicHtmlLang } from "@/components/public/shared/PublicHtmlLang";
 import { JsonLd } from "@/components/common/JsonLd";
 import React from "react";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "mqttcloud.ir",
-  url: "https://mqttcloud.ir",
-  logo: "https://mqttcloud.ir/images/logo/logo-icon.svg",
-  description:
-    "mqttcloud.ir یک بروکر MQTT امن و مقیاس‌پذیر است. اکانت و دستگاه بسازید، با TLS متصل شوید و پیام‌ها را بی‌درنگ بین دستگاه‌های خود منتشر و دریافت کنید.",
+  name: SITE_NAME,
+  url: SITE_URL,
+  logo: `${SITE_URL}/images/logo/logo-icon.svg`,
+  description: SITE_DESCRIPTION,
 };
 
 export default function PublicLayout({

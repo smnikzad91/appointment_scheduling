@@ -30,7 +30,7 @@ interface AnnouncementItem {
 
 const navLinks = [
   { label: "امکانات", href: "/#features" },
-  { label: "قیمت‌گذاری", href: "/pricing" },
+  { label: "قیمت‌گذاری", href: "/#pricing" },
   { label: "وبلاگ", href: "/blog" },
   { label: "اخبار", href: "/news" },
 ];
@@ -130,7 +130,7 @@ export default function PublicNavbar() {
               <MarkIcon viewBox="6 12 36 36" className="shrink-0 dark:hidden" width={36} height={36} />
               <MarkWhiteIcon viewBox="6 12 36 36" className="shrink-0 hidden dark:block" width={36} height={36} />
               <span className="text-base font-bold tracking-tight text-gray-900 dark:text-white">
-                mqttcloud<span className="font-normal text-brand-600 dark:text-brand-400">.ir</span>
+                نوبتا
               </span>
             </Link>
 
@@ -232,7 +232,7 @@ export default function PublicNavbar() {
                   <MarkIcon viewBox="6 12 36 36" className="shrink-0 dark:hidden" width={36} height={36} />
                   <MarkWhiteIcon viewBox="6 12 36 36" className="shrink-0 hidden dark:block" width={36} height={36} />
                   <span className="text-base font-bold tracking-tight text-gray-900 dark:text-white">
-                    mqttcloud<span className="font-normal text-brand-600 dark:text-brand-400">.ir</span>
+                    نوبتا
                   </span>
                 </Link>
                 <button

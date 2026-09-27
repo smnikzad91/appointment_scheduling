@@ -11,7 +11,7 @@ npm run start     # next start
 npm run lint      # ESLint
 ```
 
-No test suite is configured.
+No test suite is configured. Environment variables are listed in `.env.example` (copy to `.env`).
 
 ## Product
 
@@ -21,27 +21,77 @@ Originally a Persian-language SaaS dashboard template (auth, wallet/finance, CMS
 
 - **Next.js 16** App Router + **React 19** + **TypeScript**
 - **PostgreSQL** via **Prisma** — schema lives in `packages/database/prisma/schema.prisma` (shared with `apps/api`); `src/lib/prisma.ts` exports the singleton client. MongoDB/Mongoose has been fully removed.
-- **NextAuth.js** — credentials provider that calls `apps/api`'s `/auth/login` (via `src/lib/apiAuth.ts`) rather than checking a local DB directly; `apps/api` is the source of truth for authentication and issues the JWT. `src/auth.ts` + `src/auth.config.ts`; session carries `id`, `role`, `avatar`, `createdAt`, `apiAccessToken`. Every other CMS/finance/support/user route (blog, news, announcements, faq, legal, seo, contact, tickets, finance/wallet, admin users, profile/avatar/password) queries Postgres **directly via Prisma** from within apps/web — no HTTP hop through apps/api for these, since they aren't needed by the Android apps.
+- **NextAuth.js** — credentials provider that calls `apps/api`'s `/auth/login` (via `src/lib/apiAuth.ts`) rather than checking a local DB directly; `apps/api` is the source of truth for authentication and issues the JWT. The credential is an `identifier` (email **or** mobile number — stylists invited by an owner only have a phone). `src/auth.ts` + `src/auth.config.ts`; session carries `id`, `role`, `avatar`, `createdAt`, `apiAccessToken`. `session.user.role` is the API's uppercase role (`PLATFORM_ADMIN` / `SALON_OWNER` / `STYLIST` / `CUSTOMER`) — check against those, not `"admin"`/`"user"`. Every other CMS/finance/support/user route (blog, news, announcements, faq, legal, seo, contact, tickets, finance/wallet, admin users, profile/avatar/password) queries Postgres **directly via Prisma** from within apps/web — no HTTP hop through apps/api for these, since they aren't needed by the Android apps.
 - **Tailwind CSS v4** — custom token palette in `src/app/globals.css` (`brand-{25..950}`, dark mode via `.dark` class)
 - **AG Grid** (`ag-grid-react`) — used for all admin and user data tables, with custom light/dark `themeQuartz` params
 - **Bilingual FA/EN** — `LanguageContext` + `useT()` hook backed by `src/i18n/translations.ts`; RTL is toggled on the `<html>` element
 
 ## Wire-format vs. DB enums
 
-Several Prisma enums (`SocialPlatform`, `ContactStatus`, `TicketStatus`, `TicketReplySender`, `DepositStatus`, `LegalPageType`) are uppercase in Postgres, but every API route keeps the original lowercase string wire format (`"admin"`/`"user"` for `User.role` too, mapped to/from `PLATFORM_ADMIN`/`CUSTOMER`) so existing frontend components needed zero changes. Translate at the route boundary — see `src/app/api/admin/social-links/route.ts` for the pattern. Shared lowercase union types live in `src/types/content.ts`.
+Several Prisma enums (`SocialPlatform`, `ContactStatus`, `TicketStatus`, `TicketReplySender`, `DepositStatus`, `LegalPageType`) are uppercase in Postgres, but every CMS/finance/support API route keeps the original lowercase string wire format so existing frontend components needed zero changes. The one role-related holdover is the admin users API (`/api/admin/users/**` + `AdminUsersList`), which still sends `"admin"`/`"user"` for `User.role`, collapsing the four Postgres roles to two. Translate at the route boundary — see `src/app/api/admin/social-links/route.ts` for the pattern. Shared lowercase union types live in `src/types/content.ts`.
 
 `User.phone` is nullable (`String? @unique`) rather than required — Postgres allows multiple `NULL`s under a unique constraint, which is what lets more than one user have "no phone" (matching the old Mongoose sparse-partial-unique-index behavior). Always write `null`, never `""`, when clearing it.
+
+## Errors shown to users
+
+apps/api replies in English (it also serves the Android apps). Never show an API error's `message` to a user directly — pass the error through `persianApiError()` in `src/lib/api/errorMessages.ts`, and add new API messages to its table when you add them to apps/api.
+
+## Salon time
+
+Appointment and time-off times from apps/api are real UTC instants; slots, working hours and the booking date strip are **salon-local wall-clock** time (`Salon.timezone`, `Asia/Tehran` today). Convert only through `src/lib/salonTime.ts` (`salonWallTimeToInstant`, `toSalonWallTime`, `formatSalonDate[Time]`) — never format an API instant with `toLocaleString`/`getHours()` in the browser's or server's own timezone. apps/api mirrors this in `src/availability/salon-time.util.ts`.
+
+## Font
+
+Vazirmatn is the only UI font, for Persian and Latin text alike. It's self-hosted: one `@font-face` (`font-family: Vazirmatn`) in `globals.css` pointing at `public/fonts/Vazirmatn-Variable.woff2`, preloaded in the root layout. Don't add Google Fonts or `next/font` copies — Google can be slow or blocked in Iran, and a second copy downloads the same font again under another name. `font-outfit` / `font-vazirmatn` utilities both resolve to Vazirmatn; `font-mono` is the system monospace stack, for code-like strings only. The TTFs in `src/fonts/vazirmatn/` exist only for the OG-image renderer (Satori can't read woff2).
+
+## Site identity
+
+Product name, title, description and public origin live in `src/lib/site.ts`. The origin comes from `NEXT_PUBLIC_SITE_URL` (falls back to `http://localhost:3000`) — use `SITE_URL` for canonical URLs, structured data and sitemap entries instead of hardcoding a domain.
+
+## Mobile app shell (salon, stylist and customer panels)
+
+The platform has no desktop users: `/salon/**`, `/stylist/**` and `/dashboard/**` render inside `components/app/AppShell.tsx` — sticky app bar, one phone-width column (`max-w-lg`), bottom tab bar, safe-area padding — via the per-panel wrappers in `components/app/panels.tsx`. Build panel screens from `components/app/*`, not the TailAdmin components:
+- `ui.tsx` — `PageHeader`, `Card`, `ListGroup`, `ChipTabs`, `Button`, `IconButton`, `Field`/`TextInput`/`Select`/`TextArea`, `Toggle`, `Avatar`, `EmptyState`, `ListSkeleton`, `ErrorBanner`.
+- `Sheet.tsx` — bottom sheet for every add/edit/detail flow (no centered modals, no inline edit forms).
+- `appointments.tsx` / `AppointmentsScreen.tsx` — appointment cards, day grouping, the status-action sheet, today's timeline; shared by the salon and stylist panels.
+
+Colors are semantic tokens on `.app-root` in `globals.css` (`bg-app-bg`, `bg-app-card`, `text-app-ink`, `text-app-muted`, `border-app-line`, `bg-app-accent`…; they flip under `.dark`). `.app-root` also remaps the `brand-*` and `gray-*` scales to terracotta/warm neutrals, so older screens rendered in the shell (wallet, support, profile) and the auth pages match without rewrites. Inputs inside the shell are forced to 16px so iOS doesn't zoom on focus. Show numbers, times and dates with Persian digits (`toPersianDigits`, `formatMinutesAsClock`, `src/lib/salonTime.ts`); separate inline facts with `<Sep />` (`components/common/Sep.tsx`), never "·" — in Vazirmatn the middle dot looks like the Persian zero "۰", so "۴ · …" reads as "۴۰" and prices gain a zero; avoid native `type="time"`/`type="date"` inputs (Latin digits / Gregorian calendar) — see the stylist schedule page for select-based pickers.
+
+It installs as a PWA: `src/app/manifest.ts` (served as `/manifest.webmanifest`; start URL `/launch`, which redirects each role to its panel), icons in `public/icons/`, viewport/theme-color in the root layout, and `public/sw.js` (registered in production only; in dev any leftover registration is removed) which only serves `public/offline.html` when a navigation fails — it deliberately caches nothing else so appointment data is never stale. `sw.js` is served `no-cache` (next.config headers) so updates roll out. The manifest `<link>` and Apple web-app tags are written directly in the root layout's `<head>`, **not** via `metadata`: Next streams metadata into `<body>` for regular browsers and Chrome only reads the manifest from `<head>` — without it the app isn't installable and `beforeinstallprompt` never fires.
+
+Install UI: `src/lib/installPrompt.ts` captures `beforeinstallprompt` at load (imported by `ServiceWorkerRegister`, so it's listening before any button mounts) and exposes `useInstallPrompt()` (`canInstall`, `install()`); it also tracks `appinstalled` and standalone display mode. `InstallAppButton` sits in the landing header; `InstallAppBanner` floats above the panel tab bar (in `AppShell`), "بعداً" snoozes it for 14 days. Both render nothing unless the browser offered installation — except on iPhone/iPad Safari (`iosHint`; no `beforeinstallprompt` there), where they open `components/common/IosInstallSheet.tsx`, step-by-step Share → Add to Home Screen instructions. Other iOS browsers and in-app browsers (Instagram, Telegram…) get nothing.
+
+## Photos and artwork gallery
+
+Salon logo/cover and stylist avatar/cover are edited through `components/app/ProfilePhotos.tsx` (cover banner + overlapping avatar; tap either for a change/remove sheet). Sending `null` for `logoUrl`/`coverImageUrl`/`avatarUrl` clears the photo. A stylist's `avatarUrl` is mirrored onto their `User.avatarUrl` by apps/api (it's their account photo in the app bar and at login); the stylist profile page also refreshes the NextAuth session with `update({ avatar })`. Artwork galleries (`GalleryImage` rows, apps/api `gallery` module) are edited with `components/app/GalleryManager.tsx`: `scope="salon"` on `/salon/gallery` (owner sees every piece and can credit it to a stylist, max 60), `scope="stylist"` on `/stylist/profile` (stylist's own pieces only, max 30). The public salon page shows the whole gallery and each stylist's credited pieces on their card.
+
+Upload images with `uploadImage(file, folder)` from `src/lib/uploadImage.ts` — it downscales on the phone (longest edge 1920px, JPEG q0.85) before POSTing to `/api/upload`. apps/api only accepts image fields matching `/uploads/<folder>/<file>.<jpg|png|webp|gif>` (`IsOptionalImageUrl` in `apps/api/src/common/image-url.ts`), so never send external URLs. Replaced or removed photos are deleted from disk: after a successful save the client calls `releaseUploads()` (`DELETE /api/upload`), and `src/lib/uploadCleanup.ts` deletes a salon/stylist file only if no salon, stylist, gallery or user row still references it. `instrumentation.ts` also sweeps unreferenced files older than a day at startup and daily (abandoned uploads, cascaded deletes). If you add a new column that stores an upload URL, add it to `referencedUrls()` or the sweep will delete those files. `public/uploads/salons/`, `public/uploads/stylists/` and `public/uploads/banners/` are gitignored runtime data (all three are covered by the cleanup).
+
+
+## Error logging
+
+Every app writes failures to the shared `ErrorLog` table (`error_logs`), shown at the top of the platform-admin dashboard (`/admin`, `components/admin/AdminErrorLog.tsx`, API under `/api/admin/errors`):
+- **apps/api** — global `AllExceptionsFilter` (`src/error-log/`) records unhandled exceptions and any 5xx; expected 4xx are not errors. `main.ts` also records `unhandledRejection`/`uncaughtException`.
+- **apps/web server** — `src/instrumentation.ts` (`onRequestError`) records anything Next.js catches. If a route catches an error itself and returns 500, call `logError()` from `src/lib/errorLog.ts` instead of `console.error`. Never write a bare `catch { return 404 }` around a Prisma call — return 404 only when `isPrismaNotFound(err)` (`src/lib/prisma.ts`) and rethrow everything else so it gets logged. Sign-in failures other than a wrong password (e.g. apps/api unreachable) are logged from `src/auth.ts`.
+- **apps/web browser** — `ClientErrorReporter` (root layout) and `app/global-error.tsx` send uncaught errors to the public, rate-limited `POST /api/errors`. Use `reportClientError()` for anything else worth reporting from the client.
+
+Paths are stored without query strings (they can carry phone numbers).
 
 ## Route Groups
 
 | Group | Path | Description |
 |---|---|---|
-| `(public)` | `/`, `/blog`, `/news`, `/pricing`, `/faq`, `/contact`, `/privacy`, `/terms` | Marketing site, no auth required |
+| `(home)` | `/` | Salon-product landing page (`components/marketing/*`), incl. the pricing section |
+| `(public)` | `/blog`, `/news`, `/faq`, `/contact`, `/privacy`, `/terms` | CMS-backed public pages, no auth required (`/pricing` redirects to `/#pricing`) |
+| `s/[slug]` | `/s/:slug` | Public salon page + booking flow (talks to apps/api from the browser) |
+| `my-bookings` | `/my-bookings` | Customer bookings; OTP login stored in localStorage (`src/lib/customerSession.ts`), not NextAuth |
+| `salon` | `/salon/**` | Salon-owner panel; `SALON_OWNER` only |
+| `stylist` | `/stylist/**` | Stylist panel; `STYLIST` only |
 | `(user-dashboard)` | `/dashboard/**` | Authenticated user area |
 | `(full-width-pages)` | auth pages, error pages | No sidebar |
-| `admin` | `/admin/**` | Admin-only; guarded by `role === "admin"` check in every API route |
+| `admin` | `/admin/**` | Platform-admin only; every `/api/admin/**` route checks `role === "PLATFORM_ADMIN"` |
 
-Page-level route protection (redirect anonymous users to `/signin`, non-admins away from `/admin/**`) happens in `src/proxy.ts` — Next.js 16 renamed the `middleware.ts` convention to `proxy.ts`; it's picked up automatically by filename, not imported anywhere. Every API route still re-checks `session.user.role`/`session.user.id` itself (see API Structure below) since `proxy.ts` only covers page navigation, not fetch/XHR calls to `/api/**`.
+Page-level route protection (redirect anonymous users to `/signin`, wrong roles away from `/admin/**`, `/salon/**`, `/stylist/**`) happens in `src/proxy.ts` — Next.js 16 renamed the `middleware.ts` convention to `proxy.ts`; it's picked up automatically by filename, not imported anywhere. Every API route still re-checks `session.user.role`/`session.user.id` itself (see API Structure below) since `proxy.ts` only covers page navigation, not fetch/XHR calls to `/api/**`.
 
 ## Data Models (`packages/database/prisma/schema.prisma`)
 
@@ -76,12 +126,42 @@ News items are seeded from the inline `seedData` array in `src/app/api/admin/new
 
 Publishing/updating a `BlogPost`, `NewsItem`, or `Announcement` also posts a message to a Telegram channel via `src/lib/telegram.ts` (`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHANNEL`, optional `TELEGRAM_PROXY` as a SOCKS agent) — see the `admin/**/notify` routes and the relevant admin `[id]`/base routes.
 
+## Reviews and ratings
+
+Customers review a COMPLETED appointment from their bookings (`components/app/CustomerBookings.tsx`): one review of the salon and one of the stylist (`Review.target` SALON / STYLIST, unique per appointment + target), each with 1–5 stars (`StarRatingInput` / `Stars` in `components/common/StarRating.tsx`), a comment (≤500), or both — never neither (`reviews_rating_or_comment` check constraint; `rating` is nullable). Averages and rating counts only include reviews that carry stars; comment-only reviews are still listed. Reviews start PENDING and only APPROVED ones are public. The salon owner moderates every review of the salon on `/salon/reviews`; a stylist moderates reviews about them on `/stylist/reviews` (both use `components/app/ReviewModeration.tsx`; `ReviewsLinkCard` shows the pending count on the home, settings and profile screens). On the public page, salon reviews drive the salon rating and review list, stylist reviews appear on each stylist's card. The public API shows customers as first name + last initial. Customers can edit (`PATCH /reviews/:id`, `null` clears a field) or delete (`DELETE /reviews/:id`) their own review from the bookings list; an edited review goes back to PENDING.
+
+## Notifications
+
+In-app only for now (no SMS provider yet, and FCM-based web push is unreliable in Iran). apps/api `notifications` module stores `Notification { userId, type, data, readAt }`; `data` is a payload and the Persian text is built in `components/app/NotificationBell.tsx`, which sits in the salon and stylist app bars (`AppShell` `actions` slot), polls `GET /notifications` every minute while visible and on return to the app, and sets the installed-PWA icon badge. Kinds: `NEW_REVIEW` (a new or edited review → the owner, plus the stylist when it's about them; `ReviewsService.notifyModerators`), `NEW_BOOKING` (online booking → owner + stylist; a salon-made booking → the stylist only), `BOOKING_CANCELLED` (→ owner + stylist, never whoever cancelled; `data.cancelledBy`), `PAYOUT_RECORDED` (→ the stylist). Customers have a bell too (`CustomerShell`, scope `customer`, taps go to `/dashboard/bookings`): a booking the salon made for them (`NEW_BOOKING`), `BOOKING_CONFIRMED` (PENDING → CONFIRMED), a cancellation by the salon or stylist, and `REVIEW_APPROVED` (`ReviewsService.notifyAuthorApproved`). Booking payloads carry `salonName` for the customer's text. `notify(userIds, type, data, exceptUserId)` drops the acting user. Each kind has its own icon, text and tap target in the bell (`describe()`): reviews → reviews page, bookings → appointments, payouts → `/stylist/earnings`. Notifying is best effort — it never fails the action. Add a new `NotificationType` + a renderer in the bell for new kinds; an SMS channel can later be added in `NotificationsService.notify`.
+
+The salon panel's app bar shows the salon (logo + name, `AppShell` `identity`) instead of the owner's personal account; `salon/settings` fires `SALON_UPDATED_EVENT` after saving so it refreshes. The stylist panel's app bar likewise shows the live stylist profile (`getMyStylistProfile`), reloaded on `STYLIST_UPDATED_EVENT` (fired by `stylist/profile`) and whenever the app returns to the foreground — the session only knows the photo from sign-in, and the owner can change it any time.
+
+## Accounting
+
+Each stylist has a `commissionPercent` (0–100), set by the owner when adding them (`CommissionInput`) and editable in the stylist sheet. When an appointment becomes COMPLETED, apps/api (`AppointmentsService.accountingFor`) freezes its books on the row: `chargedToman` (= price), `stylistCommissionPercent`, `stylistShareToman` (`splitCharge` in `apps/api/src/accounting/share.util.ts`), `completedAt`; leaving COMPLETED clears them. So changing a percent never rewrites past income. A service can carry its own rate for a stylist (`StylistService.commissionPercent`, null = their default; the "سهم ٪" box per service in the owner's stylist sheet, never exposed on the public salon page); the frozen `stylistCommissionPercent` is then the price-weighted average (`effectiveCommissionPercent`, a Float — show it with `formatPercent`). New stylists default to 20% (`commissionPercent` column default, the API when omitted, and the invite form); active stylists at 0% (e.g. added before commissions existed) get `components/app/ZeroCommissionNotice.tsx` on the salon home, stylists and accounting pages (0% means the whole amount counts as the salon's share and no balance builds up); "عمداً ۰٪ است" hides it for those stylists on that device (localStorage), and its links open `/salon/stylists?stylist=<id>`, which opens that stylist's sheet. The owner can correct the amount actually received and add a **tip** (`PATCH salons/mine/accounting/appointments/:id/charge {chargedToman, tipToman?}`); the share is recomputed at the frozen percent. A tip is 100% the stylist's: `stylistShareToman` = commission + tip, income = charged + tip, salon share = charged − commission (`toIncomeItem`). Both accounting screens export the month (download button in the header, `components/app/AccountingReport.tsx`): a CSV with a UTF-8 BOM for Excel (`src/lib/accountingExport.ts`; Latin-digit Jalali dates so Excel can sort) and a print-only report (`#print-report`, portalled to `<body>`; the `@media print` rules in `globals.css` hide the rest of the app) for "Save as PDF". `StylistPayout` records money paid to a stylist (settlement or advance); a stylist's **balance** is all-time commission minus payouts (positive = salon owes them). `SalonExpense` is the salon's running costs by `ExpenseCategory`. Net profit = salon share − expenses (payouts aren't expenses — they settle the stylist share).
+
+Screens: `/salon/accounting` (month P&L, per-stylist balances + payouts, income list with amount correction, expenses, services) and `/stylist/earnings` (the stylist's own share, payouts, balance). Periods are Jalali months as salon-local instants (`src/lib/accountingPeriod.ts`); income is dated by the appointment's start, payouts by `paidAt`, expenses by `spentAt`. Shared pieces: `components/app/accounting.tsx` (`PeriodSwitcher`, `DaySelect`, `BalanceChip`, `MoneyFigure`, `HeroAmount`) and `MoneyInput`. Don't put a minus sign next to a Persian amount (it drifts in RTL) — say زیان/پیش‌پرداخت instead; and don't `truncate` an amount — let the small "تومان" wrap.
+
+The salon also books customers itself (phone calls, walk-ins): `POST /appointments/salon` (`SalonBookingSheet`, "+" on `/salon/appointments`). The customer is found by phone or created (they can later sign in by SMS code); the booking is CONFIRMED, may start earlier today (recording a walk-in), and ignores working hours but not double-booking or time off.
+
+## Home page showcase
+
+The landing page (`/`) shows, after the hero, `components/marketing/Showcase.tsx` (server component, `GET /showcase`, revalidated every 60 s; hidden if apps/api is down or there's nothing to show): a supplier banner, up to three featured salons and three featured stylists, and the top-rated salons and stylists. The platform admin edits it at `/admin/homepage` (apps/api `showcase` module, `admin/showcase/*`, PLATFORM_ADMIN only): banner image (uploaded to `/uploads/banners/`, 3:1, recommended 1200×400 — shown at 3:1 everywhere so advertiser text is never cropped), supplier name, link (http/https only; opens in a new tab with `rel="sponsored"` and an «تبلیغ» label) and an on/off switch; featured lists are saved in priority order (`FeaturedSalon`/`FeaturedStylist.priority` 1–3). Only ACTIVE salons and active stylists of ACTIVE salons are shown or can be featured. Top-rated uses approved reviews with stars, ranked by a weighted average (`apps/api/src/showcase/rating.util.ts`: 3 prior ratings of 4) so one 5★ review can't beat a long 4.8★ record, and a salon/stylist needs at least `ShowcaseSettings.minRatings` approved star ratings (default 3, 1–50, set in `/admin/homepage`, `PUT admin/showcase/settings`) to be ranked at all.
+
+## Salon location and discovery
+
+A salon has `province` + `city` (a county from `packages/iran-locations`; the API rejects any other pair and normalises Arabic ي/ك), a street `address`, and a map pin (`latitude`/`longitude`, both or neither, inside Iran). Salon sign-up requires all of them (`SignUpSalonForm`: `ProvinceCitySelect` + `LocationPickerLoader`, which recentres on the chosen province's capital and has a «موقعیت من» GPS button); salon settings edits them the same way. Salons created before provinces existed got theirs from their city in the migration; the rest see a prompt in settings.
+
+Discovery is `GET /salons/search` (apps/api `SalonSearchService`): ACTIVE salons filtered by province/city and a text query (name, address or an active service), optionally around the customer's position — distance in km via haversine in SQL with a bounding-box prefilter on the `(latitude, longitude)` index (`salons/geo.util.ts`; no PostGIS needed), radius filter, nearest first — or sorted by the same weighted rating as the home page. UI: `components/discovery/SalonSearch.tsx` (filters mirrored into the URL, «نزدیک من» via `navigator.geolocation`, radius chips, list or Leaflet map), used by the public `/salons` page (linked from the landing page) and the customer panel's «کشف سالن» tab (`/dashboard/discover`). `/salon` panel routes are matched by whole path segment in `proxy.ts` so `/salons` stays public.
+
+Customers can save salons (`FavoriteSalon`, `/me/favorites`; `FavoriteButton` + the shared store in `src/lib/favorites.ts`, signed-out taps go to `/signin?callbackUrl=…` — SignInForm follows same-site callback paths for customers) and join a waitlist for a fully booked day (`WaitlistEntry`, one per customer/salon/day; `WaitlistButton` under "no free time" in the booking sheet). Cancelling an upcoming active appointment sends `SLOT_OPENED` once to everyone waiting for that salon and day (any stylist or that one). The salon page opens the booking sheet pre-filled from `?book=1&services=…&stylist=…&date=…` — used by «رزرو دوباره» on past bookings and by the SLOT_OPENED notification. The customer home lists saved salons and waitlist entries.
+
 ## API Structure
 
 ```
 /api/auth/[...nextauth]   NextAuth handlers
 /api/auth/register        POST — public user registration
-/api/admin/**             All guarded: session.user.role === "admin"
+/api/admin/**             All guarded: session.user.role === "PLATFORM_ADMIN"
 /api/user/**              All guarded: session.user.id present
 /api/public/**            Unauthenticated reads (blog, news, FAQ, pricing…)
 /api/upload               Image upload (avatar, receipts, cover images)
@@ -89,8 +169,8 @@ Publishing/updating a `BlogPost`, `NewsItem`, or `Announcement` also posts a mes
 
 ## Global Contexts (`src/context/`)
 
-- **`ThemeContext`** — light/dark, persisted to `localStorage`, `.dark` class on `<html>`
-- **`LanguageContext`** — `"fa"` / `"en"`, sets `dir="rtl"` / `dir="ltr"` on `<html>`; use `useT()` for all UI strings
+- **`ThemeContext`** — light/dark, `.dark` class on `<html>`. Follows the device's `prefers-color-scheme` until the user toggles; only then is the choice saved to `localStorage`. `public/theme-init.js` applies the same rule before hydration.
+- **`LanguageContext`** — `"fa"` / `"en"`, sets `dir="rtl"` / `dir="ltr"` on `<html>`; use `useT()` for all UI strings. Only `/admin/**` is bilingual (`isBilingualPath`) — every admin page must use `useT()` (add keys to both `en` and `fa`) and `useLocaleFormat()` (`src/i18n/useLocaleFormat.ts`: digits, dates and API errors per language) rather than hard-coded Persian; every other route is always `fa`/RTL whatever the stored preference. `public/theme-init.js` applies the same rule before hydration — keep the two in sync.
 - **`SidebarContext`** / **`UserSidebarContext`** — collapsed/expanded state for admin and user sidebars
 
 ## Adding New Pages

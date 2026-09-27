@@ -14,8 +14,18 @@ export interface CustomerBooking {
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   salon: { name: string; slug: string };
   stylist: { displayName: string };
-  services: { service: { name: string } }[];
-  review: { id: string; rating: number; comment: string | null } | null;
+  services: { serviceId: string; service: { name: string } }[];
+  reviews: BookingReview[];
+}
+
+export type ReviewTarget = "SALON" | "STYLIST";
+
+export interface BookingReview {
+  id: string;
+  target: ReviewTarget;
+  rating: number | null;
+  comment: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
 }
 
 export function getMyBookings(token: string) {
@@ -30,10 +40,20 @@ export function cancelBooking(token: string, id: string) {
   });
 }
 
-export function leaveReview(token: string, appointmentId: string, rating: number, comment?: string) {
-  return salonApiFetch<{ id: string; rating: number; comment: string | null }>(`/appointments/${appointmentId}/review`, {
+/** Edit your own review: omit a field to keep it, send null to clear it. It goes back to PENDING. */
+export function updateReview(token: string, reviewId: string, patch: { rating?: number | null; comment?: string | null }) {
+  return salonApiFetch<BookingReview>(`/reviews/${reviewId}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify(patch) });
+}
+
+export function deleteReview(token: string, reviewId: string) {
+  return salonApiFetch<{ ok: true }>(`/reviews/${reviewId}`, { method: "DELETE", headers: authHeaders(token) });
+}
+
+/** A review needs a rating, a comment, or both. Reviews start pending; they're public once the salon owner (or, for a stylist review, the stylist) approves. */
+export function leaveReview(token: string, appointmentId: string, review: { target: ReviewTarget; rating?: number; comment?: string }) {
+  return salonApiFetch<BookingReview>(`/appointments/${appointmentId}/review`, {
     method: "POST",
     headers: authHeaders(token),
-    body: JSON.stringify({ rating, comment }),
+    body: JSON.stringify(review),
   });
 }

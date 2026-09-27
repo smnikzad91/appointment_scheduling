@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# user-uploaded salon/stylist photos (runtime data, not source)
+/public/uploads/salons/
+/public/uploads/stylists/
+/public/uploads/banners/

@@ -1,9 +1,12 @@
 import type { WorkingHours } from "@/types/salon";
 import { formatMinutesAsClock } from "@/lib/persian";
+import { toSalonWallTime } from "@/lib/salonTime";
 
-function getStatus(workingHours: WorkingHours[], now: Date) {
-  const today = workingHours.find((h) => h.dayOfWeek === now.getDay());
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+function getStatus(workingHours: WorkingHours[], timeZone: string) {
+  // Rendered on the server, whose clock isn't the salon's — read "now" in the salon's timezone.
+  const now = toSalonWallTime(new Date(), timeZone);
+  const today = workingHours.find((h) => h.dayOfWeek === now.dayOfWeek);
+  const nowMinutes = now.minuteOfDay;
 
   if (!today || today.closed) {
     return { open: false, todayHours: today };
@@ -12,8 +15,8 @@ function getStatus(workingHours: WorkingHours[], now: Date) {
   return { open: nowMinutes >= today.startMinute && nowMinutes < today.endMinute, todayHours: today };
 }
 
-export default function OpenStatusBadge({ workingHours }: { workingHours: WorkingHours[] }) {
-  const { open, todayHours } = getStatus(workingHours, new Date());
+export default function OpenStatusBadge({ workingHours, timeZone }: { workingHours: WorkingHours[]; timeZone: string }) {
+  const { open, todayHours } = getStatus(workingHours, timeZone);
 
   return (
     <span

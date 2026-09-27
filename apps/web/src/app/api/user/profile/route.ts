@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { logError } from "@/lib/errorLog";
 
 const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 
@@ -69,7 +70,7 @@ export async function PATCH(req: NextRequest) {
         { status: 409 }
       );
     }
-    console.error("[profile PATCH]", err);
+    await logError({ error: err, method: "PATCH", path: "/api/user/profile", statusCode: 500, userId: session.user.id });
     return NextResponse.json({ error: "خطای سرور" }, { status: 500 });
   }
 }

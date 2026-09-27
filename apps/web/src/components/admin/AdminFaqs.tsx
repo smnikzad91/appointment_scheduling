@@ -186,7 +186,7 @@ export default function AdminFaqs() {
       { headerName: t("faqColActions"), width: 100, sortable: false, filter: false, cellRenderer: ActionsCell },
     ];
     return isRTL ? [...cols].reverse() : cols;
-  }, [isRTL, lang]);
+  }, [isRTL, t]);
 
   return (
     <div className="p-6" dir={isRTL ? "rtl" : "ltr"}>

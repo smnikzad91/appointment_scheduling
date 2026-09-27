@@ -78,7 +78,7 @@ export default function SignUpForm() {
     }
 
     // Auto sign-in after successful registration
-    const result = await signIn("credentials", { email, password, redirect: false });
+    const result = await signIn("credentials", { identifier: email, password, redirect: false });
     if (result?.error) {
       router.push("/signin");
       return;

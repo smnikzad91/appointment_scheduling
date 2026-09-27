@@ -51,6 +51,50 @@ enum DepositStatus {
   REJECTED
 }
 
+enum ReviewTarget {
+  SALON
+  STYLIST
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  NEW_REVIEW
+  NEW_BOOKING
+  BOOKING_CANCELLED
+  PAYOUT_RECORDED
+  BOOKING_CONFIRMED
+  REVIEW_APPROVED
+  SLOT_OPENED
+}
+
+enum PayoutMethod {
+  CASH
+  CARD_TO_CARD
+  BANK_TRANSFER
+  OTHER
+}
+
+enum ExpenseCategory {
+  RENT
+  SUPPLIES
+  SALARIES
+  UTILITIES
+  EQUIPMENT
+  MARKETING
+  OTHER
+}
+
+enum ErrorSource {
+  API // apps/api (NestJS)
+  WEB_SERVER // apps/web server side: route handlers, server components, server actions
+  WEB_CLIENT // apps/web in the browser
+}
+
 enum LegalPageType {
   PRIVACY
   TERMS
@@ -82,12 +126,15 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  ownedSalons  Salon[]        @relation("SalonOwner")
-  stylist      Stylist?
-  appointments Appointment[]  @relation("CustomerAppointments")
-  tickets      Ticket[]
-  cards        Card[]
-  deposits     Deposit[]
+  ownedSalons     Salon[]         @relation("SalonOwner")
+  stylist         Stylist?
+  appointments    Appointment[]   @relation("CustomerAppointments")
+  tickets         Ticket[]
+  cards           Card[]
+  deposits        Deposit[]
+  notifications   Notification[]
+  favoriteSalons  FavoriteSalon[]
+  waitlistEntries WaitlistEntry[]
 
   @@map("users")
 }
@@ -299,31 +346,44 @@ model Deposit {
 }
 
 model Salon {
-  id              String      @id @default(cuid())
-  ownerId         String
-  owner           User        @relation("SalonOwner", fields: [ownerId], references: [id])
-  name            String
-  slug            String      @unique
-  description     String?
-  city            String
-  address         String
-  phone           String
-  instagram       String?
-  timezone        String      @default("Asia/Tehran")
-  logoUrl         String?
-  coverImageUrl   String?
-  brandColor      String      @default("#a34a30")
-  latitude        Float?
-  longitude       Float?
-  status          SalonStatus @default(PENDING)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id            String      @id @default(cuid())
+  ownerId       String
+  owner         User        @relation("SalonOwner", fields: [ownerId], references: [id])
+  name          String
+  slug          String      @unique
+  description   String?
+  // Province (استان) and county (شهرستان) from packages/iran-locations; province is null only on
+  // salons created before it existed whose city didn't match the list.
+  province      String?
+  city          String
+  address       String
+  phone         String
+  instagram     String?
+  timezone      String      @default("Asia/Tehran")
+  logoUrl       String?
+  coverImageUrl String?
+  brandColor    String      @default("#a34a30")
+  latitude      Float?
+  longitude     Float?
+  status        SalonStatus @default(PENDING)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   stylists          Stylist[]
   services          Service[]
   serviceCategories ServiceCategory[]
   appointments      Appointment[]
+  galleryImages     GalleryImage[]
+  reviews           Review[]
+  payouts           StylistPayout[]
+  expenses          SalonExpense[]
+  featured          FeaturedSalon?
+  favoritedBy       FavoriteSalon[]
+  waitlist          WaitlistEntry[]
 
+  @@index([province, city])
+  // Bounding-box prefilter for "near me" (see apps/api src/salons/salon-search.service.ts).
+  @@index([latitude, longitude])
   @@map("salons")
 }
 
@@ -342,38 +402,47 @@ model ServiceCategory {
 }
 
 model Stylist {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id])
-  salonId     String
-  salon       Salon    @relation(fields: [salonId], references: [id])
-  displayName String
-  bio         String?
-  avatarUrl   String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  salonId           String
+  salon             Salon    @relation(fields: [salonId], references: [id])
+  displayName       String
+  bio               String?
+  avatarUrl         String?
+  coverImageUrl     String?
+  // The stylist's share of the money received for their appointments, in percent (0–100). Set by
+  // the owner when adding the stylist; changing it only affects appointments completed afterwards.
+  commissionPercent Int      @default(20)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
 
-  services     StylistService[]
-  workingHours WorkingHour[]
-  timeOff      TimeOff[]
-  appointments Appointment[]
+  services      StylistService[]
+  workingHours  WorkingHour[]
+  timeOff       TimeOff[]
+  appointments  Appointment[]
+  galleryImages GalleryImage[]
+  reviews       Review[]
+  payouts       StylistPayout[]
+  featured      FeaturedStylist?
+  waitlist      WaitlistEntry[]
 
   @@index([salonId])
   @@map("stylists")
 }
 
 model Service {
-  id                String           @id @default(cuid())
-  salonId           String
-  salon             Salon            @relation(fields: [salonId], references: [id])
-  categoryId        String?
-  category          ServiceCategory? @relation(fields: [categoryId], references: [id])
-  name              String
-  description       String?
-  durationMinutes   Int
-  priceToman        Int
-  active            Boolean          @default(true)
-  createdAt         DateTime         @default(now())
+  id              String           @id @default(cuid())
+  salonId         String
+  salon           Salon            @relation(fields: [salonId], references: [id])
+  categoryId      String?
+  category        ServiceCategory? @relation(fields: [categoryId], references: [id])
+  name            String
+  description     String?
+  durationMinutes Int
+  priceToman      Int
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
 
   stylists     StylistService[]
   appointments AppointmentService[]
@@ -384,11 +453,13 @@ model Service {
 
 model StylistService {
   stylistId               String
-  stylist                 Stylist  @relation(fields: [stylistId], references: [id])
+  stylist                 Stylist @relation(fields: [stylistId], references: [id])
   serviceId               String
-  service                 Service  @relation(fields: [serviceId], references: [id])
+  service                 Service @relation(fields: [serviceId], references: [id])
   overridePriceToman      Int?
   overrideDurationMinutes Int?
+  // This stylist's share for this service (0–100); null = their default commissionPercent.
+  commissionPercent       Int?
 
   @@id([stylistId, serviceId])
   @@map("stylist_services")
@@ -419,23 +490,33 @@ model TimeOff {
 }
 
 model Appointment {
-  id         String            @id @default(cuid())
-  salonId    String
-  salon      Salon             @relation(fields: [salonId], references: [id])
-  stylistId  String
-  stylist    Stylist           @relation(fields: [stylistId], references: [id])
-  customerId String
-  customer   User              @relation("CustomerAppointments", fields: [customerId], references: [id])
-  startAt    DateTime
-  endAt      DateTime
-  status     AppointmentStatus @default(PENDING)
-  priceToman Int
-  notes      String?
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  id                       String            @id @default(cuid())
+  salonId                  String
+  salon                    Salon             @relation(fields: [salonId], references: [id])
+  stylistId                String
+  stylist                  Stylist           @relation(fields: [stylistId], references: [id])
+  customerId               String
+  customer                 User              @relation("CustomerAppointments", fields: [customerId], references: [id])
+  startAt                  DateTime
+  endAt                    DateTime
+  status                   AppointmentStatus @default(PENDING)
+  priceToman               Int
+  notes                    String?
+  // Accounting, frozen when the appointment is COMPLETED and cleared if it leaves that status:
+  // the amount actually received (defaults to priceToman; the owner can correct it), the stylist's
+  // commission percent at that moment, and their share. The salon's share is the rest.
+  chargedToman             Int?
+  // Effective percent: price-weighted across the services when some have their own rate.
+  stylistCommissionPercent Float?
+  // Tip for the stylist (100% theirs); included in stylistShareToman.
+  tipToman                 Int?
+  stylistShareToman        Int?
+  completedAt              DateTime?
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
 
   services AppointmentService[]
-  review   Review?
+  reviews  Review[]
 
   @@index([salonId, startAt])
   @@index([stylistId, startAt])
@@ -443,11 +524,11 @@ model Appointment {
 }
 
 model AppointmentService {
-  id            String      @id @default(cuid())
-  appointmentId String
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
-  serviceId     String
-  service       Service     @relation(fields: [serviceId], references: [id])
+  id              String      @id @default(cuid())
+  appointmentId   String
+  appointment     Appointment @relation(fields: [appointmentId], references: [id])
+  serviceId       String
+  service         Service     @relation(fields: [serviceId], references: [id])
   // Snapshotted at booking time so a later price change doesn't alter past appointments.
   priceToman      Int
   durationMinutes Int
@@ -468,13 +549,201 @@ model OtpCode {
   @@map("otp_codes")
 }
 
+// A customer's rating (1–5) and/or comment after a completed appointment — either may be missing
+// but not both (reviews_rating_or_comment check constraint, added in SQL). Each appointment can have
+// one review of the salon and one of its stylist. Reviews start PENDING and only APPROVED ones are
+// public: the salon owner moderates all of the salon's reviews, a stylist those about them.
 model Review {
-  id            String      @id @default(cuid())
-  appointmentId String      @unique
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
-  rating        Int
+  id            String       @id @default(cuid())
+  appointmentId String
+  appointment   Appointment  @relation(fields: [appointmentId], references: [id])
+  salonId       String
+  salon         Salon        @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  target        ReviewTarget
+  // The appointment's stylist; set only when target = STYLIST.
+  stylistId     String?
+  stylist       Stylist?     @relation(fields: [stylistId], references: [id], onDelete: SetNull)
+  rating        Int?
   comment       String?
-  createdAt     DateTime    @default(now())
+  status        ReviewStatus @default(PENDING)
+  moderatedAt   DateTime?
+  createdAt     DateTime     @default(now())
 
+  @@unique([appointmentId, target])
+  @@index([salonId, status, createdAt])
+  @@index([stylistId, status, createdAt])
   @@map("reviews")
+}
+
+// Application errors from every app, shown on the platform-admin dashboard (/admin).
+// userId is a plain column, not a relation, so a log survives the user being deleted.
+model ErrorLog {
+  id         String      @id @default(cuid())
+  source     ErrorSource
+  message    String
+  stack      String?
+  method     String?
+  path       String?
+  statusCode Int?
+  userId     String?
+  userAgent  String?
+  context    Json?
+  resolved   Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+
+  @@index([createdAt])
+  @@index([resolved, createdAt])
+  @@map("error_logs")
+}
+
+// Photos of finished work ("artworks") shown on the public salon page. Every image belongs to a
+// salon; stylistId marks it as that stylist's portfolio piece (the stylist can manage their own,
+// the owner can manage all of the salon's). Files live under apps/web's /uploads.
+model GalleryImage {
+  id        String   @id @default(cuid())
+  salonId   String
+  salon     Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  stylistId String?
+  stylist   Stylist? @relation(fields: [stylistId], references: [id], onDelete: SetNull)
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  @@index([salonId, createdAt])
+  @@index([stylistId])
+  @@map("gallery_images")
+}
+
+// In-app notifications shown behind the bell in the salon and stylist panels. `data` is the
+// type-specific payload (ids, names, rating…); clients build the Persian text from it, so the
+// wording can change without rewriting stored rows.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  data      Json
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// Money the salon paid a stylist (settling their commission, or an advance). A stylist's balance
+// is their commission from completed appointments minus these payouts.
+model StylistPayout {
+  id          String       @id @default(cuid())
+  salonId     String
+  salon       Salon        @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  stylistId   String
+  stylist     Stylist      @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  amountToman Int
+  method      PayoutMethod
+  paidAt      DateTime
+  note        String?
+  createdAt   DateTime     @default(now())
+
+  @@index([salonId, paidAt])
+  @@index([stylistId, paidAt])
+  @@map("stylist_payouts")
+}
+
+// A salon's running costs (rent, supplies…), for its profit & loss.
+model SalonExpense {
+  id          String          @id @default(cuid())
+  salonId     String
+  salon       Salon           @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  category    ExpenseCategory
+  amountToman Int
+  spentAt     DateTime
+  note        String?
+  createdAt   DateTime        @default(now())
+
+  @@index([salonId, spentAt])
+  @@map("salon_expenses")
+}
+
+// ── Home page showcase (edited by the platform admin) ─────────────────────
+
+// The supplier/sponsor banner on the home page. Singleton row (id "singleton").
+model HomeBanner {
+  id        String   @id @default("singleton")
+  imageUrl  String?
+  // Where the banner points (http/https only).
+  linkUrl   String?
+  // Supplier name / alt text.
+  title     String?
+  active    Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@map("home_banner")
+}
+
+// Up to three salons featured on the home page; priority 1 is shown first.
+model FeaturedSalon {
+  salonId   String   @id
+  salon     Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  priority  Int      @unique
+  createdAt DateTime @default(now())
+
+  @@map("featured_salons")
+}
+
+// Up to three stylists featured on the home page; priority 1 is shown first.
+model FeaturedStylist {
+  stylistId String   @id
+  stylist   Stylist  @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  priority  Int      @unique
+  createdAt DateTime @default(now())
+
+  @@map("featured_stylists")
+}
+
+// Showcase options (singleton, id "singleton").
+model ShowcaseSettings {
+  id         String   @id @default("singleton")
+  // A salon/stylist needs at least this many approved star ratings to appear in "top rated".
+  minRatings Int      @default(3)
+  updatedAt  DateTime @updatedAt
+
+  @@map("showcase_settings")
+}
+
+// A customer's saved salons ("علاقه‌مندی‌ها").
+model FavoriteSalon {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salonId   String
+  salon     Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, salonId])
+  @@index([salonId])
+  @@map("favorite_salons")
+}
+
+// "Tell me if a time opens up": a customer waiting for a salon-local day (optionally one stylist)
+// that had no free slot. When an appointment on that day is cancelled, waiting customers get a
+// SLOT_OPENED notification (notifiedAt set, so each entry is notified once).
+model WaitlistEntry {
+  id         String    @id @default(cuid())
+  customerId String
+  customer   User      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  salonId    String
+  salon      Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  stylistId  String?
+  stylist    Stylist?  @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  /**
+   * Salon-local day, "YYYY-MM-DD".
+   */
+  dateKey    String
+  serviceIds String[]
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([customerId, salonId, dateKey])
+  @@index([salonId, dateKey])
+  @@map("waitlist_entries")
 }

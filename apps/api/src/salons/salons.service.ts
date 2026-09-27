@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { SalonStatus } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { UpdateSalonDto } from "./dto/update-salon.dto.js";
+import { assertIranCoordinates, resolveProvinceCity } from "../common/location.js";
 import { UpdateSalonStatusDto } from "./dto/update-salon-status.dto.js";
 
 @Injectable()
@@ -14,7 +15,13 @@ export class SalonsService {
       include: {
         serviceCategories: { orderBy: { order: "asc" } },
         services: { where: { active: true } },
-        stylists: { where: { active: true }, include: { workingHours: true, services: true } },
+        // Commission rates are between the owner and the stylist — never on the public page.
+        stylists: {
+          where: { active: true },
+          omit: { commissionPercent: true },
+          include: { workingHours: true, services: { omit: { commissionPercent: true } } },
+        },
+        galleryImages: { orderBy: { createdAt: "desc" }, select: { id: true, url: true, caption: true, stylistId: true } },
       },
     });
   }
@@ -31,7 +38,14 @@ export class SalonsService {
 
   async updateMine(userId: string, dto: UpdateSalonDto) {
     const salon = await this.findMine(userId);
-    return this.prisma.salon.update({ where: { id: salon.id }, data: dto });
+    const { province, city, ...rest } = dto;
+    const location =
+      province !== undefined || city !== undefined ? resolveProvinceCity(province ?? salon.province ?? "", city ?? salon.city) : {};
+    assertIranCoordinates(dto.latitude, dto.longitude);
+    return this.prisma.salon.update({
+      where: { id: salon.id },
+      data: { ...rest, ...location, ...(rest.address !== undefined && { address: rest.address.trim() }) },
+    });
   }
 
   // --- platform-admin moderation ---

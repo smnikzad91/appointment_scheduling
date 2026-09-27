@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { createContext, useState, useContext, useEffect } from "react";
+import { createContext, useContext, useEffect, useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
 
@@ -12,36 +12,54 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+const savedListeners = new Set<() => void>();
+function subscribeSaved(cb: () => void) {
+  savedListeners.add(cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    savedListeners.delete(cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+function readSaved(): Theme | null {
+  try {
+    const t = localStorage.getItem("theme");
+    return t === "light" || t === "dark" ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+function subscribeSystem(cb: () => void) {
+  const mq = window.matchMedia(DARK_QUERY);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+function readSystemDark() {
+  return window.matchMedia(DARK_QUERY).matches;
+}
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [theme, setTheme] = useState<Theme>("dark");
-  const [isInitialized, setIsInitialized] = useState(false);
+  // A saved choice (from the theme toggle) wins; otherwise follow the phone's light/dark setting,
+  // live. Nothing is saved until the user toggles, so the system setting keeps applying.
+  const saved = useSyncExternalStore(subscribeSaved, readSaved, () => null);
+  const systemDark = useSyncExternalStore(subscribeSystem, readSystemDark, () => true);
+  const theme: Theme = saved ?? (systemDark ? "dark" : "light");
 
   useEffect(() => {
-    // This code will only run on the client side
-    queueMicrotask(() => {
-      const savedTheme = localStorage.getItem("theme") as Theme | null;
-      const initialTheme = savedTheme || "dark";
-
-      setTheme(initialTheme);
-      setIsInitialized(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem("theme", theme);
-      if (theme === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
-  }, [theme, isInitialized]);
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
 
   const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
+    try {
+      localStorage.setItem("theme", theme === "light" ? "dark" : "light");
+    } catch {
+      // Storage blocked — nothing to persist.
+    }
+    savedListeners.forEach((cb) => cb());
   };
 
   return (

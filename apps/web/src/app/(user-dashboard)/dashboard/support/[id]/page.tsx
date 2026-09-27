@@ -118,7 +118,7 @@ export default function TicketDetailPage() {
     return (
       <div className="space-y-4">
         <Link href="/dashboard/support" className="text-sm text-brand-500 hover:underline">
-          ← {t("backToTickets")}
+          {isRTL ? "→" : "←"} {t("backToTickets")}
         </Link>
         <p className="text-sm text-gray-500">{t("notFound")}</p>
       </div>

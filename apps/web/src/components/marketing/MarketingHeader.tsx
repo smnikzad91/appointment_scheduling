@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Calendar } from "lucide-react";
+import InstallAppButton from "@/components/common/InstallAppButton";
 
 const NAV_LINKS = [
+  { href: "/salons", label: "جستجوی سالن" },
   { href: "#features", label: "امکانات" },
   { href: "#apps", label: "اپلیکیشن‌ها" },
   { href: "#pricing", label: "تعرفه‌ها" },
@@ -28,6 +30,7 @@ export default function MarketingHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <InstallAppButton />
           <Link href="/signin" className="hidden text-sm font-medium text-[#2a1d26] hover:text-[#a34a30] sm:inline">
             ورود
           </Link>

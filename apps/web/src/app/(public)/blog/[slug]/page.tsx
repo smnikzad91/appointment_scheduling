@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import BlogPostClient from "@/components/public/BlogPostClient";
 import { JsonLd } from "@/components/common/JsonLd";
 import { prisma } from "@/lib/prisma";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = await prisma.blogPost.findFirst({ where: { slug, published: true } });
   if (!post) return {};
 
-  const url = `https://mqttcloud.ir/blog/${slug}`;
+  const url = `${SITE_URL}/blog/${slug}`;
   const image = post.coverImage ?? "/opengraph-image";
   const keywords = [post.category, ...(post.hashtags ?? [])].filter(Boolean);
   const publishedTime = post.createdAt ? post.createdAt.toISOString() : undefined;
@@ -31,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url,
       type: "article",
       publishedTime,
-      authors: ["mqttcloud.ir"],
+      authors: [SITE_NAME],
       tags: keywords,
       images: [{ url: image, width: 1200, height: 630, alt: post.title }],
     },
@@ -79,7 +80,7 @@ export default async function BlogPostPage({ params }: Props) {
     coverImage: p.coverImage ?? undefined,
   }));
 
-  const url = `https://mqttcloud.ir/blog/${slug}`;
+  const url = `${SITE_URL}/blog/${slug}`;
   const articleJsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -88,11 +89,11 @@ export default async function BlogPostPage({ params }: Props) {
     image: post.coverImage ? [post.coverImage] : undefined,
     datePublished: post.createdAt,
     dateModified: post.createdAt,
-    author: { "@type": "Organization", name: "mqttcloud.ir", url: "https://mqttcloud.ir" },
+    author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
     publisher: {
       "@type": "Organization",
-      name: "mqttcloud.ir",
-      logo: { "@type": "ImageObject", url: "https://mqttcloud.ir/images/logo/logo-icon.svg" },
+      name: SITE_NAME,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/images/logo/logo-icon.svg` },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
   };
@@ -101,8 +102,8 @@ export default async function BlogPostPage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "خانه", item: "https://mqttcloud.ir" },
-      { "@type": "ListItem", position: 2, name: "وبلاگ", item: "https://mqttcloud.ir/blog" },
+      { "@type": "ListItem", position: 1, name: "خانه", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "وبلاگ", item: `${SITE_URL}/blog` },
       { "@type": "ListItem", position: 3, name: post.title, item: url },
     ],
   };

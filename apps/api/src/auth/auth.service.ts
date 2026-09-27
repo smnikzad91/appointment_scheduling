@@ -6,6 +6,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { generateUniqueSlug } from "../salons/slugify.util.js";
 import { RegisterDto } from "./dto/register.dto.js";
 import { RegisterSalonOwnerDto } from "./dto/register-salon-owner.dto.js";
+import { assertIranCoordinates, resolveProvinceCity } from "../common/location.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { VerifyOtpDto } from "./dto/otp.dto.js";
 
@@ -60,6 +61,8 @@ export class AuthService {
   }
 
   async registerSalonOwner(dto: RegisterSalonOwnerDto) {
+    const location = resolveProvinceCity(dto.province, dto.city);
+    assertIranCoordinates(dto.latitude, dto.longitude);
     await this.assertIdentifierAvailable(dto.phone, dto.email);
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -83,8 +86,11 @@ export class AuthService {
           ownerId: owner.id,
           name: dto.salonName,
           slug,
-          city: dto.city,
-          address: dto.address,
+          province: location.province,
+          city: location.city,
+          address: dto.address.trim(),
+          latitude: dto.latitude,
+          longitude: dto.longitude,
           phone: dto.salonPhone ?? dto.phone,
           // New salons need platform-admin approval before they're publicly visible.
           status: SalonStatus.PENDING,

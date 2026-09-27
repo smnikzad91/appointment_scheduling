@@ -7,6 +7,7 @@ import { useBooking } from "./BookingProvider";
 import { buildIcsFile } from "@/lib/ics";
 import { dateKeyToDate, formatJalaliFull } from "@/lib/jalali";
 import { formatMinutesAsClock, splitFullName } from "@/lib/persian";
+import { salonWallTimeToInstant } from "@/lib/salonTime";
 import { saveCustomerSession } from "@/lib/customerSession";
 
 export default function StepSuccess() {
@@ -23,8 +24,9 @@ export default function StepSuccess() {
   if (!result) return null;
 
   const services = salon.services.filter((s) => result.serviceIds.includes(s.id));
-  const start = dateKeyToDate(result.date);
-  start.setMinutes(result.startMinute);
+  // The real instant (for the .ics file, which is in UTC) — the on-screen date/time below is
+  // the salon's wall clock straight from the booking, whatever timezone the browser is in.
+  const start = salonWallTimeToInstant(result.date, result.startMinute, salon.timezone);
 
   function handleAddToCalendar() {
     const ics = buildIcsFile({
@@ -49,7 +51,7 @@ export default function StepSuccess() {
       <div>
         <h3 className="text-lg font-bold">نوبت شما ثبت شد!</h3>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          {formatJalaliFull(start)} ساعت {formatMinutesAsClock(result.startMinute)}
+          {formatJalaliFull(dateKeyToDate(result.date))} ساعت {formatMinutesAsClock(result.startMinute)}
         </p>
       </div>
 

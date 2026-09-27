@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, isPrismaNotFound } from "@/lib/prisma";
 import { SocialPlatform as PrismaSocialPlatform } from "@appointment-scheduling/database";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -15,8 +15,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
   try {
     await prisma.socialLink.update({ where: { id }, data: body });
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  } catch (err) {
+    if (isPrismaNotFound(err)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw err;
   }
   return NextResponse.json({ ok: true });
 }

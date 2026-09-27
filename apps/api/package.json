@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@appointment-scheduling/database": "*",
+    "@appointment-scheduling/iran-locations": "*",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.1",

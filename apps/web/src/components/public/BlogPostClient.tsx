@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import type { BlogPost } from "@/data/blogPosts";
 import { ReadingProgress } from "@/components/public/shared/ReadingProgress";
@@ -60,7 +60,7 @@ interface Props {
 }
 
 export default function BlogPostClient({ post, related }: Props) {
-  const headings = (post.sections ?? []).map((s) => s.heading).filter(Boolean) as string[];
+  const headings = useMemo(() => (post.sections ?? []).map((s) => s.heading).filter(Boolean) as string[], [post.sections]);
   const [activeId, setActiveId] = useState(headings[0] ? slugify(headings[0]) : "");
   const articleRef = useRef<HTMLElement>(null);
   const categoryCfg = blogCategoryConfig[post.category];
@@ -79,7 +79,7 @@ export default function BlogPostClient({ post, related }: Props) {
       observers.push(obs);
     });
     return () => observers.forEach((o) => o.disconnect());
-  }, [headings.join()]);
+  }, [headings]);
 
   return (
     <>
@@ -236,12 +236,12 @@ export default function BlogPostClient({ post, related }: Props) {
 
                 {/* CTA */}
                 <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-theme-purple-500 p-6 text-white">
-                  <h3 className="text-lg font-bold">اولین اکانت MQTT خود را بسازید</h3>
+                  <h3 className="text-lg font-bold">سالن خود را آنلاین کنید</h3>
                   <p className="mt-2 text-sm text-brand-100 leading-relaxed">
-                    با mqttcloud.ir، دستگاه‌های خود را در چند ثانیه به بروکر متصل کنید.
+                    با نوبتا، صفحه رزرو اختصاصی سالن‌تان را در چند دقیقه راه بیندازید.
                   </p>
                   <Button
-                    href="/signup"
+                    href="/signup-salon"
                     size="sm"
                     className="mt-4 w-full bg-none bg-white text-brand-600 hover:bg-brand-50"
                   >

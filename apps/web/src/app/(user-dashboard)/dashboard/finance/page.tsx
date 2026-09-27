@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { AgGridReact } from "ag-grid-react";
 import { themeQuartz, type ColDef } from "ag-grid-community";
@@ -8,6 +8,7 @@ import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Modal } from "@/components/ui/modal";
+import { toPersianDigits } from "@/lib/persian";
 
 type Card = {
   id: string;
@@ -65,8 +66,8 @@ function StatusCell({ value, context }: { value: string; context: { isRTL: boole
   );
 }
 
-function AmountCell({ value }: { value: number }) {
-  return <span dir="ltr" className="font-medium">{value.toLocaleString()}</span>;
+function AmountCell({ value, context }: { value: number; context: { isRTL: boolean } }) {
+  return <span dir="ltr" className="font-medium">{value.toLocaleString(context.isRTL ? "fa-IR" : "en-US")}</span>;
 }
 
 function CardCell({ value }: { value: Deposit["card"] }) {
@@ -231,16 +232,16 @@ export default function FinancePage() {
       .finally(() => setCardsLoading(false));
   };
 
-  const loadDeposits = () => {
+  const loadDeposits = useCallback(() => {
     setDepositsLoading(true);
     fetch("/api/user/finance/deposits")
       .then((r) => r.json())
       .then((d) => setDeposits(Array.isArray(d) ? d : []))
       .catch(() => setDeposits([]))
       .finally(() => setDepositsLoading(false));
-  };
+  }, []);
 
-  useEffect(() => { queueMicrotask(() => { loadCards(); loadDeposits(); loadDestCards(); }); }, []);
+  useEffect(() => { queueMicrotask(() => { loadCards(); loadDeposits(); loadDestCards(); }); }, [loadDeposits]);
 
   // ── Delete Card ─────────────────────────────────────────────────────────────
   const handleDeleteCard = async (id: string) => {
@@ -320,15 +321,15 @@ export default function FinancePage() {
   };
 
   // ── Delete Deposit ───────────────────────────────────────────────────────────
-  const handleDeleteDeposit = async (id: string) => {
+  const handleDeleteDeposit = useCallback(async (id: string) => {
     const res  = await fetch(`/api/user/finance/deposits/${id}`, { method: "DELETE" });
     const data = await res.json();
     if (res.ok) { toast.success(t("depositDeleted")); loadDeposits(); }
     else        { toast.error(data.error || t("saveError")); }
-  };
+  }, [t, loadDeposits]);
 
   // ── Grid ────────────────────────────────────────────────────────────────────
-  const gridContext = useMemo(() => ({ isRTL, onDelete: handleDeleteDeposit, copiedLabel: t("copied") }), [isRTL, t]);
+  const gridContext = useMemo(() => ({ isRTL, onDelete: handleDeleteDeposit, copiedLabel: t("copied") }), [isRTL, t, handleDeleteDeposit]);
 
   const filteredDeposits = useMemo(
     () => depositFilter === "all" ? deposits : deposits.filter((d) => d.status === depositFilter),
@@ -400,7 +401,7 @@ export default function FinancePage() {
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">{t("noCards")}</p>
             <button onClick={openCardModal} className="text-sm font-medium text-brand-500 hover:underline">
-              {t("addCard")} →
+              {t("addCard")} {isRTL ? "←" : "→"}
             </button>
           </div>
         ) : (
@@ -479,7 +480,7 @@ export default function FinancePage() {
               <span className={`ms-1.5 rounded-full px-1.5 py-0.5 text-xs ${
                 depositFilter === tab.key ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
               }`}>
-                {depositCounts[tab.key]}
+                {isRTL ? toPersianDigits(depositCounts[tab.key]) : depositCounts[tab.key]}
               </span>
             </button>
           ))}
@@ -497,7 +498,7 @@ export default function FinancePage() {
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">{t("noDeposits")}</p>
               <button onClick={openDepositModal} className="mt-1 text-sm font-medium text-brand-500 hover:underline">
-                {t("newDeposit")} →
+                {t("newDeposit")} {isRTL ? "←" : "→"}
               </button>
             </div>
           ) : (

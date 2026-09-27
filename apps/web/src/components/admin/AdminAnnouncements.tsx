@@ -270,7 +270,7 @@ export default function AdminAnnouncements() {
       { headerName: t("annColActions"), width: 100, sortable: false, filter: false, cellRenderer: ActionsCell },
     ];
     return isRTL ? [...cols].reverse() : cols;
-  }, [isRTL, lang]);
+  }, [isRTL, t]);
 
   return (
     <div className="p-6" dir={isRTL ? "rtl" : "ltr"}>

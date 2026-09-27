@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import NewsPostClient from "@/components/public/NewsPostClient";
 import { JsonLd } from "@/components/common/JsonLd";
 import { prisma } from "@/lib/prisma";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const item = await prisma.newsItem.findFirst({ where: { id, published: true } }).catch(() => null);
   if (!item) return {};
 
-  const url = `https://mqttcloud.ir/news/${id}`;
+  const url = `${SITE_URL}/news/${id}`;
   const description = stripMarkdown(item.body);
   const image = item.coverImage ?? item.image ?? "/opengraph-image";
   const keywords = [item.category, ...(item.hashtags ?? [])].filter(Boolean);
@@ -36,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url,
       type: "article",
       publishedTime,
-      authors: ["mqttcloud.ir"],
+      authors: [SITE_NAME],
       tags: keywords,
       images: [{ url: image, width: 1200, height: 630, alt: item.title }],
     },
@@ -83,7 +84,7 @@ export default async function NewsDetailPage({ params }: Props) {
     publishedAt: n.publishedAt ? n.publishedAt.toISOString() : undefined,
   }));
 
-  const url = `https://mqttcloud.ir/news/${item.id}`;
+  const url = `${SITE_URL}/news/${item.id}`;
   const image = item.coverImage ?? item.image;
   const newsArticleJsonLd = {
     "@context": "https://schema.org",
@@ -93,11 +94,11 @@ export default async function NewsDetailPage({ params }: Props) {
     image: image ? [image] : undefined,
     datePublished: item.publishedAt,
     dateModified: item.publishedAt,
-    author: { "@type": "Organization", name: "mqttcloud.ir", url: "https://mqttcloud.ir" },
+    author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
     publisher: {
       "@type": "Organization",
-      name: "mqttcloud.ir",
-      logo: { "@type": "ImageObject", url: "https://mqttcloud.ir/images/logo/logo-icon.svg" },
+      name: SITE_NAME,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/images/logo/logo-icon.svg` },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
   };
@@ -106,8 +107,8 @@ export default async function NewsDetailPage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "خانه", item: "https://mqttcloud.ir" },
-      { "@type": "ListItem", position: 2, name: "اخبار", item: "https://mqttcloud.ir/news" },
+      { "@type": "ListItem", position: 1, name: "خانه", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "اخبار", item: `${SITE_URL}/news` },
       { "@type": "ListItem", position: 3, name: item.title, item: url },
     ],
   };

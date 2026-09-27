@@ -1,218 +1,231 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
+import { Check, ChevronLeft, Images, Calculator } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
-import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput } from "@/lib/api/ownerSalon";
-import { uploadImage } from "@/lib/uploadImage";
+import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput, SALON_UPDATED_EVENT } from "@/lib/api/ownerSalon";
+import { toPersianDigits } from "@/lib/persian";
+import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
+import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
+import ProvinceCitySelect from "@/components/common/ProvinceCitySelect";
+import { findProvince } from "@appointment-scheduling/iran-locations";
+import { persianApiError } from "@/lib/api/errorMessages";
+import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, cx, LinkCard } from "@/components/app/ui";
+import Sep from "@/components/common/Sep";
 
-type FormState = UpdateSalonInput;
+// Curated brand colors that read well on the public salon page; the last swatch opens a picker.
+const SELECT_CLASS =
+  "h-12 w-full appearance-none rounded-2xl border border-app-line bg-app-card px-4 text-app-ink outline-none transition focus:border-app-accent focus:ring-4 focus:ring-app-accent/15 disabled:opacity-50";
+
+const BRAND_SWATCHES = ["#a34a30", "#c2185b", "#8e44ad", "#1f6f78", "#2e7d32", "#b8860b", "#37474f"];
 
 export default function SalonSettingsPage() {
   const token = useApiAccessToken();
   const [salon, setSalon] = useState<OwnerSalon | null>(null);
-  const [form, setForm] = useState<FormState>({});
+  const [form, setForm] = useState<UpdateSalonInput>({});
+  const [dirty, setDirty] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [uploadingCover, setUploadingCover] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!token) return;
     getMySalon(token)
       .then((s) => {
+        setLoadError(null);
         setSalon(s);
         setForm({
           name: s.name,
           description: s.description ?? "",
+          province: s.province ?? "",
           city: s.city,
           address: s.address,
           phone: s.phone,
           instagram: s.instagram ?? "",
           brandColor: s.brandColor,
+          latitude: s.latitude ?? undefined,
+          longitude: s.longitude ?? undefined,
         });
       })
-      .catch(() => setError("خطا در دریافت اطلاعات سالن"));
+      .catch(() => setLoadError("خطا در دریافت اطلاعات سالن"));
   }, [token]);
+
+  useEffect(load, [load]);
+
+  function update(patch: UpdateSalonInput) {
+    setSaved(false);
+    setDirty(true);
+    setForm((f) => ({ ...f, ...patch }));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
     setSaving(true);
     setError(null);
-    setSaved(false);
     try {
-      const updated = await updateMySalon(token, form);
-      setSalon(updated);
+      setSalon(await updateMySalon(token, form));
+      window.dispatchEvent(new Event(SALON_UPDATED_EVENT));
+      setDirty(false);
       setSaved(true);
-    } catch {
-      setError("خطا در ذخیره تغییرات");
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(persianApiError(err, "ذخیره تغییرات انجام نشد، دوباره تلاش کنید"));
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !token) return;
-    setUploadingLogo(true);
-    setError(null);
-    try {
-      const url = await uploadImage(file, "salons");
-      const updated = await updateMySalon(token, { logoUrl: url });
-      setSalon(updated);
-    } catch {
-      setError("خطا در آپلود لوگو");
-    } finally {
-      setUploadingLogo(false);
-    }
+  async function savePhotos(patch: PhotoPatch) {
+    if (!token) return;
+    // Logo is the salon's "avatar" — map the shared editor's field name onto the salon's.
+    const updated = await updateMySalon(token, {
+      ...(patch.avatarUrl !== undefined && { logoUrl: patch.avatarUrl }),
+      ...(patch.coverImageUrl !== undefined && { coverImageUrl: patch.coverImageUrl }),
+    });
+    setSalon(updated);
+    window.dispatchEvent(new Event(SALON_UPDATED_EVENT));
   }
 
-  async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !token) return;
-    setUploadingCover(true);
-    setError(null);
-    try {
-      const url = await uploadImage(file, "salons");
-      const updated = await updateMySalon(token, { coverImageUrl: url });
-      setSalon(updated);
-    } catch {
-      setError("خطا در آپلود تصویر کاور");
-    } finally {
-      setUploadingCover(false);
-    }
-  }
+  if (loadError) return <ErrorBanner onRetry={load}>{loadError}</ErrorBanner>;
+  if (!salon) return <ListSkeleton rows={5} />;
 
-  if (!salon) return <p className="text-sm text-gray-500">در حال بارگذاری...</p>;
+  const brand = form.brandColor ?? salon.brandColor;
+  const isCustomColor = !BRAND_SWATCHES.includes(brand.toLowerCase());
 
   return (
-    <div className="max-w-xl">
-      <h1 className="mb-6 text-xl font-bold text-gray-900 dark:text-white">تنظیمات سالن</h1>
+    <form onSubmit={handleSubmit}>
+      <PageHeader title="تنظیمات سالن" subtitle="این اطلاعات در صفحه رزرو سالن به مشتری‌ها نشان داده می‌شود." />
 
-      <div className="mb-6 flex flex-col gap-4">
-        <div className="relative h-32 w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
-          {salon.coverImageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={salon.coverImageUrl} alt="کاور سالن" className="h-full w-full object-cover" />
-          )}
-          <button
-            type="button"
-            onClick={() => coverInputRef.current?.click()}
-            disabled={uploadingCover}
-            className="absolute bottom-2 left-2 rounded-lg bg-black/60 px-3 py-1.5 text-xs font-medium text-white hover:bg-black/70 disabled:opacity-60"
-          >
-            {uploadingCover ? "در حال آپلود..." : "تغییر تصویر کاور"}
-          </button>
-          <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
-        </div>
+      {/* Cover + logo, laid out like the public page */}
+      <ProfilePhotos
+        name={form.name || salon.name}
+        coverUrl={salon.coverImageUrl}
+        avatarUrl={salon.logoUrl}
+        avatarLabel="لوگو"
+        avatarShape="square"
+        folder="salons"
+        onSave={savePhotos}
+      />
 
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gray-100 text-lg font-bold text-gray-400 dark:bg-gray-800">
-            {salon.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={salon.logoUrl} alt="لوگو" className="h-full w-full object-cover" />
-            ) : (
-              salon.name.trim().slice(0, 1)
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => logoInputRef.current?.click()}
-            disabled={uploadingLogo}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-gray-300 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300"
-          >
-            {uploadingLogo ? "در حال آپلود..." : "تغییر لوگو"}
-          </button>
-          <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
-        </div>
-      </div>
+      <Link
+        href="/salon/gallery"
+        className="mt-3 flex items-center gap-3 rounded-3xl border border-app-line bg-app-card p-4 shadow-app active:scale-[0.99]"
+      >
+        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-app-accent-soft text-app-accent">
+          <Images className="h-5 w-5" aria-hidden />
+        </span>
+        <span className="flex-1">
+          <span className="block font-bold text-app-ink">گالری نمونه کارها</span>
+          <span className="block text-xs text-app-muted">عکس کارهای سالن و آرایشگرها در صفحه رزرو</span>
+        </span>
+        <ChevronLeft className="h-4 w-4 text-app-muted" aria-hidden />
+      </Link>
+      <ReviewsLinkCard token={token} scope="salon" className="mt-3" />
+      <LinkCard href="/salon/accounting" icon={Calculator} title="حسابداری" subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها" className="mt-3" />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <SectionTitle>اطلاعات سالن</SectionTitle>
+      <Card className="flex flex-col gap-4 p-4">
         <Field label="نام سالن">
-          <input
-            value={form.name ?? ""}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            className="input"
-          />
+          <TextInput value={form.name ?? ""} onChange={(e) => update({ name: e.target.value })} />
         </Field>
-
-        <Field label="توضیحات">
-          <textarea
-            value={form.description ?? ""}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            rows={3}
-            className="input"
-          />
+        <Field label="درباره سالن">
+          <TextArea rows={3} value={form.description ?? ""} onChange={(e) => update({ description: e.target.value })} placeholder="چند خط درباره سالن، تخصص‌ها و فضای آن" />
         </Field>
+        <ProvinceCitySelect
+          value={{ province: form.province ?? "", city: form.city ?? "" }}
+          onChange={(v) => update(v)}
+          selectClassName={SELECT_CLASS}
+          labelClassName="px-1 text-[13px] font-bold text-app-muted"
+        />
+        {!salon.province && !form.province && (
+          <p className="-mt-2 rounded-2xl bg-app-pending/10 px-3 py-2 text-xs leading-6 text-app-pending">
+            استان سالن ثبت نشده است؛ آن را انتخاب کنید تا مشتری‌ها در جستجوی استان و شهر، سالن شما را پیدا کنند.
+          </p>
+        )}
+        <Field label="تلفن">
+          <TextInput type="tel" inputMode="tel" dir="ltr" className="text-end" value={form.phone ?? ""} onChange={(e) => update({ phone: e.target.value })} />
+        </Field>
+        <Field label="آدرس دقیق" hint="خیابان، کوچه، پلاک، طبقه">
+          <TextArea rows={2} value={form.address ?? ""} onChange={(e) => update({ address: e.target.value })} />
+        </Field>
+        <Field label="اینستاگرام">
+          <div className="relative">
+            <TextInput dir="ltr" className="pe-4 ps-9 text-end" value={form.instagram ?? ""} onChange={(e) => update({ instagram: e.target.value.replace(/^@/, "") })} placeholder="rose.salon" />
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-app-muted">@</span>
+          </div>
+        </Field>
+      </Card>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="شهر">
-            <input value={form.city ?? ""} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} className="input" />
-          </Field>
-          <Field label="تلفن">
-            <input dir="ltr" value={form.phone ?? ""} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} className="input text-end" />
-          </Field>
+      <SectionTitle>موقعیت روی نقشه</SectionTitle>
+      <Card className="overflow-hidden p-0">
+        <div className="h-56">
+          <LocationPickerLoader
+            value={form.latitude != null && form.longitude != null ? { lat: form.latitude, lng: form.longitude } : null}
+            onChange={({ lat, lng }) => update({ latitude: lat, longitude: lng })}
+            center={(() => {
+              const p = findProvince(form.province ?? "");
+              return p ? { lat: p.center[0], lng: p.center[1] } : null;
+            })()}
+          />
         </div>
+        <p className="px-4 py-3 text-xs leading-6 text-app-muted">
+          {form.latitude != null && form.longitude != null ? (
+            <>
+              روی نقشه بزنید یا پین را بکشید تا جابه‌جا شود<Sep />
+              <span dir="ltr">{toPersianDigits(`${form.latitude.toFixed(5)}, ${form.longitude.toFixed(5)}`)}</span>
+            </>
+          ) : (
+            "روی محل سالن در نقشه بزنید تا مشتری‌ها بتوانند مسیریابی کنند."
+          )}
+        </p>
+      </Card>
 
-        <Field label="آدرس">
-          <input value={form.address ?? ""} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} className="input" />
-        </Field>
+      <SectionTitle>رنگ برند</SectionTitle>
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-3">
+          {BRAND_SWATCHES.map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => update({ brandColor: color })}
+              aria-label={`رنگ ${color}`}
+              aria-pressed={brand.toLowerCase() === color}
+              className="flex h-11 w-11 items-center justify-center rounded-full ring-offset-2 ring-offset-app-card transition active:scale-90"
+              style={{ backgroundColor: color, boxShadow: brand.toLowerCase() === color ? `0 0 0 3px var(--app-card), 0 0 0 5px ${color}` : undefined }}
+            >
+              {brand.toLowerCase() === color && <Check className="h-5 w-5 text-white" aria-hidden />}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => colorInputRef.current?.click()}
+            aria-label="رنگ دلخواه"
+            className={cx("relative h-11 w-11 overflow-hidden rounded-full active:scale-90", !isCustomColor && "opacity-80")}
+            style={{
+              background: isCustomColor ? brand : "conic-gradient(#e53935, #fdd835, #43a047, #1e88e5, #8e24aa, #e53935)",
+              boxShadow: isCustomColor ? `0 0 0 3px var(--app-card), 0 0 0 5px ${brand}` : undefined,
+            }}
+          >
+            <input ref={colorInputRef} type="color" value={brand} onChange={(e) => update({ brandColor: e.target.value })} className="sr-only" tabIndex={-1} />
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-app-muted">دکمه‌ها و جزئیات صفحه رزرو سالن با این رنگ نمایش داده می‌شوند.</p>
+      </Card>
 
-        <Field label="اینستاگرام (بدون @)">
-          <input dir="ltr" value={form.instagram ?? ""} onChange={(e) => setForm((f) => ({ ...f, instagram: e.target.value }))} className="input text-end" />
-        </Field>
-
-        <Field label="رنگ برند">
-          <input
-            type="color"
-            value={form.brandColor ?? "#a34a30"}
-            onChange={(e) => setForm((f) => ({ ...f, brandColor: e.target.value }))}
-            className="h-10 w-20 rounded-lg border border-gray-200 dark:border-gray-700"
-          />
-        </Field>
-
-        {error && <p className="text-sm text-rose-500">{error}</p>}
-        {saved && <p className="text-sm text-emerald-600">تغییرات ذخیره شد.</p>}
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="mt-2 w-fit rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60"
-        >
-          {saving ? "در حال ذخیره..." : "ذخیره تغییرات"}
-        </button>
-      </form>
-
-      <style jsx>{`
-        .input {
-          border-radius: 0.5rem;
-          border-width: 1px;
-          border-color: rgb(229 231 235);
-          background: white;
-          color: rgb(17 24 39);
-          padding: 0.5rem 0.75rem;
-          font-size: 0.875rem;
-        }
-        :global(.dark) .input {
-          border-color: rgb(55 65 81);
-          background: rgb(31 41 55);
-          color: white;
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium text-gray-700 dark:text-gray-300">{label}</span>
-      {children}
-    </label>
+      {/* Save bar — pinned just above the tab bar, only while there's something to save. */}
+      {(dirty || saved || error) && (
+        <div className="app-rise sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 mt-6">
+          {error && <ErrorBanner>{error}</ErrorBanner>}
+          <Button type="submit" block busy={saving} icon={saved ? Check : undefined} className="shadow-[0_12px_30px_-12px_rgb(0_0_0/0.45)]">
+            {saved ? "ذخیره شد" : "ذخیره تغییرات"}
+          </Button>
+        </div>
+      )}
+    </form>
   );
 }

@@ -7,6 +7,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { signIn } from "next-auth/react";
+import { findProvince } from "@appointment-scheduling/iran-locations";
+import ProvinceCitySelect from "@/components/common/ProvinceCitySelect";
+import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
+import type { GeoLocation } from "@/types/salon";
+import { toPersianDigits } from "@/lib/persian";
+
+const SELECT_CLASS =
+  "h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90";
 
 export default function SignUpSalonForm() {
   const router = useRouter();
@@ -16,8 +24,9 @@ export default function SignUpSalonForm() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [salonName, setSalonName] = useState("");
-  const [city, setCity] = useState("");
+  const [place, setPlace] = useState({ province: "", city: "" });
   const [address, setAddress] = useState("");
+  const [pin, setPin] = useState<GeoLocation | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -31,13 +40,32 @@ export default function SignUpSalonForm() {
       setError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد (مثال: ۰۹۱۱۹۱۰۰۹۹۱)");
       return;
     }
+    if (!place.province || !place.city) {
+      setError("استان و شهر سالن را انتخاب کنید");
+      return;
+    }
+    if (!pin) {
+      setError("محل سالن را روی نقشه مشخص کنید تا مشتری‌ها بتوانند آن را پیدا کنند");
+      return;
+    }
 
     setLoading(true);
 
     const res = await fetch("/api/auth/register-salon-owner", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName, lastName, phone, password, salonName, city, address }),
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        phone,
+        password,
+        salonName,
+        province: place.province,
+        city: place.city,
+        address,
+        latitude: pin.lat,
+        longitude: pin.lng,
+      }),
     });
 
     const data = await res.json();
@@ -50,7 +78,7 @@ export default function SignUpSalonForm() {
 
     // Auto sign-in after successful registration — NextAuth's credentials provider
     // accepts phone or email as the "email" field (see auth.ts).
-    const result = await signIn("credentials", { email: phone, password, redirect: false });
+    const result = await signIn("credentials", { identifier: phone, password, redirect: false });
     if (result?.error) {
       router.push("/signin");
       return;
@@ -134,15 +162,52 @@ export default function SignUpSalonForm() {
               <Input type="text" placeholder="مثلاً سالن زیبایی رزا" required value={salonName} onChange={(e) => setSalonName(e.target.value)} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4" style={{ animation: "fade-in-up 0.5s ease 0.35s both" }}>
-              <div>
-                <Label>شهر <span className="text-error-500">*</span></Label>
-                <Input type="text" placeholder="تهران" required value={city} onChange={(e) => setCity(e.target.value)} />
+            <div style={{ animation: "fade-in-up 0.5s ease 0.35s both" }}>
+              <ProvinceCitySelect
+                value={place}
+                onChange={setPlace}
+                required
+                selectClassName={SELECT_CLASS}
+                labelClassName="text-sm font-medium text-gray-700 dark:text-gray-400"
+              />
+            </div>
+
+            <div style={{ animation: "fade-in-up 0.5s ease 0.38s both" }}>
+              <Label>آدرس دقیق <span className="text-error-500">*</span></Label>
+              <textarea
+                rows={2}
+                required
+                minLength={5}
+                maxLength={300}
+                placeholder="خیابان، کوچه، پلاک، طبقه"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+              />
+            </div>
+
+            <div style={{ animation: "fade-in-up 0.5s ease 0.4s both" }}>
+              <Label>محل سالن روی نقشه <span className="text-error-500">*</span></Label>
+              <div className="h-60 overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700">
+                <LocationPickerLoader
+                  value={pin}
+                  onChange={setPin}
+                  center={(() => {
+                    const p = findProvince(place.province);
+                    return p ? { lat: p.center[0], lng: p.center[1] } : null;
+                  })()}
+                />
               </div>
-              <div>
-                <Label>آدرس <span className="text-error-500">*</span></Label>
-                <Input type="text" placeholder="آدرس سالن" required value={address} onChange={(e) => setAddress(e.target.value)} />
-              </div>
+              <p className="mt-1.5 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                {pin ? (
+                  <>
+                    پین ثبت شد؛ برای جابه‌جایی آن را بکشید.{" "}
+                    <span dir="ltr">{toPersianDigits(`${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}`)}</span>
+                  </>
+                ) : (
+                  "روی محل دقیق سالن بزنید یا «موقعیت من» را بزنید. با انتخاب استان، نقشه به آن‌جا می‌رود."
+                )}
+              </p>
             </div>
 
             <button

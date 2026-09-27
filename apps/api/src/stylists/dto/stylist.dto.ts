@@ -1,4 +1,5 @@
 import { Type } from "class-transformer";
+import { IsOptionalImageUrl } from "../../common/image-url.js";
 import { IsArray, IsBoolean, IsDateString, IsInt, IsOptional, IsPositive, IsString, Max, Min, ValidateNested } from "class-validator";
 
 export class InviteStylistDto {
@@ -21,6 +22,13 @@ export class InviteStylistDto {
   @IsOptional()
   @IsArray()
   serviceIds?: string[];
+
+  /** The stylist's share of the money received for their appointments, 0–100 %. Defaults to 20. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  commissionPercent?: number;
 }
 
 export class UpdateStylistDto {
@@ -32,13 +40,22 @@ export class UpdateStylistDto {
   @IsString()
   bio?: string;
 
-  @IsOptional()
-  @IsString()
-  avatarUrl?: string;
+  @IsOptionalImageUrl()
+  avatarUrl?: string | null;
+
+  @IsOptionalImageUrl()
+  coverImageUrl?: string | null;
 
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  /** Only affects appointments completed from now on; past income keeps the percent it had. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  commissionPercent?: number;
 }
 
 export class StylistServiceEntryDto {
@@ -54,6 +71,13 @@ export class StylistServiceEntryDto {
   @IsInt()
   @IsPositive()
   overrideDurationMinutes?: number | null;
+
+  /** The stylist's share for this service; null/omitted = their default commissionPercent. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  commissionPercent?: number | null;
 }
 
 export class SetStylistServicesDto {
@@ -80,9 +104,11 @@ export class UpdateOwnStylistDto {
   @IsString()
   bio?: string;
 
-  @IsOptional()
-  @IsString()
-  avatarUrl?: string;
+  @IsOptionalImageUrl()
+  avatarUrl?: string | null;
+
+  @IsOptionalImageUrl()
+  coverImageUrl?: string | null;
 }
 
 export class WorkingHourEntryDto {

@@ -1,25 +1,26 @@
 import { Metadata } from "next";
 import BlogPageClient from "@/components/public/BlogPageClient";
 import { prisma } from "@/lib/prisma";
+import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "وبلاگ",
-  description: "آموزش راه‌اندازی بروکر MQTT، اتصال دستگاه‌ها و بهترین شیوه‌های IoT. مقالات تخصصی برای توسعه‌دهندگان و کسب‌وکارها.",
-  keywords: ["وبلاگ", "آموزش MQTT", "IoT", "بروکر پیام", "pub sub", "mqttcloud"],
-  alternates: { canonical: "https://mqttcloud.ir/blog" },
+  description: "راهنمای مدیریت سالن زیبایی، جذب مشتری و نوبت‌دهی آنلاین. مقالات کاربردی برای صاحبان سالن و آرایشگرها.",
+  keywords: ["وبلاگ", "مدیریت سالن زیبایی", "نوبت‌دهی آنلاین", "آرایشگاه", "نوبتا"],
+  alternates: { canonical: `${SITE_URL}/blog` },
   openGraph: {
-    title: "وبلاگ | mqttcloud.ir",
-    description: "آموزش راه‌اندازی بروکر MQTT، اتصال دستگاه‌ها و بهترین شیوه‌های IoT.",
-    url: "https://mqttcloud.ir/blog",
+    title: "وبلاگ | نوبتا",
+    description: "راهنمای مدیریت سالن زیبایی و نوبت‌دهی آنلاین.",
+    url: `${SITE_URL}/blog`,
     type: "website",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "وبلاگ mqttcloud.ir" }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "وبلاگ نوبتا" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "وبلاگ | mqttcloud.ir",
-    description: "آموزش راه‌اندازی بروکر MQTT، اتصال دستگاه‌ها و بهترین شیوه‌های IoT.",
+    title: "وبلاگ | نوبتا",
+    description: "راهنمای مدیریت سالن زیبایی و نوبت‌دهی آنلاین.",
     images: ["/opengraph-image"],
   },
 };

@@ -46,10 +46,20 @@ interface BookingContextValue {
 
 const BookingContext = createContext<BookingContextValue | null>(null);
 
-export function BookingProvider({ salon, children }: { salon: Salon; children: React.ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [step, setStep] = useState<BookingStep>("services");
-  const [state, setState] = useState<BookingState>(INITIAL_STATE);
+/** Open the sheet straight away with these choices ("book again", or a waitlist notice's day). */
+export interface BookingPrefill {
+  serviceIds: string[];
+  stylistId: string | null;
+  dateKey: string | null;
+}
+
+export function BookingProvider({ salon, prefill, children }: { salon: Salon; prefill?: BookingPrefill | null; children: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(!!prefill);
+  // With services already chosen, start at the day/time step; back still reaches the earlier ones.
+  const [step, setStep] = useState<BookingStep>(prefill?.serviceIds.length ? "datetime" : "services");
+  const [state, setState] = useState<BookingState>(() =>
+    prefill ? { ...INITIAL_STATE, serviceIds: prefill.serviceIds, stylistId: prefill.stylistId, dateKey: prefill.dateKey } : INITIAL_STATE,
+  );
   const [result, setResult] = useState<Booking | null>(null);
 
   const reset = useCallback(() => {

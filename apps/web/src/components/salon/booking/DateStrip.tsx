@@ -1,15 +1,16 @@
 "use client";
 
-import { getUpcomingDays } from "@/lib/jalali";
+import type { DateStripDay } from "@/lib/jalali";
 
 export default function DateStrip({
+  days,
   selectedDateKey,
   onSelect,
 }: {
+  days: DateStripDay[];
   selectedDateKey: string | null;
   onSelect: (dateKey: string) => void;
 }) {
-  const days = getUpcomingDays(14);
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-1" role="listbox" aria-label="انتخاب روز">

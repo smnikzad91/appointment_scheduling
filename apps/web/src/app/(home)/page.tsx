@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import Hero from "@/components/marketing/Hero";
+import Showcase from "@/components/marketing/Showcase";
 import HowItWorks from "@/components/marketing/HowItWorks";
 import Features from "@/components/marketing/Features";
 import AndroidApps from "@/components/marketing/AndroidApps";
@@ -9,14 +10,11 @@ import Pricing from "@/components/marketing/Pricing";
 import Faq from "@/components/marketing/Faq";
 import FinalCta from "@/components/marketing/FinalCta";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-const defaultSeo = {
-  title: "نوبتا — سامانه نوبت‌دهی آنلاین سالن‌های زیبایی",
-  description:
-    "نوبتا سامانه نوبت‌دهی آنلاین مخصوص سالن‌های زیبایی است. مشتری‌ها بدون تماس نوبت می‌گیرند و شما با تقویم آنلاین، پیامک یادآوری و بیعانه بانکی مدیریت می‌کنید.",
-};
+const defaultSeo = { title: SITE_TITLE, description: SITE_DESCRIPTION };
 
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await prisma.siteSeo.findFirst();
@@ -27,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { absolute: title },
     description,
     keywords: seo?.keywords?.length ? seo.keywords : undefined,
-    alternates: { canonical: "https://mqttcloud.ir" },
+    alternates: { canonical: SITE_URL },
     openGraph: { title, description, type: "website" },
   };
 }
@@ -38,6 +36,7 @@ export default function HomePage() {
       <MarketingHeader />
       <main>
         <Hero />
+        <Showcase />
         <HowItWorks />
         <Features />
         <AndroidApps />

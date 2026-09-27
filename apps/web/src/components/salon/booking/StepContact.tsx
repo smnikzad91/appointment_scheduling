@@ -26,9 +26,14 @@ export default function StepContact() {
     setError(null);
     setSubmitting(true);
     updateState({ customerPhone: phone });
-    await requestOtp(phone);
-    setSubmitting(false);
-    goNext();
+    try {
+      await requestOtp(phone);
+      goNext();
+    } catch {
+      setError("ارسال کد تایید ممکن نشد، دوباره تلاش کنید");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (

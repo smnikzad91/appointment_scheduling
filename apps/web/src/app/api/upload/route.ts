@@ -7,7 +7,7 @@ import { randomUUID } from "crypto";
 const MAX_SIZE = 5 * 1024 * 1024;
 const ALLOWED  = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
 
-const ALLOWED_FOLDERS = ["tickets", "deposits", "salons", "stylists"];
+const ALLOWED_FOLDERS = ["tickets", "deposits", "salons", "stylists", "banners"];
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -33,4 +33,22 @@ export async function POST(req: NextRequest) {
   await writeFile(join(dir, filename), buffer);
 
   return NextResponse.json({ url: `/uploads/${folder}/${filename}` });
+}
+
+/**
+ * Releases salon/stylist photos that were replaced or removed: body `{ urls: string[] }`. Only
+ * files no DB row references are deleted (see lib/uploadCleanup.ts), so this is safe to call
+ * even if the save it follows didn't go through.
+ */
+export async function DELETE(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = (await req.json().catch(() => null)) as { urls?: unknown } | null;
+  const urls = Array.isArray(body?.urls) ? body.urls.filter((u): u is string => typeof u === "string").slice(0, 20) : [];
+  if (urls.length === 0) return NextResponse.json({ error: "No urls provided" }, { status: 400 });
+
+  const { deleteUnreferencedUploads } = await import("@/lib/uploadCleanup");
+  const deleted = await deleteUnreferencedUploads(urls);
+  return NextResponse.json({ deleted });
 }

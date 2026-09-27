@@ -6,9 +6,17 @@ import type { Salon, Stylist } from "@/types/salon";
 import { toPersianDigits } from "@/lib/persian";
 import { useBooking } from "./booking/BookingProvider";
 import ServiceCard from "./ServiceCard";
+import Lightbox from "./Lightbox";
+import ReviewCard from "./ReviewCard";
+import { Stars } from "@/components/common/StarRating";
+import Sep from "@/components/common/Sep";
+
+const REVIEWS_PREVIEW = 3;
 
 export default function StylistCard({ salon, stylist }: { salon: Salon; stylist: Stylist }) {
   const [expanded, setExpanded] = useState(false);
+  const [viewing, setViewing] = useState<number | null>(null);
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const { openWithService } = useBooking();
   const pricingByServiceId = new Map(stylist.services.map((s) => [s.serviceId, s]));
   const services = salon.services
@@ -40,12 +48,18 @@ export default function StylistCard({ salon, stylist }: { salon: Salon; stylist:
           <h3 className="font-medium">{stylist.displayName}</h3>
           <p className="truncate text-xs text-gray-500 dark:text-gray-400">
             {specialties.map((c) => c.name).join("، ")}
+            {stylist.gallery.length > 0 && (
+              <span className="font-medium" style={{ color: "var(--salon-brand)" }}>
+                {specialties.length > 0 && <Sep />}
+                {toPersianDigits(stylist.gallery.length)} نمونه کار
+              </span>
+            )}
           </p>
-          {stylist.rating && (
+          {stylist.rating !== undefined && (
             <span className="mt-1 inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
               {toPersianDigits(stylist.rating.toFixed(1))}
-              {stylist.reviewCount && <span>({toPersianDigits(stylist.reviewCount)})</span>}
+              <span>({toPersianDigits(stylist.reviewCount ?? 0)} امتیاز)</span>
             </span>
           )}
         </div>
@@ -55,11 +69,58 @@ export default function StylistCard({ salon, stylist }: { salon: Salon; stylist:
 
       {expanded && (
         <div className="flex flex-col gap-2 border-t border-gray-100 p-4 dark:border-gray-800">
+          {stylist.coverImageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={stylist.coverImageUrl} alt={`کاور ${stylist.displayName}`} className="mb-1 h-32 w-full rounded-xl object-cover" />
+          )}
           {stylist.bio && <p className="mb-1 text-sm text-gray-500 dark:text-gray-400">{stylist.bio}</p>}
+          {stylist.gallery.length > 0 && (
+            <div className="-mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]" aria-label={`نمونه کارهای ${stylist.displayName}`}>
+              {stylist.gallery.map((image, i) => (
+                <button
+                  key={image.id}
+                  type="button"
+                  onClick={() => setViewing(i)}
+                  className="h-24 w-24 shrink-0 overflow-hidden rounded-xl focus-visible:outline focus-visible:outline-2"
+                  style={{ outlineColor: "var(--salon-brand)" }}
+                  aria-label={image.alt}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image.url} alt={image.alt} loading="lazy" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
           {services.map((service) => (
             <ServiceCard key={service.id} service={service} onBook={(serviceId) => openWithService(serviceId, stylist.id)} />
           ))}
+          {stylist.reviews.length > 0 && (
+            <div className="mt-3">
+              <div className="mb-2 flex items-center gap-2">
+                <h4 className="text-sm font-bold">نظرات درباره {stylist.displayName}</h4>
+                {stylist.rating !== undefined && <Stars value={stylist.rating} size={13} />}
+              </div>
+              <div className="flex flex-col gap-2">
+                {(showAllReviews ? stylist.reviews : stylist.reviews.slice(0, REVIEWS_PREVIEW)).map((review) => (
+                  <ReviewCard key={review.id} review={review} />
+                ))}
+              </div>
+              {stylist.reviews.length > REVIEWS_PREVIEW && !showAllReviews && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllReviews(true)}
+                  className="mt-2 text-sm font-medium"
+                  style={{ color: "var(--salon-brand)" }}
+                >
+                  نمایش همه {toPersianDigits(stylist.reviews.length)} نظر
+                </button>
+              )}
+            </div>
+          )}
         </div>
+      )}
+      {viewing !== null && (
+        <Lightbox images={stylist.gallery} index={viewing} onClose={() => setViewing(null)} onIndexChange={setViewing} />
       )}
     </div>
   );

@@ -1,25 +1,26 @@
 import { Metadata } from "next";
 import NewsPageClient from "@/components/public/NewsPageClient";
 import { prisma } from "@/lib/prisma";
+import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "اخبار",
-  description: "آخرین اخبار، به‌روزرسانی‌ها و اطلاعیه‌های mqttcloud.ir. از جدیدترین امکانات بروکر MQTT مطلع شوید.",
-  keywords: ["اخبار MQTT", "اخبار mqttcloud", "به‌روزرسانی محصول", "اطلاعیه"],
-  alternates: { canonical: "https://mqttcloud.ir/news" },
+  description: "آخرین اخبار، به‌روزرسانی‌ها و اطلاعیه‌های نوبتا. از جدیدترین امکانات نوبت‌دهی آنلاین سالن‌ها مطلع شوید.",
+  keywords: ["اخبار نوبتا", "به‌روزرسانی محصول", "اطلاعیه"],
+  alternates: { canonical: `${SITE_URL}/news` },
   openGraph: {
-    title: "اخبار | mqttcloud.ir",
-    description: "آخرین اخبار و اطلاعیه‌های mqttcloud.ir.",
-    url: "https://mqttcloud.ir/news",
+    title: "اخبار | نوبتا",
+    description: "آخرین اخبار و اطلاعیه‌های نوبتا.",
+    url: `${SITE_URL}/news`,
     type: "website",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "اخبار mqttcloud.ir" }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "اخبار نوبتا" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "اخبار | mqttcloud.ir",
-    description: "آخرین اخبار و اطلاعیه‌های mqttcloud.ir.",
+    title: "اخبار | نوبتا",
+    description: "آخرین اخبار و اطلاعیه‌های نوبتا.",
     images: ["/opengraph-image"],
   },
 };

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, isPrismaNotFound } from "@/lib/prisma";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -12,8 +12,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const item = await prisma.faq.update({ where: { id }, data: body });
     return NextResponse.json(item);
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  } catch (err) {
+    if (isPrismaNotFound(err)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw err;
   }
 }
 

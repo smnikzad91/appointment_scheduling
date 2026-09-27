@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CalendarOff, Check, Copy, Plus, Trash2 } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   getMyStylistProfile,
@@ -12,8 +12,11 @@ import {
   type WorkingHourEntry,
   type TimeOffEntry,
 } from "@/lib/api/stylistSelf";
-import { PERSIAN_WEEKDAY_NAMES, WEEK_ORDER_SATURDAY_FIRST } from "@/lib/jalali";
-import { SalonApiError } from "@/lib/api/salonApiClient";
+import { formatMinutesAsClock } from "@/lib/persian";
+import { PERSIAN_WEEKDAY_NAMES, WEEK_ORDER_SATURDAY_FIRST, dateKeyToDate, formatJalaliFull } from "@/lib/jalali";
+import { addDaysToDateKey, formatSalonDate, salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
+import Sheet from "@/components/app/Sheet";
+import { Button, EmptyState, ErrorBanner, Field, IconButton, ListGroup, ListSkeleton, PageHeader, SectionTitle, Select, TextInput, Toggle, cx } from "@/components/app/ui";
 
 interface DayRow {
   open: boolean;
@@ -21,185 +24,289 @@ interface DayRow {
   endMinute: number;
 }
 
-function minutesToTimeInput(minutes: number): string {
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-}
-
-function timeInputToMinutes(value: string): number {
-  const [h, m] = value.split(":").map(Number);
-  return h * 60 + m;
-}
-
 const DEFAULT_ROW: DayRow = { open: false, startMinute: 9 * 60, endMinute: 18 * 60 };
+const TIME_OFF_DAYS_AHEAD = 120;
+
+// Persian-digit time choices in 30-minute steps (the booking slot size). Native <input type="time">
+// renders "09:00 AM" in Latin digits on many phones, which is out of place in a Persian app.
+const TIME_OPTIONS = Array.from({ length: 49 }, (_, i) => i * 30);
+
+function TimeSelect({ value, onChange, label }: { value: number; onChange: (minute: number) => void; label: string }) {
+  const options = TIME_OPTIONS.includes(value) ? TIME_OPTIONS : [...TIME_OPTIONS, value].sort((a, b) => a - b);
+  return (
+    <Select aria-label={label} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-11 flex-1 text-center font-bold">
+      {options.map((m) => (
+        <option key={m} value={m}>
+          {m === 24 * 60 ? "۲۴:۰۰" : formatMinutesAsClock(m)}
+        </option>
+      ))}
+    </Select>
+  );
+}
 
 export default function StylistSchedulePage() {
   const token = useApiAccessToken();
   const [days, setDays] = useState<Record<number, DayRow> | null>(null);
   const [timeOff, setTimeOff] = useState<TimeOffEntry[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [hoursError, setHoursError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
-  const [newTimeOff, setNewTimeOff] = useState({ startAt: "", endAt: "", reason: "" });
+  const [timeOffOpen, setTimeOffOpen] = useState(false);
+  const [newTimeOff, setNewTimeOff] = useState({ start: "", end: "", reason: "" });
+  const [timeOffError, setTimeOffError] = useState<string | null>(null);
+  const [addingTimeOff, setAddingTimeOff] = useState(false);
 
-  function reload() {
+  const reload = useCallback(() => {
     if (!token) return;
-    Promise.all([getMyStylistProfile(token), listMyTimeOff(token)]).then(([profile, off]) => {
-      const byDay = new Map(profile.workingHours.map((h) => [h.dayOfWeek, h]));
-      setDays(
-        Object.fromEntries(
-          WEEK_ORDER_SATURDAY_FIRST.map((d) => {
-            const existing = byDay.get(d);
-            return [d, existing ? { open: true, startMinute: existing.startMinute, endMinute: existing.endMinute } : { ...DEFAULT_ROW }];
-          }),
-        ),
-      );
-      setTimeOff(off);
+    Promise.all([getMyStylistProfile(token), listMyTimeOff(token)])
+      .then(([profile, off]) => {
+        setLoadError(null);
+        const byDay = new Map(profile.workingHours.map((h) => [h.dayOfWeek, h]));
+        setDays(
+          Object.fromEntries(
+            WEEK_ORDER_SATURDAY_FIRST.map((d) => {
+              const existing = byDay.get(d);
+              return [d, existing ? { open: true, startMinute: existing.startMinute, endMinute: existing.endMinute } : { ...DEFAULT_ROW }];
+            }),
+          ),
+        );
+        setTimeOff(off);
+      })
+      .catch(() => setLoadError("خطا در دریافت اطلاعات"));
+  }, [token]);
+
+  useEffect(reload, [reload]);
+
+  // Selectable days for time off, labelled in the Jalali calendar (native date inputs are Gregorian).
+  const dayOptions = useMemo(() => {
+    const today = toSalonWallTime(new Date()).dateKey;
+    return Array.from({ length: TIME_OFF_DAYS_AHEAD }, (_, i) => {
+      const key = addDaysToDateKey(today, i);
+      return { key, label: i === 0 ? `امروز — ${formatJalaliFull(dateKeyToDate(key))}` : formatJalaliFull(dateKeyToDate(key)) };
     });
+  }, []);
+
+  function updateDay(dayOfWeek: number, patch: Partial<DayRow>) {
+    setDays((d) => (d ? { ...d, [dayOfWeek]: { ...d[dayOfWeek], ...patch } } : d));
+    setDirty(true);
+    setSaved(false);
   }
 
-  useEffect(reload, [token]);
+  function copyToOpenDays(source: number) {
+    if (!days) return;
+    const { startMinute, endMinute } = days[source];
+    setDays(Object.fromEntries(Object.entries(days).map(([d, row]) => [d, row.open ? { ...row, startMinute, endMinute } : row])));
+    setDirty(true);
+    setSaved(false);
+  }
 
   async function handleSaveHours() {
     if (!token || !days) return;
+    const invalid = Object.values(days).some((row) => row.open && row.endMinute <= row.startMinute);
+    if (invalid) {
+      setHoursError("ساعت پایان هر روز باید بعد از ساعت شروع باشد");
+      return;
+    }
     setSaving(true);
-    setError(null);
-    setSaved(false);
+    setHoursError(null);
     try {
       const hours: WorkingHourEntry[] = Object.entries(days)
         .filter(([, row]) => row.open)
         .map(([dayOfWeek, row]) => ({ dayOfWeek: Number(dayOfWeek), startMinute: row.startMinute, endMinute: row.endMinute }));
       await setMyWorkingHours(token, hours);
       setSaved(true);
-    } catch (err) {
-      setError(err instanceof SalonApiError ? err.message : "خطا در ذخیره ساعات کاری");
+      setDirty(false);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setHoursError("ذخیره ساعات کاری انجام نشد، دوباره تلاش کنید");
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleAddTimeOff(e: React.FormEvent) {
-    e.preventDefault();
-    if (!token || !newTimeOff.startAt || !newTimeOff.endAt) return;
-    await createMyTimeOff(token, {
-      startAt: new Date(newTimeOff.startAt).toISOString(),
-      endAt: new Date(newTimeOff.endAt).toISOString(),
-      reason: newTimeOff.reason || undefined,
-    });
-    setNewTimeOff({ startAt: "", endAt: "", reason: "" });
-    reload();
+  function openTimeOff() {
+    const first = dayOptions[0].key;
+    setNewTimeOff({ start: first, end: first, reason: "" });
+    setTimeOffError(null);
+    setTimeOffOpen(true);
   }
 
-  async function handleDeleteTimeOff(id: string) {
-    if (!token) return;
-    await deleteMyTimeOff(token, id);
-    reload();
+  async function handleAddTimeOff() {
+    if (!token || !newTimeOff.start || !newTimeOff.end) return;
+    if (newTimeOff.end < newTimeOff.start) {
+      setTimeOffError("تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد");
+      return;
+    }
+    setAddingTimeOff(true);
+    setTimeOffError(null);
+    try {
+      // Whole salon-local days: from midnight of the first day to midnight after the last day.
+      await createMyTimeOff(token, {
+        startAt: salonWallTimeToInstant(newTimeOff.start, 0).toISOString(),
+        endAt: salonWallTimeToInstant(addDaysToDateKey(newTimeOff.end, 1), 0).toISOString(),
+        reason: newTimeOff.reason.trim() || undefined,
+      });
+      setTimeOffOpen(false);
+      reload();
+    } catch {
+      setTimeOffError("ثبت مرخصی انجام نشد");
+    } finally {
+      setAddingTimeOff(false);
+    }
   }
 
-  if (!days || !timeOff) return <p className="text-sm text-gray-500">در حال بارگذاری...</p>;
+  async function handleDeleteTimeOff(entry: TimeOffEntry) {
+    if (!token || !confirm("این مرخصی حذف شود؟")) return;
+    try {
+      await deleteMyTimeOff(token, entry.id);
+      reload();
+    } catch {
+      setLoadError("حذف مرخصی انجام نشد");
+    }
+  }
+
+  if (!days || !timeOff) {
+    return loadError ? <ErrorBanner onRetry={reload}>{loadError}</ErrorBanner> : <ListSkeleton rows={7} />;
+  }
+
+  const upcomingTimeOff = timeOff.filter((t) => new Date(t.endAt) > new Date()).sort((a, b) => a.startAt.localeCompare(b.startAt));
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="mb-1 text-xl font-bold text-gray-900 dark:text-white">ساعات کاری</h1>
-        <p className="text-sm text-gray-500">روزها و ساعاتی که در دسترس هستید را مشخص کنید.</p>
-      </div>
+    <>
+      <PageHeader title="ساعات کاری" subtitle="مشتری‌ها فقط در همین ساعت‌ها می‌توانند با شما نوبت بگیرند." />
 
-      <section className="max-w-xl">
-        <div className="flex flex-col divide-y divide-gray-100 rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
-          {WEEK_ORDER_SATURDAY_FIRST.map((dayOfWeek) => {
-            const row = days[dayOfWeek];
-            return (
-              <div key={dayOfWeek} className="flex items-center gap-3 px-4 py-3">
-                <label className="flex w-24 items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={row.open}
-                    onChange={(e) => setDays((d) => ({ ...d!, [dayOfWeek]: { ...row, open: e.target.checked } }))}
-                  />
+      {loadError && <ErrorBanner onRetry={reload}>{loadError}</ErrorBanner>}
+
+      <ListGroup>
+        {WEEK_ORDER_SATURDAY_FIRST.map((dayOfWeek) => {
+          const row = days[dayOfWeek];
+          return (
+            <div key={dayOfWeek} className="px-4 py-3">
+              <div className="flex h-8 items-center justify-between">
+                <span className={cx("text-[15px] font-bold", row.open ? "text-app-ink" : "text-app-muted")}>
                   {PERSIAN_WEEKDAY_NAMES[dayOfWeek]}
-                </label>
-                {row.open && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <input
-                      type="time"
-                      value={minutesToTimeInput(row.startMinute)}
-                      onChange={(e) => setDays((d) => ({ ...d!, [dayOfWeek]: { ...row, startMinute: timeInputToMinutes(e.target.value) } }))}
-                      className="rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    />
-                    <span className="text-gray-400">تا</span>
-                    <input
-                      type="time"
-                      value={minutesToTimeInput(row.endMinute)}
-                      onChange={(e) => setDays((d) => ({ ...d!, [dayOfWeek]: { ...row, endMinute: timeInputToMinutes(e.target.value) } }))}
-                      className="rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    />
-                  </div>
-                )}
+                  {!row.open && <span className="ms-2 text-xs font-medium">تعطیل</span>}
+                </span>
+                <Toggle checked={row.open} onChange={(open) => updateDay(dayOfWeek, { open })} label={`${PERSIAN_WEEKDAY_NAMES[dayOfWeek]} کار می‌کنم`} />
+              </div>
+              {row.open && (
+                <div className="mt-3 flex items-center gap-2">
+                  <TimeSelect
+                    label={`شروع ${PERSIAN_WEEKDAY_NAMES[dayOfWeek]}`}
+                    value={row.startMinute}
+                    onChange={(startMinute) => updateDay(dayOfWeek, { startMinute })}
+                  />
+                  <span className="text-sm text-app-muted">تا</span>
+                  <TimeSelect
+                    label={`پایان ${PERSIAN_WEEKDAY_NAMES[dayOfWeek]}`}
+                    value={row.endMinute}
+                    onChange={(endMinute) => updateDay(dayOfWeek, { endMinute })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => copyToOpenDays(dayOfWeek)}
+                    aria-label={`اعمال ساعت ${PERSIAN_WEEKDAY_NAMES[dayOfWeek]} به همه روزهای کاری`}
+                    title="اعمال به همه روزهای کاری"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-app-card-2 text-app-muted active:scale-90"
+                  >
+                    <Copy className="h-[18px] w-[18px]" aria-hidden />
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </ListGroup>
+      <p className="mt-2 px-1 text-xs leading-6 text-app-muted">
+        با دکمه <Copy className="inline h-3.5 w-3.5" aria-hidden /> ساعت همان روز روی همه روزهای کاری اعمال می‌شود.
+      </p>
+
+      {/* Save bar — only while there's something to save (or right after saving). */}
+      {(dirty || saved || hoursError) && (
+        <div className="app-rise sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 mt-4">
+          {hoursError && <ErrorBanner>{hoursError}</ErrorBanner>}
+          <Button block busy={saving} icon={saved ? Check : undefined} onClick={handleSaveHours} className="shadow-[0_12px_30px_-12px_rgb(0_0_0/0.45)]">
+            {saved ? "ذخیره شد" : "ذخیره ساعات کاری"}
+          </Button>
+        </div>
+      )}
+
+      <SectionTitle action={<IconButton icon={Plus} label="ثبت مرخصی" onClick={openTimeOff} tone="plain" />}>مرخصی‌ها</SectionTitle>
+      {upcomingTimeOff.length === 0 ? (
+        <EmptyState icon={CalendarOff} title="مرخصی پیش‌رویی ندارید" hint="روزهایی که نیستید را ثبت کنید تا در آن روزها نوبتی برایتان ثبت نشود." />
+      ) : (
+        <ListGroup>
+          {upcomingTimeOff.map((t) => {
+            const lastDay = formatSalonDate(new Date(new Date(t.endAt).getTime() - 1));
+            const firstDay = formatSalonDate(t.startAt);
+            return (
+              <div key={t.id} className="flex items-center gap-3 px-4 py-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-app-accent-soft text-app-accent">
+                  <CalendarOff className="h-5 w-5" aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-app-ink">{firstDay === lastDay ? firstDay : `${firstDay} تا ${lastDay}`}</p>
+                  {t.reason && <p className="truncate text-xs text-app-muted">{t.reason}</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteTimeOff(t)}
+                  aria-label="حذف مرخصی"
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-app-muted active:bg-app-danger/10 active:text-app-danger"
+                >
+                  <Trash2 className="h-[18px] w-[18px]" aria-hidden />
+                </button>
               </div>
             );
           })}
+        </ListGroup>
+      )}
+
+      <Sheet
+        open={timeOffOpen}
+        onClose={() => setTimeOffOpen(false)}
+        title="ثبت مرخصی"
+        footer={
+          <Button block busy={addingTimeOff} onClick={handleAddTimeOff}>
+            ثبت مرخصی
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <Field label="از روز">
+            <Select
+              value={newTimeOff.start}
+              onChange={(e) =>
+                setNewTimeOff((f) => ({ ...f, start: e.target.value, end: f.end < e.target.value ? e.target.value : f.end }))
+              }
+            >
+              {dayOptions.map((d) => (
+                <option key={d.key} value={d.key}>
+                  {d.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="تا روز (خود این روز هم شامل مرخصی است)">
+            <Select value={newTimeOff.end} onChange={(e) => setNewTimeOff((f) => ({ ...f, end: e.target.value }))}>
+              {dayOptions
+                .filter((d) => d.key >= newTimeOff.start)
+                .map((d) => (
+                  <option key={d.key} value={d.key}>
+                    {d.label}
+                  </option>
+                ))}
+            </Select>
+          </Field>
+          <Field label="دلیل (اختیاری)">
+            <TextInput value={newTimeOff.reason} onChange={(e) => setNewTimeOff((f) => ({ ...f, reason: e.target.value }))} placeholder="مثلاً سفر" />
+          </Field>
+          {timeOffError && <p className="text-sm font-medium text-app-danger">{timeOffError}</p>}
         </div>
-
-        {error && <p className="mt-2 text-sm text-rose-500">{error}</p>}
-        {saved && <p className="mt-2 text-sm text-emerald-600">ساعات کاری ذخیره شد.</p>}
-
-        <button
-          type="button"
-          onClick={handleSaveHours}
-          disabled={saving}
-          className="mt-4 rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
-        >
-          {saving ? "در حال ذخیره..." : "ذخیره ساعات کاری"}
-        </button>
-      </section>
-
-      <section className="max-w-xl">
-        <h2 className="mb-3 text-sm font-bold text-gray-700 dark:text-gray-300">مرخصی‌ها</h2>
-
-        <ul className="mb-4 flex flex-col gap-2">
-          {timeOff.map((t) => (
-            <li key={t.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-800">
-              <span>
-                {new Date(t.startAt).toLocaleDateString("fa-IR")} تا {new Date(t.endAt).toLocaleDateString("fa-IR")}
-                {t.reason && <span className="text-gray-400"> — {t.reason}</span>}
-              </span>
-              <button type="button" onClick={() => handleDeleteTimeOff(t.id)} aria-label="حذف مرخصی">
-                <Trash2 className="h-4 w-4 text-gray-400 hover:text-rose-500" aria-hidden />
-              </button>
-            </li>
-          ))}
-          {timeOff.length === 0 && <p className="text-sm text-gray-500">مرخصی‌ای ثبت نشده است.</p>}
-        </ul>
-
-        <form onSubmit={handleAddTimeOff} className="grid gap-3 sm:grid-cols-3">
-          <input
-            type="date"
-            required
-            value={newTimeOff.startAt}
-            onChange={(e) => setNewTimeOff((f) => ({ ...f, startAt: e.target.value }))}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-          <input
-            type="date"
-            required
-            value={newTimeOff.endAt}
-            onChange={(e) => setNewTimeOff((f) => ({ ...f, endAt: e.target.value }))}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-          <div className="flex gap-2">
-            <input
-              value={newTimeOff.reason}
-              onChange={(e) => setNewTimeOff((f) => ({ ...f, reason: e.target.value }))}
-              placeholder="دلیل (اختیاری)"
-              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-            <button type="submit" className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white dark:bg-gray-100 dark:text-gray-900">
-              ثبت
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
+      </Sheet>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, NotFoundException, Param, Patch, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, NotFoundException, Param, Patch, Query, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 import { Role } from "@appointment-scheduling/database";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
@@ -7,14 +7,25 @@ import { Roles } from "../auth/decorators/roles.decorator.js";
 import { JwtPayload } from "../auth/auth.service.js";
 import { SalonsService } from "./salons.service.js";
 import { UpdateSalonDto } from "./dto/update-salon.dto.js";
+import { SearchSalonsDto } from "./dto/search-salons.dto.js";
+import { SalonSearchService } from "./salon-search.service.js";
 
 @Controller("salons")
 export class SalonsController {
-  constructor(private readonly salonsService: SalonsService) {}
+  constructor(
+    private readonly salonsService: SalonsService,
+    private readonly search: SalonSearchService,
+  ) {}
 
   @Get()
   list() {
     return this.salonsService.listPublic();
+  }
+
+  /** Public discovery; declared before ":slug" so "search" isn't taken for a slug. */
+  @Get("search")
+  searchSalons(@Query() query: SearchSalonsDto) {
+    return this.search.search(query);
   }
 
   @Get("mine")

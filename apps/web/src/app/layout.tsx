@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import "flatpickr/dist/flatpickr.css";
@@ -8,34 +8,48 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import SessionWrapper from "@/components/common/SessionWrapper";
 import ToastProvider from "@/components/common/ToastProvider";
 import AgGridSetup from "@/components/common/AgGridSetup";
+import ClientErrorReporter from "@/components/common/ClientErrorReporter";
+import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+
+// viewport-fit=cover lets the app shell paint under the notch / home indicator (it pads itself
+// with env(safe-area-inset-*)); the theme color tints the status bar to match the app bar.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6efe6" },
+    { media: "(prefers-color-scheme: dark)", color: "#19121a" },
+  ],
+};
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mqttcloud.ir"),
+  metadataBase: new URL(SITE_URL),
+  applicationName: SITE_NAME,
   title: {
-    default: "mqttcloud.ir — بروکر MQTT ابری برای دستگاه‌های شما",
-    template: "%s | mqttcloud.ir",
+    default: SITE_TITLE,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: "mqttcloud.ir یک بروکر MQTT امن و مقیاس‌پذیر است. اکانت و دستگاه بسازید، با TLS متصل شوید و پیام‌ها را بی‌درنگ بین دستگاه‌های خود منتشر و دریافت کنید.",
-  keywords: ["بروکر MQTT", "MQTT ابری", "IoT", "اتصال دستگاه", "پیام‌رسانی بی‌درنگ", "pub sub", "MQTT broker", "mqttcloud"],
-  authors: [{ name: "mqttcloud.ir", url: "https://mqttcloud.ir" }],
-  creator: "mqttcloud.ir",
-  publisher: "mqttcloud.ir",
+  description: SITE_DESCRIPTION,
+  keywords: ["نوبت‌دهی آنلاین", "رزرو آنلاین سالن زیبایی", "نرم‌افزار آرایشگاه", "مدیریت سالن", "نوبتا"],
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
   robots: { index: true, follow: true },
   openGraph: {
-    siteName: "mqttcloud.ir",
+    siteName: SITE_NAME,
     locale: "fa_IR",
     type: "website",
-    title: "mqttcloud.ir — بروکر MQTT ابری برای دستگاه‌های شما",
-    description: "اکانت و دستگاه بسازید، با TLS متصل شوید و پیام‌ها را بی‌درنگ بین دستگاه‌های خود منتشر و دریافت کنید.",
-    url: "https://mqttcloud.ir",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "mqttcloud.ir" }],
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: SITE_NAME }],
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mqttcloud_ir",
-    creator: "@mqttcloud_ir",
-    title: "mqttcloud.ir — بروکر MQTT ابری برای دستگاه‌های شما",
-    description: "اکانت و دستگاه بسازید، با TLS متصل شوید و پیام‌ها را بی‌درنگ بین دستگاه‌های خود منتشر و دریافت کنید.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     images: ["/opengraph-image"],
   },
 };
@@ -51,15 +65,21 @@ export default function RootLayout({
         <Script id="theme-lang-init" strategy="beforeInteractive" src="/theme-init.js" />
         <link rel="icon" href="/images/favicon.ico" sizes="any" />
         <link rel="icon" type="image/svg+xml" href="/images/logo/logo-icon.svg" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Vazirmatn:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
+        <link rel="preload" href="/fonts/Vazirmatn-Variable.woff2" as="font" type="font/woff2" crossOrigin="" />
+        {/* Installability tags go here, not in `metadata`: Next streams metadata into <body> for
+            regular browsers, and Chrome/Safari only read these from <head> — without them the
+            app isn't installable and `beforeinstallprompt` never fires. */}
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body className="dark:bg-gray-900">
         <AgGridSetup />
+        <ClientErrorReporter />
+        <ServiceWorkerRegister />
         <SessionWrapper>
           <LanguageProvider>
             <ThemeProvider>

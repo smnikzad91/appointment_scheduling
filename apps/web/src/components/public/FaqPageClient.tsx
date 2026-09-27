@@ -44,7 +44,7 @@ export default function FaqPageClient() {
             سوالات متداول
           </h1>
           <p className="mt-4 text-base leading-relaxed text-gray-500 dark:text-gray-400">
-            پاسخ رایج‌ترین سوال‌ها درباره mqttcloud.ir را اینجا پیدا کنید.
+            پاسخ رایج‌ترین سوال‌ها درباره نوبتا را اینجا پیدا کنید.
           </p>
           <p className="mt-2 text-sm text-gray-400 dark:text-gray-500">
             پاسخ سوال خود را نیافتید؟{" "}

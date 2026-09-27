@@ -5,6 +5,7 @@ import { SalonsService } from "../salons/salons.service.js";
 import { findEligibleStylists } from "../salons/eligible-stylists.util.js";
 import { effectiveServicePricing, sumEffectivePricing } from "../salons/service-pricing.util.js";
 import { AvailabilityQueryDto } from "./dto/availability-query.dto.js";
+import { instantToSalonWallTime, salonWallTimeToInstant } from "./salon-time.util.js";
 
 const SLOT_STEP_MINUTES = 30;
 const ACTIVE_STATUSES: AppointmentStatus[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
@@ -35,13 +36,14 @@ export class AvailabilityService {
     const stylists = query.stylistId ? eligible.filter((s) => s.id === query.stylistId) : eligible;
     if (stylists.length === 0) return [];
 
-    // Parsed as UTC midnight — dayOfWeek and minute-of-day math below are UTC-based throughout,
-    // matching how startAt/endAt are stored. Revisit once salon.timezone actually varies per salon.
-    const dayStart = new Date(`${query.date}T00:00:00.000Z`);
-    const dayOfWeek = dayStart.getUTCDay();
-    const now = new Date();
-    const isToday = query.date === now.toISOString().slice(0, 10);
-    const nowMinute = now.getUTCHours() * 60 + now.getUTCMinutes();
+    // Slot minutes are salon-local wall-clock time; startAt/endAt are real instants. dayStart is
+    // the instant of local midnight, so dayStart + N minutes is local minute N.
+    const dayStart = salonWallTimeToInstant(query.date, 0, salon.timezone);
+    // A calendar date's weekday doesn't depend on timezone — read it off the plain date.
+    const dayOfWeek = new Date(`${query.date}T00:00:00.000Z`).getUTCDay();
+    const now = instantToSalonWallTime(new Date(), salon.timezone);
+    const isToday = query.date === now.dateKey;
+    const nowMinute = now.minuteOfDay;
 
     const perStylistSlots = await Promise.all(
       stylists.map((stylist) => {

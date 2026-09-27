@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
@@ -24,6 +24,7 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
+  ShootingStarIcon,
 } from "../icons/index";
 import MarkIcon from "@/brand/mark.svg";
 import MarkWhiteIcon from "@/brand/mark-white.svg";
@@ -45,19 +46,13 @@ const AppSidebar: React.FC = () => {
   const { lang } = useLanguage();
   const isRTL = lang === "fa";
 
-  const navItems: NavItem[] = [
-    {
-      icon: <GridIcon />,
-      name: t("navDashboard"),
-      subItems: [
-        { name: t("navEcommerce"),  path: "/admin" },
-        { name: t("navHomePage"),   path: "/" },
-      ],
-    },
+  const navItems = useMemo<NavItem[]>(() => [
+    { icon: <GridIcon />,       name: t("navDashboard"),    path: "/admin" },
     { icon: <CalenderIcon />,   name: t("navCalendar"),     path: "/admin/calendar" },
     { icon: <UserCircleIcon />, name: t("navUserProfile"),  path: "/admin/profile" },
     { icon: <GroupIcon />,      name: t("navUsers"),        path: "/admin/users" },
     { icon: <ListIcon />,       name: t("navSalons"),       path: "/admin/salons" },
+    { icon: <ShootingStarIcon />, name: t("navHomepage"),   path: "/admin/homepage" },
     { icon: <PlugInIcon />,     name: t("navSocialLinks"),    path: "/admin/social-links" },
     { icon: <MegaphoneIcon />,  name: t("navAnnouncements"),  path: "/admin/announcements" },
     { icon: <FaqIcon />,        name: t("navFaq"),             path: "/admin/faqs" },
@@ -104,9 +99,9 @@ const AppSidebar: React.FC = () => {
         { name: t("nav404Error"),  path: "/error-404" },
       ],
     },
-  ];
+  ], [t]);
 
-  const othersItems: NavItem[] = [
+  const othersItems = useMemo<NavItem[]>(() => [
     {
       icon: <PieChartIcon />,
       name: t("navCharts"),
@@ -135,7 +130,7 @@ const AppSidebar: React.FC = () => {
         { name: t("navSignUp"), path: "/signup" },
       ],
     },
-  ];
+  ], [t]);
 
   const [openSubmenu, setOpenSubmenu] = useState<{ type: "main" | "others"; index: number } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
@@ -159,7 +154,7 @@ const AppSidebar: React.FC = () => {
       });
       if (!matched) setOpenSubmenu(null);
     });
-  }, [pathname, isActive]);
+  }, [pathname, isActive, navItems, othersItems]);
 
   useEffect(() => {
     if (openSubmenu) {
@@ -290,7 +285,7 @@ const AppSidebar: React.FC = () => {
         <MarkWhiteIcon viewBox="6 12 36 36" className="shrink-0 hidden dark:block" width={36} height={36} />
         {expanded && (
           <Link href="/admin" className="text-base font-bold tracking-tight text-gray-900 dark:text-white">
-            mqttcloud<span className="font-mono font-normal text-[#16b8c9]">.ir</span>
+            نوبتا
           </Link>
         )}
       </div>

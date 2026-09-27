@@ -51,8 +51,13 @@ export default function StepOtp() {
   }
 
   async function handleResend() {
-    await requestOtp(state.customerPhone);
-    setResent(true);
+    setError(null);
+    try {
+      await requestOtp(state.customerPhone);
+      setResent(true);
+    } catch {
+      setError("ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید");
+    }
   }
 
   return (

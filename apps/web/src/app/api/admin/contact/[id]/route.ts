@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, isPrismaNotFound } from "@/lib/prisma";
 import { ContactStatus as PrismaContactStatus } from "@appointment-scheduling/database";
 
 interface Params { params: Promise<{ id: string }> }
@@ -19,8 +19,9 @@ export async function PATCH(req: Request, { params }: Params) {
   try {
     const item = await prisma.contactMessage.update({ where: { id }, data: body });
     return NextResponse.json({ ...item, status: item.status.toLowerCase() });
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  } catch (err) {
+    if (isPrismaNotFound(err)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw err;
   }
 }
 

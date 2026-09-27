@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { RolesGuard } from "../auth/guards/roles.guard.js";
@@ -6,7 +6,7 @@ import { Roles } from "../auth/decorators/roles.decorator.js";
 import { Role } from "@appointment-scheduling/database";
 import { JwtPayload } from "../auth/auth.service.js";
 import { AppointmentsService } from "./appointments.service.js";
-import { CreateAppointmentDto } from "./dto/create-appointment.dto.js";
+import { CreateAppointmentDto, CreateSalonAppointmentDto, CustomerLookupQueryDto } from "./dto/create-appointment.dto.js";
 import { UpdateAppointmentStatusDto } from "./dto/update-status.dto.js";
 
 @Controller("appointments")
@@ -19,6 +19,18 @@ export class AppointmentsController {
   create(@Req() req: Request, @Body() dto: CreateAppointmentDto) {
     const user = req.user as JwtPayload;
     return this.appointmentsService.create(user.sub, dto);
+  }
+
+  @Post("salon")
+  @Roles(Role.SALON_OWNER)
+  createForSalon(@Req() req: Request, @Body() dto: CreateSalonAppointmentDto) {
+    return this.appointmentsService.createForSalon((req.user as JwtPayload).sub, dto);
+  }
+
+  @Get("salon/customer")
+  @Roles(Role.SALON_OWNER)
+  lookupCustomer(@Req() req: Request, @Query() query: CustomerLookupQueryDto) {
+    return this.appointmentsService.lookupSalonCustomer((req.user as JwtPayload).sub, query.phone);
   }
 
   @Get("mine")

@@ -5,28 +5,28 @@ import MarkWhiteIcon from "@/brand/mark-white.svg";
 
 const signals = [
   {
-    label: "حسگر دما • انبار ۱",
-    value: "متصل شد",
-    note: "warehouse/temp",
-    badge: "آنلاین",
+    label: "سالن رز • مژگان",
+    value: "نوبت جدید رزرو شد",
+    note: "کوتاهی و براشینگ — شنبه ۱۰:۳۰",
+    badge: "جدید",
     badgeColor: "bg-success-500/20 text-success-300",
     dot: "bg-success-400",
     delay: "0s",
   },
   {
-    label: "دروازه IoT • خط تولید",
-    value: "پیام منتشر شد",
-    note: "factory/gateway-2",
-    badge: "زنده",
+    label: "سالن رز • نگار",
+    value: "نوبت تایید شد",
+    note: "رنگ مو — یکشنبه ۱۴:۰۰",
+    badge: "تایید",
     badgeColor: "bg-brand-400/20 text-brand-300",
     dot: "bg-brand-400",
     delay: "0.3s",
   },
   {
-    label: "کنترلر روشنایی",
-    value: "قطع اتصال",
-    note: "home/lights",
-    badge: "آفلاین",
+    label: "سالن رز • سمیرا",
+    value: "نوبت لغو شد",
+    note: "مانیکور — دوشنبه ۱۷:۰۰",
+    badge: "لغو",
     badgeColor: "bg-error-500/20 text-error-300",
     dot: "bg-error-400",
     delay: "0.6s",
@@ -57,7 +57,7 @@ export default function AuthBrandPanel() {
         >
           <MarkWhiteIcon viewBox="6 12 36 36" className="shrink-0" width={36} height={36} />
           <span className="text-2xl font-extrabold text-white tracking-tight">
-            mqttcloud<span className="font-mono font-normal text-[#16b8c9]">.ir</span>
+            نوبتا
           </span>
         </Link>
 
@@ -65,10 +65,10 @@ export default function AuthBrandPanel() {
         <div className="flex-1 flex flex-col justify-center gap-8">
           <div style={{ animation: "fade-in-up 0.5s ease 0.1s both" }}>
             <h2 className="text-2xl font-bold text-white leading-snug">
-              بروکر MQTT<br />امن و بی‌درنگ
+              نوبت‌های سالن<br />همیشه در دسترس
             </h2>
             <p className="mt-3 text-sm text-white/50 leading-relaxed max-w-xs">
-              دستگاه‌های خود را به بروکر متصل کنید و وضعیت اتصال هرکدام را در لحظه دنبال کنید.
+              مشتری‌ها آنلاین نوبت می‌گیرند و شما و آرایشگرها هر رزرو را در لحظه می‌بینید.
             </p>
           </div>
 
@@ -104,7 +104,7 @@ export default function AuthBrandPanel() {
           className="flex items-center justify-between border-t border-white/10 pt-6"
           style={{ animation: "fade-in-up 0.5s ease 0.55s both" }}
         >
-          {[["۹۹.۹٪", "پایداری بروکر"], ["۲۴/۷", "بروکر همیشه فعال"], ["< ۵۰ms", "میانگین تأخیر"]].map(([num, lbl]) => (
+          {[["۲۴/۷", "رزرو آنلاین"], ["پیامک", "یادآوری نوبت"], ["بیعانه", "پرداخت آنلاین"]].map(([num, lbl]) => (
             <div key={lbl} className="text-center">
               <p className="text-lg font-bold text-white">{num}</p>
               <p className="text-xs text-white/40 mt-0.5">{lbl}</p>

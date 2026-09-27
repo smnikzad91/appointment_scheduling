@@ -3,14 +3,18 @@
 import { useEffect, useState } from "react";
 import { useBooking } from "./BookingProvider";
 import { getAvailableSlots } from "@/lib/api/slots";
-import { getUpcomingDays } from "@/lib/jalali";
+import { dateKeyToDate, getUpcomingDays } from "@/lib/jalali";
+import { toSalonWallTime } from "@/lib/salonTime";
 import type { Salon, TimeSlot } from "@/types/salon";
 import DateStrip from "./DateStrip";
 import TimeSlotGrid from "./TimeSlotGrid";
+import WaitlistButton from "./WaitlistButton";
 
 export default function StepDateTime() {
   const { salon, state, updateState, goNext } = useBooking();
-  const dateKey = state.dateKey ?? getUpcomingDays(1)[0].dateKey;
+  // "Today" is the salon's today, not the browser's — the API computes slots in salon time.
+  const days = getUpcomingDays(14, dateKeyToDate(toSalonWallTime(new Date(), salon.timezone).dateKey));
+  const dateKey = state.dateKey ?? days[0].dateKey;
 
   function selectDate(nextDateKey: string) {
     updateState({ dateKey: nextDateKey, startMinute: null });
@@ -22,7 +26,7 @@ export default function StepDateTime() {
 
   return (
     <div className="flex flex-col gap-4">
-      <DateStrip selectedDateKey={dateKey} onSelect={selectDate} />
+      <DateStrip days={days} selectedDateKey={dateKey} onSelect={selectDate} />
 
       <SlotsPanel
         // Remounts (and so resets its own loading state) whenever the query changes.
@@ -64,16 +68,41 @@ function SlotsPanel({
   onSelect: (minute: number) => void;
 }) {
   const [slots, setSlots] = useState<TimeSlot[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    getAvailableSlots({ salon, stylistId, serviceIds, dateKey }).then((result) => {
-      if (!cancelled) setSlots(result);
-    });
+    getAvailableSlots({ salon, stylistId, serviceIds, dateKey })
+      .then((result) => {
+        if (!cancelled) setSlots(result);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
     return () => {
       cancelled = true;
     };
-  }, [salon, stylistId, serviceIds, dateKey]);
+  }, [salon, stylistId, serviceIds, dateKey, attempt]);
+
+  if (failed) {
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+        دریافت زمان‌های خالی ممکن نشد.
+        <button
+          type="button"
+          onClick={() => {
+            setFailed(false);
+            setAttempt((n) => n + 1);
+          }}
+          className="text-xs font-medium underline"
+          style={{ color: "var(--salon-brand)" }}
+        >
+          تلاش دوباره
+        </button>
+      </div>
+    );
+  }
 
   if (slots === null) {
     return (
@@ -85,5 +114,12 @@ function SlotsPanel({
     );
   }
 
-  return <TimeSlotGrid slots={slots} selectedMinute={selectedMinute} onSelect={onSelect} />;
+  return (
+    <TimeSlotGrid
+      slots={slots}
+      selectedMinute={selectedMinute}
+      onSelect={onSelect}
+      fullDayAction={<WaitlistButton slug={salon.slug} dateKey={dateKey} serviceIds={serviceIds} stylistId={stylistId} />}
+    />
+  );
 }

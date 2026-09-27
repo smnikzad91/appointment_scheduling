@@ -8,10 +8,13 @@ export default function TimeSlotGrid({
   slots,
   selectedMinute,
   onSelect,
+  fullDayAction,
 }: {
   slots: TimeSlot[];
   selectedMinute: number | null;
   onSelect: (minute: number) => void;
+  /** Shown under the "no free time" message on a working day that's fully booked. */
+  fullDayAction?: React.ReactNode;
 }) {
   const groups = groupSlotsByPartOfDay(slots);
   const hasAnySlot = slots.length > 0;
@@ -23,9 +26,10 @@ export default function TimeSlotGrid({
 
   if (!hasAvailableSlot) {
     return (
-      <p className="rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
-        برای این روز زمان خالی وجود ندارد. لطفاً روز دیگری را انتخاب کنید.
-      </p>
+      <div className="rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+        برای این روز زمان خالی وجود ندارد. روز دیگری را انتخاب کنید.
+        {fullDayAction}
+      </div>
     );
   }
 

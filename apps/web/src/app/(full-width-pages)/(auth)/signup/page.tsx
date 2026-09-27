@@ -3,7 +3,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "ثبت‌نام",
-  description: "همین الان حساب رایگان mqttcloud.ir بسازید و بروکر MQTT خود را راه‌اندازی کنید.",
+  description: "در نوبتا حساب بسازید و نوبت‌های سالن‌های زیبایی را آنلاین رزرو و پیگیری کنید.",
 };
 
 export default function SignUp() {

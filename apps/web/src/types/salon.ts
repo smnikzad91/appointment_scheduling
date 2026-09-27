@@ -33,18 +33,23 @@ export interface Stylist {
   id: string;
   displayName: string;
   avatarUrl?: string | null;
+  coverImageUrl?: string | null;
+  gallery: GalleryImage[]; // this stylist's portfolio pieces (subset of Salon.gallery)
   bio?: string | null;
   specialtyCategoryIds: string[]; // derived from the stylist's services' categoryIds, not stored directly
   services: StylistServicePricing[];
-  rating?: number;
-  reviewCount?: number;
+  rating?: number; // average star rating of approved reviews about this stylist (undefined if none rated)
+  reviewCount?: number; // how many of those reviews carry a rating
+  reviews: Review[]; // approved reviews about this stylist, newest first
 }
 
 export interface Review {
   id: string;
+  target: "SALON" | "STYLIST";
+  stylistId: string | null;
   customerName: string;
   customerAvatarUrl?: string | null;
-  rating: number; // 1-5
+  rating: number | null; // 1-5, or null for a comment-only review
   comment: string | null;
   createdAt: string; // ISO datetime
 }
@@ -53,6 +58,7 @@ export interface GalleryImage {
   id: string;
   url?: string;
   alt: string;
+  stylistId?: string | null;
 }
 
 export interface GeoLocation {
@@ -68,6 +74,8 @@ export interface Salon {
   logoUrl?: string | null;
   coverImageUrl?: string | null;
   brandColor: string; // hex, e.g. "#e0447b"
+  timezone: string; // IANA, e.g. "Asia/Tehran" — slots and working hours are wall-clock time here
+  province: string | null; // استان; null on salons created before provinces were recorded
   city: string;
   address: string;
   location: GeoLocation | null; // null until the owner sets coordinates
@@ -79,8 +87,8 @@ export interface Salon {
   stylists: Stylist[];
   gallery: GalleryImage[];
   reviews: Review[];
-  ratingAverage: number;
-  ratingCount: number;
+  ratingAverage: number; // over salon reviews that carry a rating
+  ratingCount: number; // number of rated salon reviews (comment-only reviews aren't counted)
 }
 
 export interface TimeSlot {
