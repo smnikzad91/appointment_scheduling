@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { apiLogin } from "@/lib/apiAuth";
 import { ApiError } from "@/lib/apiClient";
 import { normalizeDigits } from "@/lib/persian";
+import { logError } from "@/lib/errorLog";
 import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -36,6 +37,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         } catch (err) {
           if (err instanceof ApiError && err.status === 401) return null;
+          // NextAuth swallows errors thrown here and shows a generic sign-in failure, so an
+          // unreachable or failing apps/api would otherwise never reach the error log.
+          await logError({ error: err, method: "POST", path: "/api/auth/callback/credentials", context: { step: "apiLogin" } });
           throw err;
         }
       },

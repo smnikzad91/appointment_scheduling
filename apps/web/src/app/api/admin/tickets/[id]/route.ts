@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, isPrismaNotFound } from "@/lib/prisma";
 import { TicketStatus as PrismaTicketStatus } from "@appointment-scheduling/database";
 
 async function requireAdmin() {
@@ -104,7 +104,8 @@ export async function PATCH(
       data: { status: (status as string).toUpperCase() as PrismaTicketStatus },
     });
     return NextResponse.json({ success: true, status: ticket.status.toLowerCase() });
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  } catch (err) {
+    if (isPrismaNotFound(err)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw err;
   }
 }

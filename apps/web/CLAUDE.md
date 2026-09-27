@@ -44,7 +44,7 @@ Product name, title, description and public origin live in `src/lib/site.ts`. Th
 
 Every app writes failures to the shared `ErrorLog` table (`error_logs`), shown at the top of the platform-admin dashboard (`/admin`, `components/admin/AdminErrorLog.tsx`, API under `/api/admin/errors`):
 - **apps/api** — global `AllExceptionsFilter` (`src/error-log/`) records unhandled exceptions and any 5xx; expected 4xx are not errors. `main.ts` also records `unhandledRejection`/`uncaughtException`.
-- **apps/web server** — `src/instrumentation.ts` (`onRequestError`) records anything Next.js catches. If a route catches an error itself and returns 500, call `logError()` from `src/lib/errorLog.ts` instead of `console.error`.
+- **apps/web server** — `src/instrumentation.ts` (`onRequestError`) records anything Next.js catches. If a route catches an error itself and returns 500, call `logError()` from `src/lib/errorLog.ts` instead of `console.error`. Never write a bare `catch { return 404 }` around a Prisma call — return 404 only when `isPrismaNotFound(err)` (`src/lib/prisma.ts`) and rethrow everything else so it gets logged. Sign-in failures other than a wrong password (e.g. apps/api unreachable) are logged from `src/auth.ts`.
 - **apps/web browser** — `ClientErrorReporter` (root layout) and `app/global-error.tsx` send uncaught errors to the public, rate-limited `POST /api/errors`. Use `reportClientError()` for anything else worth reporting from the client.
 
 Paths are stored without query strings (they can carry phone numbers).

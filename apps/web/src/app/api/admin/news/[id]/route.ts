@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, isPrismaNotFound } from "@/lib/prisma";
 import { notifyNews } from "@/lib/telegram";
 import { logError } from "@/lib/errorLog";
 
@@ -45,8 +45,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
   let item;
   try {
     item = await prisma.newsItem.update({ where: { id }, data: body });
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  } catch (err) {
+    if (isPrismaNotFound(err)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw err;
   }
 
   // Send notification when toggling to published
@@ -68,8 +69,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
     await prisma.newsItem.delete({ where: { id } });
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  } catch (err) {
+    if (isPrismaNotFound(err)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw err;
   }
 
   return NextResponse.json({ ok: true });
