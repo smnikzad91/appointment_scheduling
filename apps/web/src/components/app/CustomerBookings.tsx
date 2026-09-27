@@ -12,6 +12,7 @@ import { toSalonWallTime } from "@/lib/salonTime";
 import { StatusChip, relativeDayLabel } from "./appointments";
 import Sheet from "./Sheet";
 import { Button, ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader, TextArea, cx, riseStyle } from "./ui";
+import Sep from "@/components/common/Sep";
 
 type Tab = "upcoming" | "past";
 
@@ -175,7 +176,7 @@ export default function CustomerBookings({
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-black text-app-ink">{b.salon.name}</p>
                     <p className="mt-0.5 truncate text-[13px] text-app-muted">
-                      {b.services.map((s) => s.service.name).join("، ")} · {b.stylist.displayName}
+                      {b.services.map((s) => s.service.name).join("، ")}<Sep />{b.stylist.displayName}
                     </p>
                   </div>
                   <StatusChip status={b.status} />
@@ -183,7 +184,7 @@ export default function CustomerBookings({
 
                 <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-app-card-2 px-3.5 py-2.5 text-sm">
                   <span className="font-bold text-app-ink">
-                    {relativeDayLabel(wall.dateKey)} · ساعت {formatMinutesAsClock(wall.minuteOfDay)}
+                    {relativeDayLabel(wall.dateKey)}<Sep />ساعت {formatMinutesAsClock(wall.minuteOfDay)}
                   </span>
                   <span className="text-app-muted">{formatToman(b.priceToman)}</span>
                 </div>

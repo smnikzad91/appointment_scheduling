@@ -11,6 +11,7 @@ import { formatMinutesAsClock, formatToman } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
 import { relativeDayLabel } from "@/components/app/appointments";
 import { ListGroup, SectionTitle } from "@/components/app/ui";
+import Sep from "@/components/common/Sep";
 
 export default function CustomerHomePage() {
   const { data: session } = useSession();
@@ -53,14 +54,14 @@ export default function CustomerHomePage() {
           <div className="h-24 animate-pulse rounded-2xl bg-white/10" />
         ) : next && nextWall ? (
           <Link href="/dashboard/bookings" className="relative block active:opacity-80">
-            <p className="text-xs text-white/60">نوبت بعدی شما · {relativeDayLabel(nextWall.dateKey)}</p>
+            <p className="text-xs text-white/60">نوبت بعدی شما<Sep />{relativeDayLabel(nextWall.dateKey)}</p>
             <p className="mt-1 flex items-center gap-2 text-[30px] font-black leading-tight">
               {formatMinutesAsClock(nextWall.minuteOfDay)}
               <ChevronLeft className="h-5 w-5 text-white/50" aria-hidden />
             </p>
             <p className="truncate text-sm font-semibold text-white/85">{next.salon.name}</p>
             <p className="truncate text-sm text-white/65">
-              {next.services.map((s) => s.service.name).join("، ")} · {next.stylist.displayName}
+              {next.services.map((s) => s.service.name).join("، ")}<Sep />{next.stylist.displayName}
             </p>
           </Link>
         ) : (

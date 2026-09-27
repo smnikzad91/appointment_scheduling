@@ -7,6 +7,7 @@ import { formatMinutesAsClock, formatToman, toPersianDigits } from "@/lib/persia
 import { addDaysToDateKey, formatSalonDate, toSalonWallTime } from "@/lib/salonTime";
 import Sheet from "./Sheet";
 import { Button, Card, cx, riseStyle } from "./ui";
+import Sep from "@/components/common/Sep";
 
 // Shared by the salon-owner and stylist panels. Owner rows also carry the stylist's name.
 export type AppAppointment = StylistAppointment & { stylist?: { displayName: string } };
@@ -94,7 +95,7 @@ export function AppointmentCard({
           {showStylist && a.stylist && (
             <>
               <span className="font-semibold text-app-ink/80">{a.stylist.displayName}</span>
-              <span aria-hidden>·</span>
+              <Sep className="mx-0" />
             </>
           )}
           <span>{formatToman(a.priceToman)}</span>
@@ -181,7 +182,7 @@ export function AppointmentSheet({
             {a.customer.firstName} {a.customer.lastName}
           </p>
           <p className="mt-1 text-sm text-app-muted">
-            {relativeDayLabel(start.dateKey)} · {formatMinutesAsClock(start.minuteOfDay)} تا {formatMinutesAsClock(end.minuteOfDay)}
+            {relativeDayLabel(start.dateKey)}<Sep />{formatMinutesAsClock(start.minuteOfDay)} تا {formatMinutesAsClock(end.minuteOfDay)}
           </p>
         </div>
         <StatusChip status={a.status} />
@@ -279,7 +280,12 @@ export function TodayTimeline({ appointments, showStylist, onOpen }: { appointme
             <span className="font-normal text-app-muted">
               {" "}
               — {a.services.map((s) => s.service.name).join("، ")}
-              {showStylist && a.stylist ? ` · ${a.stylist.displayName}` : ""}
+              {showStylist && a.stylist && (
+                <>
+                  <Sep />
+                  {a.stylist.displayName}
+                </>
+              )}
             </span>
           </span>
         </button>

@@ -31,6 +31,7 @@ import {
   cx,
   riseStyle,
 } from "@/components/app/ui";
+import Sep from "@/components/common/Sep";
 
 interface ServiceDraft {
   id: string | null; // null = new service
@@ -224,7 +225,7 @@ export default function SalonServicesPage() {
                 <p className="mt-1 flex items-center gap-1.5 text-[13px] text-app-muted">
                   <Clock className="h-3.5 w-3.5" aria-hidden />
                   {toPersianDigits(service.durationMinutes)} دقیقه
-                  <span aria-hidden>·</span>
+                  <Sep className="mx-0" />
                   <span className="font-semibold text-app-ink/80">{formatToman(service.priceToman)}</span>
                 </p>
                 {filter === "all" && categoryName(service.categoryId) && (

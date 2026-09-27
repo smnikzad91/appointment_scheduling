@@ -10,6 +10,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { DEFAULT_SALON_TIME_ZONE } from "@/lib/salonTime";
 import type { ErrorLogEntry, ErrorSource } from "@/types/content";
+import Sep from "@/components/common/Sep";
 
 type StatusFilter = "open" | "resolved" | "all";
 type SourceFilter = ErrorSource | "all";
@@ -299,7 +300,7 @@ export default function AdminErrorLog() {
                 {t("errorsPrev")}
               </button>
               <span>
-                {t("errorsPage")} {page.toLocaleString(lang === "fa" ? "fa-IR" : "en-US")} {t("errorsOf")} {totalPages.toLocaleString(lang === "fa" ? "fa-IR" : "en-US")} · {data.total.toLocaleString(lang === "fa" ? "fa-IR" : "en-US")}
+                {t("errorsPage")} {page.toLocaleString(lang === "fa" ? "fa-IR" : "en-US")} {t("errorsOf")} {totalPages.toLocaleString(lang === "fa" ? "fa-IR" : "en-US")}<Sep />{data.total.toLocaleString(lang === "fa" ? "fa-IR" : "en-US")}
               </span>
               <button type="button" className={outlineBtn} disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>
                 {t("errorsNext")}

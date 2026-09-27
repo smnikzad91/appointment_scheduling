@@ -9,6 +9,7 @@ import ServiceCard from "./ServiceCard";
 import Lightbox from "./Lightbox";
 import ReviewCard from "./ReviewCard";
 import { Stars } from "@/components/common/StarRating";
+import Sep from "@/components/common/Sep";
 
 const REVIEWS_PREVIEW = 3;
 
@@ -49,7 +50,7 @@ export default function StylistCard({ salon, stylist }: { salon: Salon; stylist:
             {specialties.map((c) => c.name).join("، ")}
             {stylist.gallery.length > 0 && (
               <span className="font-medium" style={{ color: "var(--salon-brand)" }}>
-                {specialties.length > 0 ? " · " : ""}
+                {specialties.length > 0 && <Sep />}
                 {toPersianDigits(stylist.gallery.length)} نمونه کار
               </span>
             )}

@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { useBooking } from "./BookingProvider";
 import { formatToman, toPersianDigits } from "@/lib/persian";
 import { getTotalDurationMinutes } from "@/lib/api/slots";
+import Sep from "@/components/common/Sep";
 
 export default function StepServices() {
   const { salon, state, toggleService, goNext } = useBooking();
@@ -40,7 +41,7 @@ export default function StepServices() {
                       <span>
                         <span className="block text-sm font-medium">{service.name}</span>
                         <span className="block text-xs text-gray-500 dark:text-gray-400">
-                          {toPersianDigits(service.durationMinutes)} دقیقه · {formatToman(service.priceToman)}
+                          {toPersianDigits(service.durationMinutes)} دقیقه<Sep />{formatToman(service.priceToman)}
                         </span>
                       </span>
                       <span
@@ -65,7 +66,7 @@ export default function StepServices() {
       {selected.length > 0 && (
         <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800/50">
           <span className="text-gray-500 dark:text-gray-400">
-            {toPersianDigits(selected.length)} خدمت · {toPersianDigits(totalDuration)} دقیقه
+            {toPersianDigits(selected.length)} خدمت<Sep />{toPersianDigits(totalDuration)} دقیقه
           </span>
           <span className="font-bold">{formatToman(totalPrice)}</span>
         </div>

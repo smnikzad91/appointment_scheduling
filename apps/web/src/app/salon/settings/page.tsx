@@ -10,6 +10,7 @@ import { toPersianDigits } from "@/lib/persian";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
 import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, cx } from "@/components/app/ui";
+import Sep from "@/components/common/Sep";
 
 // Curated brand colors that read well on the public salon page; the last swatch opens a picker.
 const BRAND_SWATCHES = ["#a34a30", "#c2185b", "#8e44ad", "#1f6f78", "#2e7d32", "#b8860b", "#37474f"];
@@ -155,7 +156,7 @@ export default function SalonSettingsPage() {
         <p className="px-4 py-3 text-xs leading-6 text-app-muted">
           {form.latitude != null && form.longitude != null ? (
             <>
-              روی نقشه بزنید یا پین را بکشید تا جابه‌جا شود ·{" "}
+              روی نقشه بزنید یا پین را بکشید تا جابه‌جا شود<Sep />
               <span dir="ltr">{toPersianDigits(`${form.latitude.toFixed(5)}, ${form.longitude.toFixed(5)}`)}</span>
             </>
           ) : (

@@ -8,6 +8,7 @@ import { toPersianDigits } from "@/lib/persian";
 import { formatSalonDate } from "@/lib/salonTime";
 import { Stars } from "@/components/common/StarRating";
 import { Button, ChipTabs, EmptyState, ErrorBanner, ListSkeleton, StatTile, cx, riseStyle } from "./ui";
+import Sep from "@/components/common/Sep";
 
 const EMPTY: Record<ReviewStatus, { title: string; hint: string }> = {
   PENDING: { title: "نظر تازه‌ای منتظر تایید نیست", hint: "نظرهای جدید مشتری‌ها پیش از نمایش در صفحه سالن اینجا می‌آیند." },
@@ -92,7 +93,12 @@ export default function ReviewModeration({ token, scope }: { token: string; scop
                   <p className="truncate font-black text-app-ink">{r.customerName}</p>
                   <p className="mt-0.5 truncate text-xs text-app-muted">
                     {toPersianDigits(formatSalonDate(r.appointment.startAt))}
-                    {r.appointment.services.length > 0 && ` · ${r.appointment.services.join("، ")}`}
+                    {r.appointment.services.length > 0 && (
+                      <>
+                        <Sep />
+                        {r.appointment.services.join("، ")}
+                      </>
+                    )}
                   </p>
                 </div>
                 {r.rating !== null ? (

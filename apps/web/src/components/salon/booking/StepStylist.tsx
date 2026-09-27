@@ -3,6 +3,7 @@
 import { Check, Star } from "lucide-react";
 import { useBooking } from "./BookingProvider";
 import { toPersianDigits, formatToman } from "@/lib/persian";
+import Sep from "@/components/common/Sep";
 
 export default function StepStylist() {
   const { salon, state, updateState, goNext } = useBooking();
@@ -68,7 +69,7 @@ export default function StepStylist() {
               )}
               {state.serviceIds.length > 0 && (
                 <span>
-                  {toPersianDigits(pricingFor(stylist).durationMinutes)} دقیقه · {formatToman(pricingFor(stylist).priceToman)}
+                  {toPersianDigits(pricingFor(stylist).durationMinutes)} دقیقه<Sep />{formatToman(pricingFor(stylist).priceToman)}
                 </span>
               )}
             </span>

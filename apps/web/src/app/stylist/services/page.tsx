@@ -6,6 +6,7 @@ import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessTok
 import { getMyStylistProfile, updateMyServiceOverride, type SelfStylist } from "@/lib/api/stylistSelf";
 import { formatToman, normalizeDigits, toPersianDigits } from "@/lib/persian";
 import { Card, EmptyState, ErrorBanner, ListSkeleton, PageHeader, TextInput, cx, riseStyle } from "@/components/app/ui";
+import Sep from "@/components/common/Sep";
 
 type Entry = SelfStylist["services"][number];
 
@@ -96,7 +97,7 @@ export default function StylistServicesPage() {
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-bold text-app-ink">{entry.service.name}</p>
                     <p className="mt-0.5 text-[13px] text-app-muted">
-                      {formatToman(effectivePrice)} · {toPersianDigits(effectiveDuration)} دقیقه
+                      {formatToman(effectivePrice)}<Sep />{toPersianDigits(effectiveDuration)} دقیقه
                     </p>
                   </div>
                   <span

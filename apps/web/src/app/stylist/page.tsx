@@ -10,6 +10,7 @@ import { formatMinutesAsClock } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
 import { AppointmentCard, AppointmentSheet, TodayTimeline, relativeDayLabel, useAppointmentActions } from "@/components/app/appointments";
 import { Avatar, EmptyState, ErrorBanner, ListSkeleton, SectionTitle, StatTile } from "@/components/app/ui";
+import Sep from "@/components/common/Sep";
 
 function greeting(minuteOfDay: number) {
   if (minuteOfDay < 12 * 60) return "صبح بخیر";
@@ -75,7 +76,7 @@ export default function StylistOverviewPage() {
 
         {next && nextWall ? (
           <button type="button" onClick={() => actions.open(next)} className="relative mt-5 block w-full text-start active:opacity-80">
-            <p className="text-xs text-white/60">نوبت بعدی · {relativeDayLabel(nextWall.dateKey)}</p>
+            <p className="text-xs text-white/60">نوبت بعدی<Sep />{relativeDayLabel(nextWall.dateKey)}</p>
             <p className="mt-1 flex items-center gap-2 text-[30px] font-black leading-tight">
               {formatMinutesAsClock(nextWall.minuteOfDay)}
               <ChevronLeft className="h-5 w-5 text-white/50" aria-hidden />

@@ -32,6 +32,7 @@ import {
   cx,
   riseStyle,
 } from "@/components/app/ui";
+import Sep from "@/components/common/Sep";
 
 const EMPTY_INVITE = { phone: "", firstName: "", lastName: "", displayName: "" };
 
@@ -261,7 +262,7 @@ export default function SalonStylistsPage() {
                     {toPersianDigits(stylist.services.length)} خدمت
                     {stylist.user.phone && (
                       <>
-                        {" · "}
+                        <Sep />
                         <span dir="ltr">{toPersianDigits(stylist.user.phone)}</span>
                       </>
                     )}
@@ -285,7 +286,7 @@ export default function SalonStylistsPage() {
               avatarLabel="عکس آرایشگر"
               folder="stylists"
               onSave={(patch) => savePhotos(selected, patch)}
-              hint={`${selected.user.firstName} ${selected.user.lastName}${selected.user.phone ? ` · ${toPersianDigits(selected.user.phone)}` : ""}`}
+              hint={`${selected.user.firstName} ${selected.user.lastName}${selected.user.phone ? `، ${toPersianDigits(selected.user.phone)}` : ""}`}
             />
             <div className="mb-5" />
 
@@ -305,7 +306,7 @@ export default function SalonStylistsPage() {
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-app-ink">{service.name}</p>
                           <p className="text-xs text-app-muted">
-                            پیش‌فرض: {formatToman(service.priceToman)} · {toPersianDigits(service.durationMinutes)} دقیقه
+                            پیش‌فرض: {formatToman(service.priceToman)}<Sep />{toPersianDigits(service.durationMinutes)} دقیقه
                           </p>
                         </div>
                         <Toggle

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { listAdminSalons, setSalonStatus, type AdminSalon } from "@/lib/api/adminSalons";
 import { formatSalonDate } from "@/lib/salonTime";
+import Sep from "@/components/common/Sep";
 
 const TABS: { label: string; value: AdminSalon["status"] | "ALL" }[] = [
   { label: "در انتظار تایید", value: "PENDING" },
@@ -106,7 +107,7 @@ export default function AdminSalonsPage() {
                   </p>
                   <p className="mt-1 text-xs text-gray-400">
                     مالک: {salon.owner.firstName} {salon.owner.lastName}{" "}
-                    <span dir="ltr">{salon.owner.phone}</span> · ثبت‌نام: {formatSalonDate(salon.createdAt)}
+                    <span dir="ltr">{salon.owner.phone}</span><Sep />ثبت‌نام: {formatSalonDate(salon.createdAt)}
                   </p>
                 </div>
 
