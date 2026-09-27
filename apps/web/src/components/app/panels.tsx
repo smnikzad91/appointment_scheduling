@@ -12,8 +12,6 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { useEffect } from "react";
-import { useLanguage } from "@/context/LanguageContext";
 import AppShell from "./AppShell";
 
 // One wrapper per panel so server layouts can render the shell without passing icon components
@@ -54,13 +52,6 @@ export function StylistShell({ children }: { children: React.ReactNode }) {
 }
 
 export function CustomerShell({ children }: { children: React.ReactNode }) {
-  const { lang, setLang } = useLanguage();
-  // Customers are all in Iran and the panel's shell is Persian; the shared language preference
-  // defaults to English (for the admin panel), so switch it here.
-  useEffect(() => {
-    if (lang !== "fa") setLang("fa");
-  }, [lang, setLang]);
-
   return (
     <AppShell
       panelName="حساب مشتری"
