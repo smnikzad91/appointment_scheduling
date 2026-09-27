@@ -23,6 +23,9 @@ export interface OwnerSalon {
   status: "PENDING" | "ACTIVE" | "SUSPENDED";
 }
 
+/** Fired on window after the salon's name or logo changes, so the app bar can refresh. */
+export const SALON_UPDATED_EVENT = "salon:updated";
+
 export function getMySalon(token: string) {
   return salonApiFetch<OwnerSalon>("/salons/mine", { headers: authHeaders(token) });
 }

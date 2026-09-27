@@ -30,15 +30,27 @@ export interface AccountLink {
  * single-column content area capped at phone width (so it still reads as an app on a tablet or
  * desktop), and a bottom tab bar — all padded for the notch and home indicator.
  */
+/** Who the app bar represents — defaults to the signed-in user; the salon panel shows the salon. */
+export interface ShellIdentity {
+  name: string;
+  src: string | null;
+  shape?: "circle" | "square";
+}
+
 export default function AppShell({
   panelName,
   tabs,
   accountLinks = [],
+  identity,
+  actions,
   children,
 }: {
   panelName: string;
   tabs: AppTab[];
   accountLinks?: AccountLink[];
+  identity?: ShellIdentity | null;
+  /** Extra app-bar buttons, shown before the avatar (e.g. the notification bell). */
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -56,6 +68,7 @@ export default function AppShell({
 
   const isActive = (tab: AppTab) => (tab.exact ? pathname === tab.href : pathname === tab.href || pathname.startsWith(`${tab.href}/`));
   const userName = session?.user?.name ?? "";
+  const shown: ShellIdentity = identity ?? { name: userName || "?", src: session?.user?.avatar || null };
 
   return (
     <div dir="rtl" className="app-root min-h-dvh">
@@ -76,9 +89,12 @@ export default function AppShell({
               <p className="text-[11px] font-medium text-app-muted">{panelName}</p>
             </div>
           </div>
-          <button type="button" onClick={() => setAccountOpen(true)} aria-label="حساب کاربری" className="rounded-full active:scale-90">
-            <Avatar name={userName || "?"} src={session?.user?.avatar || null} size={38} className="ring-2 ring-app-card" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {actions}
+            <button type="button" onClick={() => setAccountOpen(true)} aria-label="حساب کاربری" className="rounded-full active:scale-90">
+              <Avatar name={shown.name} src={shown.src} shape={shown.shape} size={38} className="ring-2 ring-app-card" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -121,10 +137,10 @@ export default function AppShell({
 
       <Sheet open={accountOpen} onClose={() => setAccountOpen(false)} title="حساب کاربری">
         <div className="mb-5 flex items-center gap-3">
-          <Avatar name={userName || "?"} src={session?.user?.avatar || null} size={56} />
+          <Avatar name={shown.name} src={shown.src} shape={shown.shape} size={56} />
           <div className="min-w-0">
-            <p className="truncate text-base font-black text-app-ink">{userName}</p>
-            <p className="text-sm text-app-muted">{panelName}</p>
+            <p className="truncate text-base font-black text-app-ink">{shown.name}</p>
+            <p className="truncate text-sm text-app-muted">{identity ? `${panelName} — ${userName}` : panelName}</p>
           </div>
         </div>
 

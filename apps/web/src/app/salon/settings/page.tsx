@@ -5,7 +5,7 @@ import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import { Check, ChevronLeft, Images } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
-import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput } from "@/lib/api/ownerSalon";
+import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput, SALON_UPDATED_EVENT } from "@/lib/api/ownerSalon";
 import { toPersianDigits } from "@/lib/persian";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
@@ -62,6 +62,7 @@ export default function SalonSettingsPage() {
     setError(null);
     try {
       setSalon(await updateMySalon(token, form));
+      window.dispatchEvent(new Event(SALON_UPDATED_EVENT));
       setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -80,6 +81,7 @@ export default function SalonSettingsPage() {
       ...(patch.coverImageUrl !== undefined && { coverImageUrl: patch.coverImageUrl }),
     });
     setSalon(updated);
+    window.dispatchEvent(new Event(SALON_UPDATED_EVENT));
   }
 
   if (loadError) return <ErrorBanner onRetry={load}>{loadError}</ErrorBanner>;
