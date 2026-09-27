@@ -302,7 +302,7 @@ export default function SalonStylistsPage() {
           {error && <p className="text-sm text-rose-500">{error}</p>}
           {createdPassword && (
             <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-              حساب جدید ساخته شد. رمز عبور موقت را به آرایشگر بدهید:{" "}
+              حساب جدید ساخته شد. آرایشگر با همین شماره موبایل و این رمز عبور موقت از صفحه ورود وارد پنل می‌شود:{" "}
               <span dir="ltr" className="font-mono font-bold">
                 {createdPassword}
               </span>

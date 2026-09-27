@@ -13,7 +13,7 @@ export default function SignInForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,13 +24,13 @@ export default function SignInForm() {
     setLoading(true);
 
     const result = await signIn("credentials", {
-      email,
+      identifier,
       password,
       redirect: false,
     });
 
     if (result?.error) {
-      setError("ایمیل یا رمز عبور اشتباه است");
+      setError("ایمیل/شماره موبایل یا رمز عبور اشتباه است");
       setLoading(false);
       return;
     }
@@ -72,7 +72,7 @@ export default function SignInForm() {
             ورود به حساب
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            ایمیل و رمز عبور خود را وارد کنید.
+            ایمیل یا شماره موبایل و رمز عبور خود را وارد کنید.
           </p>
         </div>
 
@@ -87,13 +87,15 @@ export default function SignInForm() {
             )}
 
             <div style={{ animation: "fade-in-up 0.5s ease 0.2s both" }}>
-              <Label>ایمیل <span className="text-error-500">*</span></Label>
+              <Label>ایمیل یا شماره موبایل <span className="text-error-500">*</span></Label>
               <Input
-                placeholder="example@email.com"
-                type="email"
+                placeholder="example@email.com یا 09121234567"
+                type="text"
+                dir="ltr"
+                autoComplete="username"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
               />
             </div>
 

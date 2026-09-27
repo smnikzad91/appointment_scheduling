@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { apiLogin } from "@/lib/apiAuth";
 import { ApiError } from "@/lib/apiClient";
+import { normalizeDigits } from "@/lib/persian";
 import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -10,15 +11,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email:    { label: "Email",    type: "email" },
-        password: { label: "Password", type: "password" },
+        // Email or mobile number — apps/api's /auth/login matches either. Stylists invited by a
+        // salon owner only have a phone, so this must not be email-only.
+        identifier: { label: "Email or phone", type: "text" },
+        password:   { label: "Password",       type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.identifier || !credentials?.password) return null;
 
         try {
           const { accessToken, user } = await apiLogin(
-            credentials.email as string,
+            normalizeDigits((credentials.identifier as string).trim()),
             credentials.password as string,
           );
 

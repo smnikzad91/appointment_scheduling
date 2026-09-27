@@ -50,7 +50,7 @@ export default function SignUpSalonForm() {
 
     // Auto sign-in after successful registration — NextAuth's credentials provider
     // accepts phone or email as the "email" field (see auth.ts).
-    const result = await signIn("credentials", { email: phone, password, redirect: false });
+    const result = await signIn("credentials", { identifier: phone, password, redirect: false });
     if (result?.error) {
       router.push("/signin");
       return;
