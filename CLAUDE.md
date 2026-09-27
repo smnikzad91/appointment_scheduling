@@ -42,6 +42,23 @@
      client, reading/writing the same Postgres DB directly — no HTTP hop for those.
      Wire format for enums/roles stays lowercase even though Postgres enums are
      uppercase; routes translate at the boundary (see apps/web/CLAUDE.md).
-   - PostgreSQL 17 runs locally (cluster `main`, port 5432, db `appointment_scheduling`,
-     user/password `postgres`/`postgres`) — set up via `pg_createcluster` (needed sudo,
-     which Claude doesn't have passwordless access to, so the user ran that step).
+   - PostgreSQL 17 (PGDG apt repo) runs locally: cluster `main`, 127.0.0.1:5432 only,
+     db `appointment_scheduling`. Least-privilege roles, passwords only in the gitignored
+     `.env` files (mode 600):
+     - `salon_migrator` — owns db + schema; used by packages/database for `prisma migrate`
+       (CREATEDB is only for migrate dev's shadow DB). New tables must be created by this
+       role so default privileges grant DML to the app roles.
+     - `salon_web` (apps/web), `salon_api` (apps/api) — SELECT/INSERT/UPDATE/DELETE only,
+       no DDL/TRUNCATE, can't touch `_prisma_migrations`, 30s statement timeout.
+     - `postgres` superuser has no password: `sudo -u postgres psql` (peer auth) only.
+     pg_hba rejects everything else; hardening lives in `/etc/postgresql/17/main/pg_hba.conf`
+     and `conf.d/10-security.conf` (originals saved as `*.orig`).
+   - Production (dev-iot.ir, this server): `npm run deploy` = build api + web, `migrate deploy`,
+     `pm2 startOrReload ecosystem.config.cjs`. pm2 apps `salon-api-prod` (127.0.0.1:3011) and
+     `salon-web-prod` (127.0.0.1:3010). nginx `/etc/nginx/sites-available/dev-iot.ir`:
+     `/backend/*` → api (prefix stripped), everything else → web. HTTPS vhosts on this box listen
+     on `127.0.0.1:8444 ssl proxy_protocol` behind a stream SNI router on :443 (shared with xray) —
+     never `listen 443` or `certbot --nginx`; certs via `certbot certonly --webroot -w /var/www/html`.
+     Web prod env is `apps/web/.env.production` (`NEXT_PUBLIC_*` are baked in at build — rebuild
+     after changing them). `next start` doesn't serve public/ files added after it started, so
+     new uploads fall back to `app/api/public/uploads/[...path]` via an afterFiles rewrite.

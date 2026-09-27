@@ -20,6 +20,8 @@ async function bootstrap() {
       .finally(() => process.exit(1));
   });
 
-  await app.listen(process.env.PORT ?? 3001);
+  // HOST=127.0.0.1 in production (ecosystem.config.cjs) so only nginx can reach it.
+  const port = process.env.PORT ?? 3001;
+  await (process.env.HOST ? app.listen(port, process.env.HOST) : app.listen(port));
 }
 await bootstrap();
