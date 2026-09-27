@@ -38,12 +38,15 @@ export interface Stylist {
   bio?: string | null;
   specialtyCategoryIds: string[]; // derived from the stylist's services' categoryIds, not stored directly
   services: StylistServicePricing[];
-  rating?: number;
+  rating?: number; // average of approved reviews about this stylist
   reviewCount?: number;
+  reviews: Review[]; // approved reviews about this stylist, newest first
 }
 
 export interface Review {
   id: string;
+  target: "SALON" | "STYLIST";
+  stylistId: string | null;
   customerName: string;
   customerAvatarUrl?: string | null;
   rating: number; // 1-5

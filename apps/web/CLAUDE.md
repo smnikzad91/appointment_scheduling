@@ -124,6 +124,10 @@ News items are seeded from the inline `seedData` array in `src/app/api/admin/new
 
 Publishing/updating a `BlogPost`, `NewsItem`, or `Announcement` also posts a message to a Telegram channel via `src/lib/telegram.ts` (`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHANNEL`, optional `TELEGRAM_PROXY` as a SOCKS agent) — see the `admin/**/notify` routes and the relevant admin `[id]`/base routes.
 
+## Reviews and ratings
+
+Customers review a COMPLETED appointment from their bookings (`components/app/CustomerBookings.tsx`): one review of the salon and one of the stylist (`Review.target` SALON / STYLIST, unique per appointment + target), each 1–5 stars (`StarRatingInput` / `Stars` in `components/common/StarRating.tsx`) with an optional comment (≤500). Reviews start PENDING and only APPROVED ones are public. The salon owner moderates every review of the salon on `/salon/reviews`; a stylist moderates reviews about them on `/stylist/reviews` (both use `components/app/ReviewModeration.tsx`; `ReviewsLinkCard` shows the pending count on the home, settings and profile screens). On the public page, salon reviews drive the salon rating and review list, stylist reviews appear on each stylist's card. The public API shows customers as first name + last initial.
+
 ## API Structure
 
 ```
@@ -138,7 +142,7 @@ Publishing/updating a `BlogPost`, `NewsItem`, or `Announcement` also posts a mes
 ## Global Contexts (`src/context/`)
 
 - **`ThemeContext`** — light/dark, persisted to `localStorage`, `.dark` class on `<html>`
-- **`LanguageContext`** — `"fa"` / `"en"`, sets `dir="rtl"` / `dir="ltr"` on `<html>`; use `useT()` for all UI strings
+- **`LanguageContext`** — `"fa"` / `"en"`, sets `dir="rtl"` / `dir="ltr"` on `<html>`; use `useT()` for all UI strings. Only `/admin/**` is bilingual (`isBilingualPath`); every other route is always `fa`/RTL whatever the stored preference. `public/theme-init.js` applies the same rule before hydration — keep the two in sync.
 - **`SidebarContext`** / **`UserSidebarContext`** — collapsed/expanded state for admin and user sidebars
 
 ## Adding New Pages

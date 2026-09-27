@@ -56,6 +56,8 @@ interface RawSalon {
 
 interface RawReview {
   id: string;
+  target: "SALON" | "STYLIST";
+  stylistId: string | null;
   rating: number;
   comment: string | null;
   createdAt: string;
@@ -90,12 +92,13 @@ function deriveSalonWorkingHours(stylists: RawStylist[]): WorkingHours[] {
   return result;
 }
 
-function mapStylist(raw: RawStylist, services: RawService[], gallery: GalleryImage[]): Stylist {
+function mapStylist(raw: RawStylist, services: RawService[], gallery: GalleryImage[], allReviews: Review[]): Stylist {
   const serviceIds = raw.services.map((s) => s.serviceId);
   const categoryIds = new Set(
     services.filter((s) => serviceIds.includes(s.id) && s.categoryId).map((s) => s.categoryId as string),
   );
   const byServiceId = new Map(services.map((s) => [s.id, s]));
+  const reviews = allReviews.filter((r) => r.target === "STYLIST" && r.stylistId === raw.id);
 
   return {
     id: raw.id,
@@ -104,6 +107,9 @@ function mapStylist(raw: RawStylist, services: RawService[], gallery: GalleryIma
     coverImageUrl: raw.coverImageUrl,
     gallery: gallery.filter((g) => g.stylistId === raw.id),
     bio: raw.bio,
+    reviews,
+    reviewCount: reviews.length,
+    rating: reviews.length > 0 ? average(reviews) : undefined,
     specialtyCategoryIds: [...categoryIds],
     services: raw.services.flatMap((ss) => {
       const service = byServiceId.get(ss.serviceId);
@@ -119,9 +125,15 @@ function mapStylist(raw: RawStylist, services: RawService[], gallery: GalleryIma
   };
 }
 
+function average(reviews: Review[]) {
+  return reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+}
+
 function mapReview(raw: RawReview): Review {
   return {
     id: raw.id,
+    target: raw.target,
+    stylistId: raw.stylistId,
     customerName: raw.customer.firstName,
     customerAvatarUrl: raw.customer.avatarUrl,
     rating: raw.rating,
@@ -132,10 +144,10 @@ function mapReview(raw: RawReview): Review {
 
 export async function getSalonBySlug(slug: string): Promise<Salon | null> {
   let raw: RawSalon;
-  let reviews: RawReview[];
+  let rawReviews: RawReview[];
 
   try {
-    [raw, reviews] = await Promise.all([
+    [raw, rawReviews] = await Promise.all([
       salonApiFetch<RawSalon>(`/salons/${slug}`),
       salonApiFetch<RawReview[]>(`/salons/${slug}/reviews`),
     ]);
@@ -155,8 +167,12 @@ export async function getSalonBySlug(slug: string): Promise<Salon | null> {
     };
   });
 
+  // The API returns only approved reviews. Salon reviews feed the salon's rating and review list;
+  // stylist reviews go on each stylist's card.
+  const allReviews = rawReviews.map(mapReview);
+  const reviews = allReviews.filter((r) => r.target === "SALON");
   const ratingCount = reviews.length;
-  const ratingAverage = ratingCount > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / ratingCount : 0;
+  const ratingAverage = ratingCount > 0 ? average(reviews) : 0;
 
   return {
     id: raw.id,
@@ -175,9 +191,9 @@ export async function getSalonBySlug(slug: string): Promise<Salon | null> {
     workingHours: deriveSalonWorkingHours(raw.stylists),
     serviceCategories: raw.serviceCategories,
     services: raw.services,
-    stylists: raw.stylists.map((s) => mapStylist(s, raw.services, gallery)),
+    stylists: raw.stylists.map((s) => mapStylist(s, raw.services, gallery, allReviews)),
     gallery,
-    reviews: reviews.map(mapReview),
+    reviews,
     ratingAverage,
     ratingCount,
   };

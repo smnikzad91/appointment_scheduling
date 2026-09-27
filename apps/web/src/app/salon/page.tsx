@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import { CalendarCheck2, CalendarClock, ExternalLink, Hourglass, Share2, Sparkles } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, listMySalonAppointments, updateAppointmentStatus, type OwnerSalon, type OwnerAppointment } from "@/lib/api/ownerSalon";
@@ -130,6 +131,8 @@ export default function SalonOverviewPage() {
       )}
 
       {error && <div className="mt-3"><ErrorBanner onRetry={reload}>{error}</ErrorBanner></div>}
+
+      <ReviewsLinkCard token={token} scope="salon" onlyWhenPending className="mt-3" />
 
       <div className="mt-3 grid grid-cols-3 gap-2.5">
         <StatTile icon={CalendarCheck2} label="نوبت امروز" value={today.length} tone="accent" />

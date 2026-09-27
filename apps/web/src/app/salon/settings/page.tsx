@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import { Check, ChevronLeft, Images } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput } from "@/lib/api/ownerSalon";
@@ -114,6 +115,7 @@ export default function SalonSettingsPage() {
         </span>
         <ChevronLeft className="h-4 w-4 text-app-muted" aria-hidden />
       </Link>
+      <ReviewsLinkCard token={token} scope="salon" className="mt-3" />
 
       <SectionTitle>اطلاعات سالن</SectionTitle>
       <Card className="flex flex-col gap-4 p-4">

@@ -15,7 +15,17 @@ export interface CustomerBooking {
   salon: { name: string; slug: string };
   stylist: { displayName: string };
   services: { service: { name: string } }[];
-  review: { id: string; rating: number; comment: string | null } | null;
+  reviews: BookingReview[];
+}
+
+export type ReviewTarget = "SALON" | "STYLIST";
+
+export interface BookingReview {
+  id: string;
+  target: ReviewTarget;
+  rating: number;
+  comment: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
 }
 
 export function getMyBookings(token: string) {
@@ -30,10 +40,11 @@ export function cancelBooking(token: string, id: string) {
   });
 }
 
-export function leaveReview(token: string, appointmentId: string, rating: number, comment?: string) {
-  return salonApiFetch<{ id: string; rating: number; comment: string | null }>(`/appointments/${appointmentId}/review`, {
+/** Reviews start pending; they're public once the salon owner (or, for a stylist review, the stylist) approves. */
+export function leaveReview(token: string, appointmentId: string, review: { target: ReviewTarget; rating: number; comment?: string }) {
+  return salonApiFetch<BookingReview>(`/appointments/${appointmentId}/review`, {
     method: "POST",
     headers: authHeaders(token),
-    body: JSON.stringify({ rating, comment }),
+    body: JSON.stringify(review),
   });
 }

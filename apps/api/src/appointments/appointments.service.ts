@@ -10,7 +10,11 @@ import { fitsWorkingHours } from "./working-hours.util.js";
 
 const ACTIVE_STATUSES: AppointmentStatus[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
 
-const APPOINTMENT_INCLUDE = { salon: true, services: { include: { service: true } }, review: true } as const;
+const APPOINTMENT_INCLUDE = {
+  salon: true,
+  services: { include: { service: true } },
+  reviews: { select: { id: true, target: true, rating: true, comment: true, status: true } },
+} as const;
 
 // Never `customer: true` / `user: true` on a relation to the User model — that returns every
 // column including passwordHash. Always select only what the viewer (stylist/owner) needs to see.

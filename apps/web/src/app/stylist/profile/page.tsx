@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import GalleryManager from "@/components/app/GalleryManager";
+import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMyStylistProfile, updateMyStylistProfile, type SelfStylist } from "@/lib/api/stylistSelf";
 import { toPersianDigits } from "@/lib/persian";
@@ -102,6 +103,8 @@ export default function StylistProfilePage() {
         </Button>
       </div>
     </form>
+
+      <ReviewsLinkCard token={token} scope="stylist" className="mt-6" />
 
       <SectionTitle>نمونه کارهای من</SectionTitle>
       <p className="-mt-1 mb-3 px-1 text-xs leading-6 text-app-muted">

@@ -51,6 +51,17 @@ enum DepositStatus {
   REJECTED
 }
 
+enum ReviewTarget {
+  SALON
+  STYLIST
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum ErrorSource {
   API // apps/api (NestJS)
   WEB_SERVER // apps/web server side: route handlers, server components, server actions
@@ -88,9 +99,9 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  ownedSalons  Salon[]        @relation("SalonOwner")
+  ownedSalons  Salon[]       @relation("SalonOwner")
   stylist      Stylist?
-  appointments Appointment[]  @relation("CustomerAppointments")
+  appointments Appointment[] @relation("CustomerAppointments")
   tickets      Ticket[]
   cards        Card[]
   deposits     Deposit[]
@@ -305,31 +316,32 @@ model Deposit {
 }
 
 model Salon {
-  id              String      @id @default(cuid())
-  ownerId         String
-  owner           User        @relation("SalonOwner", fields: [ownerId], references: [id])
-  name            String
-  slug            String      @unique
-  description     String?
-  city            String
-  address         String
-  phone           String
-  instagram       String?
-  timezone        String      @default("Asia/Tehran")
-  logoUrl         String?
-  coverImageUrl   String?
-  brandColor      String      @default("#a34a30")
-  latitude        Float?
-  longitude       Float?
-  status          SalonStatus @default(PENDING)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id            String      @id @default(cuid())
+  ownerId       String
+  owner         User        @relation("SalonOwner", fields: [ownerId], references: [id])
+  name          String
+  slug          String      @unique
+  description   String?
+  city          String
+  address       String
+  phone         String
+  instagram     String?
+  timezone      String      @default("Asia/Tehran")
+  logoUrl       String?
+  coverImageUrl String?
+  brandColor    String      @default("#a34a30")
+  latitude      Float?
+  longitude     Float?
+  status        SalonStatus @default(PENDING)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   stylists          Stylist[]
   services          Service[]
   serviceCategories ServiceCategory[]
   appointments      Appointment[]
   galleryImages     GalleryImage[]
+  reviews           Review[]
 
   @@map("salons")
 }
@@ -349,13 +361,13 @@ model ServiceCategory {
 }
 
 model Stylist {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id])
-  salonId     String
-  salon       Salon    @relation(fields: [salonId], references: [id])
-  displayName String
-  bio         String?
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id])
+  salonId       String
+  salon         Salon    @relation(fields: [salonId], references: [id])
+  displayName   String
+  bio           String?
   avatarUrl     String?
   coverImageUrl String?
   active        Boolean  @default(true)
@@ -366,23 +378,24 @@ model Stylist {
   timeOff       TimeOff[]
   appointments  Appointment[]
   galleryImages GalleryImage[]
+  reviews       Review[]
 
   @@index([salonId])
   @@map("stylists")
 }
 
 model Service {
-  id                String           @id @default(cuid())
-  salonId           String
-  salon             Salon            @relation(fields: [salonId], references: [id])
-  categoryId        String?
-  category          ServiceCategory? @relation(fields: [categoryId], references: [id])
-  name              String
-  description       String?
-  durationMinutes   Int
-  priceToman        Int
-  active            Boolean          @default(true)
-  createdAt         DateTime         @default(now())
+  id              String           @id @default(cuid())
+  salonId         String
+  salon           Salon            @relation(fields: [salonId], references: [id])
+  categoryId      String?
+  category        ServiceCategory? @relation(fields: [categoryId], references: [id])
+  name            String
+  description     String?
+  durationMinutes Int
+  priceToman      Int
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
 
   stylists     StylistService[]
   appointments AppointmentService[]
@@ -393,9 +406,9 @@ model Service {
 
 model StylistService {
   stylistId               String
-  stylist                 Stylist  @relation(fields: [stylistId], references: [id])
+  stylist                 Stylist @relation(fields: [stylistId], references: [id])
   serviceId               String
-  service                 Service  @relation(fields: [serviceId], references: [id])
+  service                 Service @relation(fields: [serviceId], references: [id])
   overridePriceToman      Int?
   overrideDurationMinutes Int?
 
@@ -444,7 +457,7 @@ model Appointment {
   updatedAt  DateTime          @updatedAt
 
   services AppointmentService[]
-  review   Review?
+  reviews  Review[]
 
   @@index([salonId, startAt])
   @@index([stylistId, startAt])
@@ -452,11 +465,11 @@ model Appointment {
 }
 
 model AppointmentService {
-  id            String      @id @default(cuid())
-  appointmentId String
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
-  serviceId     String
-  service       Service     @relation(fields: [serviceId], references: [id])
+  id              String      @id @default(cuid())
+  appointmentId   String
+  appointment     Appointment @relation(fields: [appointmentId], references: [id])
+  serviceId       String
+  service         Service     @relation(fields: [serviceId], references: [id])
   // Snapshotted at booking time so a later price change doesn't alter past appointments.
   priceToman      Int
   durationMinutes Int
@@ -477,14 +490,28 @@ model OtpCode {
   @@map("otp_codes")
 }
 
+// A customer's rating (1–5) and comment after a completed appointment. Each appointment can have
+// one review of the salon and one of its stylist. Reviews start PENDING and only APPROVED ones are
+// public: the salon owner moderates all of the salon's reviews, a stylist those about them.
 model Review {
-  id            String      @id @default(cuid())
-  appointmentId String      @unique
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  id            String       @id @default(cuid())
+  appointmentId String
+  appointment   Appointment  @relation(fields: [appointmentId], references: [id])
+  salonId       String
+  salon         Salon        @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  target        ReviewTarget
+  // The appointment's stylist; set only when target = STYLIST.
+  stylistId     String?
+  stylist       Stylist?     @relation(fields: [stylistId], references: [id], onDelete: SetNull)
   rating        Int
   comment       String?
-  createdAt     DateTime    @default(now())
+  status        ReviewStatus @default(PENDING)
+  moderatedAt   DateTime?
+  createdAt     DateTime     @default(now())
 
+  @@unique([appointmentId, target])
+  @@index([salonId, status, createdAt])
+  @@index([stylistId, status, createdAt])
   @@map("reviews")
 }
 

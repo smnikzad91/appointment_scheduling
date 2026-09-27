@@ -14,6 +14,10 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Invalid image URL": "فایل تصویر معتبر نیست؛ دوباره آپلود کنید",
   "Image not found": "این عکس دیگر وجود ندارد",
   "Not your image": "اجازه تغییر این عکس را ندارید",
+  "This appointment has already been reviewed": "برای این نوبت قبلاً نظر ثبت کرده‌اید",
+  "You can only review a completed appointment": "فقط برای نوبت‌های انجام‌شده می‌توانید نظر بدهید",
+  "Review not found": "این نظر دیگر وجود ندارد",
+  "Not your review": "اجازه تایید یا رد این نظر را ندارید",
 };
 
 /** Persian message for an error thrown by apiFetch / salonApiFetch (anything with status + message). */
