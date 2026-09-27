@@ -13,7 +13,7 @@ const NAV_LINKS = [
 export default function MarketingHeader() {
   return (
     <header className="border-b border-black/5 bg-[#f7f0e8]">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:gap-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2 text-lg font-bold text-[#2a1d26]">
           نوبتا
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#a34a30] text-white">
@@ -29,14 +29,21 @@ export default function MarketingHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <InstallAppButton />
-          <Link href="/signin" className="hidden text-sm font-medium text-[#2a1d26] hover:text-[#a34a30] sm:inline">
+          <Link href="/signin" className="whitespace-nowrap text-sm font-medium text-[#2a1d26] hover:text-[#a34a30]">
             ورود
+          </Link>
+          {/* Customer sign-up; salon owners use the dark button next to it. */}
+          <Link
+            href="/signup"
+            className="whitespace-nowrap rounded-lg border border-[#2a1d26]/20 px-3 py-2 text-sm font-medium text-[#2a1d26] transition hover:border-[#a34a30] hover:text-[#a34a30] sm:px-4"
+          >
+            ثبت‌نام
           </Link>
           <Link
             href="/signup-salon"
-            className="rounded-lg bg-[#2a1d26] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#402c39]"
+            className="whitespace-nowrap rounded-lg bg-[#2a1d26] px-3 py-2 text-sm font-bold text-white transition hover:bg-[#402c39] sm:px-4"
           >
             ثبت‌نام سالن
           </Link>
