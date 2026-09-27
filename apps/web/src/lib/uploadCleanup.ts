@@ -2,21 +2,21 @@ import { readdir, stat, unlink } from "fs/promises";
 import { join } from "path";
 import { prisma } from "@/lib/prisma";
 
-// Salon/stylist photos live on disk under public/uploads/<folder>/ while the DB (written by
+// Salon/stylist/banner photos live on disk under public/uploads/<folder>/ while the DB (written by
 // apps/api) only stores their URL. A file is deleted only once no row points at it any more, so
 // a stale or duplicate cleanup request can never break a photo that's still in use.
 
-const MANAGED_FOLDERS = ["salons", "stylists"] as const;
-const MANAGED_URL = /^\/uploads\/(salons|stylists)\/([\w-]+\.(?:jpe?g|png|webp|gif))$/i;
+const MANAGED_FOLDERS = ["salons", "stylists", "banners"] as const;
+const MANAGED_URL = /^\/uploads\/(salons|stylists|banners)\/([\w-]+\.(?:jpe?g|png|webp|gif))$/i;
 
 function uploadsDir(folder: string) {
   return join(process.cwd(), "public", "uploads", folder);
 }
 
-/** URLs from the given list that some salon, stylist, gallery piece or user still uses. */
+/** URLs from the given list that some salon, stylist, gallery piece, user or the home banner still uses. */
 async function referencedUrls(urls: string[]): Promise<Set<string>> {
   if (urls.length === 0) return new Set();
-  const [salons, stylists, gallery, users] = await Promise.all([
+  const [salons, stylists, gallery, users, banners] = await Promise.all([
     prisma.salon.findMany({
       where: { OR: [{ logoUrl: { in: urls } }, { coverImageUrl: { in: urls } }] },
       select: { logoUrl: true, coverImageUrl: true },
@@ -27,6 +27,7 @@ async function referencedUrls(urls: string[]): Promise<Set<string>> {
     }),
     prisma.galleryImage.findMany({ where: { url: { in: urls } }, select: { url: true } }),
     prisma.user.findMany({ where: { avatarUrl: { in: urls } }, select: { avatarUrl: true } }),
+    prisma.homeBanner.findMany({ where: { imageUrl: { in: urls } }, select: { imageUrl: true } }),
   ]);
   return new Set(
     [
@@ -34,6 +35,7 @@ async function referencedUrls(urls: string[]): Promise<Set<string>> {
       ...stylists.flatMap((s) => [s.avatarUrl, s.coverImageUrl]),
       ...gallery.map((g) => g.url),
       ...users.map((u) => u.avatarUrl),
+      ...banners.map((b) => b.imageUrl),
     ].filter((u): u is string => !!u),
   );
 }

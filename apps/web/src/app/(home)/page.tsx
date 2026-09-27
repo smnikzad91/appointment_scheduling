@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import Hero from "@/components/marketing/Hero";
+import Showcase from "@/components/marketing/Showcase";
 import HowItWorks from "@/components/marketing/HowItWorks";
 import Features from "@/components/marketing/Features";
 import AndroidApps from "@/components/marketing/AndroidApps";
@@ -35,6 +36,7 @@ export default function HomePage() {
       <MarketingHeader />
       <main>
         <Hero />
+        <Showcase />
         <HowItWorks />
         <Features />
         <AndroidApps />

@@ -7,7 +7,7 @@ import { randomUUID } from "crypto";
 const MAX_SIZE = 5 * 1024 * 1024;
 const ALLOWED  = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
 
-const ALLOWED_FOLDERS = ["tickets", "deposits", "salons", "stylists"];
+const ALLOWED_FOLDERS = ["tickets", "deposits", "salons", "stylists", "banners"];
 
 export async function POST(req: NextRequest) {
   const session = await auth();

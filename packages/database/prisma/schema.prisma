@@ -366,6 +366,7 @@ model Salon {
   reviews           Review[]
   payouts           StylistPayout[]
   expenses          SalonExpense[]
+  featured          FeaturedSalon?
 
   @@map("salons")
 }
@@ -407,6 +408,7 @@ model Stylist {
   galleryImages GalleryImage[]
   reviews       Review[]
   payouts       StylistPayout[]
+  featured      FeaturedStylist?
 
   @@index([salonId])
   @@map("stylists")
@@ -639,4 +641,40 @@ model SalonExpense {
 
   @@index([salonId, spentAt])
   @@map("salon_expenses")
+}
+
+// ── Home page showcase (edited by the platform admin) ─────────────────────
+
+// The supplier/sponsor banner on the home page. Singleton row (id "singleton").
+model HomeBanner {
+  id        String   @id @default("singleton")
+  imageUrl  String?
+  // Where the banner points (http/https only).
+  linkUrl   String?
+  // Supplier name / alt text.
+  title     String?
+  active    Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@map("home_banner")
+}
+
+// Up to three salons featured on the home page; priority 1 is shown first.
+model FeaturedSalon {
+  salonId   String   @id
+  salon     Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  priority  Int      @unique
+  createdAt DateTime @default(now())
+
+  @@map("featured_salons")
+}
+
+// Up to three stylists featured on the home page; priority 1 is shown first.
+model FeaturedStylist {
+  stylistId String   @id
+  stylist   Stylist  @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  priority  Int      @unique
+  createdAt DateTime @default(now())
+
+  @@map("featured_stylists")
 }

@@ -29,7 +29,7 @@ async function shrinkForUpload(file: File): Promise<File> {
   return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
 }
 
-export async function uploadImage(file: File, folder: "salons" | "stylists"): Promise<string> {
+export async function uploadImage(file: File, folder: "salons" | "stylists" | "banners"): Promise<string> {
   const formData = new FormData();
   formData.append("file", await shrinkForUpload(file));
 

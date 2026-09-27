@@ -24,6 +24,7 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
+  ShootingStarIcon,
 } from "../icons/index";
 import MarkIcon from "@/brand/mark.svg";
 import MarkWhiteIcon from "@/brand/mark-white.svg";
@@ -51,6 +52,7 @@ const AppSidebar: React.FC = () => {
     { icon: <UserCircleIcon />, name: t("navUserProfile"),  path: "/admin/profile" },
     { icon: <GroupIcon />,      name: t("navUsers"),        path: "/admin/users" },
     { icon: <ListIcon />,       name: t("navSalons"),       path: "/admin/salons" },
+    { icon: <ShootingStarIcon />, name: t("navHomepage"),   path: "/admin/homepage" },
     { icon: <PlugInIcon />,     name: t("navSocialLinks"),    path: "/admin/social-links" },
     { icon: <MegaphoneIcon />,  name: t("navAnnouncements"),  path: "/admin/announcements" },
     { icon: <FaqIcon />,        name: t("navFaq"),             path: "/admin/faqs" },
