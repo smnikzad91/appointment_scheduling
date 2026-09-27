@@ -41,7 +41,7 @@ export default function SalonJsonLd({ salon, url }: { salon: Salon; url: string 
       ? {
           "@type": "AggregateRating",
           ratingValue: salon.ratingAverage,
-          reviewCount: salon.ratingCount,
+          ratingCount: salon.ratingCount, // rated reviews only; comment-only reviews carry no rating
         }
       : undefined,
     openingHoursSpecification: salon.workingHours

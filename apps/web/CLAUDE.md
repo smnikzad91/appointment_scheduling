@@ -61,7 +61,7 @@ It installs as a PWA: `src/app/manifest.ts` (start URL `/launch`, which redirect
 
 ## Photos and artwork gallery
 
-Salon logo/cover and stylist avatar/cover are edited through `components/app/ProfilePhotos.tsx` (cover banner + overlapping avatar; tap either for a change/remove sheet). Sending `null` for `logoUrl`/`coverImageUrl`/`avatarUrl` clears the photo. Artwork galleries (`GalleryImage` rows, apps/api `gallery` module) are edited with `components/app/GalleryManager.tsx`: `scope="salon"` on `/salon/gallery` (owner sees every piece and can credit it to a stylist, max 60), `scope="stylist"` on `/stylist/profile` (stylist's own pieces only, max 30). The public salon page shows the whole gallery and each stylist's credited pieces on their card.
+Salon logo/cover and stylist avatar/cover are edited through `components/app/ProfilePhotos.tsx` (cover banner + overlapping avatar; tap either for a change/remove sheet). Sending `null` for `logoUrl`/`coverImageUrl`/`avatarUrl` clears the photo. A stylist's `avatarUrl` is mirrored onto their `User.avatarUrl` by apps/api (it's their account photo in the app bar and at login); the stylist profile page also refreshes the NextAuth session with `update({ avatar })`. Artwork galleries (`GalleryImage` rows, apps/api `gallery` module) are edited with `components/app/GalleryManager.tsx`: `scope="salon"` on `/salon/gallery` (owner sees every piece and can credit it to a stylist, max 60), `scope="stylist"` on `/stylist/profile` (stylist's own pieces only, max 30). The public salon page shows the whole gallery and each stylist's credited pieces on their card.
 
 Upload images with `uploadImage(file, folder)` from `src/lib/uploadImage.ts` — it downscales on the phone (longest edge 1920px, JPEG q0.85) before POSTing to `/api/upload`. apps/api only accepts image fields matching `/uploads/<folder>/<file>.<jpg|png|webp|gif>` (`IsOptionalImageUrl` in `apps/api/src/common/image-url.ts`), so never send external URLs. Replaced or removed photos are deleted from disk: after a successful save the client calls `releaseUploads()` (`DELETE /api/upload`), and `src/lib/uploadCleanup.ts` deletes a salon/stylist file only if no salon, stylist, gallery or user row still references it. `instrumentation.ts` also sweeps unreferenced files older than a day at startup and daily (abandoned uploads, cascaded deletes). If you add a new column that stores an upload URL, add it to `referencedUrls()` or the sweep will delete those files. `public/uploads/salons/` and `public/uploads/stylists/` are gitignored runtime data.
 
@@ -141,7 +141,7 @@ Customers review a COMPLETED appointment from their bookings (`components/app/Cu
 
 ## Global Contexts (`src/context/`)
 
-- **`ThemeContext`** — light/dark, persisted to `localStorage`, `.dark` class on `<html>`
+- **`ThemeContext`** — light/dark, `.dark` class on `<html>`. Follows the device's `prefers-color-scheme` until the user toggles; only then is the choice saved to `localStorage`. `public/theme-init.js` applies the same rule before hydration.
 - **`LanguageContext`** — `"fa"` / `"en"`, sets `dir="rtl"` / `dir="ltr"` on `<html>`; use `useT()` for all UI strings. Only `/admin/**` is bilingual (`isBilingualPath`); every other route is always `fa`/RTL whatever the stored preference. `public/theme-init.js` applies the same rule before hydration — keep the two in sync.
 - **`SidebarContext`** / **`UserSidebarContext`** — collapsed/expanded state for admin and user sidebars
 

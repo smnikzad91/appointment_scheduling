@@ -68,7 +68,8 @@ export class ReviewsService {
 
   /** Approved reviews of the salon and of its stylists, newest first. */
   async listForSalon(slug: string) {
-    const salon = await this.salonsService.findPublicBySlug(slug);
+    // Only the id is needed — don't load the salon's services, stylists and gallery for this.
+    const salon = await this.prisma.salon.findFirst({ where: { slug, status: "ACTIVE" }, select: { id: true } });
     if (!salon) throw new NotFoundException("Salon not found");
 
     const reviews = await this.prisma.review.findMany({
