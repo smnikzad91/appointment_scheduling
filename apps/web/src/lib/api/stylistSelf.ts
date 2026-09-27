@@ -8,7 +8,9 @@ export interface SelfStylistService {
   serviceId: string;
   overridePriceToman: number | null;
   overrideDurationMinutes: number | null;
-  service: { id: string; name: string; priceToman: number; durationMinutes: number };
+  /** The owner-set rate for this service; null = the stylist's default. */
+  commissionPercent: number | null;
+  service: { id: string; name: string; priceToman: number; durationMinutes: number; active: boolean };
 }
 
 export interface SelfStylist {
@@ -20,8 +22,10 @@ export interface SelfStylist {
   avatarUrl: string | null;
   coverImageUrl: string | null;
   active: boolean;
+  commissionPercent: number;
   workingHours: { dayOfWeek: number; startMinute: number; endMinute: number }[];
   services: SelfStylistService[];
+  salon: { slug: string; timezone: string; status: string };
 }
 
 /** Dispatched on window after the stylist edits their profile, so the app bar refreshes. */
@@ -102,7 +106,9 @@ export interface StylistAppointment {
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   priceToman: number;
   notes: string | null;
-  services: { service: { name: string } }[];
+  /** Frozen once COMPLETED: the stylist's commission plus any tip. */
+  stylistShareToman: number | null;
+  services: { serviceId: string; priceToman: number; service: { name: string } }[];
   customer: { firstName: string; lastName: string; phone: string | null };
 }
 

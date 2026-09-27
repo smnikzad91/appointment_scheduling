@@ -24,6 +24,7 @@ export default function SalonAppointmentsPage() {
       <AppointmentsScreen
         title="نوبت‌ها"
         showStylist
+        edit={{ token }}
         load={load}
         updateStatus={updateStatus}
         headerAction={

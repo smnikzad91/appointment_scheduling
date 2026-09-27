@@ -9,6 +9,7 @@ import { getMySalon, listMySalonAppointments, listMyStylists, updateAppointmentS
 import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
 import { formatToman } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
+import SalonBookingSheet from "@/components/app/SalonBookingSheet";
 import { AppointmentCard, AppointmentSheet, TodayTimeline, useAppointmentActions } from "@/components/app/appointments";
 import { Avatar, EmptyState, ErrorBanner, ListSkeleton, SectionTitle, StatTile, cx, LinkCard } from "@/components/app/ui";
 
@@ -182,9 +183,20 @@ export default function SalonOverviewPage() {
         showStylist
         onClose={actions.close}
         onSetStatus={actions.setStatus}
+        onEdit={actions.edit}
         busyStatus={actions.busyStatus}
         error={actions.error}
       />
+      {actions.editing && token && (
+        <SalonBookingSheet
+          key={actions.editing.id}
+          token={token}
+          appointment={actions.editing}
+          open
+          onClose={actions.closeEdit}
+          onCreated={reload}
+        />
+      )}
     </>
   );
 }

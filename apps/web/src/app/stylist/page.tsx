@@ -6,8 +6,9 @@ import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import { CalendarCheck2, CalendarClock, ChevronLeft, Clock3, Coffee, Hourglass, Wallet } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMyStylistProfile, listMyAppointments, updateMyAppointmentStatus, type SelfStylist, type StylistAppointment } from "@/lib/api/stylistSelf";
-import { formatMinutesAsClock } from "@/lib/persian";
+import { formatMinutesAsClock, formatToman } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
+import SalonBookingSheet from "@/components/app/SalonBookingSheet";
 import { AppointmentCard, AppointmentSheet, TodayTimeline, relativeDayLabel, useAppointmentActions } from "@/components/app/appointments";
 import { Avatar, EmptyState, ErrorBanner, ListSkeleton, SectionTitle, StatTile, LinkCard } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
@@ -16,6 +17,18 @@ function greeting(minuteOfDay: number) {
   if (minuteOfDay < 12 * 60) return "صبح بخیر";
   if (minuteOfDay < 17 * 60) return "روز بخیر";
   return "عصر بخیر";
+}
+
+/**
+ * The stylist's own take from an appointment: the frozen share (commission + tip) once it's
+ * completed, otherwise their commission on each service's booked price — a service's own rate
+ * where the owner set one, else their default — like apps/api's effectiveCommissionPercent.
+ */
+function estimatedShare(a: StylistAppointment, profile: SelfStylist) {
+  if (a.status === "COMPLETED" && a.stylistShareToman != null) return a.stylistShareToman;
+  const ownRate = new Map(profile.services.map((s) => [s.serviceId, s.commissionPercent]));
+  const lines = a.services.length ? a.services : [{ serviceId: "", priceToman: a.priceToman }];
+  return Math.round(lines.reduce((sum, l) => sum + l.priceToman * (ownRate.get(l.serviceId) ?? profile.commissionPercent), 0) / 100);
 }
 
 export default function StylistOverviewPage() {
@@ -59,6 +72,7 @@ export default function StylistOverviewPage() {
   const upcoming = live.filter((a) => new Date(a.startAt) >= now).sort((a, b) => a.startAt.localeCompare(b.startAt));
   const pending = upcoming.filter((a) => a.status === "PENDING");
   const next = upcoming[0];
+  const todayShare = today.filter((a) => a.status !== "NO_SHOW").reduce((sum, a) => sum + estimatedShare(a, profile), 0);
   const nextWall = next ? toSalonWallTime(next.startAt) : null;
 
   return (
@@ -91,6 +105,14 @@ export default function StylistOverviewPage() {
             فعلاً نوبت پیش‌رویی ندارید.
           </p>
         )}
+
+        <Link href="/stylist/earnings" className="relative mt-4 flex items-end justify-between gap-3 border-t border-white/10 pt-3 active:opacity-80">
+          <span>
+            <span className="block text-xs text-white/60">درآمد پیش‌بینی امروز (سهم شما)</span>
+            <span className="block text-[22px] font-black leading-tight">{formatToman(todayShare)}</span>
+          </span>
+          <ChevronLeft className="mb-1 h-4 w-4 shrink-0 text-white/50" aria-hidden />
+        </Link>
       </section>
 
       {profile.workingHours.length === 0 && (
@@ -148,9 +170,21 @@ export default function StylistOverviewPage() {
         appointment={actions.selected}
         onClose={actions.close}
         onSetStatus={actions.setStatus}
+        onEdit={actions.edit}
         busyStatus={actions.busyStatus}
         error={actions.error}
       />
+      {actions.editing && token && (
+        <SalonBookingSheet
+          key={actions.editing.id}
+          token={token}
+          asStylist
+          appointment={actions.editing}
+          open
+          onClose={actions.closeEdit}
+          onCreated={reload}
+        />
+      )}
     </>
   );
 }

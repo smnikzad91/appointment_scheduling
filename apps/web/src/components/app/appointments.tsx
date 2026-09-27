@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, CheckCheck, Phone, UserX, X, type LucideIcon } from "lucide-react";
+import { Check, CheckCheck, Pencil, Phone, UserX, X, type LucideIcon } from "lucide-react";
 import type { StylistAppointment } from "@/lib/api/stylistSelf";
 import { formatMinutesAsClock, formatToman, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, formatSalonDate, toSalonWallTime } from "@/lib/salonTime";
@@ -160,12 +160,15 @@ export function AppointmentSheet({
   showStylist,
   onClose,
   onSetStatus,
+  onEdit,
   busyStatus,
   error,
 }: {
   appointment: AppAppointment | null;
   showStylist?: boolean;
   onClose: () => void;
+  /** Opens the edit form; offered while the appointment is still open. */
+  onEdit?: (a: AppAppointment) => void;
   onSetStatus: (a: AppAppointment, status: AppointmentStatus) => void;
   busyStatus: AppointmentStatus | null;
   error?: string | null;
@@ -207,6 +210,12 @@ export function AppointmentSheet({
             {toPersianDigits(a.customer.phone)}
           </span>
         </a>
+      )}
+
+      {onEdit && actions.length > 0 && (
+        <Button variant="secondary" block icon={Pencil} disabled={busyStatus !== null} onClick={() => onEdit(a)} className="mb-2.5">
+          ویرایش نوبت
+        </Button>
       )}
 
       {error && <p className="mb-3 rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{error}</p>}
@@ -323,12 +332,14 @@ function NowMarker({ minute }: { minute: number }) {
   );
 }
 
-/** Selection + status-change state for AppointmentSheet, shared by the salon and stylist pages. */
+/** Selection, status-change and edit state for AppointmentSheet, shared by the salon and stylist pages. */
 export function useAppointmentActions(
   updateStatus: (id: string, status: AppointmentStatus) => Promise<unknown>,
   onChanged: () => void,
 ) {
   const [selected, setSelected] = useState<AppAppointment | null>(null);
+  // The appointment open in the edit form (SalonBookingSheet), which replaces the detail sheet.
+  const [editing, setEditing] = useState<AppAppointment | null>(null);
   const [busyStatus, setBusyStatus] = useState<AppointmentStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -337,6 +348,11 @@ export function useAppointmentActions(
     setSelected(a);
   }, []);
   const close = useCallback(() => setSelected(null), []);
+  const edit = useCallback((a: AppAppointment) => {
+    setSelected(null);
+    setEditing(a);
+  }, []);
+  const closeEdit = useCallback(() => setEditing(null), []);
 
   const setStatus = useCallback(
     async (a: AppAppointment, status: AppointmentStatus) => {
@@ -355,5 +371,5 @@ export function useAppointmentActions(
     [updateStatus, onChanged],
   );
 
-  return { selected, open, close, setStatus, busyStatus, error };
+  return { selected, open, close, setStatus, busyStatus, error, editing, edit, closeEdit };
 }

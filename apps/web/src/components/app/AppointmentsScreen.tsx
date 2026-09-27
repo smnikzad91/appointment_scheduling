@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarX2 } from "lucide-react";
 import { salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { AppointmentList, AppointmentSheet, useAppointmentActions, type AppAppointment, type AppointmentStatus } from "./appointments";
+import SalonBookingSheet from "./SalonBookingSheet";
 import { ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader } from "./ui";
 
 type Tab = "upcoming" | "pending" | "history" | "cancelled";
@@ -25,8 +26,11 @@ export default function AppointmentsScreen({
   load,
   updateStatus,
   headerAction,
+  edit,
 }: {
   title: string;
+  /** Lets staff edit open appointments (the stylist only their own). */
+  edit?: { token: string; asStylist?: boolean };
   showStylist?: boolean;
   /** e.g. the salon's "new booking" button */
   headerAction?: React.ReactNode;
@@ -105,9 +109,21 @@ export default function AppointmentsScreen({
         showStylist={showStylist}
         onClose={actions.close}
         onSetStatus={actions.setStatus}
+        onEdit={edit ? actions.edit : undefined}
         busyStatus={actions.busyStatus}
         error={actions.error}
       />
+      {edit && actions.editing && (
+        <SalonBookingSheet
+          key={actions.editing.id}
+          token={edit.token}
+          asStylist={edit.asStylist}
+          appointment={actions.editing}
+          open
+          onClose={actions.closeEdit}
+          onCreated={reload}
+        />
+      )}
     </>
   );
 }

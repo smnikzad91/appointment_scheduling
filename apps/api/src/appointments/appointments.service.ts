@@ -9,6 +9,7 @@ import { effectiveServicePricing, sumEffectivePricing } from "../salons/service-
 import { CreateAppointmentDto, CreateSalonAppointmentDto } from "./dto/create-appointment.dto.js";
 import { instantToSalonWallTime, salonWallTimeToInstant } from "../availability/salon-time.util.js";
 import { UpdatableAppointmentStatus } from "./dto/update-status.dto.js";
+import { UpdateAppointmentDto } from "./dto/update-appointment.dto.js";
 import { fitsWorkingHours } from "./working-hours.util.js";
 import { effectiveCommissionPercent, splitCharge } from "../accounting/share.util.js";
 import { NotificationsService, type BookingData } from "../notifications/notifications.service.js";
@@ -37,31 +38,47 @@ export class AppointmentsService {
   async create(customerId: string, dto: CreateAppointmentDto) {
     const salon = await this.prisma.salon.findUnique({ where: { id: dto.salonId }, select: { status: true, timezone: true } });
     if (!salon || salon.status !== "ACTIVE") throw new NotFoundException("Salon not found");
-    return this.book(customerId, dto, salon.timezone, false);
+    return this.book(customerId, dto, salon.timezone, false, customerId);
   }
 
   /**
-   * The salon books a customer (phone or walk-in) with a specific stylist. The customer is found
-   * by phone, or gets an account they can later sign in to with an SMS code. Unlike online
-   * booking it's confirmed straight away, may start earlier today (recording a walk-in after the
-   * fact) and isn't limited to the stylist's working hours — but still can't double-book them.
+   * The salon books a customer (phone or walk-in) with a specific stylist — the owner for any of
+   * their stylists, a stylist only for themselves. The customer is found by phone, or gets an
+   * account they can later sign in to with an SMS code. Unlike online booking it's confirmed
+   * straight away, may start earlier today (recording a walk-in after the fact) and isn't limited
+   * to the stylist's working hours — but still can't double-book them.
    */
-  async createForSalon(ownerUserId: string, dto: CreateSalonAppointmentDto) {
-    const salon = await this.prisma.salon.findFirst({ where: { ownerId: ownerUserId }, select: { id: true, timezone: true } });
-    if (!salon) throw new NotFoundException("You don't own a salon yet");
+  async createForSalon(user: JwtPayload, dto: CreateSalonAppointmentDto) {
+    const booker = await this.salonBooker(user);
     const customerId = await this.findOrCreateCustomer(dto);
-    return this.book(customerId, { ...dto, salonId: salon.id }, salon.timezone, true);
+    const stylistId = booker.stylistId ?? dto.stylistId;
+    return this.book(customerId, { ...dto, stylistId, salonId: booker.salonId }, booker.timezone, true, user.sub);
   }
 
   /** A customer who has booked at this salon before, looked up by phone (to prefill the name). */
-  async lookupSalonCustomer(ownerUserId: string, phone: string) {
-    const salon = await this.prisma.salon.findFirst({ where: { ownerId: ownerUserId }, select: { id: true } });
-    if (!salon) throw new NotFoundException("You don't own a salon yet");
+  async lookupSalonCustomer(user: JwtPayload, phone: string) {
+    const { salonId } = await this.salonBooker(user);
     const customer = await this.prisma.user.findFirst({
-      where: { phone, role: Role.CUSTOMER, appointments: { some: { salonId: salon.id } } },
+      where: { phone, role: Role.CUSTOMER, appointments: { some: { salonId } } },
       select: { firstName: true, lastName: true },
     });
     return { found: !!customer, ...customer };
+  }
+
+  /** The salon the owner or stylist books for; a stylist can only book themselves. */
+  private async salonBooker(user: JwtPayload): Promise<{ salonId: string; timezone: string; stylistId?: string }> {
+    if (user.role === Role.STYLIST) {
+      const stylist = await this.prisma.stylist.findUnique({
+        where: { userId: user.sub },
+        select: { id: true, active: true, salonId: true, salon: { select: { timezone: true } } },
+      });
+      if (!stylist) throw new NotFoundException("No stylist profile for this account");
+      if (!stylist.active) throw new ForbiddenException("Your stylist account is inactive");
+      return { salonId: stylist.salonId, timezone: stylist.salon.timezone, stylistId: stylist.id };
+    }
+    const salon = await this.prisma.salon.findFirst({ where: { ownerId: user.sub }, select: { id: true, timezone: true } });
+    if (!salon) throw new NotFoundException("You don't own a salon yet");
+    return { salonId: salon.id, timezone: salon.timezone };
   }
 
   private async findOrCreateCustomer(dto: CreateSalonAppointmentDto) {
@@ -87,7 +104,7 @@ export class AppointmentsService {
     return user.id;
   }
 
-  private async book(customerId: string, dto: CreateAppointmentDto, timeZone: string, bySalon: boolean) {
+  private async book(customerId: string, dto: CreateAppointmentDto, timeZone: string, bySalon: boolean, actorUserId: string) {
 
     const services = await this.prisma.service.findMany({
       where: { id: { in: dto.serviceIds }, salonId: dto.salonId, active: true },
@@ -162,9 +179,9 @@ export class AppointmentsService {
       });
 
       if (appointment) {
-        // Everyone involved hears about it except whoever made it: online, the owner and the
-        // stylist; by the salon, the stylist and the customer.
-        await this.notifyBooking(appointment.id, NotificationType.NEW_BOOKING, { bySalon }, bySalon ? appointment.salon.ownerId : customerId);
+        // Everyone involved hears about it except whoever made it (the customer online; the owner
+        // or the stylist themselves when booked by the salon).
+        await this.notifyBooking(appointment.id, NotificationType.NEW_BOOKING, { bySalon }, actorUserId);
         return appointment;
       }
     }
@@ -230,11 +247,95 @@ export class AppointmentsService {
     return updated;
   }
 
+  /**
+   * Staff edit an open (pending/confirmed) appointment: its services, start time and note. Like
+   * a salon booking, the time may be earlier today and ignores working hours but can't overlap
+   * the stylist's other bookings or time off. Changed services are re-priced at today's rates
+   * for this stylist; unchanged ones keep the price they were booked at.
+   */
+  async updateDetails(user: JwtPayload, appointmentId: string, dto: UpdateAppointmentDto) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { services: true, salon: { select: { timezone: true } } },
+    });
+    if (!appointment) throw new NotFoundException("Appointment not found");
+    await this.assertStaffAccess(user, appointment);
+    if (!ACTIVE_STATUSES.includes(appointment.status)) throw new BadRequestException("This appointment can no longer be edited");
+
+    const currentIds = appointment.services.map((s) => s.serviceId);
+    const nextIds = dto.serviceIds ? [...new Set(dto.serviceIds)] : currentIds;
+    const servicesChanged = nextIds.length !== currentIds.length || nextIds.some((id) => !currentIds.includes(id));
+
+    let pricing = appointment.services.map((s) => ({ serviceId: s.serviceId, priceToman: s.priceToman, durationMinutes: s.durationMinutes }));
+    if (servicesChanged) {
+      const [services, stylistServices] = await Promise.all([
+        this.prisma.service.findMany({ where: { id: { in: nextIds }, salonId: appointment.salonId, active: true } }),
+        this.prisma.stylistService.findMany({ where: { stylistId: appointment.stylistId, serviceId: { in: nextIds } } }),
+      ]);
+      if (services.length !== nextIds.length) throw new NotFoundException("One or more services were not found for this salon");
+      if (stylistServices.length !== nextIds.length) throw new NotFoundException("This stylist can't perform all the selected services");
+      const fresh = new Map(effectiveServicePricing(services, stylistServices).map((p) => [p.serviceId, p]));
+      // Keep the booked price of services that stay; price only the added ones.
+      const kept = new Map(pricing.map((p) => [p.serviceId, p]));
+      pricing = nextIds.map((id) => kept.get(id) ?? fresh.get(id)!);
+    }
+
+    const timeZone = appointment.salon.timezone;
+    const startAt = dto.startAt ? new Date(dto.startAt) : appointment.startAt;
+    const endAt = new Date(startAt.getTime() + sumEffectivePricing(pricing).durationMinutes * 60_000);
+    const timeChanged = startAt.getTime() !== appointment.startAt.getTime() || endAt.getTime() !== appointment.endAt.getTime();
+    if (startAt.getTime() !== appointment.startAt.getTime()) {
+      const startOfToday = salonWallTimeToInstant(instantToSalonWallTime(new Date(), timeZone).dateKey, 0, timeZone);
+      if (startAt < startOfToday) throw new BadRequestException("This time is in the past");
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (timeChanged) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${appointment.stylistId}))`;
+        const [timeOff, conflict] = await Promise.all([
+          tx.timeOff.findFirst({ where: { stylistId: appointment.stylistId, startAt: { lt: endAt }, endAt: { gt: startAt } } }),
+          tx.appointment.findFirst({
+            where: {
+              id: { not: appointment.id },
+              stylistId: appointment.stylistId,
+              status: { in: ACTIVE_STATUSES },
+              startAt: { lt: endAt },
+              endAt: { gt: startAt },
+            },
+          }),
+        ]);
+        if (timeOff || conflict) throw new BadRequestException("This time slot is no longer available");
+      }
+      if (servicesChanged) {
+        await tx.appointmentService.deleteMany({ where: { appointmentId: appointment.id } });
+        await tx.appointmentService.createMany({ data: pricing.map((p) => ({ appointmentId: appointment.id, ...p })) });
+      }
+      return tx.appointment.update({
+        where: { id: appointment.id },
+        data: {
+          startAt,
+          endAt,
+          priceToman: pricing.reduce((sum, p) => sum + p.priceToman, 0),
+          ...(dto.notes !== undefined && { notes: dto.notes?.trim() || null }),
+        },
+        include: APPOINTMENT_INCLUDE,
+      });
+    });
+
+    if (timeChanged || servicesChanged) {
+      const updatedBy = user.role === Role.STYLIST ? "STYLIST" : "SALON";
+      await this.notifyBooking(appointment.id, NotificationType.BOOKING_UPDATED, { updatedBy, previousStartAt: appointment.startAt.toISOString() }, user.sub);
+      // Moving an upcoming booking frees its old time for whoever is waiting on that day.
+      if (startAt.getTime() !== appointment.startAt.getTime() && appointment.startAt > new Date()) await this.waitlist.notifyOpening(appointment);
+    }
+    return updated;
+  }
+
   /** Tells the salon owner, the appointment's stylist and the customer — never the person who acted. */
   private async notifyBooking(
     appointmentId: string,
     type: NotificationType,
-    extra: Pick<BookingData, "bySalon" | "cancelledBy">,
+    extra: Pick<BookingData, "bySalon" | "cancelledBy" | "updatedBy" | "previousStartAt">,
     exceptUserId: string,
     audience: "everyone" | "customer" = "everyone",
   ) {
@@ -322,6 +423,11 @@ export class AppointmentsService {
       return;
     }
 
+    return this.assertStaffAccess(user, appointment);
+  }
+
+  /** The appointment's own stylist, or the owner of its salon. */
+  private async assertStaffAccess(user: JwtPayload, appointment: { stylistId: string; salonId: string }) {
     if (user.role === Role.STYLIST) {
       const stylist = await this.prisma.stylist.findUnique({ where: { userId: user.sub } });
       if (!stylist || stylist.id !== appointment.stylistId) {

@@ -240,7 +240,8 @@ export interface OwnerAppointment {
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   priceToman: number;
   notes: string | null;
-  services: { service: { name: string } }[];
+  stylistShareToman: number | null;
+  services: { serviceId: string; priceToman: number; service: { name: string } }[];
   stylist: { displayName: string };
   customer: { firstName: string; lastName: string; phone: string | null };
 }
@@ -271,6 +272,11 @@ export interface SalonBookingInput {
 
 export function createSalonBooking(token: string, data: SalonBookingInput) {
   return salonApiFetch<OwnerAppointment>("/appointments/salon", { method: "POST", headers: authHeaders(token), body: JSON.stringify(data) });
+}
+
+/** Staff (owner, or the appointment's stylist) change an open appointment; omitted fields stay. */
+export function updateAppointmentDetails(token: string, id: string, data: { serviceIds?: string[]; startAt?: string; notes?: string | null }) {
+  return salonApiFetch<OwnerAppointment>(`/appointments/${id}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify(data) });
 }
 
 /** A customer who has booked here before (to prefill the name); `found: false` otherwise. */

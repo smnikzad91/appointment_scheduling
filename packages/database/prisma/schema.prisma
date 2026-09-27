@@ -70,6 +70,7 @@ enum NotificationType {
   BOOKING_CONFIRMED
   REVIEW_APPROVED
   SLOT_OPENED
+  BOOKING_UPDATED
 }
 
 enum PayoutMethod {
