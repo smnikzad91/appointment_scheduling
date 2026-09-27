@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { LogOut, Moon, Sun, type LucideIcon } from "lucide-react";
-import { vazirmatn } from "@/fonts/vazirmatn";
 import { useTheme } from "@/context/ThemeContext";
 import { SITE_NAME } from "@/lib/site";
 import Sheet from "./Sheet";
@@ -59,7 +58,7 @@ export default function AppShell({
   const userName = session?.user?.name ?? "";
 
   return (
-    <div dir="rtl" className={`app-root ${vazirmatn.variable} min-h-dvh`}>
+    <div dir="rtl" className="app-root min-h-dvh">
       {/* App bar */}
       <header
         className={cx(

@@ -36,6 +36,10 @@ Several Prisma enums (`SocialPlatform`, `ContactStatus`, `TicketStatus`, `Ticket
 
 Appointment and time-off times from apps/api are real UTC instants; slots, working hours and the booking date strip are **salon-local wall-clock** time (`Salon.timezone`, `Asia/Tehran` today). Convert only through `src/lib/salonTime.ts` (`salonWallTimeToInstant`, `toSalonWallTime`, `formatSalonDate[Time]`) — never format an API instant with `toLocaleString`/`getHours()` in the browser's or server's own timezone. apps/api mirrors this in `src/availability/salon-time.util.ts`.
 
+## Font
+
+Vazirmatn is the only UI font, for Persian and Latin text alike. It's self-hosted: one `@font-face` (`font-family: Vazirmatn`) in `globals.css` pointing at `public/fonts/Vazirmatn-Variable.woff2`, preloaded in the root layout. Don't add Google Fonts or `next/font` copies — Google can be slow or blocked in Iran, and a second copy downloads the same font again under another name. `font-outfit` / `font-vazirmatn` utilities both resolve to Vazirmatn; `font-mono` is the system monospace stack, for code-like strings only. The TTFs in `src/fonts/vazirmatn/` exist only for the OG-image renderer (Satori can't read woff2).
+
 ## Site identity
 
 Product name, title, description and public origin live in `src/lib/site.ts`. The origin comes from `NEXT_PUBLIC_SITE_URL` (falls back to `http://localhost:3000`) — use `SITE_URL` for canonical URLs, structured data and sitemap entries instead of hardcoding a domain.

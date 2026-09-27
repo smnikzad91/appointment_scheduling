@@ -1,12 +1,24 @@
 @import 'tailwindcss';
 
+/* The only UI font: self-hosted Vazirmatn (variable, 100–900; includes Latin glyphs), served
+   from /fonts so nothing depends on Google Fonts, which can be slow or blocked in Iran.
+   Preloaded in app/layout.tsx. */
+@font-face {
+  font-family: Vazirmatn;
+  src: url("/fonts/Vazirmatn-Variable.woff2") format("woff2-variations"), url("/fonts/Vazirmatn-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {
   --font-*: initial;
-  --font-outfit: Outfit, sans-serif;
-  --font-vazirmatn: Vazirmatn, sans-serif;
-  --font-mono-signal: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  /* font-outfit is the template's body utility; it now resolves to Vazirmatn too. */
+  --font-outfit: Vazirmatn, Tahoma, sans-serif;
+  --font-vazirmatn: Vazirmatn, Tahoma, sans-serif;
+  --font-mono-signal: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
 
   --breakpoint-*: initial;
   --breakpoint-2xsm: 375px;
@@ -199,9 +211,9 @@
 }
 
 /* Sonner toast font — outside @layer base so it wins the cascade */
-html[lang="fa"] [data-sonner-toaster],
-html[lang="fa"] [data-sonner-toast],
-html[lang="fa"] [data-sonner-toast] * {
+[data-sonner-toaster],
+[data-sonner-toast],
+[data-sonner-toast] * {
   font-family: var(--font-vazirmatn) !important;
 }
 
@@ -873,7 +885,7 @@ span.flatpickr-weekday,
   --app-danger: #b3434c;
   --app-shadow: 0 1px 0 rgb(42 29 38 / 0.04), 0 8px 24px -12px rgb(42 29 38 / 0.18);
 
-  font-family: var(--font-vazirmatn-salon), Vazirmatn, Tahoma, sans-serif;
+  font-family: Vazirmatn, Tahoma, sans-serif;
   background: var(--app-bg);
   color: var(--app-ink);
   -webkit-tap-highlight-color: transparent;

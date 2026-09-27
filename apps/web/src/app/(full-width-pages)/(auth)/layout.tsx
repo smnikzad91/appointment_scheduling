@@ -2,12 +2,11 @@ import ThemeTogglerTwo from "@/components/common/ThemeTogglerTwo";
 import { ThemeProvider } from "@/context/ThemeContext";
 import AuthBrandPanel from "@/components/auth/AuthBrandPanel";
 import React from "react";
-import { vazirmatn } from "@/fonts/vazirmatn";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     // app-root: same paper/terracotta theme as the panels — sign-in is the installed app's first screen.
-    <div dir="rtl" className={`app-root ${vazirmatn.variable} bg-white dark:bg-gray-900`}>
+    <div dir="rtl" className="app-root bg-white dark:bg-gray-900">
       <ThemeProvider>
         <div className="app-pt-safe app-pb-safe flex lg:flex-row-reverse h-dvh overflow-hidden">
 

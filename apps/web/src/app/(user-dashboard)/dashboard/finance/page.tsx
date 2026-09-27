@@ -8,6 +8,7 @@ import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Modal } from "@/components/ui/modal";
+import { toPersianDigits } from "@/lib/persian";
 
 type Card = {
   id: string;
@@ -65,8 +66,8 @@ function StatusCell({ value, context }: { value: string; context: { isRTL: boole
   );
 }
 
-function AmountCell({ value }: { value: number }) {
-  return <span dir="ltr" className="font-medium">{value.toLocaleString()}</span>;
+function AmountCell({ value, context }: { value: number; context: { isRTL: boolean } }) {
+  return <span dir="ltr" className="font-medium">{value.toLocaleString(context.isRTL ? "fa-IR" : "en-US")}</span>;
 }
 
 function CardCell({ value }: { value: Deposit["card"] }) {
@@ -400,7 +401,7 @@ export default function FinancePage() {
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">{t("noCards")}</p>
             <button onClick={openCardModal} className="text-sm font-medium text-brand-500 hover:underline">
-              {t("addCard")} →
+              {t("addCard")} {isRTL ? "←" : "→"}
             </button>
           </div>
         ) : (
@@ -479,7 +480,7 @@ export default function FinancePage() {
               <span className={`ms-1.5 rounded-full px-1.5 py-0.5 text-xs ${
                 depositFilter === tab.key ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
               }`}>
-                {depositCounts[tab.key]}
+                {isRTL ? toPersianDigits(depositCounts[tab.key]) : depositCounts[tab.key]}
               </span>
             </button>
           ))}
@@ -497,7 +498,7 @@ export default function FinancePage() {
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">{t("noDeposits")}</p>
               <button onClick={openDepositModal} className="mt-1 text-sm font-medium text-brand-500 hover:underline">
-                {t("newDeposit")} →
+                {t("newDeposit")} {isRTL ? "←" : "→"}
               </button>
             </div>
           ) : (

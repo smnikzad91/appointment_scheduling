@@ -11,6 +11,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Modal } from "@/components/ui/modal";
 import { EyeIcon, PaperPlaneIcon } from "@/icons";
+import { toPersianDigits } from "@/lib/persian";
 
 type Ticket = {
   id: string;
@@ -283,7 +284,7 @@ export default function SupportPage() {
             </div>
             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t("noTickets")}</p>
             <button onClick={openModal} className="mt-1 text-sm font-medium text-brand-500 hover:underline">
-              {t("newTicket")} →
+              {t("newTicket")} {isRTL ? "←" : "→"}
             </button>
           </div>
         ) : (
@@ -351,7 +352,7 @@ export default function SupportPage() {
                   className={`w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-sm text-gray-800 outline-none transition-colors focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500 dark:focus:border-brand-500 dark:focus:bg-gray-800 ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"}`}
                 />
               </div>
-              <p className={`mt-1 text-xs text-gray-400 ${isRTL ? "text-left" : "text-right"}`}>{subject.length}/200</p>
+              <p className={`mt-1 text-xs text-gray-400 ${isRTL ? "text-left" : "text-right"}`}>{isRTL ? toPersianDigits(`${subject.length}/۲۰۰`) : `${subject.length}/200`}</p>
             </div>
 
             <div>
@@ -363,7 +364,7 @@ export default function SupportPage() {
                 rows={7}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 outline-none transition-colors focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500 dark:focus:border-brand-500 dark:focus:bg-gray-800 resize-none"
               />
-              <p className={`mt-1 text-xs text-gray-400 ${isRTL ? "text-left" : "text-right"}`}>{message.length}/3000</p>
+              <p className={`mt-1 text-xs text-gray-400 ${isRTL ? "text-left" : "text-right"}`}>{isRTL ? toPersianDigits(`${message.length}/۳۰۰۰`) : `${message.length}/3000`}</p>
             </div>
 
             {/* Image attachments */}
@@ -380,7 +381,7 @@ export default function SupportPage() {
                 ) : (
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                 )}
-                {isRTL ? `پیوست تصویر (${images.length}/5)` : `Attach images (${images.length}/5)`}
+                {isRTL ? `پیوست تصویر (${toPersianDigits(images.length)}/۵)` : `Attach images (${images.length}/5)`}
               </button>
               {images.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">

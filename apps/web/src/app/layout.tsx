@@ -67,12 +67,7 @@ export default function RootLayout({
         <Script id="theme-lang-init" strategy="beforeInteractive" src="/theme-init.js" />
         <link rel="icon" href="/images/favicon.ico" sizes="any" />
         <link rel="icon" type="image/svg+xml" href="/images/logo/logo-icon.svg" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Vazirmatn:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
+        <link rel="preload" href="/fonts/Vazirmatn-Variable.woff2" as="font" type="font/woff2" crossOrigin="" />
       </head>
       <body className="dark:bg-gray-900">
         <AgGridSetup />

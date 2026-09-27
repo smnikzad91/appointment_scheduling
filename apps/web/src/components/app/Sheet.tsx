@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { vazirmatn } from "@/fonts/vazirmatn";
 
 /**
  * Bottom sheet — the app's replacement for modals and inline edit forms. Slides up from the
@@ -56,7 +55,7 @@ export default function Sheet({
 
   return createPortal(
     // Inline background: .app-root's own (unlayered) paper background would otherwise win over a utility.
-    <div className={`app-root ${vazirmatn.variable} fixed inset-0 z-[100000] flex items-end justify-center`} style={{ background: "transparent" }} dir="rtl">
+    <div className={`app-root fixed inset-0 z-[100000] flex items-end justify-center`} style={{ background: "transparent" }} dir="rtl">
       <div className="app-fade-in absolute inset-0 bg-[#1a1016]/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div
         role="dialog"
