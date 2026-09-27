@@ -2,11 +2,12 @@ import { MapPin, Phone } from "lucide-react";
 import type { Salon } from "@/types/salon";
 import { toPersianDigits, formatMinutesAsClock } from "@/lib/persian";
 import { PERSIAN_WEEKDAY_NAMES, WEEK_ORDER_SATURDAY_FIRST } from "@/lib/jalali";
+import { toSalonWallTime } from "@/lib/salonTime";
 import DirectionsButton from "./DirectionsButton";
 import SalonMapLoader from "./SalonMapLoader";
 
 export default function InfoSection({ salon }: { salon: Salon }) {
-  const today = new Date().getDay();
+  const today = toSalonWallTime(new Date(), salon.timezone).dayOfWeek;
 
   return (
     <section id="info" className="mx-auto max-w-3xl px-4 py-8">

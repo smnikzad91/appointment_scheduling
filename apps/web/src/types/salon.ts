@@ -68,6 +68,7 @@ export interface Salon {
   logoUrl?: string | null;
   coverImageUrl?: string | null;
   brandColor: string; // hex, e.g. "#e0447b"
+  timezone: string; // IANA, e.g. "Asia/Tehran" — slots and working hours are wall-clock time here
   city: string;
   address: string;
   location: GeoLocation | null; // null until the owner sets coordinates

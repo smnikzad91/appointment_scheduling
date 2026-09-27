@@ -5,10 +5,7 @@ import { CalendarClock, Clock, ListChecks } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMyStylistProfile, listMyAppointments, type SelfStylist, type StylistAppointment } from "@/lib/api/stylistSelf";
 import { formatToman, toPersianDigits } from "@/lib/persian";
-
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
+import { formatSalonDateTime, toSalonWallTime } from "@/lib/salonTime";
 
 export default function StylistOverviewPage() {
   const token = useApiAccessToken();
@@ -33,7 +30,8 @@ export default function StylistOverviewPage() {
   const upcoming = appointments
     .filter((a) => new Date(a.startAt) >= now && a.status !== "CANCELLED")
     .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
-  const todayCount = upcoming.filter((a) => isSameDay(new Date(a.startAt), now)).length;
+  const todayKey = toSalonWallTime(now).dateKey;
+  const todayCount = upcoming.filter((a) => toSalonWallTime(a.startAt).dateKey === todayKey).length;
   const pendingCount = appointments.filter((a) => a.status === "PENDING").length;
 
   return (
@@ -67,7 +65,7 @@ export default function StylistOverviewPage() {
                 </div>
                 <div className="text-end">
                   <p className="text-gray-700 dark:text-gray-300">
-                    {new Date(a.startAt).toLocaleString("fa-IR", { dateStyle: "short", timeStyle: "short" })}
+                    {formatSalonDateTime(a.startAt)}
                   </p>
                   <p className="text-xs text-gray-500">{formatToman(a.priceToman)}</p>
                 </div>

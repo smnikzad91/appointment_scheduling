@@ -51,7 +51,7 @@ export default function Hero({ salon }: { salon: Salon }) {
                 ({toPersianDigits(salon.ratingCount)} نظر)
               </span>
             </span>
-            <OpenStatusBadge workingHours={salon.workingHours} />
+            <OpenStatusBadge workingHours={salon.workingHours} timeZone={salon.timezone} />
           </div>
 
           <div className="flex gap-2">

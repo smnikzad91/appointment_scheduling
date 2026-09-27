@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 import { useBooking } from "./BookingProvider";
 import { getAvailableSlots } from "@/lib/api/slots";
-import { getUpcomingDays } from "@/lib/jalali";
+import { dateKeyToDate, getUpcomingDays } from "@/lib/jalali";
+import { toSalonWallTime } from "@/lib/salonTime";
 import type { Salon, TimeSlot } from "@/types/salon";
 import DateStrip from "./DateStrip";
 import TimeSlotGrid from "./TimeSlotGrid";
 
 export default function StepDateTime() {
   const { salon, state, updateState, goNext } = useBooking();
-  const dateKey = state.dateKey ?? getUpcomingDays(1)[0].dateKey;
+  // "Today" is the salon's today, not the browser's — the API computes slots in salon time.
+  const days = getUpcomingDays(14, dateKeyToDate(toSalonWallTime(new Date(), salon.timezone).dateKey));
+  const dateKey = state.dateKey ?? days[0].dateKey;
 
   function selectDate(nextDateKey: string) {
     updateState({ dateKey: nextDateKey, startMinute: null });
@@ -22,7 +25,7 @@ export default function StepDateTime() {
 
   return (
     <div className="flex flex-col gap-4">
-      <DateStrip selectedDateKey={dateKey} onSelect={selectDate} />
+      <DateStrip days={days} selectedDateKey={dateKey} onSelect={selectDate} />
 
       <SlotsPanel
         // Remounts (and so resets its own loading state) whenever the query changes.

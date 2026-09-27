@@ -1,5 +1,6 @@
 import type { Booking, Salon } from "@/types/salon";
 import { salonApiFetch } from "./salonApiClient";
+import { salonWallTimeToInstant } from "@/lib/salonTime";
 
 export async function requestOtp(phone: string): Promise<{ success: true; devCode?: string }> {
   return salonApiFetch("/auth/otp/request", { method: "POST", body: JSON.stringify({ phone }) });
@@ -44,8 +45,7 @@ interface RawAppointment {
 export async function createBooking(input: CreateBookingInput): Promise<Booking> {
   const { salon, serviceIds, stylistId, dateKey, startMinute, accessToken } = input;
 
-  const startAt = new Date(`${dateKey}T00:00:00.000Z`);
-  startAt.setUTCMinutes(startMinute);
+  const startAt = salonWallTimeToInstant(dateKey, startMinute, salon.timezone);
 
   const appointment = await salonApiFetch<RawAppointment>("/appointments", {
     method: "POST",

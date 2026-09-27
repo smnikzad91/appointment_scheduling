@@ -6,7 +6,7 @@ import { requestOtp, verifyOtp } from "@/lib/api/bookings";
 import { getMyBookings, cancelBooking, leaveReview, type CustomerBooking } from "@/lib/api/customerBookings";
 import { loadCustomerSession, saveCustomerSession, clearCustomerSession, type CustomerSession } from "@/lib/customerSession";
 import { normalizeDigits, isValidIranianMobile, toPersianDigits, formatToman, splitFullName } from "@/lib/persian";
-import { formatJalaliFull } from "@/lib/jalali";
+import { formatSalonDateTime } from "@/lib/salonTime";
 import { SalonApiError } from "@/lib/api/salonApiClient";
 
 const STATUS_LABEL: Record<CustomerBooking["status"], string> = {
@@ -241,7 +241,7 @@ function BookingCard({
 
       <div className="mt-3 flex items-center justify-between text-sm">
         <span className="text-gray-600 dark:text-gray-400">
-          {formatJalaliFull(new Date(booking.startAt))} — {formatToman(booking.priceToman)}
+          {formatSalonDateTime(booking.startAt)} — {formatToman(booking.priceToman)}
         </span>
         {canCancel && (
           <button type="button" onClick={onCancel} className="text-xs font-medium text-rose-600 hover:underline">

@@ -14,6 +14,7 @@ import {
 } from "@/lib/api/stylistSelf";
 import { PERSIAN_WEEKDAY_NAMES, WEEK_ORDER_SATURDAY_FIRST } from "@/lib/jalali";
 import { SalonApiError } from "@/lib/api/salonApiClient";
+import { addDaysToDateKey, formatSalonDate, salonWallTimeToInstant } from "@/lib/salonTime";
 
 interface DayRow {
   open: boolean;
@@ -81,9 +82,10 @@ export default function StylistSchedulePage() {
   async function handleAddTimeOff(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !newTimeOff.startAt || !newTimeOff.endAt) return;
+    // Whole salon-local days: from midnight of the first day to midnight after the last day.
     await createMyTimeOff(token, {
-      startAt: new Date(newTimeOff.startAt).toISOString(),
-      endAt: new Date(newTimeOff.endAt).toISOString(),
+      startAt: salonWallTimeToInstant(newTimeOff.startAt, 0).toISOString(),
+      endAt: salonWallTimeToInstant(addDaysToDateKey(newTimeOff.endAt, 1), 0).toISOString(),
       reason: newTimeOff.reason || undefined,
     });
     setNewTimeOff({ startAt: "", endAt: "", reason: "" });
@@ -161,7 +163,7 @@ export default function StylistSchedulePage() {
           {timeOff.map((t) => (
             <li key={t.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-800">
               <span>
-                {new Date(t.startAt).toLocaleDateString("fa-IR")} تا {new Date(t.endAt).toLocaleDateString("fa-IR")}
+                {formatSalonDate(t.startAt)} تا {formatSalonDate(new Date(new Date(t.endAt).getTime() - 1))}
                 {t.reason && <span className="text-gray-400"> — {t.reason}</span>}
               </span>
               <button type="button" onClick={() => handleDeleteTimeOff(t.id)} aria-label="حذف مرخصی">

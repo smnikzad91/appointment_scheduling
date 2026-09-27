@@ -1,7 +1,7 @@
 import { Star } from "lucide-react";
 import type { Review } from "@/types/salon";
 import { toPersianDigits } from "@/lib/persian";
-import { formatJalaliFull } from "@/lib/jalali";
+import { formatSalonDate } from "@/lib/salonTime";
 
 export default function ReviewCard({ review }: { review: Review }) {
   return (
@@ -16,7 +16,7 @@ export default function ReviewCard({ review }: { review: Review }) {
       </div>
       <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">{review.comment}</p>
       <span className="mt-2 block text-xs text-gray-400 dark:text-gray-500">
-        {toPersianDigits(formatJalaliFull(new Date(review.createdAt)))}
+        {toPersianDigits(formatSalonDate(review.createdAt))}
       </span>
     </div>
   );

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { listMyAppointments, updateMyAppointmentStatus, type StylistAppointment } from "@/lib/api/stylistSelf";
 import { formatToman } from "@/lib/persian";
+import { formatSalonDateTime } from "@/lib/salonTime";
 
 const STATUS_LABEL: Record<StylistAppointment["status"], string> = {
   PENDING: "در انتظار",
@@ -99,7 +100,7 @@ export default function StylistAppointmentsPage() {
                   )}
                 </td>
                 <td className="px-4 py-2.5">{a.services.map((s) => s.service.name).join("، ")}</td>
-                <td className="px-4 py-2.5">{new Date(a.startAt).toLocaleString("fa-IR", { dateStyle: "short", timeStyle: "short" })}</td>
+                <td className="px-4 py-2.5">{formatSalonDateTime(a.startAt)}</td>
                 <td className="px-4 py-2.5">{formatToman(a.priceToman)}</td>
                 <td className="px-4 py-2.5">
                   <span className={`rounded-full px-2.5 py-0.5 text-xs ${STATUS_COLOR[a.status]}`}>{STATUS_LABEL[a.status]}</span>

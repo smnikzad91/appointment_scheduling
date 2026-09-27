@@ -44,6 +44,7 @@ interface RawSalon {
   logoUrl: string | null;
   coverImageUrl: string | null;
   brandColor: string;
+  timezone: string;
   latitude: number | null;
   longitude: number | null;
   serviceCategories: { id: string; name: string; order: number }[];
@@ -150,6 +151,7 @@ export async function getSalonBySlug(slug: string): Promise<Salon | null> {
     logoUrl: raw.logoUrl,
     coverImageUrl: raw.coverImageUrl,
     brandColor: raw.brandColor,
+    timezone: raw.timezone,
     city: raw.city,
     address: raw.address,
     location: raw.latitude !== null && raw.longitude !== null ? { lat: raw.latitude, lng: raw.longitude } : null,
