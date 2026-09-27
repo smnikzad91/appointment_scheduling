@@ -3,7 +3,7 @@
 import { formatToman, normalizeDigits, toPersianDigits } from "@/lib/persian";
 import { TextInput, cx } from "./ui";
 
-const QUICK = [30, 40, 50, 60];
+const QUICK = [20, 30, 40, 50];
 const EXAMPLE_TOMAN = 1_000_000;
 
 /** Parses the typed percent; null when empty or outside 0–100. */

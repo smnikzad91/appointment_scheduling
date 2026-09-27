@@ -36,7 +36,9 @@ import {
 } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
 
-const EMPTY_INVITE = { phone: "", firstName: "", lastName: "", displayName: "", commission: "" };
+/** New stylists start at a 20% share; the owner can change it in the form or later. */
+const DEFAULT_COMMISSION = "20";
+const EMPTY_INVITE = { phone: "", firstName: "", lastName: "", displayName: "", commission: DEFAULT_COMMISSION };
 
 export default function SalonStylistsPage() {
   const token = useApiAccessToken();
@@ -501,7 +503,7 @@ export default function SalonStylistsPage() {
             <Field label="نام نمایشی برای مشتری‌ها" hint="اختیاری — اگر خالی بماند، نام کوچک نمایش داده می‌شود.">
               <TextInput value={invite.displayName} onChange={(e) => setInvite((f) => ({ ...f, displayName: e.target.value }))} placeholder="مثلاً نگار" />
             </Field>
-            <Field label="سهم آرایشگر از درآمد">
+            <Field label="سهم آرایشگر از درآمد" hint="پیش‌فرض ۲۰٪ است؛ بعداً هم از صفحه آرایشگر قابل تغییر است.">
               <CommissionInput value={invite.commission} onChange={(commission) => setInvite((f) => ({ ...f, commission }))} />
             </Field>
             <Field label="شماره موبایل">

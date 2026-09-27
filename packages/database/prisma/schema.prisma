@@ -402,7 +402,7 @@ model Stylist {
   coverImageUrl     String?
   // The stylist's share of the money received for their appointments, in percent (0–100). Set by
   // the owner when adding the stylist; changing it only affects appointments completed afterwards.
-  commissionPercent Int      @default(0)
+  commissionPercent Int      @default(20)
   active            Boolean  @default(true)
   createdAt         DateTime @default(now())
 

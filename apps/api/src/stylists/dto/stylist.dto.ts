@@ -23,11 +23,12 @@ export class InviteStylistDto {
   @IsArray()
   serviceIds?: string[];
 
-  /** The stylist's share of the money received for their appointments, 0–100 %. */
+  /** The stylist's share of the money received for their appointments, 0–100 %. Defaults to 20. */
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(100)
-  commissionPercent!: number;
+  commissionPercent?: number;
 }
 
 export class UpdateStylistDto {

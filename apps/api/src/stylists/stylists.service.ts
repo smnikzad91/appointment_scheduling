@@ -15,6 +15,9 @@ import {
   CreateTimeOffDto,
 } from "./dto/stylist.dto.js";
 
+/** A new stylist's share of their appointments' income unless the owner picks another. */
+const DEFAULT_COMMISSION_PERCENT = 20;
+
 function randomTempPassword(): string {
   return Math.random().toString(36).slice(2, 10) + "A1";
 }
@@ -73,7 +76,7 @@ export class StylistsService {
         salonId: salon.id,
         displayName: dto.displayName,
         bio: dto.bio,
-        commissionPercent: dto.commissionPercent,
+        commissionPercent: dto.commissionPercent ?? DEFAULT_COMMISSION_PERCENT,
       },
     });
 
