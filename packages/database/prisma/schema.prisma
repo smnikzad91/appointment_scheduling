@@ -1,0 +1,480 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PLATFORM_ADMIN
+  SALON_OWNER
+  STYLIST
+  CUSTOMER
+}
+
+enum SalonStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum TicketStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
+enum TicketReplySender {
+  USER
+  ADMIN
+}
+
+enum ContactStatus {
+  NEW
+  READ
+  REPLIED
+}
+
+enum DepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LegalPageType {
+  PRIVACY
+  TERMS
+}
+
+enum SocialPlatform {
+  TELEGRAM
+  INSTAGRAM
+  TWITTER
+  YOUTUBE
+  LINKEDIN
+  WHATSAPP
+  DISCORD
+  GITHUB
+  FACEBOOK
+  TIKTOK
+}
+
+model User {
+  id            String   @id @default(cuid())
+  phone         String?  @unique
+  email         String?  @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  avatarUrl     String?
+  role          Role
+  walletBalance Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ownedSalons  Salon[]        @relation("SalonOwner")
+  stylist      Stylist?
+  appointments Appointment[]  @relation("CustomerAppointments")
+  tickets      Ticket[]
+  cards        Card[]
+  deposits     Deposit[]
+
+  @@map("users")
+}
+
+model BlogCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("blog_categories")
+}
+
+model BlogPost {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  category   String
+  title      String
+  excerpt    String
+  coverImage String?
+  readTime   String
+  hashtags   String[]
+  // array of { heading?: string, body: string, image?: string }
+  sections   Json
+  highlight  Boolean  @default(false)
+  published  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([published])
+  @@map("blog_posts")
+}
+
+model NewsTag {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("news_tags")
+}
+
+model NewsItem {
+  id          String   @id @default(cuid())
+  category    String
+  hashtags    String[]
+  title       String
+  body        String
+  image       String?
+  coverImage  String?
+  highlight   Boolean  @default(false)
+  published   Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([published])
+  @@map("news_items")
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  text      String
+  link      String   @default("")
+  linkText  String   @default("")
+  emoji     String   @default("🎉")
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("announcements")
+}
+
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faqs")
+}
+
+model LegalPage {
+  id        String        @id @default(cuid())
+  type      LegalPageType @unique
+  title     String
+  content   String        @default("")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("legal_pages")
+}
+
+model SocialLink {
+  id        String         @id @default(cuid())
+  platform  SocialPlatform
+  url       String
+  label     String         @default("")
+  active    Boolean        @default(true)
+  order     Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@map("social_links")
+}
+
+model SiteSeo {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  keywords    String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("site_seo")
+}
+
+model ContactMessage {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  status    ContactStatus @default(NEW)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("contact_messages")
+}
+
+model Ticket {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  subject   String
+  message   String
+  images    String[]
+  status    TicketStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  replies TicketReply[]
+
+  @@index([userId])
+  @@map("tickets")
+}
+
+model TicketReply {
+  id        String            @id @default(cuid())
+  ticketId  String
+  ticket    Ticket            @relation(fields: [ticketId], references: [id])
+  sender    TicketReplySender
+  message   String
+  images    String[]
+  createdAt DateTime          @default(now())
+
+  @@index([ticketId])
+  @@map("ticket_replies")
+}
+
+model Card {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  cardNumber String   @unique
+  ownerName  String
+  bankName   String
+  createdAt  DateTime @default(now())
+
+  deposits Deposit[]
+
+  @@index([userId])
+  @@map("cards")
+}
+
+model AdminCard {
+  id         String   @id @default(cuid())
+  cardNumber String   @unique
+  ownerName  String
+  bankName   String
+  createdAt  DateTime @default(now())
+
+  @@map("admin_cards")
+}
+
+model Deposit {
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  cardId           String
+  card             Card          @relation(fields: [cardId], references: [id])
+  amount           Int
+  description      String        @default("")
+  receiptImage     String        @default("")
+  status           DepositStatus @default(PENDING)
+  adminNote        String        @default("")
+  interceptionCode String        @unique
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([userId])
+  @@map("deposits")
+}
+
+model Salon {
+  id              String      @id @default(cuid())
+  ownerId         String
+  owner           User        @relation("SalonOwner", fields: [ownerId], references: [id])
+  name            String
+  slug            String      @unique
+  description     String?
+  city            String
+  address         String
+  phone           String
+  instagram       String?
+  timezone        String      @default("Asia/Tehran")
+  logoUrl         String?
+  coverImageUrl   String?
+  brandColor      String      @default("#a34a30")
+  latitude        Float?
+  longitude       Float?
+  status          SalonStatus @default(PENDING)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  stylists          Stylist[]
+  services          Service[]
+  serviceCategories ServiceCategory[]
+  appointments      Appointment[]
+
+  @@map("salons")
+}
+
+model ServiceCategory {
+  id        String   @id @default(cuid())
+  salonId   String
+  salon     Salon    @relation(fields: [salonId], references: [id])
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  services Service[]
+
+  @@index([salonId])
+  @@map("service_categories")
+}
+
+model Stylist {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  salonId     String
+  salon       Salon    @relation(fields: [salonId], references: [id])
+  displayName String
+  bio         String?
+  avatarUrl   String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  services     StylistService[]
+  workingHours WorkingHour[]
+  timeOff      TimeOff[]
+  appointments Appointment[]
+
+  @@index([salonId])
+  @@map("stylists")
+}
+
+model Service {
+  id                String           @id @default(cuid())
+  salonId           String
+  salon             Salon            @relation(fields: [salonId], references: [id])
+  categoryId        String?
+  category          ServiceCategory? @relation(fields: [categoryId], references: [id])
+  name              String
+  description       String?
+  durationMinutes   Int
+  priceToman        Int
+  active            Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+
+  stylists     StylistService[]
+  appointments AppointmentService[]
+
+  @@index([salonId])
+  @@map("services")
+}
+
+model StylistService {
+  stylistId               String
+  stylist                 Stylist  @relation(fields: [stylistId], references: [id])
+  serviceId               String
+  service                 Service  @relation(fields: [serviceId], references: [id])
+  overridePriceToman      Int?
+  overrideDurationMinutes Int?
+
+  @@id([stylistId, serviceId])
+  @@map("stylist_services")
+}
+
+model WorkingHour {
+  id          String  @id @default(cuid())
+  stylistId   String
+  stylist     Stylist @relation(fields: [stylistId], references: [id])
+  dayOfWeek   Int // 0 = Sunday .. 6 = Saturday
+  startMinute Int // minutes from midnight, e.g. 9:00 = 540
+  endMinute   Int
+
+  @@index([stylistId])
+  @@map("working_hours")
+}
+
+model TimeOff {
+  id        String   @id @default(cuid())
+  stylistId String
+  stylist   Stylist  @relation(fields: [stylistId], references: [id])
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+
+  @@index([stylistId])
+  @@map("time_off")
+}
+
+model Appointment {
+  id         String            @id @default(cuid())
+  salonId    String
+  salon      Salon             @relation(fields: [salonId], references: [id])
+  stylistId  String
+  stylist    Stylist           @relation(fields: [stylistId], references: [id])
+  customerId String
+  customer   User              @relation("CustomerAppointments", fields: [customerId], references: [id])
+  startAt    DateTime
+  endAt      DateTime
+  status     AppointmentStatus @default(PENDING)
+  priceToman Int
+  notes      String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  services AppointmentService[]
+  review   Review?
+
+  @@index([salonId, startAt])
+  @@index([stylistId, startAt])
+  @@map("appointments")
+}
+
+model AppointmentService {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  serviceId     String
+  service       Service     @relation(fields: [serviceId], references: [id])
+  // Snapshotted at booking time so a later price change doesn't alter past appointments.
+  priceToman      Int
+  durationMinutes Int
+
+  @@index([appointmentId])
+  @@map("appointment_services")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@map("otp_codes")
+}
+
+model Review {
+  id            String      @id @default(cuid())
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  rating        Int
+  comment       String?
+  createdAt     DateTime    @default(now())
+
+  @@map("reviews")
+}
