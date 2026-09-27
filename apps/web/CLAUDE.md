@@ -21,27 +21,40 @@ Originally a Persian-language SaaS dashboard template (auth, wallet/finance, CMS
 
 - **Next.js 16** App Router + **React 19** + **TypeScript**
 - **PostgreSQL** via **Prisma** — schema lives in `packages/database/prisma/schema.prisma` (shared with `apps/api`); `src/lib/prisma.ts` exports the singleton client. MongoDB/Mongoose has been fully removed.
-- **NextAuth.js** — credentials provider that calls `apps/api`'s `/auth/login` (via `src/lib/apiAuth.ts`) rather than checking a local DB directly; `apps/api` is the source of truth for authentication and issues the JWT. `src/auth.ts` + `src/auth.config.ts`; session carries `id`, `role`, `avatar`, `createdAt`, `apiAccessToken`. Every other CMS/finance/support/user route (blog, news, announcements, faq, legal, seo, contact, tickets, finance/wallet, admin users, profile/avatar/password) queries Postgres **directly via Prisma** from within apps/web — no HTTP hop through apps/api for these, since they aren't needed by the Android apps.
+- **NextAuth.js** — credentials provider that calls `apps/api`'s `/auth/login` (via `src/lib/apiAuth.ts`) rather than checking a local DB directly; `apps/api` is the source of truth for authentication and issues the JWT. The credential is an `identifier` (email **or** mobile number — stylists invited by an owner only have a phone). `src/auth.ts` + `src/auth.config.ts`; session carries `id`, `role`, `avatar`, `createdAt`, `apiAccessToken`. `session.user.role` is the API's uppercase role (`PLATFORM_ADMIN` / `SALON_OWNER` / `STYLIST` / `CUSTOMER`) — check against those, not `"admin"`/`"user"`. Every other CMS/finance/support/user route (blog, news, announcements, faq, legal, seo, contact, tickets, finance/wallet, admin users, profile/avatar/password) queries Postgres **directly via Prisma** from within apps/web — no HTTP hop through apps/api for these, since they aren't needed by the Android apps.
 - **Tailwind CSS v4** — custom token palette in `src/app/globals.css` (`brand-{25..950}`, dark mode via `.dark` class)
 - **AG Grid** (`ag-grid-react`) — used for all admin and user data tables, with custom light/dark `themeQuartz` params
 - **Bilingual FA/EN** — `LanguageContext` + `useT()` hook backed by `src/i18n/translations.ts`; RTL is toggled on the `<html>` element
 
 ## Wire-format vs. DB enums
 
-Several Prisma enums (`SocialPlatform`, `ContactStatus`, `TicketStatus`, `TicketReplySender`, `DepositStatus`, `LegalPageType`) are uppercase in Postgres, but every API route keeps the original lowercase string wire format (`"admin"`/`"user"` for `User.role` too, mapped to/from `PLATFORM_ADMIN`/`CUSTOMER`) so existing frontend components needed zero changes. Translate at the route boundary — see `src/app/api/admin/social-links/route.ts` for the pattern. Shared lowercase union types live in `src/types/content.ts`.
+Several Prisma enums (`SocialPlatform`, `ContactStatus`, `TicketStatus`, `TicketReplySender`, `DepositStatus`, `LegalPageType`) are uppercase in Postgres, but every CMS/finance/support API route keeps the original lowercase string wire format so existing frontend components needed zero changes. The one role-related holdover is the admin users API (`/api/admin/users/**` + `AdminUsersList`), which still sends `"admin"`/`"user"` for `User.role`, collapsing the four Postgres roles to two. Translate at the route boundary — see `src/app/api/admin/social-links/route.ts` for the pattern. Shared lowercase union types live in `src/types/content.ts`.
 
 `User.phone` is nullable (`String? @unique`) rather than required — Postgres allows multiple `NULL`s under a unique constraint, which is what lets more than one user have "no phone" (matching the old Mongoose sparse-partial-unique-index behavior). Always write `null`, never `""`, when clearing it.
+
+## Salon time
+
+Appointment and time-off times from apps/api are real UTC instants; slots, working hours and the booking date strip are **salon-local wall-clock** time (`Salon.timezone`, `Asia/Tehran` today). Convert only through `src/lib/salonTime.ts` (`salonWallTimeToInstant`, `toSalonWallTime`, `formatSalonDate[Time]`) — never format an API instant with `toLocaleString`/`getHours()` in the browser's or server's own timezone. apps/api mirrors this in `src/availability/salon-time.util.ts`.
+
+## Site identity
+
+Product name, title, description and public origin live in `src/lib/site.ts`. The origin comes from `NEXT_PUBLIC_SITE_URL` (falls back to `http://localhost:3000`) — use `SITE_URL` for canonical URLs, structured data and sitemap entries instead of hardcoding a domain.
 
 ## Route Groups
 
 | Group | Path | Description |
 |---|---|---|
-| `(public)` | `/`, `/blog`, `/news`, `/pricing`, `/faq`, `/contact`, `/privacy`, `/terms` | Marketing site, no auth required |
+| `(home)` | `/` | Salon-product landing page (`components/marketing/*`), incl. the pricing section |
+| `(public)` | `/blog`, `/news`, `/faq`, `/contact`, `/privacy`, `/terms` | CMS-backed public pages, no auth required (`/pricing` redirects to `/#pricing`) |
+| `s/[slug]` | `/s/:slug` | Public salon page + booking flow (talks to apps/api from the browser) |
+| `my-bookings` | `/my-bookings` | Customer bookings; OTP login stored in localStorage (`src/lib/customerSession.ts`), not NextAuth |
+| `salon` | `/salon/**` | Salon-owner panel; `SALON_OWNER` only |
+| `stylist` | `/stylist/**` | Stylist panel; `STYLIST` only |
 | `(user-dashboard)` | `/dashboard/**` | Authenticated user area |
 | `(full-width-pages)` | auth pages, error pages | No sidebar |
-| `admin` | `/admin/**` | Admin-only; guarded by `role === "admin"` check in every API route |
+| `admin` | `/admin/**` | Platform-admin only; every `/api/admin/**` route checks `role === "PLATFORM_ADMIN"` |
 
-Page-level route protection (redirect anonymous users to `/signin`, non-admins away from `/admin/**`) happens in `src/proxy.ts` — Next.js 16 renamed the `middleware.ts` convention to `proxy.ts`; it's picked up automatically by filename, not imported anywhere. Every API route still re-checks `session.user.role`/`session.user.id` itself (see API Structure below) since `proxy.ts` only covers page navigation, not fetch/XHR calls to `/api/**`.
+Page-level route protection (redirect anonymous users to `/signin`, wrong roles away from `/admin/**`, `/salon/**`, `/stylist/**`) happens in `src/proxy.ts` — Next.js 16 renamed the `middleware.ts` convention to `proxy.ts`; it's picked up automatically by filename, not imported anywhere. Every API route still re-checks `session.user.role`/`session.user.id` itself (see API Structure below) since `proxy.ts` only covers page navigation, not fetch/XHR calls to `/api/**`.
 
 ## Data Models (`packages/database/prisma/schema.prisma`)
 
@@ -81,7 +94,7 @@ Publishing/updating a `BlogPost`, `NewsItem`, or `Announcement` also posts a mes
 ```
 /api/auth/[...nextauth]   NextAuth handlers
 /api/auth/register        POST — public user registration
-/api/admin/**             All guarded: session.user.role === "admin"
+/api/admin/**             All guarded: session.user.role === "PLATFORM_ADMIN"
 /api/user/**              All guarded: session.user.id present
 /api/public/**            Unauthenticated reads (blog, news, FAQ, pricing…)
 /api/upload               Image upload (avatar, receipts, cover images)
