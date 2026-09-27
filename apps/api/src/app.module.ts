@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { ErrorLogModule } from './error-log/error-log.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { SalonsModule } from './salons/salons.module.js';
 import { ServiceCategoriesModule } from './service-categories/service-categories.module.js';
@@ -16,6 +17,7 @@ import { AvailabilityModule } from './availability/availability.module.js';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    ErrorLogModule,
     AuthModule,
     SalonsModule,
     ServiceCategoriesModule,

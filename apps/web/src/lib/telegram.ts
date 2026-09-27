@@ -1,6 +1,7 @@
 import https from "https";
 import { SocksProxyAgent } from "socks-proxy-agent";
 import { SITE_URL } from "@/lib/site";
+import { logError } from "@/lib/errorLog";
 
 const TOKEN   = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL = process.env.TELEGRAM_CHANNEL;
@@ -145,6 +146,8 @@ export async function notifyAnnouncement(a: AnnouncementPayload) {
     `${emoji} <b>${escapeHtml(a.text)}</b>`,
   ].join("\n");
 
-  const msgId = await sendMessage(text, { replyMarkup: markup }).catch(console.error);
-  if (msgId) await pinMessage(msgId).catch(console.error);
+  const msgId = await sendMessage(text, { replyMarkup: markup }).catch((error) =>
+    logError({ error, context: { action: "notifyAnnouncement.sendMessage" } }),
+  );
+  if (msgId) await pinMessage(msgId).catch((error) => logError({ error, context: { action: "notifyAnnouncement.pinMessage" } }));
 }

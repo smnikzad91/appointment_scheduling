@@ -8,6 +8,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import SessionWrapper from "@/components/common/SessionWrapper";
 import ToastProvider from "@/components/common/ToastProvider";
 import AgGridSetup from "@/components/common/AgGridSetup";
+import ClientErrorReporter from "@/components/common/ClientErrorReporter";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -59,6 +60,7 @@ export default function RootLayout({
       </head>
       <body className="dark:bg-gray-900">
         <AgGridSetup />
+        <ClientErrorReporter />
         <SessionWrapper>
           <LanguageProvider>
             <ThemeProvider>

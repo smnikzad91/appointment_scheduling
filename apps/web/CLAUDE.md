@@ -40,6 +40,15 @@ Appointment and time-off times from apps/api are real UTC instants; slots, worki
 
 Product name, title, description and public origin live in `src/lib/site.ts`. The origin comes from `NEXT_PUBLIC_SITE_URL` (falls back to `http://localhost:3000`) — use `SITE_URL` for canonical URLs, structured data and sitemap entries instead of hardcoding a domain.
 
+## Error logging
+
+Every app writes failures to the shared `ErrorLog` table (`error_logs`), shown at the top of the platform-admin dashboard (`/admin`, `components/admin/AdminErrorLog.tsx`, API under `/api/admin/errors`):
+- **apps/api** — global `AllExceptionsFilter` (`src/error-log/`) records unhandled exceptions and any 5xx; expected 4xx are not errors. `main.ts` also records `unhandledRejection`/`uncaughtException`.
+- **apps/web server** — `src/instrumentation.ts` (`onRequestError`) records anything Next.js catches. If a route catches an error itself and returns 500, call `logError()` from `src/lib/errorLog.ts` instead of `console.error`.
+- **apps/web browser** — `ClientErrorReporter` (root layout) and `app/global-error.tsx` send uncaught errors to the public, rate-limited `POST /api/errors`. Use `reportClientError()` for anything else worth reporting from the client.
+
+Paths are stored without query strings (they can carry phone numbers).
+
 ## Route Groups
 
 | Group | Path | Description |

@@ -51,6 +51,12 @@ enum DepositStatus {
   REJECTED
 }
 
+enum ErrorSource {
+  API // apps/api (NestJS)
+  WEB_SERVER // apps/web server side: route handlers, server components, server actions
+  WEB_CLIENT // apps/web in the browser
+}
+
 enum LegalPageType {
   PRIVACY
   TERMS
@@ -477,4 +483,25 @@ model Review {
   createdAt     DateTime    @default(now())
 
   @@map("reviews")
+}
+
+// Application errors from every app, shown on the platform-admin dashboard (/admin).
+// userId is a plain column, not a relation, so a log survives the user being deleted.
+model ErrorLog {
+  id         String      @id @default(cuid())
+  source     ErrorSource
+  message    String
+  stack      String?
+  method     String?
+  path       String?
+  statusCode Int?
+  userId     String?
+  userAgent  String?
+  context    Json?
+  resolved   Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+
+  @@index([createdAt])
+  @@index([resolved, createdAt])
+  @@map("error_logs")
 }

@@ -17,3 +17,21 @@ export type TicketStatus = "open" | "answered" | "closed";
 export type TicketReplySender = "user" | "admin";
 
 export type DepositStatus = "pending" | "approved" | "rejected";
+
+export type ErrorSource = "api" | "web_server" | "web_client";
+
+/** One row of /api/admin/errors — Prisma's ErrorLog with the source lowercased. */
+export interface ErrorLogEntry {
+  id: string;
+  source: ErrorSource;
+  message: string;
+  stack: string | null;
+  method: string | null;
+  path: string | null;
+  statusCode: number | null;
+  userId: string | null;
+  userAgent: string | null;
+  context: Record<string, unknown> | null;
+  resolved: boolean;
+  createdAt: string;
+}
