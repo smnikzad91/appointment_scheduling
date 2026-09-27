@@ -66,6 +66,23 @@ enum NotificationType {
   NEW_REVIEW
 }
 
+enum PayoutMethod {
+  CASH
+  CARD_TO_CARD
+  BANK_TRANSFER
+  OTHER
+}
+
+enum ExpenseCategory {
+  RENT
+  SUPPLIES
+  SALARIES
+  UTILITIES
+  EQUIPMENT
+  MARKETING
+  OTHER
+}
+
 enum ErrorSource {
   API // apps/api (NestJS)
   WEB_SERVER // apps/web server side: route handlers, server components, server actions
@@ -347,6 +364,8 @@ model Salon {
   appointments      Appointment[]
   galleryImages     GalleryImage[]
   reviews           Review[]
+  payouts           StylistPayout[]
+  expenses          SalonExpense[]
 
   @@map("salons")
 }
@@ -366,17 +385,20 @@ model ServiceCategory {
 }
 
 model Stylist {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id])
-  salonId       String
-  salon         Salon    @relation(fields: [salonId], references: [id])
-  displayName   String
-  bio           String?
-  avatarUrl     String?
-  coverImageUrl String?
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  salonId           String
+  salon             Salon    @relation(fields: [salonId], references: [id])
+  displayName       String
+  bio               String?
+  avatarUrl         String?
+  coverImageUrl     String?
+  // The stylist's share of the money received for their appointments, in percent (0–100). Set by
+  // the owner when adding the stylist; changing it only affects appointments completed afterwards.
+  commissionPercent Int      @default(0)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
 
   services      StylistService[]
   workingHours  WorkingHour[]
@@ -384,6 +406,7 @@ model Stylist {
   appointments  Appointment[]
   galleryImages GalleryImage[]
   reviews       Review[]
+  payouts       StylistPayout[]
 
   @@index([salonId])
   @@map("stylists")
@@ -446,20 +469,27 @@ model TimeOff {
 }
 
 model Appointment {
-  id         String            @id @default(cuid())
-  salonId    String
-  salon      Salon             @relation(fields: [salonId], references: [id])
-  stylistId  String
-  stylist    Stylist           @relation(fields: [stylistId], references: [id])
-  customerId String
-  customer   User              @relation("CustomerAppointments", fields: [customerId], references: [id])
-  startAt    DateTime
-  endAt      DateTime
-  status     AppointmentStatus @default(PENDING)
-  priceToman Int
-  notes      String?
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  id                       String            @id @default(cuid())
+  salonId                  String
+  salon                    Salon             @relation(fields: [salonId], references: [id])
+  stylistId                String
+  stylist                  Stylist           @relation(fields: [stylistId], references: [id])
+  customerId               String
+  customer                 User              @relation("CustomerAppointments", fields: [customerId], references: [id])
+  startAt                  DateTime
+  endAt                    DateTime
+  status                   AppointmentStatus @default(PENDING)
+  priceToman               Int
+  notes                    String?
+  // Accounting, frozen when the appointment is COMPLETED and cleared if it leaves that status:
+  // the amount actually received (defaults to priceToman; the owner can correct it), the stylist's
+  // commission percent at that moment, and their share. The salon's share is the rest.
+  chargedToman             Int?
+  stylistCommissionPercent Int?
+  stylistShareToman        Int?
+  completedAt              DateTime?
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
 
   services AppointmentService[]
   reviews  Review[]
@@ -575,4 +605,38 @@ model Notification {
   @@index([userId, createdAt])
   @@index([userId, readAt])
   @@map("notifications")
+}
+
+// Money the salon paid a stylist (settling their commission, or an advance). A stylist's balance
+// is their commission from completed appointments minus these payouts.
+model StylistPayout {
+  id          String       @id @default(cuid())
+  salonId     String
+  salon       Salon        @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  stylistId   String
+  stylist     Stylist      @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  amountToman Int
+  method      PayoutMethod
+  paidAt      DateTime
+  note        String?
+  createdAt   DateTime     @default(now())
+
+  @@index([salonId, paidAt])
+  @@index([stylistId, paidAt])
+  @@map("stylist_payouts")
+}
+
+// A salon's running costs (rent, supplies…), for its profit & loss.
+model SalonExpense {
+  id          String          @id @default(cuid())
+  salonId     String
+  salon       Salon           @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  category    ExpenseCategory
+  amountToman Int
+  spentAt     DateTime
+  note        String?
+  createdAt   DateTime        @default(now())
+
+  @@index([salonId, spentAt])
+  @@map("salon_expenses")
 }

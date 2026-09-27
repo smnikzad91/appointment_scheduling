@@ -21,6 +21,7 @@ export interface OwnerSalon {
   latitude: number | null;
   longitude: number | null;
   status: "PENDING" | "ACTIVE" | "SUSPENDED";
+  timezone: string;
 }
 
 /** Fired on window after the salon's name or logo changes, so the app bar can refresh. */
@@ -145,6 +146,8 @@ export interface OwnerStylist {
   avatarUrl: string | null;
   coverImageUrl: string | null;
   active: boolean;
+  /** Stylist's share of the money received for their appointments, 0–100. */
+  commissionPercent: number;
   user: { firstName: string; lastName: string; phone: string | null };
   services: { serviceId: string; overridePriceToman: number | null; overrideDurationMinutes: number | null }[];
   tempPassword?: string;
@@ -167,6 +170,7 @@ export interface InviteStylistInput {
   displayName: string;
   bio?: string;
   serviceIds?: string[];
+  commissionPercent: number;
 }
 
 export function inviteStylist(token: string, data: InviteStylistInput) {
@@ -180,7 +184,14 @@ export function inviteStylist(token: string, data: InviteStylistInput) {
 export function updateStylist(
   token: string,
   id: string,
-  data: { displayName?: string; bio?: string; avatarUrl?: string | null; coverImageUrl?: string | null; active?: boolean },
+  data: {
+    displayName?: string;
+    bio?: string;
+    avatarUrl?: string | null;
+    coverImageUrl?: string | null;
+    active?: boolean;
+    commissionPercent?: number;
+  },
 ) {
   return salonApiFetch<OwnerStylist>(`/stylists/${id}`, {
     method: "PATCH",
@@ -224,4 +235,28 @@ export function updateAppointmentStatus(token: string, id: string, status: Owner
     headers: authHeaders(token),
     body: JSON.stringify({ status }),
   });
+}
+
+// --- the salon booking a customer (phone call / walk-in) ---
+
+export interface SalonBookingInput {
+  customerPhone: string;
+  customerFirstName?: string;
+  customerLastName?: string;
+  stylistId: string;
+  serviceIds: string[];
+  startAt: string; // ISO instant
+  notes?: string;
+}
+
+export function createSalonBooking(token: string, data: SalonBookingInput) {
+  return salonApiFetch<OwnerAppointment>("/appointments/salon", { method: "POST", headers: authHeaders(token), body: JSON.stringify(data) });
+}
+
+/** A customer who has booked here before (to prefill the name); `found: false` otherwise. */
+export function lookupSalonCustomer(token: string, phone: string) {
+  return salonApiFetch<{ found: boolean; firstName?: string; lastName?: string }>(
+    `/appointments/salon/customer?phone=${encodeURIComponent(phone)}`,
+    { headers: authHeaders(token) },
+  );
 }

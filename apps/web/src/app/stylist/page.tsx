@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
-import { CalendarCheck2, CalendarClock, ChevronLeft, Clock3, Coffee, Hourglass } from "lucide-react";
+import { CalendarCheck2, CalendarClock, ChevronLeft, Clock3, Coffee, Hourglass, Wallet } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMyStylistProfile, listMyAppointments, updateMyAppointmentStatus, type SelfStylist, type StylistAppointment } from "@/lib/api/stylistSelf";
 import { formatMinutesAsClock } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
 import { AppointmentCard, AppointmentSheet, TodayTimeline, relativeDayLabel, useAppointmentActions } from "@/components/app/appointments";
-import { Avatar, EmptyState, ErrorBanner, ListSkeleton, SectionTitle, StatTile } from "@/components/app/ui";
+import { Avatar, EmptyState, ErrorBanner, ListSkeleton, SectionTitle, StatTile, LinkCard } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
 
 function greeting(minuteOfDay: number) {
@@ -113,6 +113,8 @@ export default function StylistOverviewPage() {
         <StatTile icon={Hourglass} label="منتظر تایید" value={pending.length} tone={pending.length ? "pending" : "ink"} />
         <StatTile icon={CalendarClock} label="نوبت‌های آینده" value={upcoming.length} />
       </div>
+
+      <LinkCard href="/stylist/earnings" icon={Wallet} title="درآمد من" subtitle="سهم شما از نوبت‌ها، پرداخت‌های سالن و مانده حساب" className="mt-3" />
 
       {pending.length > 0 && (
         <>

@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Check } from "lucide-react";
+import { Check, Wallet } from "lucide-react";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import GalleryManager from "@/components/app/GalleryManager";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMyStylistProfile, updateMyStylistProfile, type SelfStylist } from "@/lib/api/stylistSelf";
 import { toPersianDigits } from "@/lib/persian";
-import { Button, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, cx } from "@/components/app/ui";
+import { Button, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, cx, LinkCard } from "@/components/app/ui";
 
 const BIO_MAX = 300;
 
@@ -109,6 +109,7 @@ export default function StylistProfilePage() {
     </form>
 
       <ReviewsLinkCard token={token} scope="stylist" className="mt-6" />
+      <LinkCard href="/stylist/earnings" icon={Wallet} title="درآمد من" subtitle="سهم شما از نوبت‌ها، پرداخت‌های سالن و مانده حساب" className="mt-3" />
 
       <SectionTitle>نمونه کارهای من</SectionTitle>
       <p className="-mt-1 mb-3 px-1 text-xs leading-6 text-app-muted">

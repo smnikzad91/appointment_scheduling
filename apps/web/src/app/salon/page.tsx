@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
-import { CalendarCheck2, CalendarClock, ExternalLink, Hourglass, Share2, Sparkles } from "lucide-react";
+import { Calculator, CalendarCheck2, CalendarClock, ExternalLink, Hourglass, Share2, Sparkles } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, listMySalonAppointments, updateAppointmentStatus, type OwnerSalon, type OwnerAppointment } from "@/lib/api/ownerSalon";
 import { formatToman } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
 import { AppointmentCard, AppointmentSheet, TodayTimeline, useAppointmentActions } from "@/components/app/appointments";
-import { Avatar, EmptyState, ErrorBanner, ListSkeleton, SectionTitle, StatTile, cx } from "@/components/app/ui";
+import { Avatar, EmptyState, ErrorBanner, ListSkeleton, SectionTitle, StatTile, cx, LinkCard } from "@/components/app/ui";
 
 const STATUS_PILL: Record<OwnerSalon["status"], { label: string; className: string }> = {
   ACTIVE: { label: "فعال", className: "bg-app-done/15 text-app-done" },
@@ -139,6 +139,8 @@ export default function SalonOverviewPage() {
         <StatTile icon={Hourglass} label="منتظر تایید" value={needsConfirmation.length} tone={needsConfirmation.length ? "pending" : "ink"} />
         <StatTile icon={CalendarClock} label="نوبت‌های آینده" value={upcoming.length} />
       </div>
+
+      <LinkCard href="/salon/accounting" icon={Calculator} title="حسابداری" subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها" className="mt-3" />
 
       {needsConfirmation.length > 0 && (
         <>

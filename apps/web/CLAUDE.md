@@ -134,6 +134,14 @@ In-app only for now (no SMS provider yet, and FCM-based web push is unreliable i
 
 The salon panel's app bar shows the salon (logo + name, `AppShell` `identity`) instead of the owner's personal account; `salon/settings` fires `SALON_UPDATED_EVENT` after saving so it refreshes.
 
+## Accounting
+
+Each stylist has a `commissionPercent` (0–100), set by the owner when adding them (`CommissionInput`) and editable in the stylist sheet. When an appointment becomes COMPLETED, apps/api (`AppointmentsService.accountingFor`) freezes its books on the row: `chargedToman` (= price), `stylistCommissionPercent`, `stylistShareToman` (`splitCharge` in `apps/api/src/accounting/share.util.ts`), `completedAt`; leaving COMPLETED clears them. So changing a percent never rewrites past income. The owner can correct the amount actually received (`PATCH salons/mine/accounting/appointments/:id/charge`); the share is recomputed at the frozen percent. `StylistPayout` records money paid to a stylist (settlement or advance); a stylist's **balance** is all-time commission minus payouts (positive = salon owes them). `SalonExpense` is the salon's running costs by `ExpenseCategory`. Net profit = salon share − expenses (payouts aren't expenses — they settle the stylist share).
+
+Screens: `/salon/accounting` (month P&L, per-stylist balances + payouts, income list with amount correction, expenses, services) and `/stylist/earnings` (the stylist's own share, payouts, balance). Periods are Jalali months as salon-local instants (`src/lib/accountingPeriod.ts`); income is dated by the appointment's start, payouts by `paidAt`, expenses by `spentAt`. Shared pieces: `components/app/accounting.tsx` (`PeriodSwitcher`, `DaySelect`, `BalanceChip`, `MoneyFigure`, `HeroAmount`) and `MoneyInput`. Don't put a minus sign next to a Persian amount (it drifts in RTL) — say زیان/پیش‌پرداخت instead; and don't `truncate` an amount — let the small "تومان" wrap.
+
+The salon also books customers itself (phone calls, walk-ins): `POST /appointments/salon` (`SalonBookingSheet`, "+" on `/salon/appointments`). The customer is found by phone or created (they can later sign in by SMS code); the booking is CONFIRMED, may start earlier today (recording a walk-in), and ignores working hours but not double-booking or time off.
+
 ## API Structure
 
 ```

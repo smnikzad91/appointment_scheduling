@@ -17,6 +17,7 @@ import { normalizeDigits, formatToman, toPersianDigits, isValidIranianMobile } f
 import { SalonApiError } from "@/lib/api/salonApiClient";
 import Sheet from "@/components/app/Sheet";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
+import CommissionInput, { parseCommission } from "@/components/app/CommissionInput";
 import {
   Avatar,
   Button,
@@ -34,7 +35,7 @@ import {
 } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
 
-const EMPTY_INVITE = { phone: "", firstName: "", lastName: "", displayName: "" };
+const EMPTY_INVITE = { phone: "", firstName: "", lastName: "", displayName: "", commission: "" };
 
 export default function SalonStylistsPage() {
   const token = useApiAccessToken();
@@ -46,6 +47,9 @@ export default function SalonStylistsPage() {
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [overrideDrafts, setOverrideDrafts] = useState<Record<string, { price: string; duration: string }>>({});
   const [savingServiceId, setSavingServiceId] = useState<string | null>(null);
+  const [commissionDraft, setCommissionDraft] = useState("");
+  const [savingCommission, setSavingCommission] = useState(false);
+  const [commissionSaved, setCommissionSaved] = useState(false);
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invite, setInvite] = useState(EMPTY_INVITE);
@@ -71,6 +75,8 @@ export default function SalonStylistsPage() {
   function openStylist(stylist: OwnerStylist) {
     setSheetError(null);
     setOverrideDrafts({});
+    setCommissionDraft(String(stylist.commissionPercent));
+    setCommissionSaved(false);
     setSelectedId(stylist.id);
   }
 
@@ -160,6 +166,22 @@ export default function SalonStylistsPage() {
     void saveServices(stylist, next, serviceId);
   }
 
+  async function saveCommission(stylist: OwnerStylist) {
+    const commissionPercent = parseCommission(commissionDraft);
+    if (!token || commissionPercent === null) return;
+    setSavingCommission(true);
+    setSheetError(null);
+    try {
+      const updated = await updateStylist(token, stylist.id, { commissionPercent });
+      setStylists((list) => list?.map((s) => (s.id === stylist.id ? { ...s, commissionPercent: updated.commissionPercent } : s)) ?? list);
+      setCommissionSaved(true);
+    } catch {
+      setSheetError("ذخیره سهم آرایشگر انجام نشد");
+    } finally {
+      setSavingCommission(false);
+    }
+  }
+
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
@@ -172,6 +194,11 @@ export default function SalonStylistsPage() {
       setInviteError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
       return;
     }
+    const commissionPercent = parseCommission(invite.commission);
+    if (commissionPercent === null) {
+      setInviteError("سهم آرایشگر از درآمد را وارد کنید (۰ تا ۱۰۰ درصد)");
+      return;
+    }
     setInviting(true);
     setInviteError(null);
     try {
@@ -180,6 +207,7 @@ export default function SalonStylistsPage() {
         firstName: invite.firstName.trim(),
         lastName: invite.lastName.trim(),
         displayName: invite.displayName.trim() || invite.firstName.trim(),
+        commissionPercent,
       });
       setInvite(EMPTY_INVITE);
       if (result.tempPassword) {
@@ -260,6 +288,8 @@ export default function SalonStylistsPage() {
                   <span className="block truncate text-[15px] font-bold text-app-ink">{stylist.displayName}</span>
                   <span className="mt-0.5 block text-[13px] text-app-muted">
                     {toPersianDigits(stylist.services.length)} خدمت
+                    <Sep />
+                    سهم {toPersianDigits(stylist.commissionPercent)}٪
                     {stylist.user.phone && (
                       <>
                         <Sep />
@@ -291,6 +321,25 @@ export default function SalonStylistsPage() {
             <div className="mb-5" />
 
             {sheetError && <p className="mb-3 rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{sheetError}</p>}
+
+            <h3 className="mb-2 px-1 text-[13px] font-bold text-app-muted">سهم آرایشگر از درآمد</h3>
+            <div className="mb-5 rounded-3xl border border-app-line bg-app-card p-4">
+              <CommissionInput
+                value={commissionDraft}
+                onChange={(v) => {
+                  setCommissionDraft(v);
+                  setCommissionSaved(false);
+                }}
+              />
+              {parseCommission(commissionDraft) !== null && parseCommission(commissionDraft) !== selected.commissionPercent ? (
+                <Button block className="mt-3" busy={savingCommission} onClick={() => saveCommission(selected)}>
+                  ذخیره سهم {toPersianDigits(parseCommission(commissionDraft)!)}٪
+                </Button>
+              ) : (
+                commissionSaved && <p className="mt-2 px-1 text-sm font-bold text-app-done">ذخیره شد</p>
+              )}
+              <p className="mt-2 px-1 text-xs leading-6 text-app-muted">تغییر سهم فقط روی نوبت‌هایی اثر دارد که از این به بعد «انجام‌شده» می‌شوند.</p>
+            </div>
 
             <h3 className="mb-2 px-1 text-[13px] font-bold text-app-muted">خدماتی که ارائه می‌دهد</h3>
             {activeServices.length === 0 ? (
@@ -404,6 +453,9 @@ export default function SalonStylistsPage() {
             </div>
             <Field label="نام نمایشی برای مشتری‌ها" hint="اختیاری — اگر خالی بماند، نام کوچک نمایش داده می‌شود.">
               <TextInput value={invite.displayName} onChange={(e) => setInvite((f) => ({ ...f, displayName: e.target.value }))} placeholder="مثلاً نگار" />
+            </Field>
+            <Field label="سهم آرایشگر از درآمد">
+              <CommissionInput value={invite.commission} onChange={(commission) => setInvite((f) => ({ ...f, commission }))} />
             </Field>
             <Field label="شماره موبایل">
               <TextInput

@@ -24,9 +24,12 @@ export default function AppointmentsScreen({
   showStylist,
   load,
   updateStatus,
+  headerAction,
 }: {
   title: string;
   showStylist?: boolean;
+  /** e.g. the salon's "new booking" button */
+  headerAction?: React.ReactNode;
   load: () => Promise<AppAppointment[]>;
   updateStatus: (id: string, status: AppointmentStatus) => Promise<unknown>;
 }) {
@@ -69,7 +72,7 @@ export default function AppointmentsScreen({
 
   return (
     <>
-      <PageHeader title={title} />
+      <PageHeader title={title} action={headerAction} />
 
       <ChipTabs<Tab>
         value={tab}

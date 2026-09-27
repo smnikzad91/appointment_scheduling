@@ -283,3 +283,21 @@ export function Avatar({
 export function ListGroup({ children, className }: { children: React.ReactNode; className?: string }) {
   return <div className={cx("divide-y divide-app-line overflow-hidden rounded-3xl border border-app-line bg-app-card shadow-app", className)}>{children}</div>;
 }
+
+/** Tappable card linking to another screen (icon, title, one-line description, chevron). */
+export function LinkCard({ href, icon: Icon, title, subtitle, className }: { href: string; icon: LucideIcon; title: string; subtitle: string; className?: string }) {
+  return (
+    <Link href={href} className={cx("flex items-center gap-3 rounded-3xl border border-app-line bg-app-card p-4 shadow-app active:scale-[0.99]", className)}>
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-app-accent-soft text-app-accent">
+        <Icon className="h-5 w-5" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-bold text-app-ink">{title}</span>
+        <span className="block truncate text-xs text-app-muted">{subtitle}</span>
+      </span>
+      <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-app-muted" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="m15 18-6-6 6-6" />
+      </svg>
+    </Link>
+  );
+}

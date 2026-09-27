@@ -73,6 +73,7 @@ export class StylistsService {
         salonId: salon.id,
         displayName: dto.displayName,
         bio: dto.bio,
+        commissionPercent: dto.commissionPercent,
       },
     });
 

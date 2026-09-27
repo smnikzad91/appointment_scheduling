@@ -14,6 +14,7 @@ import { ReviewsModule } from './reviews/reviews.module.js';
 import { AvailabilityModule } from './availability/availability.module.js';
 import { GalleryModule } from './gallery/gallery.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { AccountingModule } from './accounting/accounting.module.js';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     AvailabilityModule,
     GalleryModule,
     NotificationsModule,
+    AccountingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

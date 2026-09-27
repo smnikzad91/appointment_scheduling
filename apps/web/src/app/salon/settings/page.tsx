@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
-import { Check, ChevronLeft, Images } from "lucide-react";
+import { Check, ChevronLeft, Images, Calculator } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput, SALON_UPDATED_EVENT } from "@/lib/api/ownerSalon";
 import { toPersianDigits } from "@/lib/persian";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
-import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, cx } from "@/components/app/ui";
+import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, cx, LinkCard } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
 
 // Curated brand colors that read well on the public salon page; the last swatch opens a picker.
@@ -119,6 +119,7 @@ export default function SalonSettingsPage() {
         <ChevronLeft className="h-4 w-4 text-app-muted" aria-hidden />
       </Link>
       <ReviewsLinkCard token={token} scope="salon" className="mt-3" />
+      <LinkCard href="/salon/accounting" icon={Calculator} title="حسابداری" subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها" className="mt-3" />
 
       <SectionTitle>اطلاعات سالن</SectionTitle>
       <Card className="flex flex-col gap-4 p-4">

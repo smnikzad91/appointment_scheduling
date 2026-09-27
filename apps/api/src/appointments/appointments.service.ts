@@ -1,12 +1,16 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
+import * as bcrypt from "bcryptjs";
 import { AppointmentStatus, Role } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { JwtPayload } from "../auth/auth.service.js";
 import { findEligibleStylists } from "../salons/eligible-stylists.util.js";
 import { effectiveServicePricing, sumEffectivePricing } from "../salons/service-pricing.util.js";
-import { CreateAppointmentDto } from "./dto/create-appointment.dto.js";
+import { CreateAppointmentDto, CreateSalonAppointmentDto } from "./dto/create-appointment.dto.js";
+import { instantToSalonWallTime, salonWallTimeToInstant } from "../availability/salon-time.util.js";
 import { UpdatableAppointmentStatus } from "./dto/update-status.dto.js";
 import { fitsWorkingHours } from "./working-hours.util.js";
+import { splitCharge } from "../accounting/share.util.js";
 
 const ACTIVE_STATUSES: AppointmentStatus[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
 
@@ -27,6 +31,57 @@ export class AppointmentsService {
   async create(customerId: string, dto: CreateAppointmentDto) {
     const salon = await this.prisma.salon.findUnique({ where: { id: dto.salonId }, select: { status: true, timezone: true } });
     if (!salon || salon.status !== "ACTIVE") throw new NotFoundException("Salon not found");
+    return this.book(customerId, dto, salon.timezone, false);
+  }
+
+  /**
+   * The salon books a customer (phone or walk-in) with a specific stylist. The customer is found
+   * by phone, or gets an account they can later sign in to with an SMS code. Unlike online
+   * booking it's confirmed straight away, may start earlier today (recording a walk-in after the
+   * fact) and isn't limited to the stylist's working hours — but still can't double-book them.
+   */
+  async createForSalon(ownerUserId: string, dto: CreateSalonAppointmentDto) {
+    const salon = await this.prisma.salon.findFirst({ where: { ownerId: ownerUserId }, select: { id: true, timezone: true } });
+    if (!salon) throw new NotFoundException("You don't own a salon yet");
+    const customerId = await this.findOrCreateCustomer(dto);
+    return this.book(customerId, { ...dto, salonId: salon.id }, salon.timezone, true);
+  }
+
+  /** A customer who has booked at this salon before, looked up by phone (to prefill the name). */
+  async lookupSalonCustomer(ownerUserId: string, phone: string) {
+    const salon = await this.prisma.salon.findFirst({ where: { ownerId: ownerUserId }, select: { id: true } });
+    if (!salon) throw new NotFoundException("You don't own a salon yet");
+    const customer = await this.prisma.user.findFirst({
+      where: { phone, role: Role.CUSTOMER, appointments: { some: { salonId: salon.id } } },
+      select: { firstName: true, lastName: true },
+    });
+    return { found: !!customer, ...customer };
+  }
+
+  private async findOrCreateCustomer(dto: CreateSalonAppointmentDto) {
+    const existing = await this.prisma.user.findUnique({ where: { phone: dto.customerPhone }, select: { id: true, role: true } });
+    if (existing) {
+      if (existing.role !== Role.CUSTOMER) throw new ConflictException("This phone number belongs to a staff account");
+      return existing.id;
+    }
+    const firstName = dto.customerFirstName?.trim();
+    const lastName = dto.customerLastName?.trim() ?? "";
+    if (!firstName) throw new BadRequestException("Customer name is required for a new customer");
+    const user = await this.prisma.user.create({
+      data: {
+        phone: dto.customerPhone,
+        firstName,
+        lastName,
+        role: Role.CUSTOMER,
+        // Never used: these customers sign in with an SMS code (the OTP login finds them by phone).
+        passwordHash: await bcrypt.hash(randomBytes(24).toString("hex"), 10),
+      },
+      select: { id: true },
+    });
+    return user.id;
+  }
+
+  private async book(customerId: string, dto: CreateAppointmentDto, timeZone: string, bySalon: boolean) {
 
     const services = await this.prisma.service.findMany({
       where: { id: { in: dto.serviceIds }, salonId: dto.salonId, active: true },
@@ -36,7 +91,13 @@ export class AppointmentsService {
     }
 
     const startAt = new Date(dto.startAt);
-    if (startAt.getTime() <= Date.now()) throw new BadRequestException("This time is in the past");
+    if (bySalon) {
+      // Walk-ins can be recorded after the fact, but only for today (salon-local).
+      const startOfToday = salonWallTimeToInstant(instantToSalonWallTime(new Date(), timeZone).dateKey, 0, timeZone);
+      if (startAt < startOfToday) throw new BadRequestException("This time is in the past");
+    } else if (startAt.getTime() <= Date.now()) {
+      throw new BadRequestException("This time is in the past");
+    }
 
     const eligible = await findEligibleStylists(this.prisma, dto.salonId, dto.serviceIds);
     const candidates = dto.stylistId ? eligible.filter((s) => s.id === dto.stylistId) : eligible;
@@ -59,8 +120,10 @@ export class AppointmentsService {
       const appointment = await this.prisma.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${candidate.id}))`;
 
-        const hours = await tx.workingHour.findMany({ where: { stylistId: candidate.id } });
-        if (!fitsWorkingHours(hours, startAt, endAt, salon.timezone)) return null;
+        if (!bySalon) {
+          const hours = await tx.workingHour.findMany({ where: { stylistId: candidate.id } });
+          if (!fitsWorkingHours(hours, startAt, endAt, timeZone)) return null;
+        }
 
         const [timeOff, conflict] = await Promise.all([
           tx.timeOff.findFirst({ where: { stylistId: candidate.id, startAt: { lt: endAt }, endAt: { gt: startAt } } }),
@@ -79,6 +142,7 @@ export class AppointmentsService {
             endAt,
             priceToman: pricing.reduce((sum, p) => sum + p.priceToman, 0),
             notes: dto.notes,
+            ...(bySalon && { status: AppointmentStatus.CONFIRMED }),
             services: {
               create: pricing.map((p) => ({
                 serviceId: p.serviceId,
@@ -137,7 +201,32 @@ export class AppointmentsService {
 
     await this.assertCanSetStatus(user, appointment, status);
 
-    return this.prisma.appointment.update({ where: { id: appointmentId }, data: { status } });
+    return this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status, ...(await this.accountingFor(appointment, status)) },
+    });
+  }
+
+  /**
+   * Completing an appointment books its income: the amount received (its price) split by the
+   * stylist's current commission percent, frozen so later percent changes don't rewrite history.
+   * Moving it out of COMPLETED (a mistaken tap) takes the income back out.
+   */
+  private async accountingFor(appointment: { status: AppointmentStatus; stylistId: string; priceToman: number }, next: AppointmentStatus) {
+    if (next === AppointmentStatus.COMPLETED && appointment.status !== AppointmentStatus.COMPLETED) {
+      const stylist = await this.prisma.stylist.findUnique({ where: { id: appointment.stylistId }, select: { commissionPercent: true } });
+      const commissionPercent = stylist?.commissionPercent ?? 0;
+      return {
+        chargedToman: appointment.priceToman,
+        stylistCommissionPercent: commissionPercent,
+        stylistShareToman: splitCharge(appointment.priceToman, commissionPercent).stylistShareToman,
+        completedAt: new Date(),
+      };
+    }
+    if (next !== AppointmentStatus.COMPLETED && appointment.status === AppointmentStatus.COMPLETED) {
+      return { chargedToman: null, stylistCommissionPercent: null, stylistShareToman: null, completedAt: null };
+    }
+    return {};
   }
 
   private async assertCanSetStatus(
