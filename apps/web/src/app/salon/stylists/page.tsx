@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Camera, Check, Copy, KeyRound, Plus, Share2, UserPlus, Users } from "lucide-react";
+import { Check, Copy, KeyRound, Plus, Share2, UserPlus, Users } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyStylists,
@@ -15,8 +15,8 @@ import {
 } from "@/lib/api/ownerSalon";
 import { normalizeDigits, formatToman, toPersianDigits, isValidIranianMobile } from "@/lib/persian";
 import { SalonApiError } from "@/lib/api/salonApiClient";
-import { uploadImage } from "@/lib/uploadImage";
 import Sheet from "@/components/app/Sheet";
+import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import {
   Avatar,
   Button,
@@ -43,7 +43,6 @@ export default function SalonStylistsPage() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetError, setSheetError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [overrideDrafts, setOverrideDrafts] = useState<Record<string, { price: string; duration: string }>>({});
   const [savingServiceId, setSavingServiceId] = useState<string | null>(null);
 
@@ -86,21 +85,10 @@ export default function SalonStylistsPage() {
     }
   }
 
-  async function handleAvatarChange(stylist: OwnerStylist, e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !token) return;
-    setUploading(true);
-    setSheetError(null);
-    try {
-      const url = await uploadImage(file, "stylists");
-      await updateStylist(token, stylist.id, { avatarUrl: url });
-      reload();
-    } catch {
-      setSheetError("آپلود تصویر انجام نشد");
-    } finally {
-      setUploading(false);
-    }
+  async function savePhotos(stylist: OwnerStylist, patch: PhotoPatch) {
+    if (!token) return;
+    const updated = await updateStylist(token, stylist.id, patch);
+    setStylists((list) => list?.map((s) => (s.id === stylist.id ? { ...s, avatarUrl: updated.avatarUrl, coverImageUrl: updated.coverImageUrl } : s)) ?? list);
   }
 
   async function saveServices(stylist: OwnerStylist, next: StylistServiceEntry[], serviceId: string) {
@@ -290,26 +278,16 @@ export default function SalonStylistsPage() {
       <Sheet open={selected !== null} onClose={() => setSelectedId(null)} title={selected?.displayName ?? ""}>
         {selected && (
           <>
-            <div className="mb-5 flex items-center gap-4">
-              <label className="relative cursor-pointer active:scale-95">
-                <Avatar name={selected.displayName} src={selected.avatarUrl} size={72} />
-                <span className="absolute -bottom-1 -left-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-app-bg bg-app-accent text-app-accent-ink">
-                  <Camera className="h-4 w-4" aria-hidden />
-                </span>
-                <input type="file" accept="image/*" className="sr-only" disabled={uploading} onChange={(e) => handleAvatarChange(selected, e)} aria-label="تغییر تصویر آرایشگر" />
-              </label>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-app-ink">
-                  {selected.user.firstName} {selected.user.lastName}
-                </p>
-                {selected.user.phone && (
-                  <p dir="ltr" className="text-end text-sm text-app-muted">
-                    {toPersianDigits(selected.user.phone)}
-                  </p>
-                )}
-                {uploading && <p className="text-xs text-app-muted">در حال آپلود تصویر…</p>}
-              </div>
-            </div>
+            <ProfilePhotos
+              name={selected.displayName}
+              coverUrl={selected.coverImageUrl}
+              avatarUrl={selected.avatarUrl}
+              avatarLabel="عکس آرایشگر"
+              folder="stylists"
+              onSave={(patch) => savePhotos(selected, patch)}
+              hint={`${selected.user.firstName} ${selected.user.lastName}${selected.user.phone ? ` · ${toPersianDigits(selected.user.phone)}` : ""}`}
+            />
+            <div className="mb-5" />
 
             {sheetError && <p className="mb-3 rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{sheetError}</p>}
 

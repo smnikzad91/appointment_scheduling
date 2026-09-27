@@ -9,6 +9,11 @@ const BY_API_MESSAGE: Record<string, string> = {
   "No stylist can perform all the selected services": "هیچ متخصصی همه این خدمات را با هم انجام نمی‌دهد",
   "One or more services were not found for this salon": "برخی از خدمات انتخاب‌شده دیگر ارائه نمی‌شوند",
   "Category does not belong to this salon": "دسته‌بندی انتخاب‌شده معتبر نیست",
+  "Gallery is full": "گالری پر است؛ برای افزودن، ابتدا چند عکس را حذف کنید",
+  "Stylist does not belong to this salon": "آرایشگر انتخاب‌شده در این سالن نیست",
+  "Invalid image URL": "فایل تصویر معتبر نیست؛ دوباره آپلود کنید",
+  "Image not found": "این عکس دیگر وجود ندارد",
+  "Not your image": "اجازه تغییر این عکس را ندارید",
 };
 
 /** Persian message for an error thrown by apiFetch / salonApiFetch (anything with status + message). */

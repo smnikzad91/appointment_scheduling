@@ -15,6 +15,7 @@ export class SalonsService {
         serviceCategories: { orderBy: { order: "asc" } },
         services: { where: { active: true } },
         stylists: { where: { active: true }, include: { workingHours: true, services: true } },
+        galleryImages: { orderBy: { createdAt: "desc" }, select: { id: true, url: true, caption: true, stylistId: true } },
       },
     });
   }

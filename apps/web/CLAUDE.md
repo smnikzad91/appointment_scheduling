@@ -59,6 +59,13 @@ Colors are semantic tokens on `.app-root` in `globals.css` (`bg-app-bg`, `bg-app
 
 It installs as a PWA: `src/app/manifest.ts` (start URL `/launch`, which redirects each role to its panel), icons in `public/icons/`, viewport/theme-color in the root layout, and `public/sw.js` (production only) which only serves `public/offline.html` when a navigation fails — it deliberately caches nothing else so appointment data is never stale.
 
+## Photos and artwork gallery
+
+Salon logo/cover and stylist avatar/cover are edited through `components/app/ProfilePhotos.tsx` (cover banner + overlapping avatar; tap either for a change/remove sheet). Sending `null` for `logoUrl`/`coverImageUrl`/`avatarUrl` clears the photo. Artwork galleries (`GalleryImage` rows, apps/api `gallery` module) are edited with `components/app/GalleryManager.tsx`: `scope="salon"` on `/salon/gallery` (owner sees every piece and can credit it to a stylist, max 60), `scope="stylist"` on `/stylist/profile` (stylist's own pieces only, max 30). The public salon page shows the whole gallery and each stylist's credited pieces on their card.
+
+Upload images with `uploadImage(file, folder)` from `src/lib/uploadImage.ts` — it downscales on the phone (longest edge 1920px, JPEG q0.85) before POSTing to `/api/upload`. apps/api only accepts image fields matching `/uploads/<folder>/<file>.<jpg|png|webp|gif>` (`IsOptionalImageUrl` in `apps/api/src/common/image-url.ts`), so never send external URLs. Removing a photo or gallery piece deletes the DB reference only; the file stays in `public/uploads/` (no cleanup job yet). `public/uploads/salons/` and `public/uploads/stylists/` are gitignored runtime data.
+
+
 ## Error logging
 
 Every app writes failures to the shared `ErrorLog` table (`error_logs`), shown at the top of the platform-admin dashboard (`/admin`, `components/admin/AdminErrorLog.tsx`, API under `/api/admin/errors`):

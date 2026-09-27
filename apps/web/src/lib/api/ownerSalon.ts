@@ -34,8 +34,8 @@ export interface UpdateSalonInput {
   address?: string;
   phone?: string;
   instagram?: string;
-  logoUrl?: string;
-  coverImageUrl?: string;
+  logoUrl?: string | null; // null removes the photo
+  coverImageUrl?: string | null;
   brandColor?: string;
   latitude?: number;
   longitude?: number;
@@ -140,6 +140,7 @@ export interface OwnerStylist {
   displayName: string;
   bio: string | null;
   avatarUrl: string | null;
+  coverImageUrl: string | null;
   active: boolean;
   user: { firstName: string; lastName: string; phone: string | null };
   services: { serviceId: string; overridePriceToman: number | null; overrideDurationMinutes: number | null }[];
@@ -173,7 +174,11 @@ export function inviteStylist(token: string, data: InviteStylistInput) {
   });
 }
 
-export function updateStylist(token: string, id: string, data: { displayName?: string; bio?: string; avatarUrl?: string; active?: boolean }) {
+export function updateStylist(
+  token: string,
+  id: string,
+  data: { displayName?: string; bio?: string; avatarUrl?: string | null; coverImageUrl?: string | null; active?: boolean },
+) {
   return salonApiFetch<OwnerStylist>(`/stylists/${id}`, {
     method: "PATCH",
     headers: authHeaders(token),

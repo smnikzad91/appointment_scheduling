@@ -1,3 +1,4 @@
+import { IsOptionalImageUrl } from "../../common/image-url.js";
 import { IsHexColor, IsLatitude, IsLongitude, IsOptional, IsString } from "class-validator";
 
 export class UpdateSalonDto {
@@ -25,13 +26,11 @@ export class UpdateSalonDto {
   @IsString()
   instagram?: string;
 
-  @IsOptional()
-  @IsString()
-  logoUrl?: string;
+  @IsOptionalImageUrl()
+  logoUrl?: string | null;
 
-  @IsOptional()
-  @IsString()
-  coverImageUrl?: string;
+  @IsOptionalImageUrl()
+  coverImageUrl?: string | null;
 
   @IsOptional()
   @IsHexColor()

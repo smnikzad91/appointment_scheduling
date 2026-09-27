@@ -250,11 +250,24 @@ export function Toggle({ checked, onChange, label, disabled }: { checked: boolea
   );
 }
 
-export function Avatar({ name, src, size = 44, className }: { name: string; src?: string | null; size?: number; className?: string }) {
+export function Avatar({
+  name,
+  src,
+  size = 44,
+  className,
+  shape = "circle",
+}: {
+  name: string;
+  src?: string | null;
+  size?: number;
+  className?: string;
+  /** "square" = rounded square (salon logos). */
+  shape?: "circle" | "square";
+}) {
   return (
     <span
-      className={cx("flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-app-accent-soft font-black text-app-accent", className)}
-      style={{ width: size, height: size, fontSize: size * 0.4 }}
+      className={cx("flex shrink-0 items-center justify-center overflow-hidden bg-app-accent-soft font-black text-app-accent", shape === "circle" && "rounded-full", className)}
+      style={{ width: size, height: size, fontSize: size * 0.4, ...(shape === "square" && { borderRadius: size * 0.26 }) }}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element

@@ -1,4 +1,5 @@
 import { Type } from "class-transformer";
+import { IsOptionalImageUrl } from "../../common/image-url.js";
 import { IsArray, IsBoolean, IsDateString, IsInt, IsOptional, IsPositive, IsString, Max, Min, ValidateNested } from "class-validator";
 
 export class InviteStylistDto {
@@ -32,9 +33,11 @@ export class UpdateStylistDto {
   @IsString()
   bio?: string;
 
-  @IsOptional()
-  @IsString()
-  avatarUrl?: string;
+  @IsOptionalImageUrl()
+  avatarUrl?: string | null;
+
+  @IsOptionalImageUrl()
+  coverImageUrl?: string | null;
 
   @IsOptional()
   @IsBoolean()
@@ -80,9 +83,11 @@ export class UpdateOwnStylistDto {
   @IsString()
   bio?: string;
 
-  @IsOptional()
-  @IsString()
-  avatarUrl?: string;
+  @IsOptionalImageUrl()
+  avatarUrl?: string | null;
+
+  @IsOptionalImageUrl()
+  coverImageUrl?: string | null;
 }
 
 export class WorkingHourEntryDto {

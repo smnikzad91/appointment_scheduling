@@ -12,6 +12,7 @@ import { StylistsModule } from './stylists/stylists.module.js';
 import { AppointmentsModule } from './appointments/appointments.module.js';
 import { ReviewsModule } from './reviews/reviews.module.js';
 import { AvailabilityModule } from './availability/availability.module.js';
+import { GalleryModule } from './gallery/gallery.module.js';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AvailabilityModule } from './availability/availability.module.js';
     AppointmentsModule,
     ReviewsModule,
     AvailabilityModule,
+    GalleryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -12,7 +12,7 @@ export default function Gallery({ images }: { images: GalleryImage[] }) {
 
   return (
     <section id="gallery" className="mx-auto max-w-3xl px-4 py-8">
-      <h2 className="mb-4 text-lg font-bold">گالری تصاویر</h2>
+      <h2 className="mb-4 text-lg font-bold">نمونه کارها</h2>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {images.map((image, i) => (
           <button

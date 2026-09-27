@@ -33,6 +33,8 @@ export interface Stylist {
   id: string;
   displayName: string;
   avatarUrl?: string | null;
+  coverImageUrl?: string | null;
+  gallery: GalleryImage[]; // this stylist's portfolio pieces (subset of Salon.gallery)
   bio?: string | null;
   specialtyCategoryIds: string[]; // derived from the stylist's services' categoryIds, not stored directly
   services: StylistServicePricing[];
@@ -53,6 +55,7 @@ export interface GalleryImage {
   id: string;
   url?: string;
   alt: string;
+  stylistId?: string | null;
 }
 
 export interface GeoLocation {
