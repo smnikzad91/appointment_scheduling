@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Camera, ImagePlus, Trash2 } from "lucide-react";
-import { uploadImage } from "@/lib/uploadImage";
+import { releaseUploads, uploadImage } from "@/lib/uploadImage";
 import Sheet from "./Sheet";
 import { Avatar, Button, Card, cx } from "./ui";
 
@@ -60,11 +60,15 @@ export default function ProfilePhotos({
     if (!file || !open) return;
     setBusy("upload");
     setError(null);
+    const previous = current;
+    let url: string | null = null;
     try {
-      const url = await uploadImage(file, folder);
+      url = await uploadImage(file, folder);
       await onSave({ [field]: url });
+      releaseUploads([previous]);
       setOpen(null);
     } catch {
+      releaseUploads([url]); // uploaded but not saved
       setError("آپلود عکس انجام نشد، دوباره تلاش کنید");
     } finally {
       setBusy(null);
@@ -78,8 +82,10 @@ export default function ProfilePhotos({
     }
     setBusy("delete");
     setError(null);
+    const previous = current;
     try {
       await onSave({ [field]: null });
+      releaseUploads([previous]);
       setOpen(null);
     } catch {
       setError("حذف عکس انجام نشد، دوباره تلاش کنید");

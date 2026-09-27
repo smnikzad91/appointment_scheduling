@@ -12,7 +12,7 @@ import {
   type GalleryScope,
 } from "@/lib/api/gallery";
 import { persianApiError } from "@/lib/api/errorMessages";
-import { uploadImage } from "@/lib/uploadImage";
+import { releaseUploads, uploadImage } from "@/lib/uploadImage";
 import { toPersianDigits } from "@/lib/persian";
 import Sheet from "./Sheet";
 import { Button, ErrorBanner, Field, Select, TextInput, cx } from "./ui";
@@ -76,11 +76,13 @@ export default function GalleryManager({
     let failed = 0;
     // One at a time: phones on mobile data shouldn't push several large uploads in parallel.
     for (const { file, key, preview } of batch) {
+      let url: string | null = null;
       try {
-        const url = await uploadImage(file, folder);
+        url = await uploadImage(file, folder);
         const item = await addGalleryImage(token, scope, { url });
         setItems((list) => (list ? [item, ...list] : [item]));
       } catch (err) {
+        releaseUploads([url]); // uploaded but not saved (e.g. gallery full)
         failed++;
         if (failed === 1) setError(persianApiError(err, "آپلود برخی عکس‌ها انجام نشد"));
       } finally {
@@ -125,6 +127,7 @@ export default function GalleryManager({
     setSheetError(null);
     try {
       await deleteGalleryImage(token, selected.id);
+      releaseUploads([selected.url]);
       setItems((list) => list?.filter((x) => x.id !== selected.id) ?? list);
       setSelected(null);
     } catch (err) {

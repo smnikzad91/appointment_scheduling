@@ -46,3 +46,19 @@ export async function uploadImage(file: File, folder: "salons" | "stylists"): Pr
   const data = (await res.json()) as { url: string };
   return data.url;
 }
+
+/**
+ * Asks the server to delete photos that were just replaced or removed (or uploaded but never
+ * saved). Call it after the save has gone through; the server only deletes files no row still
+ * references. Fire-and-forget — a missed cleanup is caught by the server's daily sweep.
+ */
+export function releaseUploads(urls: (string | null | undefined)[]): void {
+  const list = urls.filter((u): u is string => !!u);
+  if (list.length === 0) return;
+  fetch("/api/upload", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ urls: list }),
+    keepalive: true,
+  }).catch(() => {});
+}
