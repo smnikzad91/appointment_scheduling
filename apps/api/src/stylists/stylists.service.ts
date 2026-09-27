@@ -87,7 +87,20 @@ export class StylistsService {
 
   async update(userId: string, stylistId: string, dto: UpdateStylistDto) {
     const stylist = await this.findOwned(userId, stylistId);
-    return this.prisma.stylist.update({ where: { id: stylist.id }, data: dto });
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.stylist.update({ where: { id: stylist.id }, data: dto }),
+      ...this.syncAccountAvatar(stylist.userId, dto.avatarUrl),
+    ]);
+    return updated;
+  }
+
+  /**
+   * A stylist's profile photo is also their account photo (shown in the panel's app bar and
+   * returned at login), so keep User.avatarUrl in step when the stylist photo changes.
+   */
+  private syncAccountAvatar(stylistUserId: string, avatarUrl: string | null | undefined) {
+    if (avatarUrl === undefined) return [];
+    return [this.prisma.user.update({ where: { id: stylistUserId }, data: { avatarUrl } })];
   }
 
   async setServices(userId: string, stylistId: string, dto: SetStylistServicesDto) {
@@ -138,11 +151,15 @@ export class StylistsService {
 
   async updateOwn(userId: string, dto: UpdateOwnStylistDto) {
     const stylist = await this.findMe(userId);
-    return this.prisma.stylist.update({
-      where: { id: stylist.id },
-      data: dto,
-      include: { workingHours: true, services: { include: { service: true } } },
-    });
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.stylist.update({
+        where: { id: stylist.id },
+        data: dto,
+        include: { workingHours: true, services: { include: { service: true } } },
+      }),
+      ...this.syncAccountAvatar(userId, dto.avatarUrl),
+    ]);
+    return updated;
   }
 
   async updateOwnServiceOverride(userId: string, serviceId: string, dto: UpdateStylistServiceOverrideDto) {

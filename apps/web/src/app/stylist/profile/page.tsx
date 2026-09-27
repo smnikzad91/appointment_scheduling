@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Check } from "lucide-react";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import GalleryManager from "@/components/app/GalleryManager";
@@ -14,6 +15,7 @@ const BIO_MAX = 300;
 
 export default function StylistProfilePage() {
   const token = useApiAccessToken();
+  const { update: updateSession } = useSession();
   const [profile, setProfile] = useState<SelfStylist | null>(null);
   const [bio, setBio] = useState("");
   const [saving, setSaving] = useState(false);
@@ -53,6 +55,8 @@ export default function StylistProfilePage() {
   async function savePhotos(patch: PhotoPatch) {
     if (!token) return;
     setProfile(await updateMyStylistProfile(token, patch));
+    // The API mirrors the stylist photo onto the account; refresh the session so the app bar shows it.
+    if (patch.avatarUrl !== undefined) await updateSession({ avatar: patch.avatarUrl ?? "" });
   }
 
   if (!profile) return error ? <ErrorBanner onRetry={load}>{error}</ErrorBanner> : <ListSkeleton rows={3} />;
