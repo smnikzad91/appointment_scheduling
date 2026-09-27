@@ -3,7 +3,7 @@ import type { Review } from "@/types/salon";
 import { toPersianDigits } from "@/lib/persian";
 
 export default function ReviewSummary({ reviews, ratingAverage, ratingCount }: { reviews: Review[]; ratingAverage: number; ratingCount: number }) {
-  const distribution = [5, 4, 3, 2, 1].map((star) => reviews.filter((r) => Math.round(r.rating) === star).length);
+  const distribution = [5, 4, 3, 2, 1].map((star) => reviews.filter((r) => r.rating === star).length);
   const max = Math.max(...distribution, 1);
 
   return (
@@ -11,7 +11,7 @@ export default function ReviewSummary({ reviews, ratingAverage, ratingCount }: {
       <div className="flex flex-col items-center sm:w-32">
         <span className="text-3xl font-bold">{toPersianDigits(ratingAverage.toFixed(1))}</span>
         <Stars value={ratingAverage} className="mt-1" />
-        <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">{toPersianDigits(ratingCount)} نظر</span>
+        <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">{toPersianDigits(ratingCount)} امتیاز</span>
       </div>
 
       <div className="flex flex-1 flex-col gap-1">

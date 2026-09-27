@@ -58,7 +58,7 @@ export default function StylistCard({ salon, stylist }: { salon: Salon; stylist:
             <span className="mt-1 inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
               {toPersianDigits(stylist.rating.toFixed(1))}
-              <span>({toPersianDigits(stylist.reviewCount ?? 0)} نظر)</span>
+              <span>({toPersianDigits(stylist.reviewCount ?? 0)} امتیاز)</span>
             </span>
           )}
         </div>
@@ -97,7 +97,7 @@ export default function StylistCard({ salon, stylist }: { salon: Salon; stylist:
             <div className="mt-3">
               <div className="mb-2 flex items-center gap-2">
                 <h4 className="text-sm font-bold">نظرات درباره {stylist.displayName}</h4>
-                <Stars value={stylist.rating ?? 0} size={13} />
+                {stylist.rating !== undefined && <Stars value={stylist.rating} size={13} />}
               </div>
               <div className="flex flex-col gap-2">
                 {(showAllReviews ? stylist.reviews : stylist.reviews.slice(0, REVIEWS_PREVIEW)).map((review) => (

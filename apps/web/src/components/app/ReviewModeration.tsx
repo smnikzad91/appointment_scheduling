@@ -54,7 +54,8 @@ export default function ReviewModeration({ token, scope }: { token: string; scop
 
   const byStatus = (s: ReviewStatus) => reviews.filter((r) => r.status === s);
   const approved = byStatus("APPROVED");
-  const average = approved.length > 0 ? approved.reduce((sum, r) => sum + r.rating, 0) / approved.length : 0;
+  const ratings = approved.flatMap((r) => (r.rating === null ? [] : [r.rating]));
+  const average = ratings.length > 0 ? ratings.reduce((sum, n) => sum + n, 0) / ratings.length : 0;
   const list = byStatus(tab);
 
   return (
@@ -62,9 +63,9 @@ export default function ReviewModeration({ token, scope }: { token: string; scop
       <div className="mb-4 grid grid-cols-2 gap-2.5">
         <div className="min-w-0 rounded-3xl border border-app-line bg-app-card p-4 shadow-app">
           <Star className="mb-3 h-5 w-5 text-amber-400" aria-hidden />
-          <p className="text-[28px] font-black leading-none text-app-ink">{approved.length > 0 ? toPersianDigits(average.toFixed(1)) : "—"}</p>
+          <p className="text-[28px] font-black leading-none text-app-ink">{ratings.length > 0 ? toPersianDigits(average.toFixed(1)) : "—"}</p>
           <p className="mt-1.5 text-xs font-medium text-app-muted">
-            میانگین {toPersianDigits(approved.length)} نظر منتشرشده
+            میانگین {toPersianDigits(ratings.length)} امتیاز منتشرشده
           </p>
         </div>
         <StatTile icon={MessageSquareText} label="منتظر تایید شما" value={byStatus("PENDING").length} tone={byStatus("PENDING").length ? "pending" : "ink"} />
@@ -94,7 +95,11 @@ export default function ReviewModeration({ token, scope }: { token: string; scop
                     {r.appointment.services.length > 0 && ` · ${r.appointment.services.join("، ")}`}
                   </p>
                 </div>
-                <Stars value={r.rating} size={16} emptyClassName="text-app-line" />
+                {r.rating !== null ? (
+                  <Stars value={r.rating} size={16} emptyClassName="text-app-line" />
+                ) : (
+                  <span className="shrink-0 rounded-full bg-app-card-2 px-2.5 py-0.5 text-[11px] font-bold text-app-muted">بدون امتیاز</span>
+                )}
               </div>
 
               {scope === "salon" && (

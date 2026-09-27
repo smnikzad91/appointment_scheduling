@@ -16,6 +16,7 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Not your image": "اجازه تغییر این عکس را ندارید",
   "This appointment has already been reviewed": "برای این نوبت قبلاً نظر ثبت کرده‌اید",
   "You can only review a completed appointment": "فقط برای نوبت‌های انجام‌شده می‌توانید نظر بدهید",
+  "A review needs a rating or a comment": "امتیاز بدهید یا چند کلمه بنویسید",
   "Review not found": "این نظر دیگر وجود ندارد",
   "Not your review": "اجازه تایید یا رد این نظر را ندارید",
 };

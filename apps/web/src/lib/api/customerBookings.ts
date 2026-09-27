@@ -23,7 +23,7 @@ export type ReviewTarget = "SALON" | "STYLIST";
 export interface BookingReview {
   id: string;
   target: ReviewTarget;
-  rating: number;
+  rating: number | null;
   comment: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
 }
@@ -40,8 +40,8 @@ export function cancelBooking(token: string, id: string) {
   });
 }
 
-/** Reviews start pending; they're public once the salon owner (or, for a stylist review, the stylist) approves. */
-export function leaveReview(token: string, appointmentId: string, review: { target: ReviewTarget; rating: number; comment?: string }) {
+/** A review needs a rating, a comment, or both. Reviews start pending; they're public once the salon owner (or, for a stylist review, the stylist) approves. */
+export function leaveReview(token: string, appointmentId: string, review: { target: ReviewTarget; rating?: number; comment?: string }) {
   return salonApiFetch<BookingReview>(`/appointments/${appointmentId}/review`, {
     method: "POST",
     headers: authHeaders(token),

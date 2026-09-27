@@ -40,6 +40,10 @@ export class ReviewsService {
       throw new BadRequestException("You can only review a completed appointment");
     }
 
+    const comment = dto.comment?.trim() || null;
+    const rating = dto.rating ?? null;
+    if (rating === null && comment === null) throw new BadRequestException("A review needs a rating or a comment");
+
     const target = dto.target ?? ReviewTarget.SALON;
     try {
       return await this.prisma.review.create({
@@ -48,8 +52,8 @@ export class ReviewsService {
           salonId: appointment.salonId,
           target,
           stylistId: target === ReviewTarget.STYLIST ? appointment.stylistId : null,
-          rating: dto.rating,
-          comment: dto.comment?.trim() || null,
+          rating,
+          comment,
         },
       });
     } catch (err: unknown) {

@@ -10,7 +10,7 @@ export type ReviewScope = "salon" | "stylist";
 export interface ModerationReview {
   id: string;
   target: "SALON" | "STYLIST";
-  rating: number;
+  rating: number | null; // null = comment-only
   comment: string | null;
   status: ReviewStatus;
   createdAt: string;

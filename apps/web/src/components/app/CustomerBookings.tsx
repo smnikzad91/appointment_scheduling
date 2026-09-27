@@ -16,7 +16,7 @@ import { Button, ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader, Te
 type Tab = "upcoming" | "past";
 
 interface Draft {
-  rating: number; // 0 = not rated, skipped on submit
+  rating: number; // 0 = no stars (a comment alone is fine)
   comment: string;
 }
 const EMPTY_DRAFTS: Record<ReviewTarget, Draft> = { SALON: { rating: 0, comment: "" }, STYLIST: { rating: 0, comment: "" } };
@@ -110,16 +110,18 @@ export default function CustomerBookings({
 
   async function submitReview() {
     if (!token || !reviewTarget) return;
-    const toSend = missingTargets(reviewTarget).filter((t) => drafts[t].rating > 0);
+    // Stars only, text only, or both — a section with neither is skipped.
+    const toSend = missingTargets(reviewTarget).filter((t) => drafts[t].rating > 0 || drafts[t].comment.trim() !== "");
     if (toSend.length === 0) {
-      setSheetError("برای ثبت نظر، دست‌کم به یکی امتیاز بدهید");
+      setSheetError("برای ثبت نظر، امتیاز بدهید یا چند کلمه بنویسید");
       return;
     }
     setReviewing(true);
     setSheetError(null);
     try {
       for (const target of toSend) {
-        await leaveReview(token, reviewTarget.id, { target, rating: drafts[target].rating, comment: drafts[target].comment.trim() || undefined });
+        const { rating, comment } = drafts[target];
+        await leaveReview(token, reviewTarget.id, { target, rating: rating || undefined, comment: comment.trim() || undefined });
       }
       setReviewTarget(null);
     } catch (err) {
@@ -192,7 +194,7 @@ export default function CustomerBookings({
                       <div key={r.id} className="rounded-2xl border border-app-line px-3.5 py-2.5">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold text-app-muted">{r.target === "SALON" ? "سالن" : b.stylist.displayName}</span>
-                          <Stars value={r.rating} size={14} emptyClassName="text-app-line" />
+                          {r.rating !== null && <Stars value={r.rating} size={14} emptyClassName="text-app-line" />}
                           <span className={cx("ms-auto rounded-full px-2 py-0.5 text-[11px] font-bold", REVIEW_STATUS[r.status].className)}>
                             {REVIEW_STATUS[r.status].label}
                           </span>
@@ -279,21 +281,30 @@ export default function CustomerBookings({
                     disabled={reviewing}
                   />
                   {draft.rating > 0 && (
-                    <TextArea
-                      rows={3}
-                      maxLength={COMMENT_MAX}
-                      className="mt-2"
-                      value={draft.comment}
-                      onChange={(e) => updateDraft(target, { comment: e.target.value })}
-                      placeholder={target === "SALON" ? "از فضا، برخورد و خدمات سالن بنویسید (اختیاری)" : `از کار ${name} بنویسید (اختیاری)`}
-                      aria-label={`نظر درباره ${name}`}
-                    />
+                    <button
+                      type="button"
+                      onClick={() => updateDraft(target, { rating: 0 })}
+                      disabled={reviewing}
+                      className="mx-auto -mt-1 block rounded-full px-3 py-1 text-xs font-bold text-app-muted active:bg-app-card-2"
+                    >
+                      حذف امتیاز
+                    </button>
                   )}
+                  <TextArea
+                    rows={3}
+                    maxLength={COMMENT_MAX}
+                    className="mt-2"
+                    value={draft.comment}
+                    disabled={reviewing}
+                    onChange={(e) => updateDraft(target, { comment: e.target.value })}
+                    placeholder={target === "SALON" ? "از فضا، برخورد و خدمات سالن بنویسید" : `از کار ${name} بنویسید`}
+                    aria-label={`نظر درباره ${name}`}
+                  />
                 </section>
               );
             })}
             <p className="px-1 text-xs leading-6 text-app-muted">
-              به هر کدام که می‌خواهید امتیاز بدهید. نظر شما پس از تایید سالن یا آرایشگر در صفحه سالن نمایش داده می‌شود.
+              می‌توانید فقط امتیاز بدهید، فقط نظر بنویسید یا هر دو؛ هر بخش را هم می‌توانید خالی بگذارید. نظر شما پس از تایید سالن یا آرایشگر در صفحه سالن نمایش داده می‌شود.
             </p>
             {sheetError && <p className="text-sm font-medium text-app-danger">{sheetError}</p>}
           </div>

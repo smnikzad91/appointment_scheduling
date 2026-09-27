@@ -58,7 +58,7 @@ interface RawReview {
   id: string;
   target: "SALON" | "STYLIST";
   stylistId: string | null;
-  rating: number;
+  rating: number | null;
   comment: string | null;
   createdAt: string;
   customer: { firstName: string; avatarUrl: string | null };
@@ -108,8 +108,7 @@ function mapStylist(raw: RawStylist, services: RawService[], gallery: GalleryIma
     gallery: gallery.filter((g) => g.stylistId === raw.id),
     bio: raw.bio,
     reviews,
-    reviewCount: reviews.length,
-    rating: reviews.length > 0 ? average(reviews) : undefined,
+    ...ratingStats(reviews),
     specialtyCategoryIds: [...categoryIds],
     services: raw.services.flatMap((ss) => {
       const service = byServiceId.get(ss.serviceId);
@@ -125,8 +124,11 @@ function mapStylist(raw: RawStylist, services: RawService[], gallery: GalleryIma
   };
 }
 
-function average(reviews: Review[]) {
-  return reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+/** Average over the reviews that carry stars; comment-only reviews don't affect the rating. */
+function ratingStats(reviews: Review[]): { rating?: number; reviewCount: number } {
+  const ratings = reviews.flatMap((r) => (r.rating === null ? [] : [r.rating]));
+  if (ratings.length === 0) return { reviewCount: 0 };
+  return { rating: ratings.reduce((sum, n) => sum + n, 0) / ratings.length, reviewCount: ratings.length };
 }
 
 function mapReview(raw: RawReview): Review {
@@ -171,8 +173,9 @@ export async function getSalonBySlug(slug: string): Promise<Salon | null> {
   // stylist reviews go on each stylist's card.
   const allReviews = rawReviews.map(mapReview);
   const reviews = allReviews.filter((r) => r.target === "SALON");
-  const ratingCount = reviews.length;
-  const ratingAverage = ratingCount > 0 ? average(reviews) : 0;
+  const salonStats = ratingStats(reviews);
+  const ratingCount = salonStats.reviewCount;
+  const ratingAverage = salonStats.rating ?? 0;
 
   return {
     id: raw.id,

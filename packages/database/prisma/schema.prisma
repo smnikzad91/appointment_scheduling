@@ -490,7 +490,8 @@ model OtpCode {
   @@map("otp_codes")
 }
 
-// A customer's rating (1–5) and comment after a completed appointment. Each appointment can have
+// A customer's rating (1–5) and/or comment after a completed appointment — either may be missing
+// but not both (reviews_rating_or_comment check constraint, added in SQL). Each appointment can have
 // one review of the salon and one of its stylist. Reviews start PENDING and only APPROVED ones are
 // public: the salon owner moderates all of the salon's reviews, a stylist those about them.
 model Review {
@@ -503,7 +504,7 @@ model Review {
   // The appointment's stylist; set only when target = STYLIST.
   stylistId     String?
   stylist       Stylist?     @relation(fields: [stylistId], references: [id], onDelete: SetNull)
-  rating        Int
+  rating        Int?
   comment       String?
   status        ReviewStatus @default(PENDING)
   moderatedAt   DateTime?

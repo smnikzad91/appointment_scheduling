@@ -44,13 +44,15 @@ export default function Hero({ salon }: { salon: Salon }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 text-sm font-medium">
-              <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
-              {toPersianDigits(salon.ratingAverage.toFixed(1))}
-              <span className="font-normal text-gray-500 dark:text-gray-400">
-                ({toPersianDigits(salon.ratingCount)} نظر)
+            {salon.ratingCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-sm font-medium">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
+                {toPersianDigits(salon.ratingAverage.toFixed(1))}
+                <span className="font-normal text-gray-500 dark:text-gray-400">
+                  ({toPersianDigits(salon.ratingCount)} امتیاز)
+                </span>
               </span>
-            </span>
+            )}
             <OpenStatusBadge workingHours={salon.workingHours} timeZone={salon.timezone} />
           </div>
 

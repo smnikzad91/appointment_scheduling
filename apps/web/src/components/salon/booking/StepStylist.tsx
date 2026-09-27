@@ -60,7 +60,7 @@ export default function StepStylist() {
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium">{stylist.displayName}</span>
             <span className="mt-0.5 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              {stylist.rating && (
+              {stylist.rating !== undefined && (
                 <span className="flex items-center gap-1">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden />
                   {toPersianDigits(stylist.rating.toFixed(1))}

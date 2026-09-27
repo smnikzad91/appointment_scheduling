@@ -9,10 +9,12 @@ export class CreateReviewDto {
   @IsIn([ReviewTarget.SALON, ReviewTarget.STYLIST])
   target?: ReviewTarget;
 
+  /** Optional, but a review needs a rating, a comment, or both. */
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Max(5)
-  rating!: number;
+  rating?: number;
 
   @IsOptional()
   @IsString()

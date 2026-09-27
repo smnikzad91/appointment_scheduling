@@ -38,8 +38,8 @@ export interface Stylist {
   bio?: string | null;
   specialtyCategoryIds: string[]; // derived from the stylist's services' categoryIds, not stored directly
   services: StylistServicePricing[];
-  rating?: number; // average of approved reviews about this stylist
-  reviewCount?: number;
+  rating?: number; // average star rating of approved reviews about this stylist (undefined if none rated)
+  reviewCount?: number; // how many of those reviews carry a rating
   reviews: Review[]; // approved reviews about this stylist, newest first
 }
 
@@ -49,7 +49,7 @@ export interface Review {
   stylistId: string | null;
   customerName: string;
   customerAvatarUrl?: string | null;
-  rating: number; // 1-5
+  rating: number | null; // 1-5, or null for a comment-only review
   comment: string | null;
   createdAt: string; // ISO datetime
 }
@@ -86,8 +86,8 @@ export interface Salon {
   stylists: Stylist[];
   gallery: GalleryImage[];
   reviews: Review[];
-  ratingAverage: number;
-  ratingCount: number;
+  ratingAverage: number; // over salon reviews that carry a rating
+  ratingCount: number; // number of rated salon reviews (comment-only reviews aren't counted)
 }
 
 export interface TimeSlot {
