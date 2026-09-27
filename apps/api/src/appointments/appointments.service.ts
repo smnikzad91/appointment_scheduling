@@ -160,9 +160,9 @@ export class AppointmentsService {
       });
 
       if (appointment) {
-        // Online: the owner and the stylist hear about it. By the salon: only the stylist (the
-        // owner made it themselves).
-        await this.notifyBooking(appointment.id, NotificationType.NEW_BOOKING, { bySalon }, bySalon ? appointment.salon.ownerId : undefined);
+        // Everyone involved hears about it except whoever made it: online, the owner and the
+        // stylist; by the salon, the stylist and the customer.
+        await this.notifyBooking(appointment.id, NotificationType.NEW_BOOKING, { bySalon }, bySalon ? appointment.salon.ownerId : customerId);
         return appointment;
       }
     }
@@ -220,23 +220,27 @@ export class AppointmentsService {
     if (status === AppointmentStatus.CANCELLED && appointment.status !== AppointmentStatus.CANCELLED) {
       const cancelledBy = user.role === Role.CUSTOMER ? "CUSTOMER" : user.role === Role.STYLIST ? "STYLIST" : "SALON";
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CANCELLED, { cancelledBy }, user.sub);
+    } else if (status === AppointmentStatus.CONFIRMED && appointment.status === AppointmentStatus.PENDING) {
+      await this.notifyBooking(appointmentId, NotificationType.BOOKING_CONFIRMED, {}, user.sub, "customer");
     }
     return updated;
   }
 
-  /** Tells the salon owner and the appointment's stylist (never the person who acted). */
+  /** Tells the salon owner, the appointment's stylist and the customer — never the person who acted. */
   private async notifyBooking(
     appointmentId: string,
     type: NotificationType,
     extra: Pick<BookingData, "bySalon" | "cancelledBy">,
-    exceptUserId?: string,
+    exceptUserId: string,
+    audience: "everyone" | "customer" = "everyone",
   ) {
     try {
       const a = await this.prisma.appointment.findUnique({
         where: { id: appointmentId },
         select: {
           startAt: true,
-          salon: { select: { ownerId: true } },
+          customerId: true,
+          salon: { select: { ownerId: true, name: true } },
           stylist: { select: { userId: true, displayName: true } },
           customer: { select: { firstName: true, lastName: true } },
           services: { select: { service: { select: { name: true } } } },
@@ -244,10 +248,11 @@ export class AppointmentsService {
       });
       if (!a) return;
       await this.notifications.notify(
-        [a.salon.ownerId, a.stylist.userId],
+        audience === "customer" ? [a.customerId] : [a.salon.ownerId, a.stylist.userId, a.customerId],
         type,
         {
           appointmentId,
+          salonName: a.salon.name,
           customerName: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
           stylistName: a.stylist.displayName,
           services: a.services.map((s) => s.service.name),

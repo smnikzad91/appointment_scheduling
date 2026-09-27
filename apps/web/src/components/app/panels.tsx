@@ -106,9 +106,11 @@ export function StylistShell({ children }: { children: React.ReactNode }) {
 }
 
 export function CustomerShell({ children }: { children: React.ReactNode }) {
+  const token = useApiAccessToken();
   return (
     <AppShell
       panelName="حساب مشتری"
+      actions={<NotificationBell token={token} scope="customer" />}
       tabs={[
         { href: "/dashboard", label: "خانه", icon: Home, exact: true },
         { href: "/dashboard/bookings", label: "نوبت‌ها", icon: CalendarDays },

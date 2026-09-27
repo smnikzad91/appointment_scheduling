@@ -28,6 +28,7 @@ import { persianApiError } from "@/lib/api/errorMessages";
 import { jalaliMonthPeriod, type AccountingPeriod } from "@/lib/accountingPeriod";
 import { jalaliDate, jalaliMonthSlug, type Report } from "@/lib/accountingExport";
 import ExportSheet from "@/components/app/AccountingReport";
+import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
 import { formatToman, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, toSalonWallTime } from "@/lib/salonTime";
 import MoneyInput from "@/components/app/MoneyInput";
@@ -155,6 +156,7 @@ export default function SalonAccountingPage() {
               <EmptyState icon={Users} title="هنوز آرایشگری ندارید" hint="از تب آرایشگرها، آرایشگر اضافه کنید و سهم او را تعیین کنید." />
             ) : (
               <div className="flex flex-col gap-2.5">
+                <ZeroCommissionNotice stylists={data.stylists} />
                 {data.stylists.map((s, i) => (
                   <button
                     key={s.id}

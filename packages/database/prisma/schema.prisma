@@ -67,6 +67,8 @@ enum NotificationType {
   NEW_BOOKING
   BOOKING_CANCELLED
   PAYOUT_RECORDED
+  BOOKING_CONFIRMED
+  REVIEW_APPROVED
 }
 
 enum PayoutMethod {

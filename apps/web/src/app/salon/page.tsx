@@ -5,7 +5,8 @@ import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import { Calculator, CalendarCheck2, CalendarClock, ExternalLink, Hourglass, Share2, Sparkles } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
-import { getMySalon, listMySalonAppointments, updateAppointmentStatus, type OwnerSalon, type OwnerAppointment } from "@/lib/api/ownerSalon";
+import { getMySalon, listMySalonAppointments, listMyStylists, updateAppointmentStatus, type OwnerSalon, type OwnerAppointment, type OwnerStylist } from "@/lib/api/ownerSalon";
+import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
 import { formatToman } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
 import { AppointmentCard, AppointmentSheet, TodayTimeline, useAppointmentActions } from "@/components/app/appointments";
@@ -21,6 +22,7 @@ export default function SalonOverviewPage() {
   const token = useApiAccessToken();
   const [salon, setSalon] = useState<OwnerSalon | null>(null);
   const [appointments, setAppointments] = useState<OwnerAppointment[] | null>(null);
+  const [stylists, setStylists] = useState<OwnerStylist[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -33,6 +35,10 @@ export default function SalonOverviewPage() {
         setAppointments(a);
       })
       .catch(() => setError("خطا در دریافت اطلاعات سالن"));
+    // Only for the 0% notice — the page works without it.
+    listMyStylists(token)
+      .then(setStylists)
+      .catch(() => {});
   }, [token]);
 
   useEffect(reload, [reload]);
@@ -141,6 +147,7 @@ export default function SalonOverviewPage() {
       </div>
 
       <LinkCard href="/salon/accounting" icon={Calculator} title="حسابداری" subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها" className="mt-3" />
+      <ZeroCommissionNotice stylists={stylists} className="mt-3" />
 
       {needsConfirmation.length > 0 && (
         <>

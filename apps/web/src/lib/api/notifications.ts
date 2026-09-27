@@ -15,6 +15,8 @@ export interface NewReviewData {
 
 export interface BookingData {
   appointmentId: string;
+  /** Missing on notifications created before customers were notified. */
+  salonName?: string;
   customerName: string;
   stylistName: string;
   services: string[];
@@ -33,6 +35,13 @@ export interface PayoutData {
   note: string | null;
 }
 
+export interface ReviewApprovedData {
+  reviewId: string;
+  target: "SALON" | "STYLIST";
+  salonName: string;
+  stylistName: string | null;
+}
+
 export type AppNotification = {
   id: string;
   readAt: string | null;
@@ -42,6 +51,8 @@ export type AppNotification = {
   | { type: "NEW_BOOKING"; data: BookingData }
   | { type: "BOOKING_CANCELLED"; data: BookingData }
   | { type: "PAYOUT_RECORDED"; data: PayoutData }
+  | { type: "BOOKING_CONFIRMED"; data: BookingData }
+  | { type: "REVIEW_APPROVED"; data: ReviewApprovedData }
 );
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });

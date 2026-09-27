@@ -135,6 +135,27 @@ export class ReviewsService {
     });
   }
 
+  /** Tell the customer their review is now on the public page. */
+  private async notifyAuthorApproved(reviewId: string) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      select: {
+        id: true,
+        target: true,
+        salon: { select: { name: true } },
+        stylist: { select: { displayName: true } },
+        appointment: { select: { customerId: true } },
+      },
+    });
+    if (!review) return;
+    await this.notifications.notify([review.appointment.customerId], NotificationType.REVIEW_APPROVED, {
+      reviewId: review.id,
+      target: review.target,
+      salonName: review.salon.name,
+      stylistName: review.stylist?.displayName ?? null,
+    });
+  }
+
   // ── Public ───────────────────────────────────────────────────────────────
 
   /** Approved reviews of the salon and of its stylists, newest first. */
@@ -191,6 +212,9 @@ export class ReviewsService {
       data: { status: dto.status, moderatedAt: new Date() },
       include: MODERATION_INCLUDE,
     });
+    if (dto.status === ReviewStatus.APPROVED && review.status !== ReviewStatus.APPROVED) {
+      await this.notifyAuthorApproved(review.id);
+    }
     return this.toModerationView(updated);
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Copy, KeyRound, Plus, Share2, UserPlus, Users } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/ownerSalon";
 import { normalizeDigits, formatToman, toPersianDigits, isValidIranianMobile } from "@/lib/persian";
 import { SalonApiError } from "@/lib/api/salonApiClient";
+import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
 import Sheet from "@/components/app/Sheet";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import CommissionInput, { parseCommission } from "@/components/app/CommissionInput";
@@ -58,12 +59,23 @@ export default function SalonStylistsPage() {
   const [created, setCreated] = useState<{ name: string; phone: string; password: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const deepLinked = useRef(false);
   const reload = useCallback(() => {
     if (!token) return;
     Promise.all([listMyStylists(token), listMyServices(token)])
       .then(([s, sv]) => {
         setStylists(s);
         setServices(sv);
+        // ?stylist=<id> (from the 0% notice on the home/accounting pages) opens that stylist once.
+        if (!deepLinked.current) {
+          deepLinked.current = true;
+          const target = s.find((x) => x.id === new URLSearchParams(window.location.search).get("stylist"));
+          if (target) {
+            setCommissionDraft(String(target.commissionPercent));
+            setSelectedId(target.id);
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+        }
       })
       .catch(() => setError("خطا در دریافت اطلاعات"));
   }, [token]);
@@ -277,6 +289,14 @@ export default function SalonStylistsPage() {
       />
 
       {error && <ErrorBanner onRetry={reload}>{error}</ErrorBanner>}
+      <ZeroCommissionNotice
+        stylists={stylists}
+        onPick={(id) => {
+          const s = stylists.find((x) => x.id === id);
+          if (s) openStylist(s);
+        }}
+        className="mb-4"
+      />
 
       {stylists.length === 0 ? (
         <EmptyState
@@ -300,7 +320,11 @@ export default function SalonStylistsPage() {
                   <span className="mt-0.5 block text-[13px] text-app-muted">
                     {toPersianDigits(stylist.services.length)} خدمت
                     <Sep />
-                    سهم {toPersianDigits(stylist.commissionPercent)}٪
+                    {stylist.commissionPercent === 0 ? (
+                      <span className="font-bold text-app-pending">سهم تعیین نشده</span>
+                    ) : (
+                      <>سهم {toPersianDigits(stylist.commissionPercent)}٪</>
+                    )}
                     {stylist.user.phone && (
                       <>
                         <Sep />

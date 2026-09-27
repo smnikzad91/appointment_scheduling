@@ -4,9 +4,11 @@ import { PrismaService } from "../prisma/prisma.service.js";
 
 const LIST_LIMIT = 30;
 
-/** Payload of NEW_BOOKING and BOOKING_CANCELLED. */
+/** Payload of NEW_BOOKING, BOOKING_CANCELLED and BOOKING_CONFIRMED. */
 export interface BookingData {
   appointmentId: string;
+  /** For the customer's copy ("سالن رز نوبت شما را تایید کرد"). */
+  salonName?: string;
   customerName: string;
   stylistName: string;
   services: string[];
@@ -26,7 +28,15 @@ export interface PayoutData {
   note: string | null;
 }
 
-export type NotificationData = NewReviewData | BookingData | PayoutData;
+/** Payload of REVIEW_APPROVED (sent to the customer who wrote it). */
+export interface ReviewApprovedData {
+  reviewId: string;
+  target: "SALON" | "STYLIST";
+  salonName: string;
+  stylistName: string | null;
+}
+
+export type NotificationData = NewReviewData | BookingData | PayoutData | ReviewApprovedData;
 
 /** Payload of a NEW_REVIEW notification (also sent when a customer edits a review). */
 export interface NewReviewData {

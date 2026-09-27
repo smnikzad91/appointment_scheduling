@@ -91,21 +91,44 @@ describe('AppointmentsService accounting on status change', () => {
 });
 
 describe('AppointmentsService cancellation notice', () => {
-  it('tells the owner and the stylist, except whoever cancelled', async () => {
+  it('tells the owner, the stylist and the customer, except whoever cancelled', async () => {
     const { service, prisma, notifications, appointment } = setup({ status: 'CONFIRMED' });
     prisma.appointment.findUnique.mockResolvedValueOnce(appointment).mockResolvedValueOnce({
       startAt: new Date('2026-10-01T08:00:00Z'),
-      salon: { ownerId: 'owner-1' },
+      customerId: 'cust-1',
+      salon: { ownerId: 'owner-1', name: 'رز' },
       stylist: { userId: 'sty-user-1', displayName: 'نگار' },
       customer: { firstName: 'مریم', lastName: 'احمدی' },
       services: [{ service: { name: 'کوتاهی' } }],
     });
     await service.updateStatus(owner, 'appt-1', 'CANCELLED');
     expect(notifications.notify).toHaveBeenCalledWith(
-      ['owner-1', 'sty-user-1'],
+      ['owner-1', 'sty-user-1', 'cust-1'],
       'BOOKING_CANCELLED',
-      expect.objectContaining({ appointmentId: 'appt-1', customerName: 'مریم احمدی', cancelledBy: 'SALON', services: ['کوتاهی'] }),
+      expect.objectContaining({ appointmentId: 'appt-1', salonName: 'رز', customerName: 'مریم احمدی', cancelledBy: 'SALON', services: ['کوتاهی'] }),
       'owner-1',
     );
+  });
+});
+
+describe('AppointmentsService confirmation notice', () => {
+  it('tells only the customer when a pending booking is confirmed', async () => {
+    const { service, prisma, notifications, appointment } = setup({ status: 'PENDING' });
+    prisma.appointment.findUnique.mockResolvedValueOnce(appointment).mockResolvedValueOnce({
+      startAt: new Date('2026-10-01T08:00:00Z'),
+      customerId: 'cust-1',
+      salon: { ownerId: 'owner-1', name: 'رز' },
+      stylist: { userId: 'sty-user-1', displayName: 'نگار' },
+      customer: { firstName: 'مریم', lastName: 'احمدی' },
+      services: [],
+    });
+    await service.updateStatus(owner, 'appt-1', 'CONFIRMED');
+    expect(notifications.notify).toHaveBeenCalledWith(['cust-1'], 'BOOKING_CONFIRMED', expect.objectContaining({ salonName: 'رز' }), 'owner-1');
+  });
+
+  it('says nothing when an already confirmed booking is saved again', async () => {
+    const { service, notifications } = setup({ status: 'CONFIRMED' });
+    await service.updateStatus(owner, 'appt-1', 'CONFIRMED');
+    expect(notifications.notify).not.toHaveBeenCalled();
   });
 });

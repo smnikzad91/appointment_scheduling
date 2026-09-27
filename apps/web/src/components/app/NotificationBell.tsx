@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CalendarPlus, CalendarX, CheckCheck, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Bell, CalendarCheck2, CalendarPlus, CalendarX, CheckCheck, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -35,11 +35,12 @@ function setAppBadge(count: number) {
   p?.catch(() => {});
 }
 
-type Scope = "salon" | "stylist";
+type Scope = "salon" | "stylist" | "customer";
 
 /** How each notification reads, which icon it gets, and where tapping it goes. */
 function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: string; title: string; detail: string | null; href: string } {
-  const appointmentsHref = scope === "salon" ? "/salon/appointments" : "/stylist/appointments";
+  const appointmentsHref = scope === "salon" ? "/salon/appointments" : scope === "stylist" ? "/stylist/appointments" : "/dashboard/bookings";
+  const salon = "salonName" in n.data && n.data.salonName ? n.data.salonName : "سالن";
   switch (n.type) {
     case "NEW_REVIEW": {
       const { customerName, target, stylistName, edited } = n.data;
@@ -58,7 +59,9 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
         icon: CalendarPlus,
         tone: "text-app-done",
         title:
-          scope === "stylist"
+          scope === "customer"
+            ? `${salon} برای شما نوبتی با ${stylistName} ثبت کرد`
+            : scope === "stylist"
             ? bySalon
               ? `سالن برای ${customerName} نوبتی با شما ثبت کرد`
               : `${customerName} با شما نوبت گرفت`
@@ -71,7 +74,31 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
       const { customerName, stylistName, cancelledBy } = n.data;
       const who = cancelledBy === "CUSTOMER" ? customerName : cancelledBy === "STYLIST" ? stylistName : "سالن";
       const whose = scope === "stylist" ? `نوبت ${customerName}` : `نوبت ${customerName} با ${stylistName}`;
-      return { icon: CalendarX, tone: "text-app-danger", title: `${who} ${whose} را لغو کرد`, detail: bookingDetail(n.data), href: appointmentsHref };
+      const title =
+        scope === "customer"
+          ? cancelledBy === "STYLIST"
+            ? `${stylistName} نوبت شما در ${salon} را لغو کرد`
+            : `${salon} نوبت شما را لغو کرد`
+          : `${who} ${whose} را لغو کرد`;
+      return { icon: CalendarX, tone: "text-app-danger", title, detail: bookingDetail(n.data), href: appointmentsHref };
+    }
+    case "BOOKING_CONFIRMED":
+      return {
+        icon: CalendarCheck2,
+        tone: "text-app-done",
+        title: `${salon} نوبت شما با ${n.data.stylistName} را تایید کرد`,
+        detail: bookingDetail(n.data),
+        href: appointmentsHref,
+      };
+    case "REVIEW_APPROVED": {
+      const about = n.data.target === "SALON" ? n.data.salonName : `${n.data.stylistName ?? "آرایشگر"} (${n.data.salonName})`;
+      return {
+        icon: BadgeCheck,
+        tone: "text-app-done",
+        title: `نظر شما درباره ${about} منتشر شد`,
+        detail: "حالا در صفحه سالن برای همه نمایش داده می‌شود.",
+        href: appointmentsHref,
+      };
     }
     case "PAYOUT_RECORDED":
       return {
@@ -173,7 +200,13 @@ export default function NotificationBell({ token, scope }: { token: string | nul
         )}
 
         {!items || items.length === 0 ? (
-          <EmptyState icon={Bell} title="اعلانی ندارید" hint={scope === "salon" ? "نوبت‌های تازه، لغوها و نظرهای مشتری‌ها اینجا می‌آید." : "نوبت‌های تازه، لغوها، پرداخت‌های سالن و نظرها اینجا می‌آید."} />
+          <EmptyState icon={Bell} title="اعلانی ندارید" hint={
+              scope === "salon"
+                ? "نوبت‌های تازه، لغوها و نظرهای مشتری‌ها اینجا می‌آید."
+                : scope === "stylist"
+                  ? "نوبت‌های تازه، لغوها، پرداخت‌های سالن و نظرها اینجا می‌آید."
+                  : "تایید یا لغو نوبت‌هایتان و انتشار نظرهایتان اینجا می‌آید."
+            } />
         ) : (
           <ul className="-mx-1 flex flex-col">
             {items.map((n) => {
