@@ -17,6 +17,7 @@ const BY_API_MESSAGE: Record<string, string> = {
   "This appointment has already been reviewed": "برای این نوبت قبلاً نظر ثبت کرده‌اید",
   "You can only review a completed appointment": "فقط برای نوبت‌های انجام‌شده می‌توانید نظر بدهید",
   "A review needs a rating or a comment": "امتیاز بدهید یا چند کلمه بنویسید",
+  "Notification not found": "این اعلان دیگر وجود ندارد",
   "Review not found": "این نظر دیگر وجود ندارد",
   "Not your review": "اجازه تایید یا رد این نظر را ندارید",
 };

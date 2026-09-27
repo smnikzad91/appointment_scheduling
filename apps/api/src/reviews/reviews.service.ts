@@ -1,8 +1,14 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, ReviewStatus, ReviewTarget } from "@appointment-scheduling/database";
+import { NotificationType, Prisma, ReviewStatus, ReviewTarget } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
-import { CreateReviewDto, ModerateReviewDto } from "./dto/create-review.dto.js";
+import { NotificationsService } from "../notifications/notifications.service.js";
+import { CreateReviewDto, ModerateReviewDto, UpdateReviewDto } from "./dto/create-review.dto.js";
+
+const EXCERPT_LENGTH = 120;
+
+/** What the customer sees about their own review (bookings list, edit sheet). */
+const OWN_REVIEW_SELECT = { id: true, target: true, rating: true, comment: true, status: true } as const;
 
 const MODERATION_INCLUDE = {
   appointment: {
@@ -28,6 +34,7 @@ export class ReviewsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly salonsService: SalonsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ── Customer ─────────────────────────────────────────────────────────────
@@ -45,8 +52,9 @@ export class ReviewsService {
     if (rating === null && comment === null) throw new BadRequestException("A review needs a rating or a comment");
 
     const target = dto.target ?? ReviewTarget.SALON;
+    let review;
     try {
-      return await this.prisma.review.create({
+      review = await this.prisma.review.create({
         data: {
           appointmentId,
           salonId: appointment.salonId,
@@ -62,6 +70,69 @@ export class ReviewsService {
       }
       throw err;
     }
+    await this.notifyModerators(review.id, false);
+    return review;
+  }
+
+  /**
+   * The customer edits their own review. The new text hasn't been seen by the salon, so it goes
+   * back to PENDING (an approved review can't be swapped for different text behind the owner's back).
+   * `null` clears the rating or comment; a review still needs one of the two.
+   */
+  async updateOwn(customerId: string, reviewId: string, dto: UpdateReviewDto) {
+    const review = await this.findOwn(customerId, reviewId);
+    const rating = dto.rating === undefined ? review.rating : dto.rating;
+    const comment = dto.comment === undefined ? review.comment : dto.comment?.trim() || null;
+    if (rating === null && comment === null) throw new BadRequestException("A review needs a rating or a comment");
+
+    const updated = await this.prisma.review.update({
+      where: { id: review.id },
+      data: { rating, comment, status: ReviewStatus.PENDING, moderatedAt: null },
+      select: OWN_REVIEW_SELECT,
+    });
+    await this.notifyModerators(review.id, true);
+    return updated;
+  }
+
+  async removeOwn(customerId: string, reviewId: string) {
+    const review = await this.findOwn(customerId, reviewId);
+    await this.prisma.review.delete({ where: { id: review.id } });
+    return { ok: true };
+  }
+
+  private async findOwn(customerId: string, reviewId: string) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      include: { appointment: { select: { customerId: true } } },
+    });
+    if (!review) throw new NotFoundException("Review not found");
+    if (review.appointment.customerId !== customerId) throw new ForbiddenException("Not your review");
+    return review;
+  }
+
+  /** Tell whoever can approve the review — the salon owner, and the stylist if it's about them. */
+  private async notifyModerators(reviewId: string, edited: boolean) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      include: {
+        salon: { select: { ownerId: true } },
+        stylist: { select: { userId: true, displayName: true } },
+        appointment: { select: { customer: { select: { firstName: true, lastName: true } } } },
+      },
+    });
+    if (!review) return;
+    const recipients = [review.salon.ownerId];
+    if (review.target === ReviewTarget.STYLIST && review.stylist) recipients.push(review.stylist.userId);
+    const { firstName, lastName } = review.appointment.customer;
+    await this.notifications.notify(recipients, NotificationType.NEW_REVIEW, {
+      reviewId: review.id,
+      target: review.target,
+      rating: review.rating,
+      excerpt: review.comment ? review.comment.slice(0, EXCERPT_LENGTH) : null,
+      customerName: publicName(firstName, lastName),
+      stylistName: review.stylist?.displayName ?? null,
+      edited,
+    });
   }
 
   // ── Public ───────────────────────────────────────────────────────────────

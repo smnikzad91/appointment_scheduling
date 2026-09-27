@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, NotFoundExc
 import { ReviewsService } from './reviews.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { SalonsService } from '../salons/salons.service.js';
+import type { NotificationsService } from '../notifications/notifications.service.js';
 
 const completed = { id: 'appt-1', customerId: 'cust-1', salonId: 'salon-1', stylistId: 'sty-1', status: 'COMPLETED' };
 
@@ -26,10 +27,12 @@ function setup() {
       ),
     },
     salon: { findFirst: vi.fn().mockResolvedValue({ id: 'salon-1' }) },
+    // (review.findUnique is also used to load the review for notifications — see notifyModerators)
     stylist: { findUnique: vi.fn() },
   };
-  const service = new ReviewsService(prisma as unknown as PrismaService, {} as SalonsService);
-  return { prisma, service };
+  const notify = vi.fn().mockResolvedValue(undefined);
+  const service = new ReviewsService(prisma as unknown as PrismaService, {} as SalonsService, { notify } as unknown as NotificationsService);
+  return { prisma, service, notify };
 }
 
 describe('ReviewsService.create', () => {
@@ -127,5 +130,69 @@ describe('ReviewsService.listForSalon', () => {
     const { service, prisma } = setup();
     prisma.salon.findFirst.mockResolvedValueOnce(null);
     await expect(service.listForSalon('nope')).rejects.toThrow(NotFoundException);
+  });
+});
+
+function withNotificationLookup(prisma: ReturnType<typeof setup>['prisma'], target: 'SALON' | 'STYLIST') {
+  // notifyModerators loads the review with its salon owner, stylist and customer.
+  prisma.review.findUnique.mockResolvedValue({
+    id: 'rev-1',
+    target,
+    rating: 5,
+    comment: 'x'.repeat(300),
+    salon: { ownerId: 'owner-1' },
+    stylist: target === 'STYLIST' ? { userId: 'sty-user-1', displayName: 'نگار' } : null,
+    appointment: { customerId: 'cust-1', customer: { firstName: 'سارا', lastName: 'محمدی' } },
+  });
+}
+
+describe('ReviewsService notifications', () => {
+  it('notifies only the owner about a salon review', async () => {
+    const { service, prisma, notify } = setup();
+    withNotificationLookup(prisma, 'SALON');
+    await service.create('cust-1', 'appt-1', { target: 'SALON', rating: 5 });
+    expect(notify).toHaveBeenCalledWith(['owner-1'], 'NEW_REVIEW', expect.objectContaining({ edited: false, customerName: 'سارا م.' }));
+  });
+
+  it('notifies the owner and the stylist about a stylist review, with a short excerpt', async () => {
+    const { service, prisma, notify } = setup();
+    withNotificationLookup(prisma, 'STYLIST');
+    await service.create('cust-1', 'appt-1', { target: 'STYLIST', rating: 5 });
+    const [recipients, , data] = notify.mock.calls[0];
+    expect(recipients).toEqual(['owner-1', 'sty-user-1']);
+    expect(data.excerpt).toHaveLength(120);
+    expect(data.stylistName).toBe('نگار');
+  });
+});
+
+describe('ReviewsService customer edit / delete', () => {
+  it('sends an edited review back for approval and notifies again', async () => {
+    const { service, prisma, notify } = setup();
+    withNotificationLookup(prisma, 'SALON');
+    await service.updateOwn('cust-1', 'rev-1', { comment: '  بهتر شد  ' });
+    expect(prisma.review.update.mock.calls[0][0].data).toMatchObject({ comment: 'بهتر شد', rating: 5, status: 'PENDING', moderatedAt: null });
+    expect(notify.mock.calls[0][2]).toMatchObject({ edited: true });
+  });
+
+  it('can clear the rating but not both rating and comment', async () => {
+    const { service, prisma } = setup();
+    withNotificationLookup(prisma, 'SALON');
+    await service.updateOwn('cust-1', 'rev-1', { rating: null });
+    expect(prisma.review.update.mock.calls[0][0].data).toMatchObject({ rating: null });
+    await expect(service.updateOwn('cust-1', 'rev-1', { rating: null, comment: null })).rejects.toThrow(BadRequestException);
+  });
+
+  it("refuses to edit or delete someone else's review", async () => {
+    const { service, prisma } = setup();
+    withNotificationLookup(prisma, 'SALON');
+    await expect(service.updateOwn('cust-2', 'rev-1', { rating: 3 })).rejects.toThrow(ForbiddenException);
+    await expect(service.removeOwn('cust-2', 'rev-1')).rejects.toThrow(ForbiddenException);
+  });
+
+  it('deletes the customer\'s own review', async () => {
+    const { service, prisma } = setup();
+    withNotificationLookup(prisma, 'SALON');
+    (prisma.review as Record<string, unknown>).delete = vi.fn().mockResolvedValue({});
+    await expect(service.removeOwn('cust-1', 'rev-1')).resolves.toEqual({ ok: true });
   });
 });

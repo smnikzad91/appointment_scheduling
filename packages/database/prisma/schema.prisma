@@ -62,6 +62,10 @@ enum ReviewStatus {
   REJECTED
 }
 
+enum NotificationType {
+  NEW_REVIEW
+}
+
 enum ErrorSource {
   API // apps/api (NestJS)
   WEB_SERVER // apps/web server side: route handlers, server components, server actions
@@ -99,12 +103,13 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  ownedSalons  Salon[]       @relation("SalonOwner")
-  stylist      Stylist?
-  appointments Appointment[] @relation("CustomerAppointments")
-  tickets      Ticket[]
-  cards        Card[]
-  deposits     Deposit[]
+  ownedSalons   Salon[]        @relation("SalonOwner")
+  stylist       Stylist?
+  appointments  Appointment[]  @relation("CustomerAppointments")
+  tickets       Ticket[]
+  cards         Card[]
+  deposits      Deposit[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -553,4 +558,21 @@ model GalleryImage {
   @@index([salonId, createdAt])
   @@index([stylistId])
   @@map("gallery_images")
+}
+
+// In-app notifications shown behind the bell in the salon and stylist panels. `data` is the
+// type-specific payload (ids, names, rating…); clients build the Persian text from it, so the
+// wording can change without rewriting stored rows.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  data      Json
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notifications")
 }
