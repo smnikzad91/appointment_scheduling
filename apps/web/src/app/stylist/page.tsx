@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CalendarClock, Clock, ListChecks } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { CalendarCheck2, CalendarClock, ChevronLeft, Clock3, Coffee, Hourglass } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
-import { getMyStylistProfile, listMyAppointments, type SelfStylist, type StylistAppointment } from "@/lib/api/stylistSelf";
-import { formatToman, toPersianDigits } from "@/lib/persian";
-import { formatSalonDateTime, toSalonWallTime } from "@/lib/salonTime";
+import { getMyStylistProfile, listMyAppointments, updateMyAppointmentStatus, type SelfStylist, type StylistAppointment } from "@/lib/api/stylistSelf";
+import { formatMinutesAsClock } from "@/lib/persian";
+import { toSalonWallTime } from "@/lib/salonTime";
+import { AppointmentCard, AppointmentSheet, TodayTimeline, relativeDayLabel, useAppointmentActions } from "@/components/app/appointments";
+import { Avatar, EmptyState, ErrorBanner, ListSkeleton, SectionTitle, StatTile } from "@/components/app/ui";
+
+function greeting(minuteOfDay: number) {
+  if (minuteOfDay < 12 * 60) return "صبح بخیر";
+  if (minuteOfDay < 17 * 60) return "روز بخیر";
+  return "عصر بخیر";
+}
 
 export default function StylistOverviewPage() {
   const token = useApiAccessToken();
@@ -13,81 +22,129 @@ export default function StylistOverviewPage() {
   const [appointments, setAppointments] = useState<StylistAppointment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     if (!token) return;
     Promise.all([getMyStylistProfile(token), listMyAppointments(token)])
       .then(([p, a]) => {
+        setError(null);
         setProfile(p);
         setAppointments(a);
       })
       .catch(() => setError("خطا در دریافت اطلاعات"));
   }, [token]);
 
-  if (error) return <p className="text-sm text-rose-500">{error}</p>;
-  if (!profile || !appointments) return <p className="text-sm text-gray-500">در حال بارگذاری...</p>;
+  useEffect(reload, [reload]);
+
+  const actions = useAppointmentActions(
+    useCallback((id, status) => updateMyAppointmentStatus(token!, id, status), [token]),
+    reload,
+  );
+
+  if (error && !profile) return <ErrorBanner onRetry={reload}>{error}</ErrorBanner>;
+  if (!profile || !appointments) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="h-40 animate-pulse rounded-[32px] bg-app-card-2" />
+        <ListSkeleton rows={3} />
+      </div>
+    );
+  }
 
   const now = new Date();
-  const upcoming = appointments
-    .filter((a) => new Date(a.startAt) >= now && a.status !== "CANCELLED")
-    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
-  const todayKey = toSalonWallTime(now).dateKey;
-  const todayCount = upcoming.filter((a) => toSalonWallTime(a.startAt).dateKey === todayKey).length;
-  const pendingCount = appointments.filter((a) => a.status === "PENDING").length;
+  const nowWall = toSalonWallTime(now);
+  const live = appointments.filter((a) => a.status === "PENDING" || a.status === "CONFIRMED");
+  const today = appointments.filter((a) => a.status !== "CANCELLED" && toSalonWallTime(a.startAt).dateKey === nowWall.dateKey);
+  const upcoming = live.filter((a) => new Date(a.startAt) >= now).sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const pending = upcoming.filter((a) => a.status === "PENDING");
+  const next = upcoming[0];
+  const nextWall = next ? toSalonWallTime(next.startAt) : null;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">سلام، {profile.displayName}</h1>
-        <p className="text-sm text-gray-500">وضعیت نوبت‌های امروز و پیش‌روی شما</p>
-      </div>
+    <>
+      {/* Hero: who's next */}
+      <section className="relative overflow-hidden rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
+        <span className="pointer-events-none absolute -bottom-16 -left-10 h-48 w-36 rounded-t-full border-[10px] border-app-accent/35" aria-hidden />
+        <div className="relative flex items-center gap-3">
+          <Avatar name={profile.displayName} src={profile.avatarUrl} size={48} className="bg-white/15 text-white ring-2 ring-white/20" />
+          <div>
+            <p className="text-xs text-white/60">{greeting(nowWall.minuteOfDay)}</p>
+            <h1 className="text-xl font-black">{profile.displayName}</h1>
+          </div>
+        </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard icon={CalendarClock} label="نوبت‌های امروز" value={toPersianDigits(todayCount)} />
-        <StatCard icon={Clock} label="در انتظار تایید" value={toPersianDigits(pendingCount)} />
-        <StatCard icon={ListChecks} label="نوبت‌های آینده" value={toPersianDigits(upcoming.length)} />
-      </div>
-
-      <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-        <h2 className="border-b border-gray-200 px-5 py-3 font-bold text-gray-900 dark:border-gray-800 dark:text-white">
-          نوبت‌های پیش‌رو
-        </h2>
-        {upcoming.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-gray-500">نوبتی ثبت نشده است.</p>
+        {next && nextWall ? (
+          <button type="button" onClick={() => actions.open(next)} className="relative mt-5 block w-full text-start active:opacity-80">
+            <p className="text-xs text-white/60">نوبت بعدی · {relativeDayLabel(nextWall.dateKey)}</p>
+            <p className="mt-1 flex items-center gap-2 text-[30px] font-black leading-tight">
+              {formatMinutesAsClock(nextWall.minuteOfDay)}
+              <ChevronLeft className="h-5 w-5 text-white/50" aria-hidden />
+            </p>
+            <p className="truncate text-sm text-white/80">
+              {next.customer.firstName} {next.customer.lastName} — {next.services.map((s) => s.service.name).join("، ")}
+            </p>
+          </button>
         ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-            {upcoming.slice(0, 8).map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {a.customer.firstName} {a.customer.lastName}
-                  </p>
-                  <p className="text-xs text-gray-500">{a.services.map((s) => s.service.name).join("، ")}</p>
-                </div>
-                <div className="text-end">
-                  <p className="text-gray-700 dark:text-gray-300">
-                    {formatSalonDateTime(a.startAt)}
-                  </p>
-                  <p className="text-xs text-gray-500">{formatToman(a.priceToman)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <p className="relative mt-5 flex items-center gap-2 text-sm text-white/75">
+            <Coffee className="h-4 w-4" aria-hidden />
+            فعلاً نوبت پیش‌رویی ندارید.
+          </p>
         )}
-      </div>
-    </div>
-  );
-}
+      </section>
 
-function StatCard({ icon: Icon, label, value }: { icon: typeof CalendarClock; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/10">
-        <Icon className="h-5 w-5" aria-hidden />
-      </span>
-      <div>
-        <p className="text-lg font-bold text-gray-900 dark:text-white">{value}</p>
-        <p className="text-xs text-gray-500">{label}</p>
+      {profile.workingHours.length === 0 && (
+        <Link
+          href="/stylist/schedule"
+          className="mt-3 flex items-center gap-3 rounded-3xl bg-app-pending/12 p-4 text-sm font-semibold text-app-pending active:opacity-80"
+        >
+          <Clock3 className="h-5 w-5 shrink-0" aria-hidden />
+          <span className="flex-1">هنوز ساعات کاری‌تان را تنظیم نکرده‌اید؛ تا آن موقع مشتری‌ها نمی‌توانند با شما نوبت بگیرند.</span>
+          <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden />
+        </Link>
+      )}
+
+      {error && <div className="mt-3"><ErrorBanner onRetry={reload}>{error}</ErrorBanner></div>}
+
+      <div className="mt-3 grid grid-cols-3 gap-2.5">
+        <StatTile icon={CalendarCheck2} label="نوبت امروز" value={today.length} tone="accent" />
+        <StatTile icon={Hourglass} label="منتظر تایید" value={pending.length} tone={pending.length ? "pending" : "ink"} />
+        <StatTile icon={CalendarClock} label="نوبت‌های آینده" value={upcoming.length} />
       </div>
-    </div>
+
+      {pending.length > 0 && (
+        <>
+          <SectionTitle
+            action={
+              pending.length > 3 && (
+                <Link href="/stylist/appointments?filter=PENDING" className="text-[13px] font-bold text-app-accent">
+                  همه
+                </Link>
+              )
+            }
+          >
+            منتظر تایید شما
+          </SectionTitle>
+          <div className="flex flex-col gap-2.5">
+            {pending.slice(0, 3).map((a, i) => (
+              <AppointmentCard key={a.id} appointment={a} onOpen={actions.open} index={i} />
+            ))}
+          </div>
+        </>
+      )}
+
+      <SectionTitle>برنامه امروز</SectionTitle>
+      {today.length === 0 ? (
+        <EmptyState icon={Coffee} title="امروز نوبتی ندارید" hint="نوبت‌های جدید اینجا و در تب نوبت‌ها نمایش داده می‌شوند." />
+      ) : (
+        <TodayTimeline appointments={today} onOpen={actions.open} />
+      )}
+
+      <AppointmentSheet
+        appointment={actions.selected}
+        onClose={actions.close}
+        onSetStatus={actions.setStatus}
+        busyStatus={actions.busyStatus}
+        error={actions.error}
+      />
+    </>
   );
 }

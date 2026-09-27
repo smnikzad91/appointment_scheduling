@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Camera, Check, Copy, KeyRound, Plus, Share2, UserPlus, Users } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyStylists,
@@ -13,25 +13,48 @@ import {
   type OwnerService,
   type StylistServiceEntry,
 } from "@/lib/api/ownerSalon";
-import { normalizeDigits, formatToman, toPersianDigits } from "@/lib/persian";
+import { normalizeDigits, formatToman, toPersianDigits, isValidIranianMobile } from "@/lib/persian";
 import { SalonApiError } from "@/lib/api/salonApiClient";
 import { uploadImage } from "@/lib/uploadImage";
+import Sheet from "@/components/app/Sheet";
+import {
+  Avatar,
+  Button,
+  EmptyState,
+  ErrorBanner,
+  Field,
+  IconButton,
+  ListGroup,
+  ListSkeleton,
+  PageHeader,
+  TextInput,
+  Toggle,
+  cx,
+  riseStyle,
+} from "@/components/app/ui";
+
+const EMPTY_INVITE = { phone: "", firstName: "", lastName: "", displayName: "" };
 
 export default function SalonStylistsPage() {
   const token = useApiAccessToken();
   const [stylists, setStylists] = useState<OwnerStylist[] | null>(null);
   const [services, setServices] = useState<OwnerService[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [createdPassword, setCreatedPassword] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [uploadingAvatarId, setUploadingAvatarId] = useState<string | null>(null);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sheetError, setSheetError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [overrideDrafts, setOverrideDrafts] = useState<Record<string, { price: string; duration: string }>>({});
-  const [savingOverrideKey, setSavingOverrideKey] = useState<string | null>(null);
+  const [savingServiceId, setSavingServiceId] = useState<string | null>(null);
 
-  const [form, setForm] = useState({ phone: "", firstName: "", lastName: "", displayName: "" });
-  const [submitting, setSubmitting] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invite, setInvite] = useState(EMPTY_INVITE);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviting, setInviting] = useState(false);
+  const [created, setCreated] = useState<{ name: string; phone: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  function reload() {
+  const reload = useCallback(() => {
     if (!token) return;
     Promise.all([listMyStylists(token), listMyServices(token)])
       .then(([s, sv]) => {
@@ -39,30 +62,27 @@ export default function SalonStylistsPage() {
         setServices(sv);
       })
       .catch(() => setError("خطا در دریافت اطلاعات"));
+  }, [token]);
+
+  useEffect(reload, [reload]);
+
+  const selected = stylists?.find((s) => s.id === selectedId) ?? null;
+
+  function openStylist(stylist: OwnerStylist) {
+    setSheetError(null);
+    setOverrideDrafts({});
+    setSelectedId(stylist.id);
   }
 
-  useEffect(reload, [token]);
-
-  async function handleInvite(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleToggleActive(stylist: OwnerStylist) {
     if (!token) return;
-    setSubmitting(true);
     setError(null);
-    setCreatedPassword(null);
+    setStylists((list) => list?.map((s) => (s.id === stylist.id ? { ...s, active: !s.active } : s)) ?? list);
     try {
-      const created = await inviteStylist(token, {
-        phone: normalizeDigits(form.phone),
-        firstName: form.firstName,
-        lastName: form.lastName,
-        displayName: form.displayName || form.firstName,
-      });
-      if (created.tempPassword) setCreatedPassword(created.tempPassword);
-      setForm({ phone: "", firstName: "", lastName: "", displayName: "" });
+      await updateStylist(token, stylist.id, { active: !stylist.active });
+    } catch {
+      setError("تغییر وضعیت آرایشگر انجام نشد");
       reload();
-    } catch (err) {
-      setError(err instanceof SalonApiError ? err.message : "خطا در افزودن آرایشگر");
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -70,51 +90,51 @@ export default function SalonStylistsPage() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !token) return;
-    setUploadingAvatarId(stylist.id);
+    setUploading(true);
+    setSheetError(null);
     try {
       const url = await uploadImage(file, "stylists");
       await updateStylist(token, stylist.id, { avatarUrl: url });
       reload();
     } catch {
-      setError("خطا در آپلود تصویر");
+      setSheetError("آپلود تصویر انجام نشد");
     } finally {
-      setUploadingAvatarId(null);
+      setUploading(false);
     }
   }
 
-  async function handleToggleActive(stylist: OwnerStylist) {
+  async function saveServices(stylist: OwnerStylist, next: StylistServiceEntry[], serviceId: string) {
     if (!token) return;
-    setError(null);
-    try {
-      await updateStylist(token, stylist.id, { active: !stylist.active });
-      reload();
-    } catch {
-      setError("خطا در تغییر وضعیت آرایشگر");
-    }
-  }
-
-  async function handleToggleService(stylist: OwnerStylist, serviceId: string) {
-    if (!token) return;
-    const exists = stylist.services.some((s) => s.serviceId === serviceId);
-    const next: StylistServiceEntry[] = exists
-      ? stylist.services.filter((s) => s.serviceId !== serviceId)
-      : [...stylist.services, { serviceId, overridePriceToman: null, overrideDurationMinutes: null }];
-    setError(null);
+    setSavingServiceId(serviceId);
+    setSheetError(null);
     try {
       await setStylistServices(token, stylist.id, next);
       reload();
     } catch {
-      setError("خطا در به‌روزرسانی خدمات آرایشگر");
+      setSheetError("به‌روزرسانی خدمات آرایشگر انجام نشد");
+    } finally {
+      setSavingServiceId(null);
     }
   }
 
-  function draftKey(stylistId: string, serviceId: string) {
-    return `${stylistId}:${serviceId}`;
+  function handleToggleService(stylist: OwnerStylist, serviceId: string) {
+    const exists = stylist.services.some((s) => s.serviceId === serviceId);
+    const next: StylistServiceEntry[] = exists
+      ? stylist.services.filter((s) => s.serviceId !== serviceId)
+      : [...stylist.services, { serviceId, overridePriceToman: null, overrideDurationMinutes: null }];
+    // Optimistic so the switch responds immediately.
+    setStylists((list) =>
+      list?.map((s) =>
+        s.id === stylist.id
+          ? { ...s, services: next.map((n) => ({ serviceId: n.serviceId, overridePriceToman: n.overridePriceToman ?? null, overrideDurationMinutes: n.overrideDurationMinutes ?? null })) }
+          : s,
+      ) ?? list,
+    );
+    void saveServices(stylist, next, serviceId);
   }
 
-  function getOverrideDraft(stylist: OwnerStylist, serviceId: string) {
-    const key = draftKey(stylist.id, serviceId);
-    if (overrideDrafts[key]) return overrideDrafts[key];
+  function draftFor(stylist: OwnerStylist, serviceId: string) {
+    if (overrideDrafts[serviceId]) return overrideDrafts[serviceId];
     const existing = stylist.services.find((s) => s.serviceId === serviceId);
     return {
       price: existing?.overridePriceToman != null ? String(existing.overridePriceToman) : "",
@@ -122,217 +142,309 @@ export default function SalonStylistsPage() {
     };
   }
 
-  async function handleSaveOverride(stylist: OwnerStylist, serviceId: string) {
+  function overrideDirty(stylist: OwnerStylist, serviceId: string) {
+    const draft = overrideDrafts[serviceId];
+    if (!draft) return false;
+    const existing = stylist.services.find((s) => s.serviceId === serviceId);
+    return (
+      draft.price !== (existing?.overridePriceToman != null ? String(existing.overridePriceToman) : "") ||
+      draft.duration !== (existing?.overrideDurationMinutes != null ? String(existing.overrideDurationMinutes) : "")
+    );
+  }
+
+  function handleSaveOverride(stylist: OwnerStylist, serviceId: string) {
+    const draft = draftFor(stylist, serviceId);
+    setOverrideDrafts((d) => {
+      const rest = { ...d };
+      delete rest[serviceId];
+      return rest;
+    });
+    const next: StylistServiceEntry[] = stylist.services.map((s) =>
+      s.serviceId === serviceId
+        ? {
+            serviceId,
+            overridePriceToman: draft.price.trim() ? Number(draft.price) : null,
+            overrideDurationMinutes: draft.duration.trim() ? Number(draft.duration) : null,
+          }
+        : s,
+    );
+    void saveServices(stylist, next, serviceId);
+  }
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
     if (!token) return;
-    const key = draftKey(stylist.id, serviceId);
-    const draft = getOverrideDraft(stylist, serviceId);
-    setSavingOverrideKey(key);
+    const phone = normalizeDigits(invite.phone);
+    if (!invite.firstName.trim() || !invite.lastName.trim()) {
+      setInviteError("نام و نام خانوادگی را وارد کنید");
+      return;
+    }
+    if (!isValidIranianMobile(phone)) {
+      setInviteError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
+      return;
+    }
+    setInviting(true);
+    setInviteError(null);
     try {
-      const next: StylistServiceEntry[] = stylist.services.map((s) =>
-        s.serviceId === serviceId
-          ? {
-              serviceId,
-              overridePriceToman: draft.price.trim() ? Number(draft.price) : null,
-              overrideDurationMinutes: draft.duration.trim() ? Number(draft.duration) : null,
-            }
-          : s,
-      );
-      await setStylistServices(token, stylist.id, next);
+      const result = await inviteStylist(token, {
+        phone,
+        firstName: invite.firstName.trim(),
+        lastName: invite.lastName.trim(),
+        displayName: invite.displayName.trim() || invite.firstName.trim(),
+      });
+      setInvite(EMPTY_INVITE);
+      if (result.tempPassword) {
+        setCreated({ name: result.displayName, phone, password: result.tempPassword });
+      } else {
+        setInviteOpen(false);
+      }
       reload();
-    } catch {
-      setError("خطا در ذخیره قیمت اختصاصی");
+    } catch (err) {
+      setInviteError(err instanceof SalonApiError && err.status === 409 ? "این شماره قبلاً در نوبتا ثبت شده و نمی‌توان آن را به‌عنوان آرایشگر اضافه کرد" : "افزودن آرایشگر انجام نشد");
     } finally {
-      setSavingOverrideKey(null);
+      setInviting(false);
     }
   }
 
-  if (!stylists || !services) {
-    return <p className={`text-sm ${error ? "text-rose-500" : "text-gray-500"}`}>{error ?? "در حال بارگذاری..."}</p>;
+  const credentialsText = created
+    ? `ورود به پنل آرایشگر نوبتا\nشماره موبایل: ${created.phone}\nرمز عبور موقت: ${created.password}\n${typeof window !== "undefined" ? window.location.origin : ""}/signin`
+    : "";
+
+  async function copyCredentials() {
+    try {
+      await navigator.clipboard.writeText(credentialsText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard blocked — the password is still visible on screen.
+    }
   }
 
+  async function shareCredentials() {
+    try {
+      await navigator.share({ text: credentialsText });
+    } catch {
+      // Dismissed.
+    }
+  }
+
+  function closeInvite() {
+    setInviteOpen(false);
+    setCreated(null);
+    setInviteError(null);
+  }
+
+  if (!stylists || !services) {
+    return error ? <ErrorBanner onRetry={reload}>{error}</ErrorBanner> : <ListSkeleton />;
+  }
+
+  const activeServices = services.filter((s) => s.active);
+
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="mb-1 text-xl font-bold text-gray-900 dark:text-white">آرایشگرها</h1>
-        <p className="text-sm text-gray-500">آرایشگرهای سالن را دعوت کنید و خدمات هرکدام را مشخص کنید.</p>
-      </div>
+    <>
+      <PageHeader
+        title="آرایشگرها"
+        subtitle={`${toPersianDigits(stylists.filter((s) => s.active).length)} آرایشگر فعال`}
+        action={<IconButton icon={Plus} label="دعوت آرایشگر" onClick={() => setInviteOpen(true)} />}
+      />
 
-      {error && <p className="-mt-2 text-sm text-rose-500">{error}</p>}
+      {error && <ErrorBanner onRetry={reload}>{error}</ErrorBanner>}
 
-      <div className="flex flex-col gap-2">
-        {stylists.map((stylist) => {
-          const isExpanded = expandedId === stylist.id;
-          return (
-            <div key={stylist.id} className="rounded-xl border border-gray-200 dark:border-gray-800">
-              <button
-                type="button"
-                onClick={() => setExpandedId(isExpanded ? null : stylist.id)}
-                className="flex w-full items-center justify-between gap-3 p-4 text-start"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-sm font-bold text-gray-400 dark:bg-gray-800">
-                    {stylist.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={stylist.avatarUrl} alt={stylist.displayName} className="h-full w-full object-cover" />
-                    ) : (
-                      stylist.displayName.trim().slice(0, 1)
+      {stylists.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="هنوز آرایشگری اضافه نکرده‌اید"
+          hint="آرایشگرها را با شماره موبایل دعوت کنید؛ هرکدام پنل خودش را برای دیدن نوبت‌ها و تنظیم ساعات کاری دارد."
+          action={<Button icon={UserPlus} onClick={() => setInviteOpen(true)}>دعوت آرایشگر</Button>}
+        />
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {stylists.map((stylist, i) => (
+            <div
+              key={stylist.id}
+              style={riseStyle(i)}
+              className={cx("app-rise flex items-center gap-3 rounded-3xl border border-app-line bg-app-card p-3.5 shadow-app", !stylist.active && "opacity-60")}
+            >
+              <button type="button" onClick={() => openStylist(stylist)} className="flex min-w-0 flex-1 items-center gap-3 text-start active:opacity-70">
+                <Avatar name={stylist.displayName} src={stylist.avatarUrl} size={52} />
+                <span className="min-w-0">
+                  <span className="block truncate text-[15px] font-bold text-app-ink">{stylist.displayName}</span>
+                  <span className="mt-0.5 block text-[13px] text-app-muted">
+                    {toPersianDigits(stylist.services.length)} خدمت
+                    {stylist.user.phone && (
+                      <>
+                        {" · "}
+                        <span dir="ltr">{toPersianDigits(stylist.user.phone)}</span>
+                      </>
                     )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{stylist.displayName}</p>
-                    <p dir="ltr" className="text-end text-xs text-gray-500">
-                      {stylist.user.phone}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleActive(stylist);
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    className={`rounded-full px-2.5 py-0.5 text-xs ${
-                      stylist.active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    {stylist.active ? "فعال" : "غیرفعال"}
                   </span>
-                  <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} aria-hidden />
-                </div>
+                </span>
               </button>
+              <Toggle checked={stylist.active} onChange={() => handleToggleActive(stylist)} label={`فعال بودن ${stylist.displayName}`} />
+            </div>
+          ))}
+        </div>
+      )}
 
-              {isExpanded && (
-                <div className="border-t border-gray-100 p-4 dark:border-gray-800">
-                  <label className="mb-4 inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-gray-300 dark:border-gray-700 dark:text-gray-300">
-                    {uploadingAvatarId === stylist.id ? "در حال آپلود..." : "تغییر تصویر آرایشگر"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      disabled={uploadingAvatarId === stylist.id}
-                      onChange={(e) => handleAvatarChange(stylist, e)}
-                    />
-                  </label>
+      {/* Stylist detail */}
+      <Sheet open={selected !== null} onClose={() => setSelectedId(null)} title={selected?.displayName ?? ""}>
+        {selected && (
+          <>
+            <div className="mb-5 flex items-center gap-4">
+              <label className="relative cursor-pointer active:scale-95">
+                <Avatar name={selected.displayName} src={selected.avatarUrl} size={72} />
+                <span className="absolute -bottom-1 -left-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-app-bg bg-app-accent text-app-accent-ink">
+                  <Camera className="h-4 w-4" aria-hidden />
+                </span>
+                <input type="file" accept="image/*" className="sr-only" disabled={uploading} onChange={(e) => handleAvatarChange(selected, e)} aria-label="تغییر تصویر آرایشگر" />
+              </label>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-app-ink">
+                  {selected.user.firstName} {selected.user.lastName}
+                </p>
+                {selected.user.phone && (
+                  <p dir="ltr" className="text-end text-sm text-app-muted">
+                    {toPersianDigits(selected.user.phone)}
+                  </p>
+                )}
+                {uploading && <p className="text-xs text-app-muted">در حال آپلود تصویر…</p>}
+              </div>
+            </div>
 
-                  <p className="mb-2 text-xs font-medium text-gray-500">خدماتی که ارائه می‌دهد:</p>
-                  <div className="flex flex-col gap-2">
-                    {services.map((service) => {
-                      const assigned = stylist.services.find((s) => s.serviceId === service.id);
-                      const active = !!assigned;
-                      const key = draftKey(stylist.id, service.id);
-                      const draft = getOverrideDraft(stylist, service.id);
-                      return (
-                        <div key={service.id} className="flex flex-col gap-2">
+            {sheetError && <p className="mb-3 rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{sheetError}</p>}
+
+            <h3 className="mb-2 px-1 text-[13px] font-bold text-app-muted">خدماتی که ارائه می‌دهد</h3>
+            {activeServices.length === 0 ? (
+              <p className="rounded-2xl bg-app-card-2 p-4 text-sm text-app-muted">ابتدا در تب خدمات، خدمتی اضافه کنید.</p>
+            ) : (
+              <ListGroup>
+                {activeServices.map((service) => {
+                  const assigned = selected.services.some((s) => s.serviceId === service.id);
+                  const draft = draftFor(selected, service.id);
+                  return (
+                    <div key={service.id} className="px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-app-ink">{service.name}</p>
+                          <p className="text-xs text-app-muted">
+                            پیش‌فرض: {formatToman(service.priceToman)} · {toPersianDigits(service.durationMinutes)} دقیقه
+                          </p>
+                        </div>
+                        <Toggle
+                          checked={assigned}
+                          disabled={savingServiceId === service.id}
+                          onChange={() => handleToggleService(selected, service.id)}
+                          label={`ارائه ${service.name}`}
+                        />
+                      </div>
+                      {assigned && (
+                        <div className="mt-3 flex items-end gap-2">
+                          <label className="min-w-0 flex-1">
+                            <span className="mb-1 block text-[11px] font-bold text-app-muted">قیمت اختصاصی</span>
+                            <TextInput
+                              inputMode="numeric"
+                              dir="ltr"
+                              className="h-11 text-end"
+                              placeholder={toPersianDigits(service.priceToman)}
+                              value={draft.price}
+                              onChange={(e) => setOverrideDrafts((d) => ({ ...d, [service.id]: { ...draft, price: normalizeDigits(e.target.value).replace(/\D/g, "") } }))}
+                            />
+                          </label>
+                          <label className="w-24">
+                            <span className="mb-1 block text-[11px] font-bold text-app-muted">دقیقه</span>
+                            <TextInput
+                              inputMode="numeric"
+                              dir="ltr"
+                              className="h-11 text-end"
+                              placeholder={toPersianDigits(service.durationMinutes)}
+                              value={draft.duration}
+                              onChange={(e) => setOverrideDrafts((d) => ({ ...d, [service.id]: { ...draft, duration: normalizeDigits(e.target.value).replace(/\D/g, "") } }))}
+                            />
+                          </label>
                           <button
                             type="button"
-                            onClick={() => handleToggleService(stylist, service.id)}
-                            className={`w-fit rounded-full px-3 py-1 text-xs ${
-                              active
-                                ? "bg-brand-500 text-white"
-                                : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
-                            }`}
+                            onClick={() => handleSaveOverride(selected, service.id)}
+                            disabled={!overrideDirty(selected, service.id) || savingServiceId === service.id}
+                            aria-label={`ذخیره قیمت اختصاصی ${service.name}`}
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-app-accent text-app-accent-ink transition active:scale-90 disabled:bg-app-card-2 disabled:text-app-muted"
                           >
-                            {service.name}
+                            <Check className="h-5 w-5" aria-hidden />
                           </button>
-
-                          {active && (
-                            <div className="flex flex-wrap items-center gap-2 ps-1 text-xs text-gray-500">
-                              <span>پیش‌فرض: {formatToman(service.priceToman)} · {toPersianDigits(service.durationMinutes)} دقیقه</span>
-                              <input
-                                type="number"
-                                value={draft.price}
-                                onChange={(e) =>
-                                  setOverrideDrafts((d) => ({ ...d, [key]: { ...draft, price: e.target.value } }))
-                                }
-                                placeholder="قیمت اختصاصی"
-                                className="w-28 rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                              />
-                              <input
-                                type="number"
-                                value={draft.duration}
-                                onChange={(e) =>
-                                  setOverrideDrafts((d) => ({ ...d, [key]: { ...draft, duration: e.target.value } }))
-                                }
-                                placeholder="زمان اختصاصی (دقیقه)"
-                                className="w-32 rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                              />
-                              <button
-                                type="button"
-                                disabled={savingOverrideKey === key}
-                                onClick={() => handleSaveOverride(stylist, service.id)}
-                                className="rounded-lg bg-gray-100 px-2.5 py-1 font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-60 dark:bg-gray-800 dark:text-gray-300"
-                              >
-                                {savingOverrideKey === key ? "..." : "ذخیره"}
-                              </button>
-                            </div>
-                          )}
                         </div>
-                      );
-                    })}
-                    {services.length === 0 && <p className="text-xs text-gray-400">ابتدا در صفحه خدمات، خدمتی ثبت کنید.</p>}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-        {stylists.length === 0 && <p className="text-sm text-gray-500">هنوز آرایشگری اضافه نشده است.</p>}
-      </div>
-
-      <section className="max-w-lg rounded-xl border border-gray-200 p-5 dark:border-gray-800">
-        <h2 className="mb-3 text-sm font-bold text-gray-700 dark:text-gray-300">دعوت آرایشگر جدید</h2>
-        <form onSubmit={handleInvite} className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              value={form.firstName}
-              onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
-              placeholder="نام"
-              required
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-            <input
-              value={form.lastName}
-              onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
-              placeholder="نام خانوادگی"
-              required
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-          </div>
-          <input
-            value={form.displayName}
-            onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
-            placeholder="نام نمایشی (اختیاری)"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-          <input
-            dir="ltr"
-            value={form.phone}
-            onChange={(e) => setForm((f) => ({ ...f, phone: normalizeDigits(e.target.value) }))}
-            placeholder="09121234567"
-            required
-            className="rounded-lg border border-gray-200 px-3 py-2 text-end text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-
-          {createdPassword && (
-            <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-              حساب جدید ساخته شد. آرایشگر با همین شماره موبایل و این رمز عبور موقت از صفحه ورود وارد پنل می‌شود:{" "}
-              <span dir="ltr" className="font-mono font-bold">
-                {createdPassword}
-              </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </ListGroup>
+            )}
+            <p className="mt-2 px-1 text-xs leading-6 text-app-muted">
+              قیمت و زمان اختصاصی را خالی بگذارید تا مقدار پیش‌فرض سالن برای این آرایشگر اعمال شود.
             </p>
-          )}
+          </>
+        )}
+      </Sheet>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-fit rounded-lg bg-brand-500 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
-          >
-            {submitting ? "در حال افزودن..." : "افزودن آرایشگر"}
-          </button>
-        </form>
-      </section>
-    </div>
+      {/* Invite */}
+      <Sheet open={inviteOpen} onClose={closeInvite} title={created ? "حساب آرایشگر ساخته شد" : "دعوت آرایشگر"}>
+        {created ? (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm leading-7 text-app-muted">
+              {created.name} با همین شماره موبایل و این رمز موقت از صفحه ورود وارد پنل آرایشگر می‌شود. این رمز فقط همین یک بار نمایش داده
+              می‌شود.
+            </p>
+            <div className="flex items-center gap-3 rounded-3xl border border-dashed border-app-accent/50 bg-app-accent-soft p-4">
+              <KeyRound className="h-6 w-6 shrink-0 text-app-accent" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-app-muted">رمز عبور موقت</p>
+                <p dir="ltr" className="text-end font-mono text-xl font-bold tracking-wider text-app-ink">
+                  {created.password}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <Button variant="secondary" icon={copied ? Check : Copy} onClick={copyCredentials}>
+                {copied ? "کپی شد" : "کپی"}
+              </Button>
+              <Button icon={Share2} onClick={shareCredentials}>
+                ارسال
+              </Button>
+            </div>
+            <Button variant="ghost" block onClick={closeInvite}>
+              تمام
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleInvite} className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="نام">
+                <TextInput value={invite.firstName} onChange={(e) => setInvite((f) => ({ ...f, firstName: e.target.value }))} autoComplete="given-name" />
+              </Field>
+              <Field label="نام خانوادگی">
+                <TextInput value={invite.lastName} onChange={(e) => setInvite((f) => ({ ...f, lastName: e.target.value }))} autoComplete="family-name" />
+              </Field>
+            </div>
+            <Field label="نام نمایشی برای مشتری‌ها" hint="اختیاری — اگر خالی بماند، نام کوچک نمایش داده می‌شود.">
+              <TextInput value={invite.displayName} onChange={(e) => setInvite((f) => ({ ...f, displayName: e.target.value }))} placeholder="مثلاً نگار" />
+            </Field>
+            <Field label="شماره موبایل">
+              <TextInput
+                type="tel"
+                inputMode="numeric"
+                dir="ltr"
+                className="text-end"
+                maxLength={11}
+                value={invite.phone}
+                onChange={(e) => setInvite((f) => ({ ...f, phone: normalizeDigits(e.target.value) }))}
+                placeholder="09121234567"
+              />
+            </Field>
+            {inviteError && <p className="text-sm font-medium text-app-danger">{inviteError}</p>}
+            <Button type="submit" block icon={UserPlus} busy={inviting}>
+              ساخت حساب آرایشگر
+            </Button>
+          </form>
+        )}
+      </Sheet>
+    </>
   );
 }

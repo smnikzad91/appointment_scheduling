@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Clock, FolderCog, Plus, Scissors, Trash2 } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyCategories,
@@ -10,24 +10,54 @@ import {
   listMyServices,
   createService,
   updateService,
-  deleteService,
   type OwnerCategory,
   type OwnerService,
 } from "@/lib/api/ownerSalon";
-import { formatToman, toPersianDigits } from "@/lib/persian";
+import { formatToman, normalizeDigits, toPersianDigits } from "@/lib/persian";
+import Sheet from "@/components/app/Sheet";
+import {
+  Button,
+  ChipTabs,
+  EmptyState,
+  ErrorBanner,
+  Field,
+  IconButton,
+  ListGroup,
+  ListSkeleton,
+  PageHeader,
+  Select,
+  TextInput,
+  Toggle,
+  cx,
+  riseStyle,
+} from "@/components/app/ui";
+
+interface ServiceDraft {
+  id: string | null; // null = new service
+  name: string;
+  categoryId: string;
+  durationMinutes: string;
+  priceToman: string;
+}
+
+const EMPTY_DRAFT: ServiceDraft = { id: null, name: "", categoryId: "", durationMinutes: "", priceToman: "" };
 
 export default function SalonServicesPage() {
   const token = useApiAccessToken();
   const [categories, setCategories] = useState<OwnerCategory[] | null>(null);
   const [services, setServices] = useState<OwnerService[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>("all");
 
+  const [draft, setDraft] = useState<ServiceDraft | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [newService, setNewService] = useState({ name: "", categoryId: "", durationMinutes: "", priceToman: "" });
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState({ name: "", categoryId: "", durationMinutes: "", priceToman: "" });
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  function reload() {
+  const reload = useCallback(() => {
     if (!token) return;
     Promise.all([listMyCategories(token), listMyServices(token)])
       .then(([c, s]) => {
@@ -35,63 +65,19 @@ export default function SalonServicesPage() {
         setServices(s);
       })
       .catch(() => setError("خطا در دریافت اطلاعات"));
+  }, [token]);
+
+  useEffect(reload, [reload]);
+
+  function openNew() {
+    setDraftError(null);
+    setDraft({ ...EMPTY_DRAFT, categoryId: filter !== "all" && filter !== "none" ? filter : "" });
   }
 
-  useEffect(reload, [token]);
-
-  /** Runs one mutation, then reloads; on failure shows `failMessage` instead of failing silently. */
-  async function run(action: () => Promise<unknown>, failMessage: string): Promise<boolean> {
-    setError(null);
-    try {
-      await action();
-      reload();
-      return true;
-    } catch {
-      setError(failMessage);
-      return false;
-    }
-  }
-
-  async function handleAddCategory(e: React.FormEvent) {
-    e.preventDefault();
-    if (!token || !newCategoryName.trim()) return;
-    const ok = await run(
-      () => createCategory(token, { name: newCategoryName.trim(), order: categories?.length ?? 0 }),
-      "خطا در افزودن دسته‌بندی",
-    );
-    if (ok) setNewCategoryName("");
-  }
-
-  async function handleDeleteCategory(id: string) {
-    if (!token) return;
-    await run(() => deleteCategory(token, id), "خطا در حذف دسته‌بندی");
-  }
-
-  async function handleAddService(e: React.FormEvent) {
-    e.preventDefault();
-    if (!token) return;
-    const duration = Number(newService.durationMinutes);
-    const price = Number(newService.priceToman);
-    if (!newService.name.trim() || !duration || !price) {
-      setError("لطفاً همه فیلدهای خدمت را کامل کنید");
-      return;
-    }
-    const ok = await run(
-      () =>
-        createService(token, {
-          name: newService.name.trim(),
-          categoryId: newService.categoryId || undefined,
-          durationMinutes: duration,
-          priceToman: price,
-        }),
-      "خطا در افزودن خدمت",
-    );
-    if (ok) setNewService({ name: "", categoryId: "", durationMinutes: "", priceToman: "" });
-  }
-
-  function startEdit(service: OwnerService) {
-    setEditingId(service.id);
-    setEditDraft({
+  function openEdit(service: OwnerService) {
+    setDraftError(null);
+    setDraft({
+      id: service.id,
       name: service.name,
       categoryId: service.categoryId ?? "",
       durationMinutes: String(service.durationMinutes),
@@ -99,233 +85,247 @@ export default function SalonServicesPage() {
     });
   }
 
-  async function handleSaveEdit(id: string) {
-    if (!token) return;
-    const duration = Number(editDraft.durationMinutes);
-    const price = Number(editDraft.priceToman);
-    if (!editDraft.name.trim() || !duration || !price) {
-      setError("لطفاً همه فیلدهای خدمت را کامل کنید");
+  async function handleSave() {
+    if (!token || !draft) return;
+    const duration = Number(normalizeDigits(draft.durationMinutes));
+    const price = Number(normalizeDigits(draft.priceToman));
+    if (!draft.name.trim() || !duration || !price) {
+      setDraftError("نام، مدت و قیمت خدمت را کامل کنید");
       return;
     }
-    const ok = await run(
-      () =>
-        updateService(token, id, {
-          name: editDraft.name.trim(),
-          categoryId: editDraft.categoryId || null,
+    setSaving(true);
+    setDraftError(null);
+    try {
+      if (draft.id) {
+        await updateService(token, draft.id, {
+          name: draft.name.trim(),
+          categoryId: draft.categoryId || null,
           durationMinutes: duration,
           priceToman: price,
-        }),
-      "خطا در ذخیره تغییرات خدمت",
-    );
-    if (ok) setEditingId(null);
+        });
+      } else {
+        await createService(token, {
+          name: draft.name.trim(),
+          categoryId: draft.categoryId || undefined,
+          durationMinutes: duration,
+          priceToman: price,
+        });
+      }
+      setDraft(null);
+      reload();
+    } catch {
+      setDraftError("ذخیره خدمت انجام نشد، دوباره تلاش کنید");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleToggleActive(service: OwnerService) {
     if (!token) return;
-    await run(() => updateService(token, service.id, { active: !service.active }), "خطا در تغییر وضعیت خدمت");
+    setError(null);
+    // Optimistic — the switch should feel instant.
+    setServices((list) => list?.map((s) => (s.id === service.id ? { ...s, active: !s.active } : s)) ?? list);
+    try {
+      await updateService(token, service.id, { active: !service.active });
+    } catch {
+      setError("تغییر وضعیت خدمت انجام نشد");
+      reload();
+    }
   }
 
-  async function handleDeleteService(id: string) {
-    if (!token) return;
-    await run(() => deleteService(token, id), "خطا در حذف خدمت");
+  async function handleAddCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !newCategoryName.trim()) return;
+    setCategoryError(null);
+    try {
+      await createCategory(token, { name: newCategoryName.trim(), order: categories?.length ?? 0 });
+      setNewCategoryName("");
+      reload();
+    } catch {
+      setCategoryError("افزودن دسته‌بندی انجام نشد");
+    }
+  }
+
+  async function handleDeleteCategory(category: OwnerCategory) {
+    if (!token || !confirm(`دسته «${category.name}» حذف شود؟ خدمات آن بدون دسته می‌مانند.`)) return;
+    setCategoryError(null);
+    try {
+      await deleteCategory(token, category.id);
+      if (filter === category.id) setFilter("all");
+      reload();
+    } catch {
+      setCategoryError("حذف دسته‌بندی انجام نشد");
+    }
   }
 
   if (!categories || !services) {
-    return <p className={`text-sm ${error ? "text-rose-500" : "text-gray-500"}`}>{error ?? "در حال بارگذاری..."}</p>;
+    return error ? <ErrorBanner onRetry={reload}>{error}</ErrorBanner> : <ListSkeleton />;
   }
 
+  const categoryName = (id: string | null) => categories.find((c) => c.id === id)?.name;
+  const visible = services
+    .filter((s) => (filter === "all" ? true : filter === "none" ? !s.categoryId : s.categoryId === filter))
+    .sort((a, b) => Number(b.active) - Number(a.active));
+  const hasUncategorized = services.some((s) => !s.categoryId);
+
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="mb-1 text-xl font-bold text-gray-900 dark:text-white">خدمات</h1>
-        <p className="text-sm text-gray-500">دسته‌بندی‌ها و خدمات سالن خود را مدیریت کنید.</p>
+    <>
+      <PageHeader
+        title="خدمات"
+        subtitle={`${toPersianDigits(services.filter((s) => s.active).length)} خدمت فعال`}
+        action={<IconButton icon={Plus} label="افزودن خدمت" onClick={openNew} />}
+      />
+
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <ChipTabs
+            bleed={false}
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "all", label: "همه" },
+              ...categories.map((c) => ({ value: c.id, label: c.name, count: services.filter((s) => s.categoryId === c.id).length })),
+              ...(hasUncategorized ? [{ value: "none", label: "بدون دسته" }] : []),
+            ]}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setCategoriesOpen(true)}
+          aria-label="مدیریت دسته‌بندی‌ها"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-app-line bg-app-card text-app-muted active:scale-90"
+        >
+          <FolderCog className="h-[18px] w-[18px]" aria-hidden />
+        </button>
       </div>
 
-      {error && <p className="-mt-4 text-sm text-rose-500">{error}</p>}
+      {error && <ErrorBanner onRetry={reload}>{error}</ErrorBanner>}
 
-      <section>
-        <h2 className="mb-3 text-sm font-bold text-gray-700 dark:text-gray-300">دسته‌بندی‌ها</h2>
-        <div className="flex flex-wrap gap-2">
-          {categories.map((c) => (
-            <span
-              key={c.id}
-              className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+      {visible.length === 0 ? (
+        <EmptyState
+          icon={Scissors}
+          title="هنوز خدمتی اینجا نیست"
+          hint="خدماتی که سالن ارائه می‌دهد را با مدت و قیمت اضافه کنید تا مشتری‌ها بتوانند رزرو کنند."
+          action={<Button icon={Plus} onClick={openNew}>افزودن خدمت</Button>}
+        />
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {visible.map((service, i) => (
+            <div
+              key={service.id}
+              style={riseStyle(i)}
+              className={cx(
+                "app-rise flex items-center gap-3 rounded-3xl border border-app-line bg-app-card p-4 shadow-app",
+                !service.active && "opacity-60",
+              )}
             >
-              {c.name}
-              <button type="button" onClick={() => handleDeleteCategory(c.id)} aria-label={`حذف ${c.name}`}>
-                <Trash2 className="h-3.5 w-3.5 text-gray-400 hover:text-rose-500" aria-hidden />
+              <button type="button" onClick={() => openEdit(service)} className="min-w-0 flex-1 text-start active:opacity-70">
+                <p className="truncate text-[15px] font-bold text-app-ink">{service.name}</p>
+                <p className="mt-1 flex items-center gap-1.5 text-[13px] text-app-muted">
+                  <Clock className="h-3.5 w-3.5" aria-hidden />
+                  {toPersianDigits(service.durationMinutes)} دقیقه
+                  <span aria-hidden>·</span>
+                  <span className="font-semibold text-app-ink/80">{formatToman(service.priceToman)}</span>
+                </p>
+                {filter === "all" && categoryName(service.categoryId) && (
+                  <span className="mt-2 inline-block rounded-full bg-app-card-2 px-2.5 py-0.5 text-[11px] font-semibold text-app-muted">
+                    {categoryName(service.categoryId)}
+                  </span>
+                )}
               </button>
-            </span>
+              <Toggle checked={service.active} onChange={() => handleToggleActive(service)} label={`فعال بودن ${service.name}`} />
+            </div>
           ))}
         </div>
-        <form onSubmit={handleAddCategory} className="mt-3 flex max-w-sm gap-2">
-          <input
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            placeholder="نام دسته جدید"
-            className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-          <button type="submit" className="rounded-lg bg-gray-900 px-3 py-2 text-white dark:bg-gray-100 dark:text-gray-900">
-            <Plus className="h-4 w-4" aria-hidden />
-          </button>
+      )}
+
+      {/* Add / edit service */}
+      <Sheet
+        open={draft !== null}
+        onClose={() => setDraft(null)}
+        title={draft?.id ? "ویرایش خدمت" : "خدمت جدید"}
+        footer={
+          <Button block busy={saving} onClick={handleSave}>
+            {draft?.id ? "ذخیره تغییرات" : "افزودن خدمت"}
+          </Button>
+        }
+      >
+        {draft && (
+          <div className="flex flex-col gap-4">
+            <Field label="نام خدمت">
+              <TextInput value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="مثلاً کوتاهی مو" autoFocus={!draft.id} />
+            </Field>
+            <Field label="دسته‌بندی">
+              <Select value={draft.categoryId} onChange={(e) => setDraft({ ...draft, categoryId: e.target.value })}>
+                <option value="">بدون دسته</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="مدت (دقیقه)">
+                <TextInput
+                  inputMode="numeric"
+                  dir="ltr"
+                  className="text-end"
+                  value={draft.durationMinutes}
+                  onChange={(e) => setDraft({ ...draft, durationMinutes: normalizeDigits(e.target.value).replace(/\D/g, "") })}
+                  placeholder="۴۵"
+                />
+              </Field>
+              <Field label="قیمت (تومان)" hint={Number(draft.priceToman) ? formatToman(Number(draft.priceToman)) : undefined}>
+                <TextInput
+                  inputMode="numeric"
+                  dir="ltr"
+                  className="text-end"
+                  value={draft.priceToman}
+                  onChange={(e) => setDraft({ ...draft, priceToman: normalizeDigits(e.target.value).replace(/\D/g, "") })}
+                  placeholder="۳۵۰۰۰۰"
+                />
+              </Field>
+            </div>
+            {draftError && <p className="text-sm font-medium text-app-danger">{draftError}</p>}
+          </div>
+        )}
+      </Sheet>
+
+      {/* Categories */}
+      <Sheet open={categoriesOpen} onClose={() => setCategoriesOpen(false)} title="دسته‌بندی‌ها">
+        <form onSubmit={handleAddCategory} className="mb-4 flex gap-2">
+          <TextInput value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="نام دسته جدید، مثلاً ناخن" />
+          <Button type="submit" icon={Plus} className="shrink-0 px-4" aria-label="افزودن دسته">
+            افزودن
+          </Button>
         </form>
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-sm font-bold text-gray-700 dark:text-gray-300">خدمات</h2>
-
-        <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 dark:bg-gray-800/50">
-              <tr>
-                <th className="px-4 py-2 text-start font-medium">نام</th>
-                <th className="px-4 py-2 text-start font-medium">مدت</th>
-                <th className="px-4 py-2 text-start font-medium">قیمت</th>
-                <th className="px-4 py-2 text-start font-medium">فعال</th>
-                <th className="px-4 py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {services.map((s) =>
-                editingId === s.id ? (
-                  <tr key={s.id} className="bg-gray-50/60 dark:bg-gray-800/30">
-                    <td className="px-4 py-2">
-                      <input
-                        value={editDraft.name}
-                        onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
-                        aria-label="نام خدمت"
-                        className="w-full rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      />
-                      <select
-                        value={editDraft.categoryId}
-                        onChange={(e) => setEditDraft((d) => ({ ...d, categoryId: e.target.value }))}
-                        aria-label="دسته‌بندی"
-                        className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      >
-                        <option value="">بدون دسته</option>
-                        {categories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        value={editDraft.durationMinutes}
-                        onChange={(e) => setEditDraft((d) => ({ ...d, durationMinutes: e.target.value }))}
-                        aria-label="مدت (دقیقه)"
-                        className="w-20 rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        value={editDraft.priceToman}
-                        onChange={(e) => setEditDraft((d) => ({ ...d, priceToman: e.target.value }))}
-                        aria-label="قیمت (تومان)"
-                        className="w-28 rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      />
-                    </td>
-                    <td className="px-4 py-2"></td>
-                    <td className="px-4 py-2 text-end">
-                      <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => handleSaveEdit(s.id)} aria-label="ذخیره">
-                          <Check className="h-4 w-4 text-emerald-600" aria-hidden />
-                        </button>
-                        <button type="button" onClick={() => setEditingId(null)} aria-label="انصراف">
-                          <X className="h-4 w-4 text-gray-400" aria-hidden />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={s.id}>
-                    <td className="px-4 py-2.5">
-                      {s.name}
-                      {s.categoryId && (
-                        <span className="block text-xs text-gray-400">{categories.find((c) => c.id === s.categoryId)?.name}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">{toPersianDigits(s.durationMinutes)} دقیقه</td>
-                    <td className="px-4 py-2.5">{formatToman(s.priceToman)}</td>
-                    <td className="px-4 py-2.5">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleActive(s)}
-                        className={`rounded-full px-2.5 py-0.5 text-xs ${
-                          s.active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {s.active ? "فعال" : "غیرفعال"}
-                      </button>
-                    </td>
-                    <td className="px-4 py-2.5 text-end">
-                      <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => startEdit(s)} aria-label="ویرایش خدمت">
-                          <Pencil className="h-4 w-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-hidden />
-                        </button>
-                        <button type="button" onClick={() => handleDeleteService(s.id)} aria-label="حذف خدمت">
-                          <Trash2 className="h-4 w-4 text-gray-400 hover:text-rose-500" aria-hidden />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ),
-              )}
-              {services.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                    هنوز خدمتی ثبت نشده است.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <form onSubmit={handleAddService} className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-5">
-          <input
-            value={newService.name}
-            onChange={(e) => setNewService((f) => ({ ...f, name: e.target.value }))}
-            placeholder="نام خدمت"
-            className="col-span-2 rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-          <select
-            value={newService.categoryId}
-            onChange={(e) => setNewService((f) => ({ ...f, categoryId: e.target.value }))}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          >
-            <option value="">بدون دسته</option>
+        {categoryError && <p className="mb-3 text-sm font-medium text-app-danger">{categoryError}</p>}
+        {categories.length === 0 ? (
+          <p className="py-6 text-center text-sm text-app-muted">هنوز دسته‌بندی ندارید.</p>
+        ) : (
+          <ListGroup>
             {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+              <div key={c.id} className="flex h-14 items-center justify-between px-4">
+                <span className="font-semibold text-app-ink">
+                  {c.name}
+                  <span className="ms-2 text-xs font-medium text-app-muted">
+                    {toPersianDigits(services.filter((s) => s.categoryId === c.id).length)} خدمت
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCategory(c)}
+                  aria-label={`حذف ${c.name}`}
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-app-muted active:bg-app-danger/10 active:text-app-danger"
+                >
+                  <Trash2 className="h-[18px] w-[18px]" aria-hidden />
+                </button>
+              </div>
             ))}
-          </select>
-          <input
-            type="number"
-            value={newService.durationMinutes}
-            onChange={(e) => setNewService((f) => ({ ...f, durationMinutes: e.target.value }))}
-            placeholder="مدت (دقیقه)"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-          <input
-            type="number"
-            value={newService.priceToman}
-            onChange={(e) => setNewService((f) => ({ ...f, priceToman: e.target.value }))}
-            placeholder="قیمت (تومان)"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-          <button
-            type="submit"
-            className="col-span-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 sm:col-span-1"
-          >
-            افزودن خدمت
-          </button>
-        </form>
-      </section>
-    </div>
+          </ListGroup>
+        )}
+      </Sheet>
+    </>
   );
 }

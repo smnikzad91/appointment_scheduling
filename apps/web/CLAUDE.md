@@ -40,6 +40,17 @@ Appointment and time-off times from apps/api are real UTC instants; slots, worki
 
 Product name, title, description and public origin live in `src/lib/site.ts`. The origin comes from `NEXT_PUBLIC_SITE_URL` (falls back to `http://localhost:3000`) — use `SITE_URL` for canonical URLs, structured data and sitemap entries instead of hardcoding a domain.
 
+## Mobile app shell (salon, stylist and customer panels)
+
+The platform has no desktop users: `/salon/**`, `/stylist/**` and `/dashboard/**` render inside `components/app/AppShell.tsx` — sticky app bar, one phone-width column (`max-w-lg`), bottom tab bar, safe-area padding — via the per-panel wrappers in `components/app/panels.tsx`. Build panel screens from `components/app/*`, not the TailAdmin components:
+- `ui.tsx` — `PageHeader`, `Card`, `ListGroup`, `ChipTabs`, `Button`, `IconButton`, `Field`/`TextInput`/`Select`/`TextArea`, `Toggle`, `Avatar`, `EmptyState`, `ListSkeleton`, `ErrorBanner`.
+- `Sheet.tsx` — bottom sheet for every add/edit/detail flow (no centered modals, no inline edit forms).
+- `appointments.tsx` / `AppointmentsScreen.tsx` — appointment cards, day grouping, the status-action sheet, today's timeline; shared by the salon and stylist panels.
+
+Colors are semantic tokens on `.app-root` in `globals.css` (`bg-app-bg`, `bg-app-card`, `text-app-ink`, `text-app-muted`, `border-app-line`, `bg-app-accent`…; they flip under `.dark`). `.app-root` also remaps the `brand-*` and `gray-*` scales to terracotta/warm neutrals, so older screens rendered in the shell (wallet, support, profile) and the auth pages match without rewrites. Inputs inside the shell are forced to 16px so iOS doesn't zoom on focus. Show numbers, times and dates with Persian digits (`toPersianDigits`, `formatMinutesAsClock`, `src/lib/salonTime.ts`); avoid native `type="time"`/`type="date"` inputs (Latin digits / Gregorian calendar) — see the stylist schedule page for select-based pickers.
+
+It installs as a PWA: `src/app/manifest.ts` (start URL `/launch`, which redirects each role to its panel), icons in `public/icons/`, viewport/theme-color in the root layout, and `public/sw.js` (production only) which only serves `public/offline.html` when a navigation fails — it deliberately caches nothing else so appointment data is never stale.
+
 ## Error logging
 
 Every app writes failures to the shared `ErrorLog` table (`error_logs`), shown at the top of the platform-admin dashboard (`/admin`, `components/admin/AdminErrorLog.tsx`, API under `/api/admin/errors`):

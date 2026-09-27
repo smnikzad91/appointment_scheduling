@@ -2,12 +2,14 @@ import ThemeTogglerTwo from "@/components/common/ThemeTogglerTwo";
 import { ThemeProvider } from "@/context/ThemeContext";
 import AuthBrandPanel from "@/components/auth/AuthBrandPanel";
 import React from "react";
+import { vazirmatn } from "@/fonts/vazirmatn";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div dir="rtl" className="font-vazirmatn bg-white dark:bg-gray-900">
+    // app-root: same paper/terracotta theme as the panels — sign-in is the installed app's first screen.
+    <div dir="rtl" className={`app-root ${vazirmatn.variable} bg-white dark:bg-gray-900`}>
       <ThemeProvider>
-        <div className="flex lg:flex-row-reverse h-screen overflow-hidden">
+        <div className="app-pt-safe app-pb-safe flex lg:flex-row-reverse h-dvh overflow-hidden">
 
           {/* ── form side ── */}
           <div className="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto no-scrollbar">
@@ -15,7 +17,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <div
               className="pointer-events-none absolute inset-0 opacity-[0.035] dark:opacity-[0.06]"
               style={{
-                backgroundImage: "radial-gradient(circle, #465fff 1px, transparent 1px)",
+                backgroundImage: "radial-gradient(circle, var(--app-accent) 1px, transparent 1px)",
                 backgroundSize: "24px 24px",
               }}
             />

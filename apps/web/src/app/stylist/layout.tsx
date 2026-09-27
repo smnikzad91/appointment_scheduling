@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import StylistSidebar from "@/components/stylist-dashboard/StylistSidebar";
-import PanelThemeStyle from "@/components/theme/PanelThemeStyle";
+import { StylistShell } from "@/components/app/panels";
 
 export default async function StylistLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -12,11 +11,5 @@ export default async function StylistLayout({ children }: { children: React.Reac
     redirect("/signin");
   }
 
-  return (
-    <div dir="rtl" className="panel-root-theme font-vazirmatn min-h-screen bg-gray-50 dark:bg-gray-950">
-      <PanelThemeStyle />
-      <StylistSidebar />
-      <main className="min-h-screen overflow-y-auto px-4 pb-20 pt-16">{children}</main>
-    </div>
-  );
+  return <StylistShell>{children}</StylistShell>;
 }

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import "flatpickr/dist/flatpickr.css";
@@ -9,10 +9,26 @@ import SessionWrapper from "@/components/common/SessionWrapper";
 import ToastProvider from "@/components/common/ToastProvider";
 import AgGridSetup from "@/components/common/AgGridSetup";
 import ClientErrorReporter from "@/components/common/ClientErrorReporter";
+import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+
+// viewport-fit=cover lets the app shell paint under the notch / home indicator (it pads itself
+// with env(safe-area-inset-*)); the theme color tints the status bar to match the app bar.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6efe6" },
+    { media: "(prefers-color-scheme: dark)", color: "#19121a" },
+  ],
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  applicationName: SITE_NAME,
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
   title: {
     default: SITE_TITLE,
     template: `%s | ${SITE_NAME}`,
@@ -61,6 +77,7 @@ export default function RootLayout({
       <body className="dark:bg-gray-900">
         <AgGridSetup />
         <ClientErrorReporter />
+        <ServiceWorkerRegister />
         <SessionWrapper>
           <LanguageProvider>
             <ThemeProvider>

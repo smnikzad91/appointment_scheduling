@@ -851,3 +851,129 @@ span.flatpickr-weekday,
 .dark .ticket-scroll::-webkit-scrollbar-track { background: #1f2937; }
 .dark .ticket-scroll::-webkit-scrollbar-thumb { background: #4b5563; }
 .dark .ticket-scroll::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+/* ───────────────────────── Mobile app shell (/salon, /stylist, /dashboard) ─────────────────────────
+   "Atelier appointment book": warm paper, terracotta accent, plum ink — the landing page's palette.
+   Semantic tokens live on .app-root (and flip under .dark) and are exposed to Tailwind as
+   bg-app-*, text-app-*, border-app-* via @theme inline below. */
+.app-root {
+  --app-bg: #f6efe6;
+  --app-card: #fffbf6;
+  --app-card-2: #f0e6da;
+  --app-ink: #2a1d26;
+  --app-muted: #7b6b71;
+  --app-line: #e8dccf;
+  --app-accent: #a34a30;
+  --app-accent-strong: #86391f;
+  --app-accent-soft: #f4e1d4;
+  --app-accent-ink: #fffaf5;
+  --app-pending: #b7791f;
+  --app-confirmed: #2f6f68;
+  --app-done: #4d7a3a;
+  --app-danger: #b3434c;
+  --app-shadow: 0 1px 0 rgb(42 29 38 / 0.04), 0 8px 24px -12px rgb(42 29 38 / 0.18);
+
+  font-family: var(--font-vazirmatn-salon), Vazirmatn, Tahoma, sans-serif;
+  background: var(--app-bg);
+  color: var(--app-ink);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+/* Legacy template screens rendered inside the app shell (customer wallet, support, profile…) use
+   brand-* and gray-* utilities; remap both scales here so they pick up terracotta and warm
+   neutrals without being rewritten. */
+.app-root {
+  --color-brand-25: #fdf8f5;
+  --color-brand-50: #fbeee8;
+  --color-brand-100: #f6dccf;
+  --color-brand-200: #edbba5;
+  --color-brand-300: #e0967a;
+  --color-brand-400: #cf7152;
+  --color-brand-500: #a34a30;
+  --color-brand-600: #8e3f28;
+  --color-brand-700: #743321;
+  --color-brand-800: #5c291c;
+  --color-brand-900: #472018;
+  --color-brand-950: #2a120d;
+  --color-gray-25: #fdfbf8;
+  --color-gray-50: #f8f3ed;
+  --color-gray-100: #f0e8df;
+  --color-gray-200: #e6dbcf;
+  --color-gray-300: #d3c4b6;
+  --color-gray-400: #a8978c;
+  --color-gray-500: #85756d;
+  --color-gray-600: #685a55;
+  --color-gray-700: #4f4340;
+  --color-gray-800: #3a2c38;
+  --color-gray-900: #231a24;
+  --color-gray-950: #19121a;
+}
+
+.dark .app-root {
+  --app-bg: #19121a;
+  --app-card: #231a24;
+  --app-card-2: #2d222e;
+  --app-ink: #f4ebe2;
+  --app-muted: #b1a1a6;
+  --app-line: #3a2c38;
+  --app-accent: #e07f58;
+  --app-accent-strong: #ee936d;
+  --app-accent-soft: #3c2522;
+  --app-accent-ink: #1b1219;
+  --app-pending: #e0a94a;
+  --app-confirmed: #5fb3a8;
+  --app-done: #8cbf73;
+  --app-danger: #e27880;
+  --app-shadow: 0 1px 0 rgb(0 0 0 / 0.2), 0 10px 28px -14px rgb(0 0 0 / 0.7);
+}
+.app-root a,
+.app-root button,
+.app-root [role="button"] {
+  touch-action: manipulation; /* no 300ms double-tap-zoom delay */
+}
+/* iOS zooms into any focused field under 16px — keep every app input at 16px. */
+.app-root input,
+.app-root select,
+.app-root textarea {
+  font-size: 16px;
+}
+.app-pt-safe { padding-top: env(safe-area-inset-top); }
+.app-pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+@theme inline {
+  --color-app-bg: var(--app-bg);
+  --color-app-card: var(--app-card);
+  --color-app-card-2: var(--app-card-2);
+  --color-app-ink: var(--app-ink);
+  --color-app-muted: var(--app-muted);
+  --color-app-line: var(--app-line);
+  --color-app-accent: var(--app-accent);
+  --color-app-accent-strong: var(--app-accent-strong);
+  --color-app-accent-soft: var(--app-accent-soft);
+  --color-app-accent-ink: var(--app-accent-ink);
+  --color-app-pending: var(--app-pending);
+  --color-app-confirmed: var(--app-confirmed);
+  --color-app-done: var(--app-done);
+  --color-app-danger: var(--app-danger);
+  --shadow-app: var(--app-shadow);
+}
+
+@keyframes app-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes app-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+@keyframes app-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.app-rise { animation: app-rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.app-sheet-in { animation: app-sheet-in 0.32s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+.app-fade-in { animation: app-fade-in 0.2s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .app-rise, .app-sheet-in, .app-fade-in { animation: none; }
+}
