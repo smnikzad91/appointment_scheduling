@@ -10,7 +10,7 @@ import { toPersianDigits } from "@/lib/persian";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
 import ProvinceCitySelect from "@/components/common/ProvinceCitySelect";
-import { findProvince } from "@appointment-scheduling/iran-locations";
+import { placeCenter } from "@appointment-scheduling/iran-locations";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, cx, LinkCard } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
@@ -168,8 +168,8 @@ export default function SalonSettingsPage() {
             value={form.latitude != null && form.longitude != null ? { lat: form.latitude, lng: form.longitude } : null}
             onChange={({ lat, lng }) => update({ latitude: lat, longitude: lng })}
             center={(() => {
-              const p = findProvince(form.province ?? "");
-              return p ? { lat: p.center[0], lng: p.center[1] } : null;
+              const c = placeCenter(form.province ?? "", form.city ?? "");
+              return c ? { lat: c[0], lng: c[1] } : null;
             })()}
           />
         </div>

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { signIn } from "next-auth/react";
-import { findProvince } from "@appointment-scheduling/iran-locations";
+import { placeCenter } from "@appointment-scheduling/iran-locations";
 import ProvinceCitySelect from "@/components/common/ProvinceCitySelect";
 import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
 import type { GeoLocation } from "@/types/salon";
@@ -193,8 +193,8 @@ export default function SignUpSalonForm() {
                   value={pin}
                   onChange={setPin}
                   center={(() => {
-                    const p = findProvince(place.province);
-                    return p ? { lat: p.center[0], lng: p.center[1] } : null;
+                    const c = placeCenter(place.province, place.city);
+                    return c ? { lat: c[0], lng: c[1] } : null;
                   })()}
                 />
               </div>
