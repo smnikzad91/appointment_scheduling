@@ -42,10 +42,12 @@ export default function StylistSchedulePage() {
   const [saved, setSaved] = useState(false);
 
   const [newTimeOff, setNewTimeOff] = useState({ startAt: "", endAt: "", reason: "" });
+  const [timeOffError, setTimeOffError] = useState<string | null>(null);
 
   function reload() {
     if (!token) return;
-    Promise.all([getMyStylistProfile(token), listMyTimeOff(token)]).then(([profile, off]) => {
+    Promise.all([getMyStylistProfile(token), listMyTimeOff(token)])
+      .then(([profile, off]) => {
       const byDay = new Map(profile.workingHours.map((h) => [h.dayOfWeek, h]));
       setDays(
         Object.fromEntries(
@@ -56,7 +58,8 @@ export default function StylistSchedulePage() {
         ),
       );
       setTimeOff(off);
-    });
+      })
+      .catch(() => setError("خطا در دریافت اطلاعات"));
   }
 
   useEffect(reload, [token]);
@@ -82,23 +85,40 @@ export default function StylistSchedulePage() {
   async function handleAddTimeOff(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !newTimeOff.startAt || !newTimeOff.endAt) return;
-    // Whole salon-local days: from midnight of the first day to midnight after the last day.
-    await createMyTimeOff(token, {
-      startAt: salonWallTimeToInstant(newTimeOff.startAt, 0).toISOString(),
-      endAt: salonWallTimeToInstant(addDaysToDateKey(newTimeOff.endAt, 1), 0).toISOString(),
-      reason: newTimeOff.reason || undefined,
-    });
-    setNewTimeOff({ startAt: "", endAt: "", reason: "" });
-    reload();
+    // "YYYY-MM-DD" keys compare correctly as plain strings.
+    if (newTimeOff.endAt < newTimeOff.startAt) {
+      setTimeOffError("تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد");
+      return;
+    }
+    setTimeOffError(null);
+    try {
+      // Whole salon-local days: from midnight of the first day to midnight after the last day.
+      await createMyTimeOff(token, {
+        startAt: salonWallTimeToInstant(newTimeOff.startAt, 0).toISOString(),
+        endAt: salonWallTimeToInstant(addDaysToDateKey(newTimeOff.endAt, 1), 0).toISOString(),
+        reason: newTimeOff.reason || undefined,
+      });
+      setNewTimeOff({ startAt: "", endAt: "", reason: "" });
+      reload();
+    } catch {
+      setTimeOffError("خطا در ثبت مرخصی");
+    }
   }
 
   async function handleDeleteTimeOff(id: string) {
     if (!token) return;
-    await deleteMyTimeOff(token, id);
-    reload();
+    setTimeOffError(null);
+    try {
+      await deleteMyTimeOff(token, id);
+      reload();
+    } catch {
+      setTimeOffError("خطا در حذف مرخصی");
+    }
   }
 
-  if (!days || !timeOff) return <p className="text-sm text-gray-500">در حال بارگذاری...</p>;
+  if (!days || !timeOff) {
+    return <p className={`text-sm ${error ? "text-rose-500" : "text-gray-500"}`}>{error ?? "در حال بارگذاری..."}</p>;
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -201,6 +221,7 @@ export default function StylistSchedulePage() {
             </button>
           </div>
         </form>
+        {timeOffError && <p className="mt-2 text-sm text-rose-500">{timeOffError}</p>}
       </section>
     </div>
   );

@@ -33,10 +33,12 @@ export default function SalonStylistsPage() {
 
   function reload() {
     if (!token) return;
-    Promise.all([listMyStylists(token), listMyServices(token)]).then(([s, sv]) => {
-      setStylists(s);
-      setServices(sv);
-    });
+    Promise.all([listMyStylists(token), listMyServices(token)])
+      .then(([s, sv]) => {
+        setStylists(s);
+        setServices(sv);
+      })
+      .catch(() => setError("خطا در دریافت اطلاعات"));
   }
 
   useEffect(reload, [token]);
@@ -82,8 +84,13 @@ export default function SalonStylistsPage() {
 
   async function handleToggleActive(stylist: OwnerStylist) {
     if (!token) return;
-    await updateStylist(token, stylist.id, { active: !stylist.active });
-    reload();
+    setError(null);
+    try {
+      await updateStylist(token, stylist.id, { active: !stylist.active });
+      reload();
+    } catch {
+      setError("خطا در تغییر وضعیت آرایشگر");
+    }
   }
 
   async function handleToggleService(stylist: OwnerStylist, serviceId: string) {
@@ -92,8 +99,13 @@ export default function SalonStylistsPage() {
     const next: StylistServiceEntry[] = exists
       ? stylist.services.filter((s) => s.serviceId !== serviceId)
       : [...stylist.services, { serviceId, overridePriceToman: null, overrideDurationMinutes: null }];
-    await setStylistServices(token, stylist.id, next);
-    reload();
+    setError(null);
+    try {
+      await setStylistServices(token, stylist.id, next);
+      reload();
+    } catch {
+      setError("خطا در به‌روزرسانی خدمات آرایشگر");
+    }
   }
 
   function draftKey(stylistId: string, serviceId: string) {
@@ -134,7 +146,9 @@ export default function SalonStylistsPage() {
     }
   }
 
-  if (!stylists || !services) return <p className="text-sm text-gray-500">در حال بارگذاری...</p>;
+  if (!stylists || !services) {
+    return <p className={`text-sm ${error ? "text-rose-500" : "text-gray-500"}`}>{error ?? "در حال بارگذاری..."}</p>;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -142,6 +156,8 @@ export default function SalonStylistsPage() {
         <h1 className="mb-1 text-xl font-bold text-gray-900 dark:text-white">آرایشگرها</h1>
         <p className="text-sm text-gray-500">آرایشگرهای سالن را دعوت کنید و خدمات هرکدام را مشخص کنید.</p>
       </div>
+
+      {error && <p className="-mt-2 text-sm text-rose-500">{error}</p>}
 
       <div className="flex flex-col gap-2">
         {stylists.map((stylist) => {
@@ -299,7 +315,6 @@ export default function SalonStylistsPage() {
             className="rounded-lg border border-gray-200 px-3 py-2 text-end text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
           />
 
-          {error && <p className="text-sm text-rose-500">{error}</p>}
           {createdPassword && (
             <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
               حساب جدید ساخته شد. آرایشگر با همین شماره موبایل و این رمز عبور موقت از صفحه ورود وارد پنل می‌شود:{" "}

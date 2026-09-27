@@ -35,10 +35,14 @@ export default function StylistAppointmentsPage() {
   const token = useApiAccessToken();
   const [appointments, setAppointments] = useState<StylistAppointment[] | null>(null);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["value"]>("ALL");
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   function reload() {
     if (!token) return;
-    listMyAppointments(token).then(setAppointments);
+    listMyAppointments(token)
+      .then(setAppointments)
+      .catch(() => setError("خطا در دریافت نوبت‌ها"));
   }
 
   useEffect(reload, [token]);
@@ -51,15 +55,27 @@ export default function StylistAppointmentsPage() {
 
   async function handleSetStatus(id: string, status: StylistAppointment["status"]) {
     if (!token) return;
-    await updateMyAppointmentStatus(token, id, status);
-    reload();
+    setError(null);
+    setBusyId(id);
+    try {
+      await updateMyAppointmentStatus(token, id, status);
+      reload();
+    } catch {
+      setError("خطا در تغییر وضعیت نوبت");
+    } finally {
+      setBusyId(null);
+    }
   }
 
-  if (!appointments) return <p className="text-sm text-gray-500">در حال بارگذاری...</p>;
+  if (!appointments) {
+    return <p className={`text-sm ${error ? "text-rose-500" : "text-gray-500"}`}>{error ?? "در حال بارگذاری..."}</p>;
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-bold text-gray-900 dark:text-white">نوبت‌های من</h1>
+
+      {error && <p className="text-sm text-rose-500">{error}</p>}
 
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
@@ -107,7 +123,7 @@ export default function StylistAppointmentsPage() {
                 </td>
                 <td className="px-4 py-2.5">
                   {(a.status === "PENDING" || a.status === "CONFIRMED") && (
-                    <div className="flex gap-1">
+                    <div className={`flex gap-1 ${busyId === a.id ? "pointer-events-none opacity-50" : ""}`}>
                       {a.status === "PENDING" && (
                         <button
                           type="button"

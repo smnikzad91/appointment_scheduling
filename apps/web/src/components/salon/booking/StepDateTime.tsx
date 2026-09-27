@@ -67,16 +67,41 @@ function SlotsPanel({
   onSelect: (minute: number) => void;
 }) {
   const [slots, setSlots] = useState<TimeSlot[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    getAvailableSlots({ salon, stylistId, serviceIds, dateKey }).then((result) => {
-      if (!cancelled) setSlots(result);
-    });
+    getAvailableSlots({ salon, stylistId, serviceIds, dateKey })
+      .then((result) => {
+        if (!cancelled) setSlots(result);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
     return () => {
       cancelled = true;
     };
-  }, [salon, stylistId, serviceIds, dateKey]);
+  }, [salon, stylistId, serviceIds, dateKey, attempt]);
+
+  if (failed) {
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+        دریافت زمان‌های خالی ممکن نشد.
+        <button
+          type="button"
+          onClick={() => {
+            setFailed(false);
+            setAttempt((n) => n + 1);
+          }}
+          className="text-xs font-medium underline"
+          style={{ color: "var(--salon-brand)" }}
+        >
+          تلاش دوباره
+        </button>
+      </div>
+    );
+  }
 
   if (slots === null) {
     return (

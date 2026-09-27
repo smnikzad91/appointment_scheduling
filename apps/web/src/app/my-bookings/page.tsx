@@ -68,8 +68,13 @@ export default function MyBookingsPage() {
 
   async function handleCancel(id: string) {
     if (!session) return;
-    await cancelBooking(session.token, id);
-    reload(session.token);
+    setError(null);
+    try {
+      await cancelBooking(session.token, id);
+      reload(session.token);
+    } catch {
+      setError("خطا در لغو نوبت");
+    }
   }
 
   if (session === undefined) return null; // avoid a flash of the login form before localStorage is read
@@ -136,9 +141,14 @@ function LoginForm({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
     setError(null);
     setLoading(true);
     setPhone(normalized);
-    await requestOtp(normalized);
-    setLoading(false);
-    setStep("otp");
+    try {
+      await requestOtp(normalized);
+      setStep("otp");
+    } catch {
+      setError("ارسال کد تایید ممکن نشد، دوباره تلاش کنید");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleVerify(e: React.FormEvent) {
@@ -268,13 +278,17 @@ function ReviewForm({ appointmentId, token, onDone }: { appointmentId: string; t
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
+    setError(null);
     try {
       await leaveReview(token, appointmentId, rating, comment || undefined);
       onDone();
+    } catch {
+      setError("خطا در ثبت نظر");
     } finally {
       setSubmitting(false);
     }
@@ -295,6 +309,7 @@ function ReviewForm({ appointmentId, token, onDone }: { appointmentId: string; t
         placeholder="نظر شما (اختیاری)"
         className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
       />
+      {error && <p className="text-xs text-rose-500">{error}</p>}
       <button
         type="submit"
         disabled={submitting}

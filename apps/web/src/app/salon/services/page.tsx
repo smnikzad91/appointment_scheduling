@@ -37,18 +37,32 @@ export default function SalonServicesPage() {
 
   useEffect(reload, [token]);
 
+  /** Runs one mutation, then reloads; on failure shows `failMessage` instead of failing silently. */
+  async function run(action: () => Promise<unknown>, failMessage: string): Promise<boolean> {
+    setError(null);
+    try {
+      await action();
+      reload();
+      return true;
+    } catch {
+      setError(failMessage);
+      return false;
+    }
+  }
+
   async function handleAddCategory(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !newCategoryName.trim()) return;
-    await createCategory(token, { name: newCategoryName.trim(), order: categories?.length ?? 0 });
-    setNewCategoryName("");
-    reload();
+    const ok = await run(
+      () => createCategory(token, { name: newCategoryName.trim(), order: categories?.length ?? 0 }),
+      "خطا در افزودن دسته‌بندی",
+    );
+    if (ok) setNewCategoryName("");
   }
 
   async function handleDeleteCategory(id: string) {
     if (!token) return;
-    await deleteCategory(token, id);
-    reload();
+    await run(() => deleteCategory(token, id), "خطا در حذف دسته‌بندی");
   }
 
   async function handleAddService(e: React.FormEvent) {
@@ -60,30 +74,32 @@ export default function SalonServicesPage() {
       setError("لطفاً همه فیلدهای خدمت را کامل کنید");
       return;
     }
-    await createService(token, {
-      name: newService.name.trim(),
-      categoryId: newService.categoryId || undefined,
-      durationMinutes: duration,
-      priceToman: price,
-    });
-    setNewService({ name: "", categoryId: "", durationMinutes: "", priceToman: "" });
-    setError(null);
-    reload();
+    const ok = await run(
+      () =>
+        createService(token, {
+          name: newService.name.trim(),
+          categoryId: newService.categoryId || undefined,
+          durationMinutes: duration,
+          priceToman: price,
+        }),
+      "خطا در افزودن خدمت",
+    );
+    if (ok) setNewService({ name: "", categoryId: "", durationMinutes: "", priceToman: "" });
   }
 
   async function handleToggleActive(service: OwnerService) {
     if (!token) return;
-    await updateService(token, service.id, { active: !service.active });
-    reload();
+    await run(() => updateService(token, service.id, { active: !service.active }), "خطا در تغییر وضعیت خدمت");
   }
 
   async function handleDeleteService(id: string) {
     if (!token) return;
-    await deleteService(token, id);
-    reload();
+    await run(() => deleteService(token, id), "خطا در حذف خدمت");
   }
 
-  if (!categories || !services) return <p className="text-sm text-gray-500">در حال بارگذاری...</p>;
+  if (!categories || !services) {
+    return <p className={`text-sm ${error ? "text-rose-500" : "text-gray-500"}`}>{error ?? "در حال بارگذاری..."}</p>;
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -91,6 +107,8 @@ export default function SalonServicesPage() {
         <h1 className="mb-1 text-xl font-bold text-gray-900 dark:text-white">خدمات</h1>
         <p className="text-sm text-gray-500">دسته‌بندی‌ها و خدمات سالن خود را مدیریت کنید.</p>
       </div>
+
+      {error && <p className="-mt-4 text-sm text-rose-500">{error}</p>}
 
       <section>
         <h2 className="mb-3 text-sm font-bold text-gray-700 dark:text-gray-300">دسته‌بندی‌ها</h2>
@@ -209,7 +227,6 @@ export default function SalonServicesPage() {
             افزودن خدمت
           </button>
         </form>
-        {error && <p className="mt-2 text-sm text-rose-500">{error}</p>}
       </section>
     </div>
   );
