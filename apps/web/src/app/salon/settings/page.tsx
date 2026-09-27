@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput } from "@/lib/api/ownerSalon";
 import { uploadImage } from "@/lib/uploadImage";
+import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
+import { toPersianDigits } from "@/lib/persian";
 
 type FormState = UpdateSalonInput;
 
@@ -32,6 +34,8 @@ export default function SalonSettingsPage() {
           phone: s.phone,
           instagram: s.instagram ?? "",
           brandColor: s.brandColor,
+          latitude: s.latitude ?? undefined,
+          longitude: s.longitude ?? undefined,
         });
       })
       .catch(() => setError("خطا در دریافت اطلاعات سالن"));
@@ -166,6 +170,24 @@ export default function SalonSettingsPage() {
         <Field label="اینستاگرام (بدون @)">
           <input dir="ltr" value={form.instagram ?? ""} onChange={(e) => setForm((f) => ({ ...f, instagram: e.target.value }))} className="input text-end" />
         </Field>
+
+        <div className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-gray-700 dark:text-gray-300">موقعیت روی نقشه</span>
+          <span className="text-xs text-gray-500">
+            روی نقشه کلیک کنید یا پین را جابه‌جا کنید تا مشتری‌ها مسیر سالن را پیدا کنند.
+          </span>
+          <div className="h-64 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+            <LocationPickerLoader
+              value={form.latitude != null && form.longitude != null ? { lat: form.latitude, lng: form.longitude } : null}
+              onChange={({ lat, lng }) => setForm((f) => ({ ...f, latitude: lat, longitude: lng }))}
+            />
+          </div>
+          {form.latitude != null && form.longitude != null && (
+            <span dir="ltr" className="text-end text-xs text-gray-400">
+              {toPersianDigits(`${form.latitude}, ${form.longitude}`)}
+            </span>
+          )}
+        </div>
 
         <Field label="رنگ برند">
           <input

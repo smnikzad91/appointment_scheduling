@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyCategories,
@@ -24,6 +24,8 @@ export default function SalonServicesPage() {
 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newService, setNewService] = useState({ name: "", categoryId: "", durationMinutes: "", priceToman: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: "", categoryId: "", durationMinutes: "", priceToman: "" });
 
   function reload() {
     if (!token) return;
@@ -85,6 +87,37 @@ export default function SalonServicesPage() {
       "خطا در افزودن خدمت",
     );
     if (ok) setNewService({ name: "", categoryId: "", durationMinutes: "", priceToman: "" });
+  }
+
+  function startEdit(service: OwnerService) {
+    setEditingId(service.id);
+    setEditDraft({
+      name: service.name,
+      categoryId: service.categoryId ?? "",
+      durationMinutes: String(service.durationMinutes),
+      priceToman: String(service.priceToman),
+    });
+  }
+
+  async function handleSaveEdit(id: string) {
+    if (!token) return;
+    const duration = Number(editDraft.durationMinutes);
+    const price = Number(editDraft.priceToman);
+    if (!editDraft.name.trim() || !duration || !price) {
+      setError("لطفاً همه فیلدهای خدمت را کامل کنید");
+      return;
+    }
+    const ok = await run(
+      () =>
+        updateService(token, id, {
+          name: editDraft.name.trim(),
+          categoryId: editDraft.categoryId || null,
+          durationMinutes: duration,
+          priceToman: price,
+        }),
+      "خطا در ذخیره تغییرات خدمت",
+    );
+    if (ok) setEditingId(null);
   }
 
   async function handleToggleActive(service: OwnerService) {
@@ -153,29 +186,94 @@ export default function SalonServicesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {services.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-4 py-2.5">{s.name}</td>
-                  <td className="px-4 py-2.5">{toPersianDigits(s.durationMinutes)} دقیقه</td>
-                  <td className="px-4 py-2.5">{formatToman(s.priceToman)}</td>
-                  <td className="px-4 py-2.5">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleActive(s)}
-                      className={`rounded-full px-2.5 py-0.5 text-xs ${
-                        s.active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {s.active ? "فعال" : "غیرفعال"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-2.5 text-end">
-                    <button type="button" onClick={() => handleDeleteService(s.id)} aria-label="حذف خدمت">
-                      <Trash2 className="h-4 w-4 text-gray-400 hover:text-rose-500" aria-hidden />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {services.map((s) =>
+                editingId === s.id ? (
+                  <tr key={s.id} className="bg-gray-50/60 dark:bg-gray-800/30">
+                    <td className="px-4 py-2">
+                      <input
+                        value={editDraft.name}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
+                        aria-label="نام خدمت"
+                        className="w-full rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      />
+                      <select
+                        value={editDraft.categoryId}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, categoryId: e.target.value }))}
+                        aria-label="دسته‌بندی"
+                        className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      >
+                        <option value="">بدون دسته</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        value={editDraft.durationMinutes}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, durationMinutes: e.target.value }))}
+                        aria-label="مدت (دقیقه)"
+                        className="w-20 rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        value={editDraft.priceToman}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, priceToman: e.target.value }))}
+                        aria-label="قیمت (تومان)"
+                        className="w-28 rounded-lg border border-gray-200 px-2 py-1 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      />
+                    </td>
+                    <td className="px-4 py-2"></td>
+                    <td className="px-4 py-2 text-end">
+                      <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => handleSaveEdit(s.id)} aria-label="ذخیره">
+                          <Check className="h-4 w-4 text-emerald-600" aria-hidden />
+                        </button>
+                        <button type="button" onClick={() => setEditingId(null)} aria-label="انصراف">
+                          <X className="h-4 w-4 text-gray-400" aria-hidden />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={s.id}>
+                    <td className="px-4 py-2.5">
+                      {s.name}
+                      {s.categoryId && (
+                        <span className="block text-xs text-gray-400">{categories.find((c) => c.id === s.categoryId)?.name}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5">{toPersianDigits(s.durationMinutes)} دقیقه</td>
+                    <td className="px-4 py-2.5">{formatToman(s.priceToman)}</td>
+                    <td className="px-4 py-2.5">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleActive(s)}
+                        className={`rounded-full px-2.5 py-0.5 text-xs ${
+                          s.active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {s.active ? "فعال" : "غیرفعال"}
+                      </button>
+                    </td>
+                    <td className="px-4 py-2.5 text-end">
+                      <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => startEdit(s)} aria-label="ویرایش خدمت">
+                          <Pencil className="h-4 w-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-hidden />
+                        </button>
+                        <button type="button" onClick={() => handleDeleteService(s.id)} aria-label="حذف خدمت">
+                          <Trash2 className="h-4 w-4 text-gray-400 hover:text-rose-500" aria-hidden />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ),
+              )}
               {services.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-gray-500">

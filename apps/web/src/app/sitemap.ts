@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { salonApiFetch } from "@/lib/api/salonApiClient";
 import { SITE_URL } from "@/lib/site";
 
 const BASE_URL = SITE_URL;
@@ -11,6 +12,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     prisma.blogPost.findMany({ where: { published: true }, select: { slug: true, updatedAt: true, createdAt: true } }),
     prisma.newsItem.findMany({ where: { published: true }, select: { id: true, publishedAt: true, updatedAt: true } }),
   ]);
+
+  // Salons are owned by apps/api — list the active ones through it. A sitemap shouldn't 500
+  // just because the API is briefly unreachable, so fall back to the other routes.
+  const salons = await salonApiFetch<{ slug: string; updatedAt: string }[]>("/salons").catch((err) => {
+    console.error("[sitemap] could not list salons", err);
+    return [];
+  });
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/`, changeFrequency: "weekly", priority: 1.0 },
@@ -36,5 +44,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...blogRoutes, ...newsRoutes];
+  const salonRoutes: MetadataRoute.Sitemap = salons.map((salon) => ({
+    url: `${BASE_URL}/s/${salon.slug}`,
+    lastModified: new Date(salon.updatedAt),
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
+  return [...staticRoutes, ...salonRoutes, ...blogRoutes, ...newsRoutes];
 }

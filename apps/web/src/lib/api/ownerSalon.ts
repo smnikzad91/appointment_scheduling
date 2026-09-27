@@ -115,7 +115,11 @@ export function createService(token: string, data: CreateServiceInput) {
   });
 }
 
-export function updateService(token: string, id: string, data: Partial<CreateServiceInput & { active: boolean }>) {
+export function updateService(
+  token: string,
+  id: string,
+  data: Partial<Omit<CreateServiceInput, "categoryId"> & { categoryId: string | null; active: boolean }>,
+) {
   return salonApiFetch<OwnerService>(`/services/${id}`, {
     method: "PATCH",
     headers: authHeaders(token),

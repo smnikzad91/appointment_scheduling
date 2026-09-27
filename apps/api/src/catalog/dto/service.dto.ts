@@ -30,9 +30,10 @@ export class UpdateServiceDto {
   @IsString()
   description?: string;
 
+  // null moves the service back to "no category" (@IsOptional lets null through validation).
   @IsOptional()
   @IsString()
-  categoryId?: string;
+  categoryId?: string | null;
 
   @IsOptional()
   @IsInt()
