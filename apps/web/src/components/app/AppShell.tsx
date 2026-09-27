@@ -8,6 +8,7 @@ import { LogOut, Moon, Sun, type LucideIcon } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { SITE_NAME } from "@/lib/site";
 import Sheet from "./Sheet";
+import InstallAppBanner from "./InstallAppBanner";
 import { Avatar, ListGroup, cx } from "./ui";
 
 export interface AppTab {
@@ -102,6 +103,8 @@ export default function AppShell({
       <main key={pathname} className="app-rise mx-auto max-w-lg px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-3">
         {children}
       </main>
+
+      <InstallAppBanner />
 
       {/* Tab bar */}
       <nav

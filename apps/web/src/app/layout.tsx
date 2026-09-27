@@ -27,8 +27,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   applicationName: SITE_NAME,
-  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "default" },
-  icons: { apple: "/icons/apple-touch-icon.png" },
   title: {
     default: SITE_TITLE,
     template: `%s | ${SITE_NAME}`,
@@ -68,6 +66,15 @@ export default function RootLayout({
         <link rel="icon" href="/images/favicon.ico" sizes="any" />
         <link rel="icon" type="image/svg+xml" href="/images/logo/logo-icon.svg" />
         <link rel="preload" href="/fonts/Vazirmatn-Variable.woff2" as="font" type="font/woff2" crossOrigin="" />
+        {/* Installability tags go here, not in `metadata`: Next streams metadata into <body> for
+            regular browsers, and Chrome/Safari only read these from <head> — without them the
+            app isn't installable and `beforeinstallprompt` never fires. */}
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body className="dark:bg-gray-900">
         <AgGridSetup />
