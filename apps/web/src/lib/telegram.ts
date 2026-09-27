@@ -1,10 +1,11 @@
 import https from "https";
 import { SocksProxyAgent } from "socks-proxy-agent";
+import { SITE_URL } from "@/lib/site";
 
 const TOKEN   = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL = process.env.TELEGRAM_CHANNEL;
 const PROXY   = process.env.TELEGRAM_PROXY;
-const SITE    = (process.env.NEXTAUTH_URL ?? "https://mqttcloud.ir").replace(/\/$/, "");
+const SITE    = (process.env.NEXTAUTH_URL ?? SITE_URL).replace(/\/$/, "");
 
 function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

@@ -2,25 +2,26 @@ import { Metadata } from "next";
 import FaqPageClient from "@/components/public/FaqPageClient";
 import { JsonLd } from "@/components/common/JsonLd";
 import { prisma } from "@/lib/prisma";
+import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "سوالات متداول",
-  description: "پاسخ رایج‌ترین سوال‌ها درباره mqttcloud.ir — پلن‌ها، پرداخت، اتصال دستگاه‌ها و پشتیبانی.",
-  keywords: ["سوالات متداول", "FAQ", "پشتیبانی", "MQTT", "بروکر", "mqttcloud"],
-  alternates: { canonical: "https://mqttcloud.ir/faq" },
+  description: "پاسخ رایج‌ترین سوال‌ها درباره نوبتا — ثبت سالن، رزرو نوبت، پلن‌ها و پشتیبانی.",
+  keywords: ["سوالات متداول", "FAQ", "پشتیبانی", "نوبت‌دهی آنلاین", "نوبتا"],
+  alternates: { canonical: `${SITE_URL}/faq` },
   openGraph: {
-    title: "سوالات متداول | mqttcloud.ir",
-    description: "پاسخ رایج‌ترین سوال‌ها درباره mqttcloud.ir.",
-    url: "https://mqttcloud.ir/faq",
+    title: "سوالات متداول | نوبتا",
+    description: "پاسخ رایج‌ترین سوال‌ها درباره نوبتا.",
+    url: `${SITE_URL}/faq`,
     type: "website",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "سوالات متداول mqttcloud.ir" }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "سوالات متداول نوبتا" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "سوالات متداول | mqttcloud.ir",
-    description: "پاسخ رایج‌ترین سوال‌ها درباره mqttcloud.ir.",
+    title: "سوالات متداول | نوبتا",
+    description: "پاسخ رایج‌ترین سوال‌ها درباره نوبتا.",
     images: ["/opengraph-image"],
   },
 };

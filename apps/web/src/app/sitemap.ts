@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { SITE_URL } from "@/lib/site";
 
-const BASE_URL = "https://mqttcloud.ir";
+const BASE_URL = SITE_URL;
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/`, changeFrequency: "weekly", priority: 1.0 },
-    { url: `${BASE_URL}/pricing`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${BASE_URL}/blog`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE_URL}/news`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE_URL}/faq`, changeFrequency: "monthly", priority: 0.6 },

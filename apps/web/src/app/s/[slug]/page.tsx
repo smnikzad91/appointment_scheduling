@@ -12,6 +12,7 @@ import StylistList from "@/components/salon/StylistList";
 import Gallery from "@/components/salon/Gallery";
 import Reviews from "@/components/salon/Reviews";
 import InfoSection from "@/components/salon/InfoSection";
+import { SITE_URL } from "@/lib/site";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -44,7 +45,7 @@ export default async function SalonPage({ params }: PageProps) {
   return (
     <SalonBrandProvider brandColor={salon.brandColor}>
       <BookingProvider salon={salon}>
-        <SalonJsonLd salon={salon} url={`https://mqttcloud.ir/s/${slug}`} />
+        <SalonJsonLd salon={salon} url={`${SITE_URL}/s/${slug}`} />
 
         <div className="pb-20 sm:pb-8">
           <Hero salon={salon} />

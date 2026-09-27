@@ -8,34 +8,33 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import SessionWrapper from "@/components/common/SessionWrapper";
 import ToastProvider from "@/components/common/ToastProvider";
 import AgGridSetup from "@/components/common/AgGridSetup";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mqttcloud.ir"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "mqttcloud.ir — بروکر MQTT ابری برای دستگاه‌های شما",
-    template: "%s | mqttcloud.ir",
+    default: SITE_TITLE,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: "mqttcloud.ir یک بروکر MQTT امن و مقیاس‌پذیر است. اکانت و دستگاه بسازید، با TLS متصل شوید و پیام‌ها را بی‌درنگ بین دستگاه‌های خود منتشر و دریافت کنید.",
-  keywords: ["بروکر MQTT", "MQTT ابری", "IoT", "اتصال دستگاه", "پیام‌رسانی بی‌درنگ", "pub sub", "MQTT broker", "mqttcloud"],
-  authors: [{ name: "mqttcloud.ir", url: "https://mqttcloud.ir" }],
-  creator: "mqttcloud.ir",
-  publisher: "mqttcloud.ir",
+  description: SITE_DESCRIPTION,
+  keywords: ["نوبت‌دهی آنلاین", "رزرو آنلاین سالن زیبایی", "نرم‌افزار آرایشگاه", "مدیریت سالن", "نوبتا"],
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
   robots: { index: true, follow: true },
   openGraph: {
-    siteName: "mqttcloud.ir",
+    siteName: SITE_NAME,
     locale: "fa_IR",
     type: "website",
-    title: "mqttcloud.ir — بروکر MQTT ابری برای دستگاه‌های شما",
-    description: "اکانت و دستگاه بسازید، با TLS متصل شوید و پیام‌ها را بی‌درنگ بین دستگاه‌های خود منتشر و دریافت کنید.",
-    url: "https://mqttcloud.ir",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "mqttcloud.ir" }],
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: SITE_NAME }],
   },
   twitter: {
     card: "summary_large_image",
-    site: "@mqttcloud_ir",
-    creator: "@mqttcloud_ir",
-    title: "mqttcloud.ir — بروکر MQTT ابری برای دستگاه‌های شما",
-    description: "اکانت و دستگاه بسازید، با TLS متصل شوید و پیام‌ها را بی‌درنگ بین دستگاه‌های خود منتشر و دریافت کنید.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     images: ["/opengraph-image"],
   },
 };

@@ -290,7 +290,7 @@ const AppSidebar: React.FC = () => {
         <MarkWhiteIcon viewBox="6 12 36 36" className="shrink-0 hidden dark:block" width={36} height={36} />
         {expanded && (
           <Link href="/admin" className="text-base font-bold tracking-tight text-gray-900 dark:text-white">
-            mqttcloud<span className="font-mono font-normal text-[#16b8c9]">.ir</span>
+            نوبتا
           </Link>
         )}
       </div>
