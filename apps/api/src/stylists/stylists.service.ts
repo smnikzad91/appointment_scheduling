@@ -4,6 +4,7 @@ import { Role } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { assertOwnsSalon } from "../salons/salon-ownership.util.js";
+import { issueSetupToken, unusablePassword } from "../auth/password-setup.util.js";
 import {
   InviteStylistDto,
   UpdateStylistDto,
@@ -18,10 +19,6 @@ import {
 /** A new stylist's share of their appointments' income unless the owner picks another. */
 const DEFAULT_COMMISSION_PERCENT = 20;
 
-function randomTempPassword(): string {
-  return Math.random().toString(36).slice(2, 10) + "A1";
-}
-
 @Injectable()
 export class StylistsService {
   constructor(
@@ -33,7 +30,7 @@ export class StylistsService {
     const salon = await this.salonsService.findMine(userId);
     return this.prisma.stylist.findMany({
       where: { salonId: salon.id },
-      include: { user: { select: { firstName: true, lastName: true, phone: true } }, services: true },
+      include: { user: { select: { firstName: true, lastName: true, phone: true, mustSetPassword: true } }, services: true },
     });
   }
 
@@ -55,38 +52,52 @@ export class StylistsService {
       }
     }
 
-    let tempPassword: string | undefined;
-    let stylistUser = existingUser;
-    if (!stylistUser) {
-      tempPassword = randomTempPassword();
-      stylistUser = await this.prisma.user.create({
+    // Account, stylist profile and first sign-in link are created together, so a failure can't
+    // leave a stylist account without a stylist (which the owner then can't see or remove).
+    const { stylist, setup } = await this.prisma.$transaction(async (tx) => {
+      const stylistUser =
+        existingUser ??
+        (await tx.user.create({
+          data: {
+            phone: dto.phone,
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            role: Role.STYLIST,
+            // Nobody knows this password: the stylist picks their own through the link below.
+            passwordHash: await bcrypt.hash(unusablePassword(), 10),
+            mustSetPassword: true,
+          },
+        }));
+      const stylist = await tx.stylist.create({
         data: {
-          phone: dto.phone,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          role: Role.STYLIST,
-          passwordHash: await bcrypt.hash(tempPassword, 10),
+          userId: stylistUser.id,
+          salonId: salon.id,
+          displayName: dto.displayName,
+          bio: dto.bio,
+          commissionPercent: dto.commissionPercent ?? DEFAULT_COMMISSION_PERCENT,
         },
       });
-    }
-
-    const stylist = await this.prisma.stylist.create({
-      data: {
-        userId: stylistUser.id,
-        salonId: salon.id,
-        displayName: dto.displayName,
-        bio: dto.bio,
-        commissionPercent: dto.commissionPercent ?? DEFAULT_COMMISSION_PERCENT,
-      },
+      // An existing stylist account that already has its own password needs no link.
+      const setup = stylistUser.mustSetPassword ? await issueSetupToken(tx, stylistUser.id) : null;
+      return { stylist, setup };
     });
 
     if (dto.serviceIds?.length) {
       await this.replaceServices(salon.id, stylist.id, dto.serviceIds.map((serviceId) => ({ serviceId })));
     }
 
-    // tempPassword is only present (and only ever returned this once) when a brand-new
-    // account was created for this phone number — share it with the stylist out of band.
-    return { ...stylist, tempPassword };
+    // setupToken is returned only here and by regenerateSetupLink — the owner shares the link
+    // (/set-password/<token>) with the stylist, who then chooses their own password.
+    return { ...stylist, setupToken: setup?.setupToken, setupExpiresAt: setup?.expiresAt };
+  }
+
+  /**
+   * A new one-time "set your password" link for one of the owner's stylists — the first one got
+   * lost, expired, or the stylist forgot their password. Any earlier unused link stops working.
+   */
+  async regenerateSetupLink(userId: string, stylistId: string) {
+    const stylist = await this.findOwned(userId, stylistId);
+    return this.prisma.$transaction((tx) => issueSetupToken(tx, stylist.userId));
   }
 
   async update(userId: string, stylistId: string, dto: UpdateStylistDto) {

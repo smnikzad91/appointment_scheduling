@@ -151,10 +151,16 @@ export interface OwnerStylist {
   active: boolean;
   /** Stylist's share of the money received for their appointments, 0–100. */
   commissionPercent: number;
-  user: { firstName: string; lastName: string; phone: string | null };
+  /** mustSetPassword: invited but hasn't used their "set your password" link yet. */
+  user: { firstName: string; lastName: string; phone: string | null; mustSetPassword: boolean };
   /** commissionPercent: this service's own share for the stylist; null = their default. */
   services: { serviceId: string; overridePriceToman: number | null; overrideDurationMinutes: number | null; commissionPercent: number | null }[];
-  tempPassword?: string;
+}
+
+/** A one-time "set your password" link secret; build the URL with setupLinkUrl(). */
+export interface StylistSetupLink {
+  setupToken: string;
+  expiresAt: string;
 }
 
 export interface StylistServiceEntry {
@@ -179,10 +185,19 @@ export interface InviteStylistInput {
 }
 
 export function inviteStylist(token: string, data: InviteStylistInput) {
-  return salonApiFetch<OwnerStylist>("/salons/mine/stylists", {
+  // setupToken is present when a new account was made (or an invited one never set a password).
+  return salonApiFetch<OwnerStylist & { setupToken?: string; setupExpiresAt?: string }>("/salons/mine/stylists", {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(data),
+  });
+}
+
+/** Issues a new one-time link for the stylist; any earlier unused link stops working. */
+export function regenerateStylistSetupLink(token: string, stylistId: string) {
+  return salonApiFetch<StylistSetupLink>(`/salons/mine/stylists/${stylistId}/setup-link`, {
+    method: "POST",
+    headers: authHeaders(token),
   });
 }
 

@@ -32,6 +32,12 @@ export class StylistsController {
     return this.stylistsService.invite((req.user as JwtPayload).sub, dto);
   }
 
+  /** New one-time "set your password" link for a stylist; the previous link stops working. */
+  @Post("salons/mine/stylists/:id/setup-link")
+  regenerateSetupLink(@Req() req: Request, @Param("id") id: string) {
+    return this.stylistsService.regenerateSetupLink((req.user as JwtPayload).sub, id);
+  }
+
   // These "me" routes must be registered before the "stylists/:id" wildcard
   // routes below — Nest matches path patterns in registration order, and
   // ":id" would otherwise greedily match the literal segment "me" first.

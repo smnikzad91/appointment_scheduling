@@ -114,27 +114,31 @@ enum SocialPlatform {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  phone         String?  @unique
-  email         String?  @unique
-  passwordHash  String
-  firstName     String
-  lastName      String
-  avatarUrl     String?
-  role          Role
-  walletBalance Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  phone           String?  @unique
+  email           String?  @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  avatarUrl       String?
+  role            Role
+  walletBalance   Int      @default(0)
+  /// True for an invited stylist until they choose a password via their one-time link (their
+  /// passwordHash until then is random and unknown to anyone).
+  mustSetPassword Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  ownedSalons     Salon[]         @relation("SalonOwner")
-  stylist         Stylist?
-  appointments    Appointment[]   @relation("CustomerAppointments")
-  tickets         Ticket[]
-  cards           Card[]
-  deposits        Deposit[]
-  notifications   Notification[]
-  favoriteSalons  FavoriteSalon[]
-  waitlistEntries WaitlistEntry[]
+  ownedSalons         Salon[]              @relation("SalonOwner")
+  stylist             Stylist?
+  appointments        Appointment[]        @relation("CustomerAppointments")
+  tickets             Ticket[]
+  cards               Card[]
+  deposits            Deposit[]
+  notifications       Notification[]
+  favoriteSalons      FavoriteSalon[]
+  waitlistEntries     WaitlistEntry[]
+  passwordSetupTokens PasswordSetupToken[]
 
   @@map("users")
 }
@@ -535,6 +539,21 @@ model AppointmentService {
 
   @@index([appointmentId])
   @@map("appointment_services")
+}
+
+/// One-time "set your password" link for an invited stylist (the salon owner can regenerate it).
+/// Only a SHA-256 of the link's secret is stored; using it or issuing a new one ends the old one.
+model PasswordSetupToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_setup_tokens")
 }
 
 model OtpCode {

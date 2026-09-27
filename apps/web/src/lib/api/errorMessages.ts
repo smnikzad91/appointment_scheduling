@@ -25,6 +25,7 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Payout not found": "این پرداخت دیگر وجود ندارد",
   "Expense not found": "این هزینه دیگر وجود ندارد",
   "Invalid link URL": "لینک باید با http:// یا https:// شروع شود",
+  "Invalid or expired link": "این لینک دیگر معتبر نیست؛ از مدیر سالن بخواهید لینک تازه‌ای برایتان بفرستد",
   "Upload a banner image before turning it on": "برای نمایش بنر، ابتدا تصویر آن را آپلود کنید",
   "Only active salons can be featured": "فقط سالن‌های فعال را می‌توان منتخب کرد",
   "Only active stylists of active salons can be featured": "فقط آرایشگرهای فعالِ سالن‌های فعال را می‌توان منتخب کرد",

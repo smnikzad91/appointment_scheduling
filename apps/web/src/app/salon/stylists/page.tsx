@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, KeyRound, Plus, Share2, UserPlus, Users } from "lucide-react";
+import { Check, KeyRound, Link2, Plus, UserPlus, Users } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyStylists,
   inviteStylist,
+  regenerateStylistSetupLink,
   updateStylist,
   setStylistServices,
   listMyServices,
@@ -16,6 +17,7 @@ import {
 import { normalizeDigits, formatToman, toPersianDigits, isValidIranianMobile } from "@/lib/persian";
 import { SalonApiError } from "@/lib/api/salonApiClient";
 import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
+import SetupLinkCard from "@/components/app/SetupLinkCard";
 import Sheet from "@/components/app/Sheet";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import CommissionInput, { parseCommission } from "@/components/app/CommissionInput";
@@ -58,8 +60,11 @@ export default function SalonStylistsPage() {
   const [invite, setInvite] = useState(EMPTY_INVITE);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
-  const [created, setCreated] = useState<{ name: string; phone: string; password: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  // The new stylist's one-time "set your password" link, shown once right after creating them.
+  const [created, setCreated] = useState<{ name: string; token: string; expiresAt: string } | null>(null);
+  // A link regenerated from a stylist's sheet (their first one got lost, or they forgot their password).
+  const [sheetLink, setSheetLink] = useState<{ stylistId: string; token: string; expiresAt: string } | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
 
   const deepLinked = useRef(false);
   const reload = useCallback(() => {
@@ -91,7 +96,22 @@ export default function SalonStylistsPage() {
     setOverrideDrafts({});
     setCommissionDraft(String(stylist.commissionPercent));
     setCommissionSaved(false);
+    setSheetLink(null);
     setSelectedId(stylist.id);
+  }
+
+  async function handleRegenerateLink(stylist: OwnerStylist) {
+    if (!token) return;
+    setLinkBusy(true);
+    setSheetError(null);
+    try {
+      const link = await regenerateStylistSetupLink(token, stylist.id);
+      setSheetLink({ stylistId: stylist.id, token: link.setupToken, expiresAt: link.expiresAt });
+    } catch {
+      setSheetError("ساخت لینک جدید انجام نشد");
+    } finally {
+      setLinkBusy(false);
+    }
   }
 
   async function handleToggleActive(stylist: OwnerStylist) {
@@ -235,9 +255,10 @@ export default function SalonStylistsPage() {
         commissionPercent,
       });
       setInvite(EMPTY_INVITE);
-      if (result.tempPassword) {
-        setCreated({ name: result.displayName, phone, password: result.tempPassword });
+      if (result.setupToken && result.setupExpiresAt) {
+        setCreated({ name: result.displayName, token: result.setupToken, expiresAt: result.setupExpiresAt });
       } else {
+        // An existing stylist account that already has a password — they just sign in.
         setInviteOpen(false);
       }
       reload();
@@ -245,28 +266,6 @@ export default function SalonStylistsPage() {
       setInviteError(err instanceof SalonApiError && err.status === 409 ? "این شماره قبلاً در نوبتا ثبت شده و نمی‌توان آن را به‌عنوان آرایشگر اضافه کرد" : "افزودن آرایشگر انجام نشد");
     } finally {
       setInviting(false);
-    }
-  }
-
-  const credentialsText = created
-    ? `ورود به پنل آرایشگر نوبتا\nشماره موبایل: ${created.phone}\nرمز عبور موقت: ${created.password}\n${typeof window !== "undefined" ? window.location.origin : ""}/signin`
-    : "";
-
-  async function copyCredentials() {
-    try {
-      await navigator.clipboard.writeText(credentialsText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard blocked — the password is still visible on screen.
-    }
-  }
-
-  async function shareCredentials() {
-    try {
-      await navigator.share({ text: credentialsText });
-    } catch {
-      // Dismissed.
     }
   }
 
@@ -320,6 +319,12 @@ export default function SalonStylistsPage() {
                 <span className="min-w-0">
                   <span className="block truncate text-[15px] font-bold text-app-ink">{stylist.displayName}</span>
                   <span className="mt-0.5 block text-[13px] text-app-muted">
+                    {stylist.user.mustSetPassword && (
+                      <>
+                        <span className="font-bold text-app-pending">منتظر فعال‌سازی</span>
+                        <Sep />
+                      </>
+                    )}
                     {toPersianDigits(stylist.services.length)} خدمت
                     <Sep />
                     {stylist.commissionPercent === 0 ? (
@@ -358,6 +363,28 @@ export default function SalonStylistsPage() {
             <div className="mb-5" />
 
             {sheetError && <p className="mb-3 rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{sheetError}</p>}
+
+            <h3 className="mb-2 px-1 text-[13px] font-bold text-app-muted">ورود آرایشگر</h3>
+            <div className="mb-5 rounded-3xl border border-app-line bg-app-card p-4">
+              <p className="mb-3 flex items-center gap-2 text-sm font-bold text-app-ink">
+                <KeyRound className={cx("h-4 w-4", selected.user.mustSetPassword ? "text-app-pending" : "text-app-done")} aria-hidden />
+                {selected.user.mustSetPassword ? "هنوز رمز عبور خود را تعیین نکرده" : "حساب فعال است و رمز عبور دارد"}
+              </p>
+              {sheetLink?.stylistId === selected.id ? (
+                <SetupLinkCard token={sheetLink.token} expiresAt={sheetLink.expiresAt} stylistName={selected.displayName} />
+              ) : (
+                <>
+                  <Button variant="secondary" block icon={Link2} busy={linkBusy} onClick={() => handleRegenerateLink(selected)}>
+                    {selected.user.mustSetPassword ? "ساخت لینک جدید تعیین رمز" : "لینک بازنشانی رمز"}
+                  </Button>
+                  <p className="mt-2 px-1 text-xs leading-6 text-app-muted">
+                    {selected.user.mustSetPassword
+                      ? "اگر لینک قبلی به دستش نرسیده یا منقضی شده، لینک تازه بسازید؛ لینک قبلی از کار می‌افتد."
+                      : "اگر رمزش را فراموش کرده، لینکی بسازید تا رمز تازه‌ای انتخاب کند. تا وقتی از لینک استفاده نکرده، رمز فعلی‌اش کار می‌کند."}
+                  </p>
+                </>
+              )}
+            </div>
 
             <h3 className="mb-2 px-1 text-[13px] font-bold text-app-muted">سهم آرایشگر از درآمد</h3>
             <div className="mb-5 rounded-3xl border border-app-line bg-app-card p-4">
@@ -466,26 +493,10 @@ export default function SalonStylistsPage() {
         {created ? (
           <div className="flex flex-col gap-4">
             <p className="text-sm leading-7 text-app-muted">
-              {created.name} با همین شماره موبایل و این رمز موقت از صفحه ورود وارد پنل آرایشگر می‌شود. این رمز فقط همین یک بار نمایش داده
-              می‌شود.
+              این لینک را برای {created.name} بفرستید تا رمز عبور خودش را انتخاب کند و وارد پنل آرایشگر شود. اگر لینک گم شد یا
+              منقضی شد، از صفحه همین آرایشگر لینک تازه بسازید.
             </p>
-            <div className="flex items-center gap-3 rounded-3xl border border-dashed border-app-accent/50 bg-app-accent-soft p-4">
-              <KeyRound className="h-6 w-6 shrink-0 text-app-accent" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-app-muted">رمز عبور موقت</p>
-                <p dir="ltr" className="text-end font-mono text-xl font-bold tracking-wider text-app-ink">
-                  {created.password}
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              <Button variant="secondary" icon={copied ? Check : Copy} onClick={copyCredentials}>
-                {copied ? "کپی شد" : "کپی"}
-              </Button>
-              <Button icon={Share2} onClick={shareCredentials}>
-                ارسال
-              </Button>
-            </div>
+            <SetupLinkCard token={created.token} expiresAt={created.expiresAt} stylistName={created.name} />
             <Button variant="ghost" block onClick={closeInvite}>
               تمام
             </Button>

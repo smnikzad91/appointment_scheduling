@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { Role, SalonStatus, User } from "@appointment-scheduling/database";
@@ -9,6 +9,8 @@ import { RegisterSalonOwnerDto } from "./dto/register-salon-owner.dto.js";
 import { assertIranCoordinates, resolveProvinceCity } from "../common/location.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { VerifyOtpDto } from "./dto/otp.dto.js";
+import { CompletePasswordSetupDto } from "./dto/password-setup.dto.js";
+import { hashSetupToken } from "./password-setup.util.js";
 
 export interface JwtPayload {
   sub: string;
@@ -131,6 +133,48 @@ export class AuthService {
     }
 
     return this.buildAuthResponse(user);
+  }
+
+  /** Who a one-time "set your password" link is for — shown on the page before they choose one. */
+  async getPasswordSetup(token: string) {
+    const setup = await this.findUsableSetupToken(token);
+    const { user } = setup;
+    return {
+      firstName: user.firstName,
+      phone: user.phone,
+      salonName: user.stylist?.salon.name ?? null,
+      // false = they already have a password and this link resets it.
+      firstTime: user.mustSetPassword,
+      expiresAt: setup.expiresAt,
+    };
+  }
+
+  /**
+   * Sets the password through a one-time link and burns the link. Returns the phone number so
+   * the web app can sign the stylist straight in with it.
+   */
+  async completePasswordSetup(dto: CompletePasswordSetupDto) {
+    const setup = await this.findUsableSetupToken(dto.token);
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    await this.prisma.$transaction(async (tx) => {
+      // Claim the link atomically: if two requests race, only one sees usedAt still null.
+      const claimed = await tx.passwordSetupToken.updateMany({ where: { id: setup.id, usedAt: null }, data: { usedAt: new Date() } });
+      if (claimed.count !== 1) throw new NotFoundException("Invalid or expired link");
+      await tx.user.update({ where: { id: setup.userId }, data: { passwordHash, mustSetPassword: false } });
+      await tx.passwordSetupToken.deleteMany({ where: { userId: setup.userId, usedAt: null } });
+    });
+    return { phone: setup.user.phone };
+  }
+
+  private async findUsableSetupToken(token: string) {
+    const setup = await this.prisma.passwordSetupToken.findUnique({
+      where: { tokenHash: hashSetupToken(token) },
+      include: { user: { include: { stylist: { include: { salon: { select: { name: true } } } } } } },
+    });
+    if (!setup || setup.usedAt || setup.expiresAt <= new Date()) {
+      throw new NotFoundException("Invalid or expired link");
+    }
+    return setup;
   }
 
   /** Passwordless login/signup: request a code, then verify it to get a real session.
