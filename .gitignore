@@ -38,3 +38,6 @@ yarn-error.log*
 
 # ad-hoc local debug scripts/screenshots, not part of the app
 .playwright-check/
+
+# Demo-data artwork (scripts/demo/make-images.py) — regenerate, never commit
+apps/web/public/uploads/demo/
