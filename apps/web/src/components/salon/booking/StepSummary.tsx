@@ -5,7 +5,7 @@ import { useBooking } from "./BookingProvider";
 import { formatToman, formatMinutesAsClock, toPersianDigits } from "@/lib/persian";
 import { formatJalaliFull, dateKeyToDate } from "@/lib/jalali";
 import { createBooking } from "@/lib/api/bookings";
-import { SalonApiError } from "@/lib/api/salonApiClient";
+import { persianApiError } from "@/lib/api/errorMessages";
 
 export default function StepSummary() {
   const { salon, state, setResult, goNext } = useBooking();
@@ -43,7 +43,7 @@ export default function StepSummary() {
       setResult(booking);
       goNext();
     } catch (err) {
-      setError(err instanceof SalonApiError ? err.message : "خطایی رخ داد، دوباره تلاش کنید");
+      setError(persianApiError(err));
     } finally {
       setConfirming(false);
     }

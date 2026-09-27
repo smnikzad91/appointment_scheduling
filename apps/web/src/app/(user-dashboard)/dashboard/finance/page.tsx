@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { AgGridReact } from "ag-grid-react";
 import { themeQuartz, type ColDef } from "ag-grid-community";
@@ -232,16 +232,16 @@ export default function FinancePage() {
       .finally(() => setCardsLoading(false));
   };
 
-  const loadDeposits = () => {
+  const loadDeposits = useCallback(() => {
     setDepositsLoading(true);
     fetch("/api/user/finance/deposits")
       .then((r) => r.json())
       .then((d) => setDeposits(Array.isArray(d) ? d : []))
       .catch(() => setDeposits([]))
       .finally(() => setDepositsLoading(false));
-  };
+  }, []);
 
-  useEffect(() => { queueMicrotask(() => { loadCards(); loadDeposits(); loadDestCards(); }); }, []);
+  useEffect(() => { queueMicrotask(() => { loadCards(); loadDeposits(); loadDestCards(); }); }, [loadDeposits]);
 
   // ── Delete Card ─────────────────────────────────────────────────────────────
   const handleDeleteCard = async (id: string) => {
@@ -321,15 +321,15 @@ export default function FinancePage() {
   };
 
   // ── Delete Deposit ───────────────────────────────────────────────────────────
-  const handleDeleteDeposit = async (id: string) => {
+  const handleDeleteDeposit = useCallback(async (id: string) => {
     const res  = await fetch(`/api/user/finance/deposits/${id}`, { method: "DELETE" });
     const data = await res.json();
     if (res.ok) { toast.success(t("depositDeleted")); loadDeposits(); }
     else        { toast.error(data.error || t("saveError")); }
-  };
+  }, [t, loadDeposits]);
 
   // ── Grid ────────────────────────────────────────────────────────────────────
-  const gridContext = useMemo(() => ({ isRTL, onDelete: handleDeleteDeposit, copiedLabel: t("copied") }), [isRTL, t]);
+  const gridContext = useMemo(() => ({ isRTL, onDelete: handleDeleteDeposit, copiedLabel: t("copied") }), [isRTL, t, handleDeleteDeposit]);
 
   const filteredDeposits = useMemo(
     () => depositFilter === "all" ? deposits : deposits.filter((d) => d.status === depositFilter),

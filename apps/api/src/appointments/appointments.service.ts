@@ -6,6 +6,7 @@ import { findEligibleStylists } from "../salons/eligible-stylists.util.js";
 import { effectiveServicePricing, sumEffectivePricing } from "../salons/service-pricing.util.js";
 import { CreateAppointmentDto } from "./dto/create-appointment.dto.js";
 import { UpdatableAppointmentStatus } from "./dto/update-status.dto.js";
+import { fitsWorkingHours } from "./working-hours.util.js";
 
 const ACTIVE_STATUSES: AppointmentStatus[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
 
@@ -20,6 +21,9 @@ export class AppointmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(customerId: string, dto: CreateAppointmentDto) {
+    const salon = await this.prisma.salon.findUnique({ where: { id: dto.salonId }, select: { status: true, timezone: true } });
+    if (!salon || salon.status !== "ACTIVE") throw new NotFoundException("Salon not found");
+
     const services = await this.prisma.service.findMany({
       where: { id: { in: dto.serviceIds }, salonId: dto.salonId, active: true },
     });
@@ -28,6 +32,7 @@ export class AppointmentsService {
     }
 
     const startAt = new Date(dto.startAt);
+    if (startAt.getTime() <= Date.now()) throw new BadRequestException("This time is in the past");
 
     const eligible = await findEligibleStylists(this.prisma, dto.salonId, dto.serviceIds);
     const candidates = dto.stylistId ? eligible.filter((s) => s.id === dto.stylistId) : eligible;
@@ -39,45 +44,53 @@ export class AppointmentsService {
     }
 
     // Duration/price can differ per stylist (self- or owner-set overrides), so each candidate
-    // gets its own end time — the first stylist that's actually free for their own slot wins.
-    let assigned: { stylistId: string; endAt: Date; pricing: ReturnType<typeof effectiveServicePricing> } | null = null;
+    // gets its own end time — the first stylist actually free for their own slot wins. The
+    // availability checks and the insert run in one transaction under a per-stylist advisory
+    // lock, so two customers can't both grab the same slot between check and insert.
     for (const candidate of candidates) {
       const pricing = effectiveServicePricing(services, candidate.services);
       const { durationMinutes } = sumEffectivePricing(pricing);
       const endAt = new Date(startAt.getTime() + durationMinutes * 60_000);
-      const conflict = await this.prisma.appointment.findFirst({
-        where: { stylistId: candidate.id, status: { in: ACTIVE_STATUSES }, startAt: { lt: endAt }, endAt: { gt: startAt } },
+
+      const appointment = await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${candidate.id}))`;
+
+        const hours = await tx.workingHour.findMany({ where: { stylistId: candidate.id } });
+        if (!fitsWorkingHours(hours, startAt, endAt, salon.timezone)) return null;
+
+        const [timeOff, conflict] = await Promise.all([
+          tx.timeOff.findFirst({ where: { stylistId: candidate.id, startAt: { lt: endAt }, endAt: { gt: startAt } } }),
+          tx.appointment.findFirst({
+            where: { stylistId: candidate.id, status: { in: ACTIVE_STATUSES }, startAt: { lt: endAt }, endAt: { gt: startAt } },
+          }),
+        ]);
+        if (timeOff || conflict) return null;
+
+        return tx.appointment.create({
+          data: {
+            salonId: dto.salonId,
+            stylistId: candidate.id,
+            customerId,
+            startAt,
+            endAt,
+            priceToman: pricing.reduce((sum, p) => sum + p.priceToman, 0),
+            notes: dto.notes,
+            services: {
+              create: pricing.map((p) => ({
+                serviceId: p.serviceId,
+                priceToman: p.priceToman,
+                durationMinutes: p.durationMinutes,
+              })),
+            },
+          },
+          include: APPOINTMENT_INCLUDE,
+        });
       });
-      if (!conflict) {
-        assigned = { stylistId: candidate.id, endAt, pricing };
-        break;
-      }
-    }
-    if (!assigned) {
-      throw new BadRequestException("This time slot is no longer available");
+
+      if (appointment) return appointment;
     }
 
-    const priceToman = assigned.pricing.reduce((sum, p) => sum + p.priceToman, 0);
-
-    return this.prisma.appointment.create({
-      data: {
-        salonId: dto.salonId,
-        stylistId: assigned.stylistId,
-        customerId,
-        startAt,
-        endAt: assigned.endAt,
-        priceToman,
-        notes: dto.notes,
-        services: {
-          create: assigned.pricing.map((p) => ({
-            serviceId: p.serviceId,
-            priceToman: p.priceToman,
-            durationMinutes: p.durationMinutes,
-          })),
-        },
-      },
-      include: APPOINTMENT_INCLUDE,
-    });
+    throw new BadRequestException("This time slot is no longer available");
   }
 
   findMineAsCustomer(customerId: string) {

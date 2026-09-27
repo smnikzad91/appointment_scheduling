@@ -247,10 +247,10 @@ export default function AdminErrorLog() {
       {/* Summary */}
       {data && (
         <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <SummaryCard label={t("errorsOpen")} value={data.summary.open} highlight={data.summary.open > 0} />
-          <SummaryCard label={t("errorsLast24h")} value={data.summary.last24h} />
+          <SummaryCard label={t("errorsOpen")} value={data.summary.open} lang={lang} highlight={data.summary.open > 0} />
+          <SummaryCard label={t("errorsLast24h")} value={data.summary.last24h} lang={lang} />
           {(Object.keys(sourceLabels) as ErrorSource[]).map((s) => (
-            <SummaryCard key={s} label={`${sourceLabels[s]} · ${t("errorsOpen")}`} value={data.summary.openBySource[s]} />
+            <SummaryCard key={s} label={`${sourceLabels[s]} · ${t("errorsOpen")}`} value={data.summary.openBySource[s]} lang={lang} />
           ))}
         </div>
       )}
@@ -299,7 +299,7 @@ export default function AdminErrorLog() {
                 {t("errorsPrev")}
               </button>
               <span>
-                {t("errorsPage")} {page} {t("errorsOf")} {totalPages} · {data.total}
+                {t("errorsPage")} {page.toLocaleString(lang === "fa" ? "fa-IR" : "en-US")} {t("errorsOf")} {totalPages.toLocaleString(lang === "fa" ? "fa-IR" : "en-US")} · {data.total.toLocaleString(lang === "fa" ? "fa-IR" : "en-US")}
               </span>
               <button type="button" className={outlineBtn} disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>
                 {t("errorsNext")}
@@ -388,11 +388,11 @@ export default function AdminErrorLog() {
   );
 }
 
-function SummaryCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function SummaryCard({ label, value, lang, highlight }: { label: string; value: number; lang: string; highlight?: boolean }) {
   return (
     <div className={`rounded-xl border p-3 ${highlight ? "border-red-200 bg-red-50 dark:border-red-500/30 dark:bg-red-500/10" : "border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/40"}`}>
       <p className={`text-xl font-bold ${highlight ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-white"}`}>
-        {value.toLocaleString()}
+        {value.toLocaleString(lang === "fa" ? "fa-IR" : "en-US")}
       </p>
       <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">{label}</p>
     </div>

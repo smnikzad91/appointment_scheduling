@@ -37,3 +37,10 @@ export function instantToSalonWallTime(instant: Date, timeZone: string): { dateK
   const dateKey = `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
   return { dateKey, minuteOfDay: p.hour * 60 + p.minute };
 }
+
+/** Adds `days` calendar days to a "YYYY-MM-DD" key. */
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const date = new Date(`${dateKey}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}

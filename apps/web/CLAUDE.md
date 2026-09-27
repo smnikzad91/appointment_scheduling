@@ -11,7 +11,7 @@ npm run start     # next start
 npm run lint      # ESLint
 ```
 
-No test suite is configured.
+No test suite is configured. Environment variables are listed in `.env.example` (copy to `.env`).
 
 ## Product
 
@@ -31,6 +31,10 @@ Originally a Persian-language SaaS dashboard template (auth, wallet/finance, CMS
 Several Prisma enums (`SocialPlatform`, `ContactStatus`, `TicketStatus`, `TicketReplySender`, `DepositStatus`, `LegalPageType`) are uppercase in Postgres, but every CMS/finance/support API route keeps the original lowercase string wire format so existing frontend components needed zero changes. The one role-related holdover is the admin users API (`/api/admin/users/**` + `AdminUsersList`), which still sends `"admin"`/`"user"` for `User.role`, collapsing the four Postgres roles to two. Translate at the route boundary — see `src/app/api/admin/social-links/route.ts` for the pattern. Shared lowercase union types live in `src/types/content.ts`.
 
 `User.phone` is nullable (`String? @unique`) rather than required — Postgres allows multiple `NULL`s under a unique constraint, which is what lets more than one user have "no phone" (matching the old Mongoose sparse-partial-unique-index behavior). Always write `null`, never `""`, when clearing it.
+
+## Errors shown to users
+
+apps/api replies in English (it also serves the Android apps). Never show an API error's `message` to a user directly — pass the error through `persianApiError()` in `src/lib/api/errorMessages.ts`, and add new API messages to its table when you add them to apps/api.
 
 ## Salon time
 

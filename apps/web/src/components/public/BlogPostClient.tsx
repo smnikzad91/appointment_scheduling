@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import type { BlogPost } from "@/data/blogPosts";
 import { ReadingProgress } from "@/components/public/shared/ReadingProgress";
@@ -60,7 +60,7 @@ interface Props {
 }
 
 export default function BlogPostClient({ post, related }: Props) {
-  const headings = (post.sections ?? []).map((s) => s.heading).filter(Boolean) as string[];
+  const headings = useMemo(() => (post.sections ?? []).map((s) => s.heading).filter(Boolean) as string[], [post.sections]);
   const [activeId, setActiveId] = useState(headings[0] ? slugify(headings[0]) : "");
   const articleRef = useRef<HTMLElement>(null);
   const categoryCfg = blogCategoryConfig[post.category];
@@ -79,7 +79,7 @@ export default function BlogPostClient({ post, related }: Props) {
       observers.push(obs);
     });
     return () => observers.forEach((o) => o.disconnect());
-  }, [headings.join()]);
+  }, [headings]);
 
   return (
     <>

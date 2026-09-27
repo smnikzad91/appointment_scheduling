@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { assertOwnsSalon } from "../salons/salon-ownership.util.js";
@@ -18,6 +18,7 @@ export class CatalogService {
 
   async create(userId: string, dto: CreateServiceDto) {
     const salon = await this.salonsService.findMine(userId);
+    await this.assertCategoryInSalon(dto.categoryId, salon.id);
     return this.prisma.service.create({
       data: {
         salonId: salon.id,
@@ -32,6 +33,7 @@ export class CatalogService {
 
   async update(userId: string, serviceId: string, dto: UpdateServiceDto) {
     const service = await this.findOwned(userId, serviceId);
+    await this.assertCategoryInSalon(dto.categoryId, service.salonId);
     return this.prisma.service.update({ where: { id: service.id }, data: dto });
   }
 
@@ -40,6 +42,15 @@ export class CatalogService {
     // Soft-delete: existing appointments reference this service, so it can't just vanish.
     await this.prisma.service.update({ where: { id: service.id }, data: { active: false } });
     return { ok: true };
+  }
+
+  /** A service may only be filed under one of its own salon's categories (null/undefined = none). */
+  private async assertCategoryInSalon(categoryId: string | null | undefined, salonId: string) {
+    if (!categoryId) return;
+    const category = await this.prisma.serviceCategory.findUnique({ where: { id: categoryId } });
+    if (!category || category.salonId !== salonId) {
+      throw new BadRequestException("Category does not belong to this salon");
+    }
   }
 
   private async findOwned(userId: string, serviceId: string) {

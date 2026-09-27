@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
@@ -45,15 +45,8 @@ const AppSidebar: React.FC = () => {
   const { lang } = useLanguage();
   const isRTL = lang === "fa";
 
-  const navItems: NavItem[] = [
-    {
-      icon: <GridIcon />,
-      name: t("navDashboard"),
-      subItems: [
-        { name: t("navEcommerce"),  path: "/admin" },
-        { name: t("navHomePage"),   path: "/" },
-      ],
-    },
+  const navItems = useMemo<NavItem[]>(() => [
+    { icon: <GridIcon />,       name: t("navDashboard"),    path: "/admin" },
     { icon: <CalenderIcon />,   name: t("navCalendar"),     path: "/admin/calendar" },
     { icon: <UserCircleIcon />, name: t("navUserProfile"),  path: "/admin/profile" },
     { icon: <GroupIcon />,      name: t("navUsers"),        path: "/admin/users" },
@@ -104,9 +97,9 @@ const AppSidebar: React.FC = () => {
         { name: t("nav404Error"),  path: "/error-404" },
       ],
     },
-  ];
+  ], [t]);
 
-  const othersItems: NavItem[] = [
+  const othersItems = useMemo<NavItem[]>(() => [
     {
       icon: <PieChartIcon />,
       name: t("navCharts"),
@@ -135,7 +128,7 @@ const AppSidebar: React.FC = () => {
         { name: t("navSignUp"), path: "/signup" },
       ],
     },
-  ];
+  ], [t]);
 
   const [openSubmenu, setOpenSubmenu] = useState<{ type: "main" | "others"; index: number } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
@@ -159,7 +152,7 @@ const AppSidebar: React.FC = () => {
       });
       if (!matched) setOpenSubmenu(null);
     });
-  }, [pathname, isActive]);
+  }, [pathname, isActive, navItems, othersItems]);
 
   useEffect(() => {
     if (openSubmenu) {

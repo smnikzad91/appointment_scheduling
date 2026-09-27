@@ -662,6 +662,14 @@ const translations = {
     blogSaveChanges: "Save Changes",
     blogSavingPost: "Saving…",
     blogCancelPost: "Cancel",
+    // Admin dashboard overview
+    overviewTitle: "Platform overview",
+    overviewPendingSalons: "Salons awaiting approval",
+    overviewActiveSalons: "Active salons",
+    overviewCustomers: "Customers",
+    overviewOpenTickets: "Open tickets",
+    overviewPendingDeposits: "Deposits to review",
+    overviewLoadFailed: "Could not load platform numbers.",
     // Error log (admin dashboard)
     errorsTitle: "Error Log",
     errorsSubtitle: "Errors recorded by the API, the web server and visitors' browsers.",
@@ -1370,6 +1378,14 @@ const translations = {
     blogSaveChanges: "ذخیره تغییرات",
     blogSavingPost: "در حال ذخیره…",
     blogCancelPost: "انصراف",
+    // Admin dashboard overview
+    overviewTitle: "نمای کلی پلتفرم",
+    overviewPendingSalons: "سالن‌های منتظر تایید",
+    overviewActiveSalons: "سالن‌های فعال",
+    overviewCustomers: "مشتری‌ها",
+    overviewOpenTickets: "تیکت‌های باز",
+    overviewPendingDeposits: "واریزهای منتظر بررسی",
+    overviewLoadFailed: "دریافت آمار پلتفرم ممکن نشد.",
     // Error log (admin dashboard)
     errorsTitle: "گزارش خطاها",
     errorsSubtitle: "خطاهای ثبت‌شده از API، سرور وب و مرورگر کاربران.",
