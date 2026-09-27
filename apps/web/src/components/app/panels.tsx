@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from "react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { SALON_UPDATED_EVENT, getMySalon } from "@/lib/api/ownerSalon";
+import { STYLIST_UPDATED_EVENT, getMyStylistProfile } from "@/lib/api/stylistSelf";
 import AppShell, { type ShellIdentity } from "./AppShell";
 import NotificationBell from "./NotificationBell";
 
@@ -33,6 +34,31 @@ function useSalonIdentity(token: string | null): ShellIdentity | null {
     load();
     window.addEventListener(SALON_UPDATED_EVENT, load);
     return () => window.removeEventListener(SALON_UPDATED_EVENT, load);
+  }, [token]);
+  return identity;
+}
+
+/**
+ * The stylist's app bar shows their live profile (name + photo) rather than the login session,
+ * which only knows the photo from sign-in: the salon owner can change it at any time. Reloaded
+ * after the stylist edits their profile and whenever the app comes back to the foreground.
+ */
+function useStylistIdentity(token: string | null): ShellIdentity | null {
+  const [identity, setIdentity] = useState<ShellIdentity | null>(null);
+  useEffect(() => {
+    if (!token) return;
+    const load = () =>
+      getMyStylistProfile(token)
+        .then((s) => setIdentity({ name: s.displayName, src: s.avatarUrl, shape: "circle" }))
+        .catch(() => {}); // keep the account avatar if this fails
+    const onVisible = () => document.visibilityState === "visible" && load();
+    load();
+    window.addEventListener(STYLIST_UPDATED_EVENT, load);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener(STYLIST_UPDATED_EVENT, load);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [token]);
   return identity;
 }
@@ -60,9 +86,11 @@ export function SalonShell({ children }: { children: React.ReactNode }) {
 
 export function StylistShell({ children }: { children: React.ReactNode }) {
   const token = useApiAccessToken();
+  const identity = useStylistIdentity(token);
   return (
     <AppShell
       panelName="پنل آرایشگر"
+      identity={identity}
       actions={<NotificationBell token={token} scope="stylist" />}
       tabs={[
         { href: "/stylist", label: "امروز", icon: Home, exact: true },

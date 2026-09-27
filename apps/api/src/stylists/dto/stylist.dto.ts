@@ -70,6 +70,13 @@ export class StylistServiceEntryDto {
   @IsInt()
   @IsPositive()
   overrideDurationMinutes?: number | null;
+
+  /** The stylist's share for this service; null/omitted = their default commissionPercent. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  commissionPercent?: number | null;
 }
 
 export class SetStylistServicesDto {

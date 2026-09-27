@@ -4,6 +4,30 @@ import { PrismaService } from "../prisma/prisma.service.js";
 
 const LIST_LIMIT = 30;
 
+/** Payload of NEW_BOOKING and BOOKING_CANCELLED. */
+export interface BookingData {
+  appointmentId: string;
+  customerName: string;
+  stylistName: string;
+  services: string[];
+  startAt: string; // ISO instant
+  /** NEW_BOOKING: booked by the salon (phone/walk-in) rather than online. */
+  bySalon?: boolean;
+  /** BOOKING_CANCELLED: who cancelled. */
+  cancelledBy?: "CUSTOMER" | "SALON" | "STYLIST";
+}
+
+/** Payload of PAYOUT_RECORDED (sent to the stylist). */
+export interface PayoutData {
+  payoutId: string;
+  amountToman: number;
+  method: string;
+  paidAt: string;
+  note: string | null;
+}
+
+export type NotificationData = NewReviewData | BookingData | PayoutData;
+
 /** Payload of a NEW_REVIEW notification (also sent when a customer edits a review). */
 export interface NewReviewData {
   reviewId: string;
@@ -26,8 +50,8 @@ export class NotificationsService {
    * Best effort: a failure to notify must never fail the action that caused it (e.g. a customer
    * submitting a review), so errors are logged and swallowed.
    */
-  async notify(userIds: string[], type: NotificationType, data: NewReviewData) {
-    const unique = [...new Set(userIds)];
+  async notify(userIds: string[], type: NotificationType, data: NotificationData, exceptUserId?: string) {
+    const unique = [...new Set(userIds)].filter((id) => id && id !== exceptUserId);
     if (unique.length === 0) return;
     try {
       await this.prisma.notification.createMany({

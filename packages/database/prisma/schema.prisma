@@ -64,6 +64,9 @@ enum ReviewStatus {
 
 enum NotificationType {
   NEW_REVIEW
+  NEW_BOOKING
+  BOOKING_CANCELLED
+  PAYOUT_RECORDED
 }
 
 enum PayoutMethod {
@@ -441,6 +444,8 @@ model StylistService {
   service                 Service @relation(fields: [serviceId], references: [id])
   overridePriceToman      Int?
   overrideDurationMinutes Int?
+  // This stylist's share for this service (0–100); null = their default commissionPercent.
+  commissionPercent       Int?
 
   @@id([stylistId, serviceId])
   @@map("stylist_services")
@@ -487,7 +492,10 @@ model Appointment {
   // the amount actually received (defaults to priceToman; the owner can correct it), the stylist's
   // commission percent at that moment, and their share. The salon's share is the rest.
   chargedToman             Int?
-  stylistCommissionPercent Int?
+  // Effective percent: price-weighted across the services when some have their own rate.
+  stylistCommissionPercent Float?
+  // Tip for the stylist (100% theirs); included in stylistShareToman.
+  tipToman                 Int?
   stylistShareToman        Int?
   completedAt              DateTime?
   createdAt                DateTime          @default(now())
@@ -677,4 +685,14 @@ model FeaturedStylist {
   createdAt DateTime @default(now())
 
   @@map("featured_stylists")
+}
+
+// Showcase options (singleton, id "singleton").
+model ShowcaseSettings {
+  id         String   @id @default("singleton")
+  // A salon/stylist needs at least this many approved star ratings to appear in "top rated".
+  minRatings Int      @default(3)
+  updatedAt  DateTime @updatedAt
+
+  @@map("showcase_settings")
 }

@@ -24,6 +24,9 @@ export interface SelfStylist {
   services: SelfStylistService[];
 }
 
+/** Dispatched on window after the stylist edits their profile, so the app bar refreshes. */
+export const STYLIST_UPDATED_EVENT = "stylist:updated";
+
 export function getMyStylistProfile(token: string) {
   return salonApiFetch<SelfStylist>("/stylists/me", { headers: authHeaders(token) });
 }

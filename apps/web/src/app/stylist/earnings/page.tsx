@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Banknote, Wallet } from "lucide-react";
+import { Banknote, Download, Wallet } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { PAYOUT_METHOD_LABEL, getMyEarnings, type StylistEarnings } from "@/lib/api/accounting";
-import { jalaliMonthPeriod } from "@/lib/accountingPeriod";
+import { jalaliMonthPeriod, type AccountingPeriod } from "@/lib/accountingPeriod";
+import { jalaliDate, jalaliMonthSlug, type Report } from "@/lib/accountingExport";
+import ExportSheet from "@/components/app/AccountingReport";
 import { formatToman, toPersianDigits } from "@/lib/persian";
 import Sep from "@/components/common/Sep";
-import { HeroAmount, PeriodSwitcher, shortDate } from "@/components/app/accounting";
-import { EmptyState, ErrorBanner, ListSkeleton, PageHeader, SectionTitle, cx, riseStyle } from "@/components/app/ui";
+import { HeroAmount, PeriodSwitcher, formatPercent, shortDate } from "@/components/app/accounting";
+import { EmptyState, ErrorBanner, IconButton, ListSkeleton, PageHeader, SectionTitle, cx, riseStyle } from "@/components/app/ui";
 
 export default function StylistEarningsPage() {
   const token = useApiAccessToken();
@@ -17,6 +19,7 @@ export default function StylistEarningsPage() {
   const [state, setState] = useState<{ from: string; data: StylistEarnings } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
+  const [exportOpen, setExportOpen] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -35,10 +38,15 @@ export default function StylistEarningsPage() {
 
   const data = state?.data ?? null;
   const loading = state?.from !== period.from;
+  const report = useMemo(() => (exportOpen && data ? buildEarningsReport(period, data) : null), [exportOpen, data, period]);
 
   return (
     <>
-      <PageHeader title="درآمد من" subtitle={data ? `سهم شما از هر نوبت: ${toPersianDigits(data.stylist.commissionPercent)}٪` : undefined} />
+      <PageHeader
+        title="درآمد من"
+        subtitle={data ? `سهم پیش‌فرض شما از هر نوبت: ${formatPercent(data.stylist.commissionPercent)}` : undefined}
+        action={data && <IconButton icon={Download} label="خروجی اکسل یا PDF" tone="plain" onClick={() => setExportOpen(true)} />}
+      />
       <PeriodSwitcher period={period} onChange={setOffset} />
       {error && <ErrorBanner onRetry={() => setRetry((r) => r + 1)}>{error}</ErrorBanner>}
 
@@ -49,6 +57,7 @@ export default function StylistEarningsPage() {
           <section className="rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
             <p className="text-xs text-white/60">سهم شما در {period.label}</p>
             <p className="mt-1 text-[30px] font-black leading-tight">{formatToman(data.totals.shareToman)}</p>
+            {data.totals.tipsToman > 0 && <p className="mt-0.5 text-xs text-white/65">شامل {formatToman(data.totals.tipsToman)} انعام</p>}
             <div className="mt-4 grid grid-cols-3 gap-3 rounded-3xl bg-white/[0.06] p-4">
               <div className="min-w-0">
                 <p className="text-[11px] text-white/55">نوبت انجام‌شده</p>
@@ -94,8 +103,9 @@ export default function StylistEarningsPage() {
                     <div className="shrink-0 text-end">
                       <p className="font-black text-app-accent">{formatToman(item.stylistShareToman)}</p>
                       <p className="text-[11px] text-app-muted">
-                        {toPersianDigits(item.commissionPercent)}٪ از {formatToman(item.chargedToman)}
+                        {formatPercent(item.commissionPercent)} از {formatToman(item.chargedToman)}
                       </p>
+                      {item.tipToman > 0 && <p className="text-[11px] font-bold text-app-done">+ {formatToman(item.tipToman)} انعام</p>}
                     </div>
                   </div>
                 </div>
@@ -130,6 +140,57 @@ export default function StylistEarningsPage() {
           )}
         </div>
       )}
+      <ExportSheet report={report} onClose={() => setExportOpen(false)} />
     </>
   );
+}
+
+function buildEarningsReport(period: AccountingPeriod, data: StylistEarnings): Report {
+  const t = data.totals;
+  return {
+    title: `گزارش درآمد ${data.stylist.displayName} — ${period.label}`,
+    subtitle: `${toPersianDigits(t.appointmentCount)} نوبت انجام‌شده، ${toPersianDigits(data.payouts.length)} پرداخت از سالن`,
+    fileSlug: `daramad-${jalaliMonthSlug(period.from)}`,
+    sections: [
+      {
+        title: "خلاصه",
+        columns: ["شرح", "مبلغ (تومان)"],
+        rows: [
+          ["مبلغ نوبت‌ها (با انعام)", t.incomeToman],
+          ["انعام‌ها", t.tipsToman],
+          ["سهم شما (با انعام)", t.shareToman],
+          ["دریافتی از سالن در این ماه", t.paidInPeriodToman],
+          [data.balanceToman < 0 ? "پیش‌دریافت (کل)" : "مانده طلب از سالن (کل)", Math.abs(data.balanceToman)],
+        ],
+      },
+      {
+        title: "نوبت‌های انجام‌شده",
+        columns: ["تاریخ", "مشتری", "خدمات", "مبلغ دریافتی", "انعام", "درصد سهم", "سهم شما"],
+        rows: data.items.map((i) => [
+          jalaliDate(i.startAt),
+          i.customerName,
+          i.services.join("، "),
+          i.chargedToman,
+          i.tipToman,
+          Math.round(i.commissionPercent * 10) / 10,
+          i.stylistShareToman,
+        ]),
+        totals: [
+          "جمع",
+          "",
+          "",
+          data.items.reduce((a, i) => a + i.chargedToman, 0),
+          t.tipsToman,
+          "",
+          t.shareToman,
+        ],
+      },
+      {
+        title: "پرداخت‌های سالن",
+        columns: ["تاریخ", "روش", "مبلغ", "توضیح"],
+        rows: data.payouts.map((p) => [jalaliDate(p.paidAt), PAYOUT_METHOD_LABEL[p.method], p.amountToman, p.note ?? ""]),
+        totals: ["جمع", "", t.paidInPeriodToman, ""],
+      },
+    ],
+  };
 }

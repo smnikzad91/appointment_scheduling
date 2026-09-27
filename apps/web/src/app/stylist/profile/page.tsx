@@ -7,7 +7,7 @@ import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import GalleryManager from "@/components/app/GalleryManager";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
-import { getMyStylistProfile, updateMyStylistProfile, type SelfStylist } from "@/lib/api/stylistSelf";
+import { STYLIST_UPDATED_EVENT, getMyStylistProfile, updateMyStylistProfile, type SelfStylist } from "@/lib/api/stylistSelf";
 import { toPersianDigits } from "@/lib/persian";
 import { Button, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, cx, LinkCard } from "@/components/app/ui";
 
@@ -55,6 +55,7 @@ export default function StylistProfilePage() {
   async function savePhotos(patch: PhotoPatch) {
     if (!token) return;
     setProfile(await updateMyStylistProfile(token, patch));
+    window.dispatchEvent(new Event(STYLIST_UPDATED_EVENT));
     // The API mirrors the stylist photo onto the account; refresh the session so the app bar shows it.
     if (patch.avatarUrl !== undefined) await updateSession({ avatar: patch.avatarUrl ?? "" });
   }

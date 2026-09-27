@@ -989,3 +989,75 @@ span.flatpickr-weekday,
 @media (prefers-reduced-motion: reduce) {
   .app-rise, .app-sheet-in, .app-fade-in { animation: none; }
 }
+
+/* Accounting report (components/app/AccountingReport.tsx): only the report prints. */
+#print-report {
+  display: none;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  body:has(> #print-report) > :not(#print-report) {
+    display: none !important;
+  }
+  body:has(> #print-report) {
+    background: #fff !important;
+  }
+  #print-report {
+    display: block;
+    color: #111;
+    font-family: Vazirmatn, Tahoma, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.6;
+  }
+  #print-report h1 {
+    font-size: 17pt;
+    font-weight: 900;
+  }
+  #print-report h2 {
+    margin: 16pt 0 6pt;
+    font-size: 12.5pt;
+    font-weight: 800;
+    break-after: avoid;
+  }
+  #print-report .print-sub,
+  #print-report .print-foot,
+  #print-report .print-empty {
+    color: #555;
+  }
+  #print-report .print-foot {
+    margin-top: 14pt;
+    font-size: 9pt;
+  }
+  #print-report table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #print-report th,
+  #print-report td {
+    border: 0.5pt solid #bbb;
+    padding: 3pt 5pt;
+    text-align: start;
+    vertical-align: top;
+  }
+  #print-report th {
+    background: #f1ece6;
+    font-weight: 800;
+  }
+  #print-report td.num {
+    white-space: nowrap;
+    text-align: end;
+  }
+  #print-report tfoot td {
+    font-weight: 800;
+    background: #f7f4f0;
+  }
+  #print-report tr {
+    break-inside: avoid;
+  }
+  #print-report thead {
+    display: table-header-group;
+  }
+}

@@ -14,7 +14,12 @@ export class SalonsService {
       include: {
         serviceCategories: { orderBy: { order: "asc" } },
         services: { where: { active: true } },
-        stylists: { where: { active: true }, include: { workingHours: true, services: true } },
+        // Commission rates are between the owner and the stylist — never on the public page.
+        stylists: {
+          where: { active: true },
+          omit: { commissionPercent: true },
+          include: { workingHours: true, services: { omit: { commissionPercent: true } } },
+        },
         galleryImages: { orderBy: { createdAt: "desc" }, select: { id: true, url: true, caption: true, stylistId: true } },
       },
     });

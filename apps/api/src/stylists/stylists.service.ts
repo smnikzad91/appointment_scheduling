@@ -127,6 +127,7 @@ export class StylistsService {
           serviceId: e.serviceId,
           overridePriceToman: e.overridePriceToman ?? undefined,
           overrideDurationMinutes: e.overrideDurationMinutes ?? undefined,
+          commissionPercent: e.commissionPercent ?? undefined,
         })),
       }),
     ]);

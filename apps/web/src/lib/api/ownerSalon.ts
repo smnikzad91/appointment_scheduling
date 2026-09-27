@@ -149,7 +149,8 @@ export interface OwnerStylist {
   /** Stylist's share of the money received for their appointments, 0–100. */
   commissionPercent: number;
   user: { firstName: string; lastName: string; phone: string | null };
-  services: { serviceId: string; overridePriceToman: number | null; overrideDurationMinutes: number | null }[];
+  /** commissionPercent: this service's own share for the stylist; null = their default. */
+  services: { serviceId: string; overridePriceToman: number | null; overrideDurationMinutes: number | null; commissionPercent: number | null }[];
   tempPassword?: string;
 }
 
@@ -157,6 +158,7 @@ export interface StylistServiceEntry {
   serviceId: string;
   overridePriceToman?: number | null;
   overrideDurationMinutes?: number | null;
+  commissionPercent?: number | null;
 }
 
 export function listMyStylists(token: string) {

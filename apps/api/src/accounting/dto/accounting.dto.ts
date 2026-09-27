@@ -22,6 +22,13 @@ export class AdjustChargeDto {
   @Min(0)
   @Max(MAX_AMOUNT)
   chargedToman!: number;
+
+  /** Tip for the stylist on top of the price (all theirs). Omit to keep it; 0 or null clears it. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(MAX_AMOUNT)
+  tipToman?: number | null;
 }
 
 export class CreatePayoutDto {

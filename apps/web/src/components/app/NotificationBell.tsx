@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CheckCheck, MessageSquareText } from "lucide-react";
+import { Bell, CalendarPlus, CalendarX, CheckCheck, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
 import {
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
   type AppNotification,
 } from "@/lib/api/notifications";
-import { toPersianDigits } from "@/lib/persian";
+import { formatToman, toPersianDigits } from "@/lib/persian";
+import { formatSalonDateTime } from "@/lib/salonTime";
+import { PAYOUT_METHOD_LABEL } from "@/lib/api/accounting";
 import { Stars } from "@/components/common/StarRating";
 import Sheet from "./Sheet";
 import { EmptyState, cx } from "./ui";
@@ -33,22 +35,68 @@ function setAppBadge(count: number) {
   p?.catch(() => {});
 }
 
-function title(n: AppNotification, scope: "salon" | "stylist") {
-  const { customerName, target, stylistName, edited } = n.data;
-  const about = target === "SALON" ? "سالن" : scope === "stylist" ? "شما" : stylistName ?? "آرایشگر";
-  return edited ? `${customerName} نظرش درباره ${about} را ویرایش کرد` : `نظر تازه از ${customerName} درباره ${about}`;
+type Scope = "salon" | "stylist";
+
+/** How each notification reads, which icon it gets, and where tapping it goes. */
+function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: string; title: string; detail: string | null; href: string } {
+  const appointmentsHref = scope === "salon" ? "/salon/appointments" : "/stylist/appointments";
+  switch (n.type) {
+    case "NEW_REVIEW": {
+      const { customerName, target, stylistName, edited } = n.data;
+      const about = target === "SALON" ? "سالن" : scope === "stylist" ? "شما" : stylistName ?? "آرایشگر";
+      return {
+        icon: MessageSquareText,
+        tone: "text-app-accent",
+        title: edited ? `${customerName} نظرش درباره ${about} را ویرایش کرد` : `نظر تازه از ${customerName} درباره ${about}`,
+        detail: n.data.excerpt,
+        href: scope === "salon" ? "/salon/reviews" : "/stylist/reviews",
+      };
+    }
+    case "NEW_BOOKING": {
+      const { customerName, stylistName, bySalon } = n.data;
+      return {
+        icon: CalendarPlus,
+        tone: "text-app-done",
+        title:
+          scope === "stylist"
+            ? bySalon
+              ? `سالن برای ${customerName} نوبتی با شما ثبت کرد`
+              : `${customerName} با شما نوبت گرفت`
+            : `نوبت تازه: ${customerName} با ${stylistName}`,
+        detail: bookingDetail(n.data),
+        href: appointmentsHref,
+      };
+    }
+    case "BOOKING_CANCELLED": {
+      const { customerName, stylistName, cancelledBy } = n.data;
+      const who = cancelledBy === "CUSTOMER" ? customerName : cancelledBy === "STYLIST" ? stylistName : "سالن";
+      const whose = scope === "stylist" ? `نوبت ${customerName}` : `نوبت ${customerName} با ${stylistName}`;
+      return { icon: CalendarX, tone: "text-app-danger", title: `${who} ${whose} را لغو کرد`, detail: bookingDetail(n.data), href: appointmentsHref };
+    }
+    case "PAYOUT_RECORDED":
+      return {
+        icon: Wallet,
+        tone: "text-app-done",
+        title: `سالن ${formatToman(n.data.amountToman)} به شما پرداخت کرد`,
+        detail: [PAYOUT_METHOD_LABEL[n.data.method], n.data.note].filter(Boolean).join("، "),
+        href: "/stylist/earnings",
+      };
+  }
+}
+
+function bookingDetail(d: { services: string[]; startAt: string }) {
+  return `${formatSalonDateTime(d.startAt)}${d.services.length ? ` — ${d.services.join("، ")}` : ""}`;
 }
 
 /**
  * App-bar bell for the salon and stylist panels: unread badge, and a sheet listing recent
  * notifications. Tapping one marks it read and opens the page where it can be acted on.
  */
-export default function NotificationBell({ token, scope }: { token: string | null; scope: "salon" | "stylist" }) {
+export default function NotificationBell({ token, scope }: { token: string | null; scope: Scope }) {
   const router = useRouter();
   const [items, setItems] = useState<AppNotification[] | null>(null);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
-  const reviewsHref = scope === "salon" ? "/salon/reviews" : "/stylist/reviews";
 
   const refresh = useCallback(() => {
     if (!token) return;
@@ -82,7 +130,7 @@ export default function NotificationBell({ token, scope }: { token: string | nul
       setUnread((u) => Math.max(0, u - 1));
       markNotificationRead(token, n.id).then(refresh).catch(() => {});
     }
-    router.push(reviewsHref);
+    router.push(describe(n, scope).href);
   }
 
   async function readAll() {
@@ -125,29 +173,32 @@ export default function NotificationBell({ token, scope }: { token: string | nul
         )}
 
         {!items || items.length === 0 ? (
-          <EmptyState icon={Bell} title="اعلانی ندارید" hint="وقتی مشتری‌ای نظر بدهد، اینجا خبرتان می‌کنیم." />
+          <EmptyState icon={Bell} title="اعلانی ندارید" hint={scope === "salon" ? "نوبت‌های تازه، لغوها و نظرهای مشتری‌ها اینجا می‌آید." : "نوبت‌های تازه، لغوها، پرداخت‌های سالن و نظرها اینجا می‌آید."} />
         ) : (
           <ul className="-mx-1 flex flex-col">
-            {items.map((n) => (
+            {items.map((n) => {
+              const d = describe(n, scope);
+              return (
               <li key={n.id}>
                 <button
                   type="button"
                   onClick={() => openItem(n)}
                   className={cx("flex w-full items-start gap-3 rounded-2xl px-2 py-3 text-start active:bg-app-card-2", !n.readAt && "bg-app-accent-soft/50")}
                 >
-                  <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-app-card-2 text-app-accent">
-                    <MessageSquareText className="h-5 w-5" aria-hidden />
+                  <span className={cx("mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-app-card-2", d.tone)}>
+                    <d.icon className="h-5 w-5" aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className={cx("block text-[15px] leading-6 text-app-ink", !n.readAt ? "font-black" : "font-semibold")}>{title(n, scope)}</span>
-                    {n.data.rating !== null && <Stars value={n.data.rating} size={13} emptyClassName="text-app-line" className="mt-1" />}
-                    {n.data.excerpt && <span className="mt-0.5 line-clamp-2 block text-sm text-app-muted">{n.data.excerpt}</span>}
+                    <span className={cx("block text-[15px] leading-6 text-app-ink", !n.readAt ? "font-black" : "font-semibold")}>{d.title}</span>
+                    {n.type === "NEW_REVIEW" && n.data.rating !== null && <Stars value={n.data.rating} size={13} emptyClassName="text-app-line" className="mt-1" />}
+                    {d.detail && <span className="mt-0.5 line-clamp-2 block text-sm text-app-muted">{d.detail}</span>}
                     <span className="mt-1 block text-xs text-app-muted">{timeAgo(n.createdAt)}</span>
                   </span>
                   {!n.readAt && <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-app-danger" aria-label="خوانده‌نشده" />}
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </Sheet>

@@ -42,6 +42,8 @@ export interface AdminBanner {
 
 export interface AdminShowcase {
   banner: AdminBanner;
+  /** minRatings: approved star ratings needed to appear in "top rated". */
+  settings: { minRatings: number };
   featuredSalons: (ShowcaseSalon & { priority: number; visible: boolean })[];
   featuredStylists: (ShowcaseStylist & { priority: number; visible: boolean })[];
 }
@@ -59,6 +61,10 @@ export function getAdminShowcase(token: string) {
 
 export function updateBanner(token: string, data: Partial<AdminBanner>) {
   return salonApiFetch<AdminBanner>("/admin/showcase/banner", { method: "PUT", headers: auth(token), body: JSON.stringify(data) });
+}
+
+export function updateShowcaseSettings(token: string, data: { minRatings: number }) {
+  return salonApiFetch<{ minRatings: number }>("/admin/showcase/settings", { method: "PUT", headers: auth(token), body: JSON.stringify(data) });
 }
 
 export function setFeaturedSalons(token: string, ids: string[]) {

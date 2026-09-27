@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString, IsUrl, MaxLength } from "class-validator";
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from "class-validator";
 import { IsOptionalImageUrl } from "../../common/image-url.js";
 
 export class UpdateBannerDto {
@@ -34,4 +34,12 @@ export class SearchQueryDto {
   @IsString()
   @MaxLength(60)
   q?: string;
+}
+
+export class UpdateShowcaseSettingsDto {
+  /** Approved star ratings a salon/stylist needs before it can appear in "top rated". */
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  minRatings!: number;
 }

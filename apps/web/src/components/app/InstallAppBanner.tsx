@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Download, X } from "lucide-react";
 import { useInstallPrompt } from "@/lib/installPrompt";
+import IosInstallSheet from "@/components/common/IosInstallSheet";
 import { SITE_NAME } from "@/lib/site";
 
 const SNOOZE_KEY = "install-banner-snoozed-until";
@@ -18,15 +19,16 @@ function snoozed() {
 
 /**
  * Install card for the salon, stylist and customer panels, floating above the tab bar. Appears
- * only when the browser offers installation (and the app isn't installed); "بعداً" hides it for
- * two weeks.
+ * only when the browser offers installation (and the app isn't installed) — or on iPhone Safari,
+ * where "نصب" opens the Add-to-Home-Screen steps. "بعداً" hides it for two weeks.
  */
 export default function InstallAppBanner() {
-  const { canInstall, install } = useInstallPrompt();
+  const { canInstall, iosHint, install } = useInstallPrompt();
+  const [iosOpen, setIosOpen] = useState(false);
   const [hidden, setHidden] = useState(() => typeof window !== "undefined" && snoozed());
   const [busy, setBusy] = useState(false);
 
-  if (!canInstall || hidden) return null;
+  if ((!canInstall && !iosHint) || hidden) return null;
 
   function later() {
     try {
@@ -38,6 +40,7 @@ export default function InstallAppBanner() {
   }
 
   async function onInstall() {
+    if (!canInstall) return setIosOpen(true);
     setBusy(true);
     const outcome = await install();
     setBusy(false);
@@ -79,6 +82,7 @@ export default function InstallAppBanner() {
         </button>
       </div>
     </div>
+      <IosInstallSheet open={iosOpen} onClose={() => setIosOpen(false)} />
     </>
   );
 }

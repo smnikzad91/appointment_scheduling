@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { AppointmentStatus, Prisma } from "@appointment-scheduling/database";
+import { AppointmentStatus, NotificationType, Prisma } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
-import { splitCharge } from "./share.util.js";
+import { NotificationsService } from "../notifications/notifications.service.js";
+import { stylistTake } from "./share.util.js";
 import { AdjustChargeDto, CreateExpenseDto, CreatePayoutDto, PayoutQueryDto, PeriodQueryDto, UpdateExpenseDto } from "./dto/accounting.dto.js";
 
 const MAX_PERIOD_DAYS = 400;
@@ -14,6 +15,7 @@ const INCOME_SELECT = {
   priceToman: true,
   chargedToman: true,
   stylistCommissionPercent: true,
+  tipToman: true,
   stylistShareToman: true,
   customer: { select: { firstName: true, lastName: true } },
   stylist: { select: { id: true, displayName: true } },
@@ -22,8 +24,14 @@ const INCOME_SELECT = {
 
 type IncomeRow = Prisma.AppointmentGetPayload<{ select: typeof INCOME_SELECT }>;
 
+/**
+ * chargedToman is what the customer paid for the services; a tip comes on top and is all the
+ * stylist's. Income = charged + tip, the stylist's share = commission + tip, so the salon's share
+ * (income − stylist's share) is charged − commission and never includes a tip.
+ */
 function toIncomeItem(a: IncomeRow) {
   const charged = a.chargedToman ?? a.priceToman;
+  const tip = a.tipToman ?? 0;
   const share = a.stylistShareToman ?? 0;
   return {
     id: a.id,
@@ -33,9 +41,10 @@ function toIncomeItem(a: IncomeRow) {
     services: a.services.map((s) => s.service.name),
     priceToman: a.priceToman,
     chargedToman: charged,
+    tipToman: tip,
     commissionPercent: a.stylistCommissionPercent ?? 0,
     stylistShareToman: share,
-    salonShareToman: charged - share,
+    salonShareToman: charged + tip - share,
   };
 }
 
@@ -49,6 +58,7 @@ export class AccountingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly salonsService: SalonsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ── Salon owner ───────────────────────────────────────────────────────────
@@ -72,7 +82,7 @@ export class AccountingService {
         by: ["stylistId"],
         where: completedInPeriod,
         _count: { _all: true },
-        _sum: { chargedToman: true, stylistShareToman: true },
+        _sum: { chargedToman: true, tipToman: true, stylistShareToman: true },
       }),
       this.prisma.salonExpense.groupBy({
         by: ["category"],
@@ -109,7 +119,8 @@ export class AccountingService {
         return {
           ...s,
           appointmentCount: p?._count._all ?? 0,
-          incomeToman: p?._sum.chargedToman ?? 0,
+          incomeToman: (p?._sum.chargedToman ?? 0) + (p?._sum.tipToman ?? 0),
+          tipsToman: p?._sum.tipToman ?? 0,
           shareToman: p?._sum.stylistShareToman ?? 0,
           paidInPeriodToman: paidBy.get(s.id) ?? 0,
           balanceToman: (earnedBy.get(s.id) ?? 0) - (paidAllBy.get(s.id) ?? 0),
@@ -127,7 +138,8 @@ export class AccountingService {
       ).map((s) => [s.id, s.name]),
     );
 
-    const incomeToman = byStylist.reduce((sum, r) => sum + (r._sum.chargedToman ?? 0), 0);
+    const tipsToman = byStylist.reduce((sum, r) => sum + (r._sum.tipToman ?? 0), 0);
+    const incomeToman = byStylist.reduce((sum, r) => sum + (r._sum.chargedToman ?? 0), 0) + tipsToman;
     const stylistShareToman = byStylist.reduce((sum, r) => sum + (r._sum.stylistShareToman ?? 0), 0);
     const expensesToman = expensesByCategory.reduce((sum, r) => sum + (r._sum.amountToman ?? 0), 0);
     const salonShareToman = incomeToman - stylistShareToman;
@@ -137,6 +149,7 @@ export class AccountingService {
       totals: {
         appointmentCount: byStylist.reduce((sum, r) => sum + r._count._all, 0),
         incomeToman,
+        tipsToman,
         stylistShareToman,
         salonShareToman,
         expensesToman,
@@ -176,7 +189,7 @@ export class AccountingService {
     return rows.map(toIncomeItem);
   }
 
-  /** Correct what a completed appointment actually brought in; the stylist's share follows. */
+  /** Correct what a completed appointment actually brought in (and any tip); the stylist's share follows. */
   async adjustCharge(userId: string, appointmentId: string, dto: AdjustChargeDto) {
     const salon = await this.salonsService.findMine(userId);
     const appointment = await this.prisma.appointment.findFirst({ where: { id: appointmentId, salonId: salon.id } });
@@ -185,9 +198,10 @@ export class AccountingService {
       throw new BadRequestException("Only a completed appointment has an amount to correct");
     }
     const percent = appointment.stylistCommissionPercent ?? 0;
+    const tipToman = dto.tipToman === undefined ? appointment.tipToman : dto.tipToman || null;
     const updated = await this.prisma.appointment.update({
       where: { id: appointment.id },
-      data: { chargedToman: dto.chargedToman, stylistShareToman: splitCharge(dto.chargedToman, percent).stylistShareToman },
+      data: { chargedToman: dto.chargedToman, tipToman, stylistShareToman: stylistTake(dto.chargedToman, percent, tipToman) },
       select: INCOME_SELECT,
     });
     return toIncomeItem(updated);
@@ -212,9 +226,9 @@ export class AccountingService {
 
   async createPayout(userId: string, dto: CreatePayoutDto) {
     const salon = await this.salonsService.findMine(userId);
-    const stylist = await this.prisma.stylist.findFirst({ where: { id: dto.stylistId, salonId: salon.id }, select: { id: true } });
+    const stylist = await this.prisma.stylist.findFirst({ where: { id: dto.stylistId, salonId: salon.id }, select: { id: true, userId: true } });
     if (!stylist) throw new BadRequestException("Stylist does not belong to this salon");
-    return this.prisma.stylistPayout.create({
+    const payout = await this.prisma.stylistPayout.create({
       data: {
         salonId: salon.id,
         stylistId: stylist.id,
@@ -225,6 +239,14 @@ export class AccountingService {
       },
       include: { stylist: { select: { id: true, displayName: true } } },
     });
+    await this.notifications.notify([stylist.userId], NotificationType.PAYOUT_RECORDED, {
+      payoutId: payout.id,
+      amountToman: payout.amountToman,
+      method: payout.method,
+      paidAt: payout.paidAt.toISOString(),
+      note: payout.note,
+    });
+    return payout;
   }
 
   async removePayout(userId: string, payoutId: string) {
@@ -316,7 +338,8 @@ export class AccountingService {
       stylist,
       totals: {
         appointmentCount: items.length,
-        incomeToman: items.reduce((sum, i) => sum + i.chargedToman, 0),
+        incomeToman: items.reduce((sum, i) => sum + i.chargedToman + i.tipToman, 0),
+        tipsToman: items.reduce((sum, i) => sum + i.tipToman, 0),
         shareToman: items.reduce((sum, i) => sum + i.stylistShareToman, 0),
         paidInPeriodToman: payouts.reduce((sum, p) => sum + p.amountToman, 0),
       },

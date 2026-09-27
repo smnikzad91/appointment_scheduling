@@ -36,9 +36,15 @@ export interface IncomeItem {
   stylist: { id: string; displayName: string };
   services: string[];
   priceToman: number;
+  /** What was paid for the services (excluding any tip). */
   chargedToman: number;
+  /** Tip for the stylist on top (0 = none); all theirs. */
+  tipToman: number;
+  /** Effective percent — may be fractional when some services have their own rate. */
   commissionPercent: number;
+  /** Commission + tip. */
   stylistShareToman: number;
+  /** chargedToman − commission (never includes a tip). */
   salonShareToman: number;
 }
 
@@ -49,7 +55,9 @@ export interface StylistAccount {
   active: boolean;
   commissionPercent: number;
   appointmentCount: number;
+  /** Including tips. */
   incomeToman: number;
+  tipsToman: number;
   shareToman: number;
   paidInPeriodToman: number;
   /** All-time: commission earned minus payouts. Negative = paid in advance. */
@@ -59,7 +67,9 @@ export interface StylistAccount {
 export interface SalonSummary {
   totals: {
     appointmentCount: number;
+    /** Including tips. */
     incomeToman: number;
+    tipsToman: number;
     stylistShareToman: number;
     salonShareToman: number;
     expensesToman: number;
@@ -92,7 +102,7 @@ export interface Expense {
 
 export interface StylistEarnings {
   stylist: { id: string; displayName: string; commissionPercent: number };
-  totals: { appointmentCount: number; incomeToman: number; shareToman: number; paidInPeriodToman: number };
+  totals: { appointmentCount: number; incomeToman: number; tipsToman: number; shareToman: number; paidInPeriodToman: number };
   balanceToman: number;
   items: IncomeItem[];
   payouts: Payout[];
@@ -110,11 +120,11 @@ export function listIncome(token: string, p: Period, stylistId?: string) {
   return salonApiFetch<IncomeItem[]>(`/salons/mine/accounting/income?${qs({ ...p, stylistId })}`, { headers: auth(token) });
 }
 
-export function adjustCharge(token: string, appointmentId: string, chargedToman: number) {
+export function adjustCharge(token: string, appointmentId: string, chargedToman: number, tipToman: number) {
   return salonApiFetch<IncomeItem>(`/salons/mine/accounting/appointments/${appointmentId}/charge`, {
     method: "PATCH",
     headers: auth(token),
-    body: JSON.stringify({ chargedToman }),
+    body: JSON.stringify({ chargedToman, tipToman }),
   });
 }
 

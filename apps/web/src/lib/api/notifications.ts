@@ -13,11 +13,36 @@ export interface NewReviewData {
   edited: boolean;
 }
 
+export interface BookingData {
+  appointmentId: string;
+  customerName: string;
+  stylistName: string;
+  services: string[];
+  startAt: string;
+  /** NEW_BOOKING: made by the salon rather than online. */
+  bySalon?: boolean;
+  /** BOOKING_CANCELLED: who cancelled. */
+  cancelledBy?: "CUSTOMER" | "SALON" | "STYLIST";
+}
+
+export interface PayoutData {
+  payoutId: string;
+  amountToman: number;
+  method: "CASH" | "CARD_TO_CARD" | "BANK_TRANSFER" | "OTHER";
+  paidAt: string;
+  note: string | null;
+}
+
 export type AppNotification = {
   id: string;
   readAt: string | null;
   createdAt: string;
-} & { type: "NEW_REVIEW"; data: NewReviewData };
+} & (
+  | { type: "NEW_REVIEW"; data: NewReviewData }
+  | { type: "NEW_BOOKING"; data: BookingData }
+  | { type: "BOOKING_CANCELLED"; data: BookingData }
+  | { type: "PAYOUT_RECORDED"; data: PayoutData }
+);
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 

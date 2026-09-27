@@ -5,6 +5,8 @@ import { averageRating, rankByRating, type RatingStats } from "./rating.util.js"
 import { UpdateBannerDto } from "./dto/showcase.dto.js";
 
 const BANNER_ID = "singleton";
+const SETTINGS_ID = "singleton";
+const DEFAULT_MIN_RATINGS = 3;
 const TOP_LIMIT = 6;
 const SEARCH_LIMIT = 20;
 const MAX_FEATURED = 3;
@@ -37,7 +39,7 @@ export class ShowcaseService {
   // ── Public ────────────────────────────────────────────────────────────────
 
   async getPublic() {
-    const [banner, featuredSalons, featuredStylists, salonStats, stylistStats] = await Promise.all([
+    const [banner, featuredSalons, featuredStylists, salonStats, stylistStats, minRatings] = await Promise.all([
       this.prisma.homeBanner.findUnique({ where: { id: BANNER_ID } }),
       this.prisma.featuredSalon.findMany({
         where: { salon: { status: SalonStatus.ACTIVE } },
@@ -51,10 +53,15 @@ export class ShowcaseService {
       }),
       this.salonRatingStats({ status: SalonStatus.ACTIVE }),
       this.stylistRatingStats({ active: true, salon: { status: SalonStatus.ACTIVE } }),
+      this.minRatings(),
     ]);
 
-    const topSalonIds = rankByRating([...salonStats.entries()].map(([id, s]) => ({ id, ...s })), TOP_LIMIT).map((s) => s.id);
-    const topStylistIds = rankByRating([...stylistStats.entries()].map(([id, s]) => ({ id, ...s })), TOP_LIMIT).map((s) => s.id);
+    // A single 5-star review shouldn't put a brand-new salon at the top: below the admin's
+    // minimum a salon/stylist isn't ranked at all.
+    const rank = (stats: Map<string, RatingStats>) =>
+      rankByRating([...stats.entries()].map(([id, s]) => ({ id, ...s })), TOP_LIMIT, minRatings).map((s) => s.id);
+    const topSalonIds = rank(salonStats);
+    const topStylistIds = rank(stylistStats);
     const [topSalons, topStylists] = await Promise.all([
       this.prisma.salon.findMany({ where: { id: { in: topSalonIds } }, select: SALON_CARD }),
       this.prisma.stylist.findMany({ where: { id: { in: topStylistIds } }, select: STYLIST_CARD }),
@@ -74,15 +81,17 @@ export class ShowcaseService {
 
   /** Everything the editor needs, including featured entries that are currently hidden. */
   async getAdmin() {
-    const [banner, featuredSalons, featuredStylists] = await Promise.all([
+    const [banner, featuredSalons, featuredStylists, minRatings] = await Promise.all([
       this.prisma.homeBanner.findUnique({ where: { id: BANNER_ID } }),
       this.prisma.featuredSalon.findMany({ orderBy: { priority: "asc" }, select: { priority: true, salon: { select: SALON_CARD } } }),
       this.prisma.featuredStylist.findMany({ orderBy: { priority: "asc" }, select: { priority: true, stylist: { select: STYLIST_CARD } } }),
+      this.minRatings(),
     ]);
     const salonStats = await this.salonRatingStats({ id: { in: featuredSalons.map((f) => f.salon.id) } });
     const stylistStats = await this.stylistRatingStats({ id: { in: featuredStylists.map((f) => f.stylist.id) } });
     return {
       banner: banner ?? { id: BANNER_ID, imageUrl: null, linkUrl: null, title: null, active: false, updatedAt: null },
+      settings: { minRatings },
       featuredSalons: featuredSalons.map((f) => ({ priority: f.priority, ...this.salonCard(f.salon, salonStats), visible: f.salon.status === SalonStatus.ACTIVE })),
       featuredStylists: featuredStylists.map((f) => ({
         priority: f.priority,
@@ -105,6 +114,11 @@ export class ShowcaseService {
       throw new BadRequestException("Upload a banner image before turning it on");
     }
     return banner;
+  }
+
+  async updateSettings(minRatings: number) {
+    await this.prisma.showcaseSettings.upsert({ where: { id: SETTINGS_ID }, create: { id: SETTINGS_ID, minRatings }, update: { minRatings } });
+    return { minRatings };
   }
 
   async setFeaturedSalons(ids: string[]) {
@@ -174,6 +188,11 @@ export class ShowcaseService {
     if (unique.length !== ids.length) throw new BadRequestException("Each one can be featured only once");
     if (unique.length > MAX_FEATURED) throw new BadRequestException("At most three can be featured");
     return unique;
+  }
+
+  private async minRatings() {
+    const settings = await this.prisma.showcaseSettings.findUnique({ where: { id: SETTINGS_ID }, select: { minRatings: true } });
+    return settings?.minRatings ?? DEFAULT_MIN_RATINGS;
   }
 
   private async salonRatingStats(salonWhere: Prisma.SalonWhereInput) {

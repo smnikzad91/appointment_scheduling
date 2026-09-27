@@ -45,7 +45,7 @@ export default function SalonStylistsPage() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheetError, setSheetError] = useState<string | null>(null);
-  const [overrideDrafts, setOverrideDrafts] = useState<Record<string, { price: string; duration: string }>>({});
+  const [overrideDrafts, setOverrideDrafts] = useState<Record<string, { price: string; duration: string; pct: string }>>({});
   const [savingServiceId, setSavingServiceId] = useState<string | null>(null);
   const [commissionDraft, setCommissionDraft] = useState("");
   const [savingCommission, setSavingCommission] = useState(false);
@@ -116,12 +116,20 @@ export default function SalonStylistsPage() {
     const exists = stylist.services.some((s) => s.serviceId === serviceId);
     const next: StylistServiceEntry[] = exists
       ? stylist.services.filter((s) => s.serviceId !== serviceId)
-      : [...stylist.services, { serviceId, overridePriceToman: null, overrideDurationMinutes: null }];
+      : [...stylist.services, { serviceId, overridePriceToman: null, overrideDurationMinutes: null, commissionPercent: null }];
     // Optimistic so the switch responds immediately.
     setStylists((list) =>
       list?.map((s) =>
         s.id === stylist.id
-          ? { ...s, services: next.map((n) => ({ serviceId: n.serviceId, overridePriceToman: n.overridePriceToman ?? null, overrideDurationMinutes: n.overrideDurationMinutes ?? null })) }
+          ? {
+              ...s,
+              services: next.map((n) => ({
+                serviceId: n.serviceId,
+                overridePriceToman: n.overridePriceToman ?? null,
+                overrideDurationMinutes: n.overrideDurationMinutes ?? null,
+                commissionPercent: n.commissionPercent ?? null,
+              })),
+            }
           : s,
       ) ?? list,
     );
@@ -134,6 +142,7 @@ export default function SalonStylistsPage() {
     return {
       price: existing?.overridePriceToman != null ? String(existing.overridePriceToman) : "",
       duration: existing?.overrideDurationMinutes != null ? String(existing.overrideDurationMinutes) : "",
+      pct: existing?.commissionPercent != null ? String(existing.commissionPercent) : "",
     };
   }
 
@@ -143,7 +152,8 @@ export default function SalonStylistsPage() {
     const existing = stylist.services.find((s) => s.serviceId === serviceId);
     return (
       draft.price !== (existing?.overridePriceToman != null ? String(existing.overridePriceToman) : "") ||
-      draft.duration !== (existing?.overrideDurationMinutes != null ? String(existing.overrideDurationMinutes) : "")
+      draft.duration !== (existing?.overrideDurationMinutes != null ? String(existing.overrideDurationMinutes) : "") ||
+      draft.pct !== (existing?.commissionPercent != null ? String(existing.commissionPercent) : "")
     );
   }
 
@@ -160,6 +170,7 @@ export default function SalonStylistsPage() {
             serviceId,
             overridePriceToman: draft.price.trim() ? Number(draft.price) : null,
             overrideDurationMinutes: draft.duration.trim() ? Number(draft.duration) : null,
+            commissionPercent: draft.pct.trim() ? Math.min(100, Number(draft.pct)) : null,
           }
         : s,
     );
@@ -374,26 +385,38 @@ export default function SalonStylistsPage() {
                               dir="ltr"
                               className="h-11 text-end"
                               placeholder={toPersianDigits(service.priceToman)}
-                              value={draft.price}
+                              value={toPersianDigits(draft.price)}
                               onChange={(e) => setOverrideDrafts((d) => ({ ...d, [service.id]: { ...draft, price: normalizeDigits(e.target.value).replace(/\D/g, "") } }))}
                             />
                           </label>
-                          <label className="w-24">
+                          <label className="w-[4.5rem]">
                             <span className="mb-1 block text-[11px] font-bold text-app-muted">دقیقه</span>
                             <TextInput
                               inputMode="numeric"
                               dir="ltr"
                               className="h-11 text-end"
                               placeholder={toPersianDigits(service.durationMinutes)}
-                              value={draft.duration}
+                              value={toPersianDigits(draft.duration)}
                               onChange={(e) => setOverrideDrafts((d) => ({ ...d, [service.id]: { ...draft, duration: normalizeDigits(e.target.value).replace(/\D/g, "") } }))}
+                            />
+                          </label>
+                          <label className="w-[4.5rem]">
+                            <span className="mb-1 block text-[11px] font-bold text-app-muted">سهم ٪</span>
+                            <TextInput
+                              inputMode="numeric"
+                              dir="ltr"
+                              maxLength={3}
+                              className="h-11 text-end"
+                              placeholder={toPersianDigits(selected.commissionPercent)}
+                              value={toPersianDigits(draft.pct)}
+                              onChange={(e) => setOverrideDrafts((d) => ({ ...d, [service.id]: { ...draft, pct: normalizeDigits(e.target.value).replace(/\D/g, "").slice(0, 3) } }))}
                             />
                           </label>
                           <button
                             type="button"
                             onClick={() => handleSaveOverride(selected, service.id)}
                             disabled={!overrideDirty(selected, service.id) || savingServiceId === service.id}
-                            aria-label={`ذخیره قیمت اختصاصی ${service.name}`}
+                            aria-label={`ذخیره تنظیمات اختصاصی ${service.name}`}
                             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-app-accent text-app-accent-ink transition active:scale-90 disabled:bg-app-card-2 disabled:text-app-muted"
                           >
                             <Check className="h-5 w-5" aria-hidden />
@@ -406,7 +429,7 @@ export default function SalonStylistsPage() {
               </ListGroup>
             )}
             <p className="mt-2 px-1 text-xs leading-6 text-app-muted">
-              قیمت و زمان اختصاصی را خالی بگذارید تا مقدار پیش‌فرض سالن برای این آرایشگر اعمال شود.
+              قیمت و زمان اختصاصی را خالی بگذارید تا مقدار پیش‌فرض سالن اعمال شود. «سهم ٪» درصد آرایشگر از همین خدمت است؛ خالی یعنی سهم پیش‌فرض او.
             </p>
           </>
         )}

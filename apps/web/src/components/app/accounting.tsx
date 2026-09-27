@@ -7,6 +7,11 @@ import { formatToman, toPersianDigits } from "@/lib/persian";
 export function formatAmount(amount: number) {
   return toPersianDigits(Math.round(amount).toLocaleString("en-US").replace(/,/g, "٬"));
 }
+
+/** "۴۵٪" or "۴۵٫۷٪" — the effective percent can be fractional when services have their own rate. */
+export function formatPercent(percent: number) {
+  return `${toPersianDigits(String(Math.round(percent * 10) / 10).replace(".", "٫"))}٪`;
+}
 import { addDaysToDateKey, formatSalonDate, salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { dateKeyToDate, toJalali } from "@/lib/jalali";
 import type { AccountingPeriod } from "@/lib/accountingPeriod";

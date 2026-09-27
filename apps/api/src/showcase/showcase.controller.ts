@@ -4,7 +4,7 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { RolesGuard } from "../auth/guards/roles.guard.js";
 import { Roles } from "../auth/decorators/roles.decorator.js";
 import { ShowcaseService } from "./showcase.service.js";
-import { SearchQueryDto, SetFeaturedDto, UpdateBannerDto } from "./dto/showcase.dto.js";
+import { SearchQueryDto, SetFeaturedDto, UpdateBannerDto, UpdateShowcaseSettingsDto } from "./dto/showcase.dto.js";
 
 /** Public: everything the home page shows. */
 @Controller("showcase")
@@ -32,6 +32,11 @@ export class AdminShowcaseController {
   @Put("banner")
   updateBanner(@Body() dto: UpdateBannerDto) {
     return this.showcase.updateBanner(dto);
+  }
+
+  @Put("settings")
+  updateSettings(@Body() dto: UpdateShowcaseSettingsDto) {
+    return this.showcase.updateSettings(dto.minRatings);
   }
 
   @Put("featured-salons")

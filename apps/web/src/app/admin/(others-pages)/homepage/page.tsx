@@ -11,14 +11,16 @@ import {
   setFeaturedSalons,
   setFeaturedStylists,
   updateBanner,
+  updateShowcaseSettings,
   type AdminBanner,
   type AdminShowcase,
   type ShowcaseSalon,
   type ShowcaseStylist,
 } from "@/lib/api/showcase";
-import { persianApiError } from "@/lib/api/errorMessages";
 import { releaseUploads, uploadImage } from "@/lib/uploadImage";
-import { toPersianDigits } from "@/lib/persian";
+import { normalizeDigits } from "@/lib/persian";
+import { useT } from "@/i18n/useT";
+import { useLocaleFormat } from "@/i18n/useLocaleFormat";
 
 const MAX_FEATURED = 3;
 
@@ -30,11 +32,13 @@ const ghostBtn =
   "rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5";
 
 function Rating({ rating, count }: { rating: number | null; count: number }) {
-  if (rating === null) return <span className="text-xs text-gray-400">بدون امتیاز</span>;
+  const t = useT();
+  const { num } = useLocaleFormat();
+  if (rating === null) return <span className="text-xs text-gray-400">{t("hpNoRating")}</span>;
   return (
     <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
       <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
-      {toPersianDigits(rating.toFixed(1))} ({toPersianDigits(count)})
+      {num(rating.toFixed(1))} ({num(count)})
     </span>
   );
 }
@@ -52,6 +56,7 @@ function Thumb({ src, name, round }: { src: string | null; name: string; round?:
 
 export default function AdminHomepagePage() {
   const token = useApiAccessToken();
+  const t = useT();
   const [data, setData] = useState<AdminShowcase | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,32 +64,32 @@ export default function AdminHomepagePage() {
     if (!token) return;
     getAdminShowcase(token)
       .then(setData)
-      .catch(() => setError("خطا در دریافت تنظیمات صفحه اصلی"));
-  }, [token]);
+      .catch(() => setError(t("hpLoadError")));
+  }, [token, t]);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-xl font-bold text-gray-900 dark:text-white">صفحه اصلی سایت</h1>
-          <p className="text-sm text-gray-500">بنر تامین‌کننده، سالن‌ها و آرایشگرهای منتخب را تعیین کنید.</p>
+          <h1 className="mb-1 text-xl font-bold text-gray-900 dark:text-white">{t("hpTitle")}</h1>
+          <p className="text-sm text-gray-500">{t("hpSubtitle")}</p>
         </div>
         <Link href="/" target="_blank" className={`${ghostBtn} inline-flex items-center gap-1.5`}>
           <ExternalLink className="h-4 w-4" aria-hidden />
-          مشاهده صفحه اصلی
+          {t("hpViewSite")}
         </Link>
       </div>
 
       {error && <p className="text-sm text-rose-500">{error}</p>}
       {!data || !token ? (
-        !error && <p className="text-sm text-gray-500">در حال بارگذاری...</p>
+        !error && <p className="text-sm text-gray-500">{t("hpLoading")}</p>
       ) : (
         <>
           <BannerEditor token={token} initial={data.banner} />
 
           <FeaturedEditor<ShowcaseSalon>
-            title="سالن‌های منتخب"
-            hint="تا سه سالن فعال؛ اولی بالاتر و بزرگ‌تر نمایش داده می‌شود."
+            title={t("hpFeaturedSalons")}
+            hint={t("hpFeaturedSalonsHint")}
             initial={data.featuredSalons}
             search={(q) => searchShowcaseSalons(token, q)}
             save={async (ids) => (await setFeaturedSalons(token, ids)).featuredSalons}
@@ -103,8 +108,8 @@ export default function AdminHomepagePage() {
           />
 
           <FeaturedEditor<ShowcaseStylist>
-            title="آرایشگرهای منتخب"
-            hint="تا سه آرایشگر فعال از سالن‌های فعال."
+            title={t("hpFeaturedStylists")}
+            hint={t("hpFeaturedStylistsHint")}
             initial={data.featuredStylists}
             search={(q) => searchShowcaseStylists(token, q)}
             save={async (ids) => (await setFeaturedStylists(token, ids)).featuredStylists}
@@ -122,19 +127,70 @@ export default function AdminHomepagePage() {
             )}
           />
 
-          <div className={`${card} text-sm leading-7 text-gray-600 dark:text-gray-400`}>
-            <p className="font-semibold text-gray-900 dark:text-white">محبوب‌ترین سالن‌ها و آرایشگرها</p>
-            این بخش خودکار از امتیاز نظرهای تاییدشده مشتری‌ها ساخته می‌شود. برای اینکه یک نظر پنج‌ستاره‌ی تنها از سابقه‌ی طولانی جلو
-            نزند، امتیازها با چند امتیاز «متوسط» فرضی میانگین‌گیری می‌شوند؛ هرچه نظرها بیشتر باشد، امتیاز واقعی‌تر اثر می‌گذارد. فقط
-            سالن‌های فعال و آرایشگرهای فعال نمایش داده می‌شوند.
-          </div>
+          <TopRatedSettings token={token} initialMinRatings={data.settings.minRatings} />
         </>
       )}
     </div>
   );
 }
 
+/** Explains the automatic top-rated lists and edits how many ratings they require. */
+function TopRatedSettings({ token, initialMinRatings }: { token: string; initialMinRatings: number }) {
+  const t = useT();
+  const { apiError } = useLocaleFormat();
+  const [saved, setSaved] = useState(initialMinRatings);
+  const [draft, setDraft] = useState(String(initialMinRatings));
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const value = Number(draft);
+  const valid = Number.isInteger(value) && value >= 1 && value <= 50;
+
+  async function save() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const updated = await updateShowcaseSettings(token, { minRatings: value });
+      setSaved(updated.minRatings);
+      setMessage({ ok: true, text: t("hpSaved") });
+    } catch (err) {
+      setMessage({ ok: false, text: apiError(err, t("hpSaveFailed")) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className={card}>
+      <h2 className="font-bold text-gray-900 dark:text-white">{t("hpTopTitle")}</h2>
+      <p className="mb-4 mt-1 text-sm leading-7 text-gray-600 dark:text-gray-400">{t("hpTopBody")}</p>
+      <label className="flex max-w-md flex-col gap-1.5">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("hpMinRatings")}</span>
+        <span className="flex items-center gap-3">
+          <input
+            className={`${input.replace("w-full", "")} w-24 text-center`}
+            inputMode="numeric"
+            dir="ltr"
+            maxLength={2}
+            value={draft}
+            onChange={(e) => setDraft(normalizeDigits(e.target.value).replace(/\D/g, ""))}
+            aria-invalid={!valid}
+          />
+          <button type="button" className={primaryBtn} disabled={!valid || value === saved || busy} onClick={save}>
+            {busy ? t("hpSaving") : t("hpSave")}
+          </button>
+          {message && <span className={`text-sm ${message.ok ? "text-emerald-600" : "text-rose-500"}`}>{message.text}</span>}
+        </span>
+        <span className="text-xs leading-6 text-gray-500">
+          {t("hpMinRatingsHint")}
+        </span>
+      </label>
+    </section>
+  );
+}
+
 function BannerEditor({ token, initial }: { token: string; initial: AdminBanner }) {
+  const t = useT();
+  const { apiError } = useLocaleFormat();
   const [saved, setSaved] = useState(initial);
   const [imageUrl, setImageUrl] = useState(initial.imageUrl);
   const [title, setTitle] = useState(initial.title ?? "");
@@ -157,7 +213,7 @@ function BannerEditor({ token, initial }: { token: string; initial: AdminBanner 
       if (imageUrl && imageUrl !== saved.imageUrl) releaseUploads([imageUrl]); // replaced an unsaved upload
       setImageUrl(url);
     } catch {
-      setMessage({ ok: false, text: "آپلود تصویر انجام نشد" });
+      setMessage({ ok: false, text: t("hpUploadFailed") });
     } finally {
       setBusy(null);
     }
@@ -170,9 +226,9 @@ function BannerEditor({ token, initial }: { token: string; initial: AdminBanner 
       const updated = await updateBanner(token, { imageUrl, title: title.trim() || null, linkUrl: linkUrl.trim() || null, active });
       if (saved.imageUrl && saved.imageUrl !== updated.imageUrl) releaseUploads([saved.imageUrl]);
       setSaved(updated);
-      setMessage({ ok: true, text: "ذخیره شد" });
+      setMessage({ ok: true, text: t("hpSaved") });
     } catch (err) {
-      setMessage({ ok: false, text: persianApiError(err, "ذخیره بنر انجام نشد") });
+      setMessage({ ok: false, text: apiError(err, t("hpBannerSaveFailed")) });
     } finally {
       setBusy(null);
     }
@@ -182,12 +238,12 @@ function BannerEditor({ token, initial }: { token: string; initial: AdminBanner 
     <section className={card}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-bold text-gray-900 dark:text-white">بنر تامین‌کننده</h2>
-          <p className="text-xs text-gray-500">اندازه پیشنهادی ۱۲۰۰×۴۰۰ پیکسل. با کلیک روی بنر، لینک در صفحه جدید باز می‌شود.</p>
+          <h2 className="font-bold text-gray-900 dark:text-white">{t("hpBanner")}</h2>
+          <p className="text-xs text-gray-500">{t("hpBannerHint")}</p>
         </div>
         <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 accent-brand-500" />
-          نمایش در صفحه اصلی
+          {t("hpBannerShow")}
         </label>
       </div>
 
@@ -199,16 +255,16 @@ function BannerEditor({ token, initial }: { token: string; initial: AdminBanner 
       >
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={title || "بنر"} className="h-full w-full object-cover" />
+          <img src={imageUrl} alt={title || t("hpBannerAlt")} className="h-full w-full object-cover" />
         ) : (
           <span className="flex h-full flex-col items-center justify-center gap-2 text-sm text-gray-500">
             <ImagePlus className="h-7 w-7" aria-hidden />
-            {busy === "upload" ? "در حال آپلود…" : "انتخاب تصویر بنر"}
+            {busy === "upload" ? t("hpUploading") : t("hpPickImage")}
           </span>
         )}
         {imageUrl && (
-          <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white">
-            {busy === "upload" ? "در حال آپلود…" : "تغییر تصویر"}
+          <span className="absolute bottom-2 end-2 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white">
+            {busy === "upload" ? t("hpUploading") : t("hpChangeImage")}
           </span>
         )}
       </button>
@@ -216,17 +272,17 @@ function BannerEditor({ token, initial }: { token: string; initial: AdminBanner 
       {imageUrl && (
         <button type="button" onClick={() => setImageUrl(null)} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-rose-600">
           <Trash2 className="h-3.5 w-3.5" aria-hidden />
-          حذف تصویر
+          {t("hpRemoveImage")}
         </button>
       )}
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">نام تامین‌کننده / متن جایگزین</span>
-          <input className={input} value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً لوازم آرایشی رز" />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("hpBannerTitle")}</span>
+          <input className={input} value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder={t("hpBannerTitlePh")} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">لینک بنر</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("hpBannerLink")}</span>
           <input
             className={input}
             dir="ltr"
@@ -240,7 +296,7 @@ function BannerEditor({ token, initial }: { token: string; initial: AdminBanner 
 
       <div className="mt-4 flex items-center gap-3">
         <button type="button" className={primaryBtn} disabled={!dirty || busy !== null} onClick={save}>
-          {busy === "save" ? "در حال ذخیره…" : "ذخیره بنر"}
+          {busy === "save" ? t("hpSaving") : t("hpSaveBanner")}
         </button>
         {message && <span className={`text-sm ${message.ok ? "text-emerald-600" : "text-rose-500"}`}>{message.text}</span>}
       </div>
@@ -265,6 +321,8 @@ function FeaturedEditor<T extends { id: string }>({
   save: (ids: string[]) => Promise<Featured<T>[]>;
   renderItem: (item: T) => React.ReactNode;
 }) {
+  const t = useT();
+  const { num, apiError } = useLocaleFormat();
   const [saved, setSaved] = useState<Featured<T>[]>(initial);
   const [items, setItems] = useState<Featured<T>[]>(initial);
   const [q, setQ] = useState("");
@@ -303,9 +361,9 @@ function FeaturedEditor<T extends { id: string }>({
       const updated = await save(items.map((i) => i.id));
       setSaved(updated);
       setItems(updated);
-      setMessage({ ok: true, text: "ذخیره شد" });
+      setMessage({ ok: true, text: t("hpSaved") });
     } catch (err) {
-      setMessage({ ok: false, text: persianApiError(err, "ذخیره انجام نشد") });
+      setMessage({ ok: false, text: apiError(err, t("hpSaveFailed")) });
     } finally {
       setBusy(false);
     }
@@ -325,25 +383,25 @@ function FeaturedEditor<T extends { id: string }>({
               className="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 dark:border-gray-800"
             >
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-600 dark:bg-brand-500/15">
-                {toPersianDigits(i + 1)}
+                {num(i + 1)}
               </span>
               {item ? (
                 <>
                   {renderItem(item)}
                   {item.visible === false && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">فعلاً نمایش داده نمی‌شود</span>
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">{t("hpHiddenNow")}</span>
                   )}
                   <span className="flex shrink-0 gap-1">
-                    <button type="button" className={ghostBtn} aria-label="بالاتر" disabled={i === 0} onClick={() => move(i, -1)}>
+                    <button type="button" className={ghostBtn} aria-label={t("hpMoveUp")} disabled={i === 0} onClick={() => move(i, -1)}>
                       <ArrowUp className="h-4 w-4" aria-hidden />
                     </button>
-                    <button type="button" className={ghostBtn} aria-label="پایین‌تر" disabled={i === items.length - 1} onClick={() => move(i, 1)}>
+                    <button type="button" className={ghostBtn} aria-label={t("hpMoveDown")} disabled={i === items.length - 1} onClick={() => move(i, 1)}>
                       <ArrowDown className="h-4 w-4" aria-hidden />
                     </button>
                     <button
                       type="button"
                       className={`${ghostBtn} text-rose-600`}
-                      aria-label="حذف از منتخب‌ها"
+                      aria-label={t("hpRemoveFeatured")}
                       onClick={() => setItems((list) => list.filter((x) => x.id !== item.id))}
                     >
                       <X className="h-4 w-4" aria-hidden />
@@ -351,7 +409,7 @@ function FeaturedEditor<T extends { id: string }>({
                   </span>
                 </>
               ) : (
-                <span className="text-sm text-gray-400">خالی — از جستجوی پایین اضافه کنید</span>
+                <span className="text-sm text-gray-400">{t("hpEmptySlot")}</span>
               )}
             </li>
           );
@@ -359,14 +417,14 @@ function FeaturedEditor<T extends { id: string }>({
       </ol>
 
       <div className="relative mt-4">
-        <Search className="pointer-events-none absolute right-3 top-3 h-5 w-5 text-gray-400" aria-hidden />
-        <input className={`${input} pr-10`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجوی نام یا شهر…" />
+        <Search className="pointer-events-none absolute start-3 top-3 h-5 w-5 text-gray-400" aria-hidden />
+        <input className={`${input} ps-10`} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("hpSearchPh")} />
       </div>
       <div className="mt-2 max-h-72 overflow-y-auto rounded-xl border border-gray-100 dark:border-gray-800">
         {!results ? (
-          <p className="p-3 text-sm text-gray-500">در حال جستجو…</p>
+          <p className="p-3 text-sm text-gray-500">{t("hpSearching")}</p>
         ) : results.list.length === 0 ? (
-          <p className="p-3 text-sm text-gray-500">موردی پیدا نشد.</p>
+          <p className="p-3 text-sm text-gray-500">{t("hpNoResults")}</p>
         ) : (
           results.list.map((r) => {
             const already = items.some((i) => i.id === r.id);
@@ -379,7 +437,7 @@ function FeaturedEditor<T extends { id: string }>({
                   disabled={already || items.length >= MAX_FEATURED}
                   onClick={() => setItems((list) => [...list, r])}
                 >
-                  {already ? "انتخاب شده" : "افزودن"}
+                  {already ? t("hpAdded") : t("hpAdd")}
                 </button>
               </div>
             );
@@ -389,7 +447,7 @@ function FeaturedEditor<T extends { id: string }>({
 
       <div className="mt-4 flex items-center gap-3">
         <button type="button" className={primaryBtn} disabled={!dirty || busy} onClick={onSave}>
-          {busy ? "در حال ذخیره…" : "ذخیره ترتیب"}
+          {busy ? t("hpSaving") : t("hpSaveOrder")}
         </button>
         {message && <span className={`text-sm ${message.ok ? "text-emerald-600" : "text-rose-500"}`}>{message.text}</span>}
       </div>

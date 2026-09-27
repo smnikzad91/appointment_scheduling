@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
-import { AppointmentStatus, Role } from "@appointment-scheduling/database";
+import { AppointmentStatus, NotificationType, Role } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { JwtPayload } from "../auth/auth.service.js";
 import { findEligibleStylists } from "../salons/eligible-stylists.util.js";
@@ -10,7 +10,8 @@ import { CreateAppointmentDto, CreateSalonAppointmentDto } from "./dto/create-ap
 import { instantToSalonWallTime, salonWallTimeToInstant } from "../availability/salon-time.util.js";
 import { UpdatableAppointmentStatus } from "./dto/update-status.dto.js";
 import { fitsWorkingHours } from "./working-hours.util.js";
-import { splitCharge } from "../accounting/share.util.js";
+import { effectiveCommissionPercent, splitCharge } from "../accounting/share.util.js";
+import { NotificationsService, type BookingData } from "../notifications/notifications.service.js";
 
 const ACTIVE_STATUSES: AppointmentStatus[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
 
@@ -26,7 +27,10 @@ const SAFE_CUSTOMER_SELECT = { select: { id: true, firstName: true, lastName: tr
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async create(customerId: string, dto: CreateAppointmentDto) {
     const salon = await this.prisma.salon.findUnique({ where: { id: dto.salonId }, select: { status: true, timezone: true } });
@@ -155,7 +159,12 @@ export class AppointmentsService {
         });
       });
 
-      if (appointment) return appointment;
+      if (appointment) {
+        // Online: the owner and the stylist hear about it. By the salon: only the stylist (the
+        // owner made it themselves).
+        await this.notifyBooking(appointment.id, NotificationType.NEW_BOOKING, { bySalon }, bySalon ? appointment.salon.ownerId : undefined);
+        return appointment;
+      }
     }
 
     throw new BadRequestException("This time slot is no longer available");
@@ -196,35 +205,92 @@ export class AppointmentsService {
   }
 
   async updateStatus(user: JwtPayload, appointmentId: string, status: UpdatableAppointmentStatus) {
-    const appointment = await this.prisma.appointment.findUnique({ where: { id: appointmentId } });
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { services: { select: { serviceId: true, priceToman: true } } },
+    });
     if (!appointment) throw new NotFoundException("Appointment not found");
 
     await this.assertCanSetStatus(user, appointment, status);
 
-    return this.prisma.appointment.update({
+    const updated = await this.prisma.appointment.update({
       where: { id: appointmentId },
       data: { status, ...(await this.accountingFor(appointment, status)) },
     });
+    if (status === AppointmentStatus.CANCELLED && appointment.status !== AppointmentStatus.CANCELLED) {
+      const cancelledBy = user.role === Role.CUSTOMER ? "CUSTOMER" : user.role === Role.STYLIST ? "STYLIST" : "SALON";
+      await this.notifyBooking(appointmentId, NotificationType.BOOKING_CANCELLED, { cancelledBy }, user.sub);
+    }
+    return updated;
+  }
+
+  /** Tells the salon owner and the appointment's stylist (never the person who acted). */
+  private async notifyBooking(
+    appointmentId: string,
+    type: NotificationType,
+    extra: Pick<BookingData, "bySalon" | "cancelledBy">,
+    exceptUserId?: string,
+  ) {
+    try {
+      const a = await this.prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: {
+          startAt: true,
+          salon: { select: { ownerId: true } },
+          stylist: { select: { userId: true, displayName: true } },
+          customer: { select: { firstName: true, lastName: true } },
+          services: { select: { service: { select: { name: true } } } },
+        },
+      });
+      if (!a) return;
+      await this.notifications.notify(
+        [a.salon.ownerId, a.stylist.userId],
+        type,
+        {
+          appointmentId,
+          customerName: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
+          stylistName: a.stylist.displayName,
+          services: a.services.map((s) => s.service.name),
+          startAt: a.startAt.toISOString(),
+          ...extra,
+        },
+        exceptUserId,
+      );
+    } catch {
+      // Best effort, like notify() itself — the booking/cancellation already happened.
+    }
   }
 
   /**
    * Completing an appointment books its income: the amount received (its price) split by the
-   * stylist's current commission percent, frozen so later percent changes don't rewrite history.
-   * Moving it out of COMPLETED (a mistaken tap) takes the income back out.
+   * stylist's current commission — their default percent, or a service's own rate where the owner
+   * set one, weighted by price — frozen so later percent changes don't rewrite history. Moving
+   * it out of COMPLETED (a mistaken tap) takes the income (and any tip) back out.
    */
-  private async accountingFor(appointment: { status: AppointmentStatus; stylistId: string; priceToman: number }, next: AppointmentStatus) {
+  private async accountingFor(
+    appointment: { status: AppointmentStatus; stylistId: string; priceToman: number; services: { serviceId: string; priceToman: number }[] },
+    next: AppointmentStatus,
+  ) {
     if (next === AppointmentStatus.COMPLETED && appointment.status !== AppointmentStatus.COMPLETED) {
-      const stylist = await this.prisma.stylist.findUnique({ where: { id: appointment.stylistId }, select: { commissionPercent: true } });
-      const commissionPercent = stylist?.commissionPercent ?? 0;
+      const stylist = await this.prisma.stylist.findUnique({
+        where: { id: appointment.stylistId },
+        select: { commissionPercent: true, services: { select: { serviceId: true, commissionPercent: true } } },
+      });
+      const ownRate = new Map((stylist?.services ?? []).map((s) => [s.serviceId, s.commissionPercent]));
+      const commissionPercent = effectiveCommissionPercent(
+        appointment.services.map((s) => ({ priceToman: s.priceToman, commissionPercent: ownRate.get(s.serviceId) ?? null })),
+        stylist?.commissionPercent ?? 0,
+      );
       return {
         chargedToman: appointment.priceToman,
         stylistCommissionPercent: commissionPercent,
         stylistShareToman: splitCharge(appointment.priceToman, commissionPercent).stylistShareToman,
+        tipToman: null,
         completedAt: new Date(),
       };
     }
     if (next !== AppointmentStatus.COMPLETED && appointment.status === AppointmentStatus.COMPLETED) {
-      return { chargedToman: null, stylistCommissionPercent: null, stylistShareToman: null, completedAt: null };
+      return { chargedToman: null, stylistCommissionPercent: null, stylistShareToman: null, tipToman: null, completedAt: null };
     }
     return {};
   }
