@@ -12,6 +12,7 @@ import { UpdatableAppointmentStatus } from "./dto/update-status.dto.js";
 import { fitsWorkingHours } from "./working-hours.util.js";
 import { effectiveCommissionPercent, splitCharge } from "../accounting/share.util.js";
 import { NotificationsService, type BookingData } from "../notifications/notifications.service.js";
+import { WaitlistService } from "../waitlist/waitlist.service.js";
 
 const ACTIVE_STATUSES: AppointmentStatus[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
 
@@ -30,6 +31,7 @@ export class AppointmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly waitlist: WaitlistService,
   ) {}
 
   async create(customerId: string, dto: CreateAppointmentDto) {
@@ -220,6 +222,8 @@ export class AppointmentsService {
     if (status === AppointmentStatus.CANCELLED && appointment.status !== AppointmentStatus.CANCELLED) {
       const cancelledBy = user.role === Role.CUSTOMER ? "CUSTOMER" : user.role === Role.STYLIST ? "STYLIST" : "SALON";
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CANCELLED, { cancelledBy }, user.sub);
+      // Only an upcoming booking frees a slot someone could still take.
+      if (ACTIVE_STATUSES.includes(appointment.status) && appointment.startAt > new Date()) await this.waitlist.notifyOpening(appointment);
     } else if (status === AppointmentStatus.CONFIRMED && appointment.status === AppointmentStatus.PENDING) {
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CONFIRMED, {}, user.sub, "customer");
     }

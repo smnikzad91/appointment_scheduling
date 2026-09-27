@@ -75,6 +75,7 @@ export interface Salon {
   coverImageUrl?: string | null;
   brandColor: string; // hex, e.g. "#e0447b"
   timezone: string; // IANA, e.g. "Asia/Tehran" — slots and working hours are wall-clock time here
+  province: string | null; // استان; null on salons created before provinces were recorded
   city: string;
   address: string;
   location: GeoLocation | null; // null until the owner sets coordinates

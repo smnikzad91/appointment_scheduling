@@ -9,10 +9,16 @@ import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput, SALO
 import { toPersianDigits } from "@/lib/persian";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
+import ProvinceCitySelect from "@/components/common/ProvinceCitySelect";
+import { findProvince } from "@appointment-scheduling/iran-locations";
+import { persianApiError } from "@/lib/api/errorMessages";
 import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, cx, LinkCard } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
 
 // Curated brand colors that read well on the public salon page; the last swatch opens a picker.
+const SELECT_CLASS =
+  "h-12 w-full appearance-none rounded-2xl border border-app-line bg-app-card px-4 text-app-ink outline-none transition focus:border-app-accent focus:ring-4 focus:ring-app-accent/15 disabled:opacity-50";
+
 const BRAND_SWATCHES = ["#a34a30", "#c2185b", "#8e44ad", "#1f6f78", "#2e7d32", "#b8860b", "#37474f"];
 
 export default function SalonSettingsPage() {
@@ -35,6 +41,7 @@ export default function SalonSettingsPage() {
         setForm({
           name: s.name,
           description: s.description ?? "",
+          province: s.province ?? "",
           city: s.city,
           address: s.address,
           phone: s.phone,
@@ -66,8 +73,8 @@ export default function SalonSettingsPage() {
       setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch {
-      setError("ذخیره تغییرات انجام نشد، دوباره تلاش کنید");
+    } catch (err) {
+      setError(persianApiError(err, "ذخیره تغییرات انجام نشد، دوباره تلاش کنید"));
     } finally {
       setSaving(false);
     }
@@ -129,15 +136,21 @@ export default function SalonSettingsPage() {
         <Field label="درباره سالن">
           <TextArea rows={3} value={form.description ?? ""} onChange={(e) => update({ description: e.target.value })} placeholder="چند خط درباره سالن، تخصص‌ها و فضای آن" />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="شهر">
-            <TextInput value={form.city ?? ""} onChange={(e) => update({ city: e.target.value })} />
-          </Field>
-          <Field label="تلفن">
-            <TextInput type="tel" inputMode="tel" dir="ltr" className="text-end" value={form.phone ?? ""} onChange={(e) => update({ phone: e.target.value })} />
-          </Field>
-        </div>
-        <Field label="آدرس">
+        <ProvinceCitySelect
+          value={{ province: form.province ?? "", city: form.city ?? "" }}
+          onChange={(v) => update(v)}
+          selectClassName={SELECT_CLASS}
+          labelClassName="px-1 text-[13px] font-bold text-app-muted"
+        />
+        {!salon.province && !form.province && (
+          <p className="-mt-2 rounded-2xl bg-app-pending/10 px-3 py-2 text-xs leading-6 text-app-pending">
+            استان سالن ثبت نشده است؛ آن را انتخاب کنید تا مشتری‌ها در جستجوی استان و شهر، سالن شما را پیدا کنند.
+          </p>
+        )}
+        <Field label="تلفن">
+          <TextInput type="tel" inputMode="tel" dir="ltr" className="text-end" value={form.phone ?? ""} onChange={(e) => update({ phone: e.target.value })} />
+        </Field>
+        <Field label="آدرس دقیق" hint="خیابان، کوچه، پلاک، طبقه">
           <TextArea rows={2} value={form.address ?? ""} onChange={(e) => update({ address: e.target.value })} />
         </Field>
         <Field label="اینستاگرام">
@@ -154,6 +167,10 @@ export default function SalonSettingsPage() {
           <LocationPickerLoader
             value={form.latitude != null && form.longitude != null ? { lat: form.latitude, lng: form.longitude } : null}
             onChange={({ lat, lng }) => update({ latitude: lat, longitude: lng })}
+            center={(() => {
+              const p = findProvince(form.province ?? "");
+              return p ? { lat: p.center[0], lng: p.center[1] } : null;
+            })()}
           />
         </div>
         <p className="px-4 py-3 text-xs leading-6 text-app-muted">

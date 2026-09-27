@@ -1,6 +1,7 @@
 import { AppointmentsService } from './appointments.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { NotificationsService } from '../notifications/notifications.service.js';
+import type { WaitlistService } from '../waitlist/waitlist.service.js';
 import type { JwtPayload } from '../auth/auth.service.js';
 
 const owner = { sub: 'owner-1', role: 'SALON_OWNER' } as JwtPayload;
@@ -31,11 +32,16 @@ function setup(
     stylist: { findUnique: vi.fn().mockResolvedValue({ commissionPercent, services: ownRates }) },
   };
   const notifications = { notify: vi.fn() };
+  const waitlist = { notifyOpening: vi.fn() };
   return {
     appointment,
     prisma,
     notifications,
-    service: new AppointmentsService(prisma as unknown as PrismaService, notifications as unknown as NotificationsService),
+    service: new AppointmentsService(
+      prisma as unknown as PrismaService,
+      notifications as unknown as NotificationsService,
+      waitlist as unknown as WaitlistService,
+    ),
   };
 }
 

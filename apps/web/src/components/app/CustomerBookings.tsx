@@ -286,7 +286,8 @@ export default function CustomerBookings({
                     )}
                     {tab === "past" && (
                       <Link
-                        href={`/s/${b.salon.slug}`}
+                        // Opens the booking sheet with the same services and stylist, at the day/time step.
+                        href={`/s/${b.salon.slug}?book=1&services=${b.services.map((s) => s.serviceId).join(",")}&stylist=${b.stylistId}`}
                         className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-app-line bg-app-card text-sm font-bold text-app-ink active:bg-app-card-2"
                       >
                         <RotateCcw className="h-4 w-4" aria-hidden />

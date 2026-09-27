@@ -33,6 +33,15 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Notification not found": "این اعلان دیگر وجود ندارد",
   "Review not found": "این نظر دیگر وجود ندارد",
   "Not your review": "اجازه تایید یا رد این نظر را ندارید",
+  "Unknown province": "استان انتخاب‌شده معتبر نیست",
+  "This city is not in the selected province": "شهر انتخاب‌شده در این استان نیست؛ دوباره انتخاب کنید",
+  "Send both latitude and longitude": "محل سالن را روی نقشه مشخص کنید",
+  "The map pin must be inside Iran": "پین نقشه باید داخل ایران باشد",
+  "Send both lat and lng": "موقعیت شما کامل دریافت نشد؛ دوباره تلاش کنید",
+  "Distance search needs lat and lng": "برای جستجوی نزدیک‌ترین سالن، موقعیت شما لازم است",
+  "Choose a day within the next two months": "روزی در دو ماه آینده انتخاب کنید",
+  "Stylist not found": "این آرایشگر دیگر در سالن فعال نیست",
+  "Waitlist entry not found": "این درخواست انتظار دیگر وجود ندارد",
 };
 
 /** Persian message for an error thrown by apiFetch / salonApiFetch (anything with status + message). */

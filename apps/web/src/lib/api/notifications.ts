@@ -42,6 +42,15 @@ export interface ReviewApprovedData {
   stylistName: string | null;
 }
 
+export interface SlotOpenedData {
+  salonName: string;
+  salonSlug: string;
+  dateKey: string;
+  stylistId: string | null;
+  stylistName: string | null;
+  serviceIds: string[];
+}
+
 export type AppNotification = {
   id: string;
   readAt: string | null;
@@ -53,6 +62,7 @@ export type AppNotification = {
   | { type: "PAYOUT_RECORDED"; data: PayoutData }
   | { type: "BOOKING_CONFIRMED"; data: BookingData }
   | { type: "REVIEW_APPROVED"; data: ReviewApprovedData }
+  | { type: "SLOT_OPENED"; data: SlotOpenedData }
 );
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });

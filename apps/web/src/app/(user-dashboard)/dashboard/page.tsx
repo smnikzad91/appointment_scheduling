@@ -12,6 +12,7 @@ import { toSalonWallTime } from "@/lib/salonTime";
 import { relativeDayLabel } from "@/components/app/appointments";
 import { ListGroup, SectionTitle } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
+import CustomerDiscoverySections from "@/components/discovery/CustomerDiscoverySections";
 
 export default function CustomerHomePage() {
   const { data: session } = useSession();
@@ -68,7 +69,10 @@ export default function CustomerHomePage() {
           <div className="relative">
             <Sparkles className="mb-2 h-6 w-6 text-app-accent" aria-hidden />
             <p className="font-bold">نوبت پیش‌رویی ندارید</p>
-            <p className="mt-1 text-sm leading-6 text-white/65">از لینک صفحه سالن مورد علاقه‌تان آنلاین نوبت بگیرید.</p>
+            <p className="mt-1 text-sm leading-6 text-white/65">سالن دلخواهتان را پیدا کنید و آنلاین نوبت بگیرید.</p>
+            <Link href="/dashboard/discover" className="mt-3 inline-flex h-10 items-center rounded-full bg-app-accent px-4 text-sm font-bold text-app-accent-ink">
+              کشف سالن
+            </Link>
           </div>
         )}
       </section>
@@ -87,6 +91,8 @@ export default function CustomerHomePage() {
         </span>
         <span className="rounded-full bg-app-accent px-4 py-2 text-sm font-bold text-app-accent-ink">افزایش</span>
       </Link>
+
+      <CustomerDiscoverySections token={token} />
 
       <SectionTitle>دسترسی سریع</SectionTitle>
       <ListGroup>

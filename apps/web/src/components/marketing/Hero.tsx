@@ -36,10 +36,10 @@ export default function Hero() {
               شروع رایگان برای سالن
             </Link>
             <Link
-              href="#booking"
+              href="/salons"
               className="rounded-lg border border-[#2a1d26]/15 bg-white px-6 py-3 text-sm font-bold text-[#2a1d26] transition hover:border-[#2a1d26]/30"
             >
-              رزرو نوبت به‌عنوان مشتری
+              پیدا کردن سالن و رزرو نوبت
             </Link>
           </div>
 

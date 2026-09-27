@@ -17,7 +17,11 @@ export default function InfoSection({ salon }: { salon: Salon }) {
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-2 text-sm">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden />
-            <span>{salon.address}</span>
+            <span>
+              {[salon.province, salon.city !== salon.province ? salon.city : null].filter(Boolean).join("، ")}
+              {salon.province || salon.city ? "، " : ""}
+              {salon.address}
+            </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Phone className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />

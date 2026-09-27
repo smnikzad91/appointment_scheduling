@@ -45,8 +45,11 @@ export function apiRegisterSalonOwner(input: {
   firstName: string;
   lastName: string;
   salonName: string;
+  province: string;
   city: string;
   address: string;
+  latitude: number;
+  longitude: number;
   salonPhone?: string;
 }) {
   return apiFetch<ApiAuthResponse>("/auth/register-salon-owner", {

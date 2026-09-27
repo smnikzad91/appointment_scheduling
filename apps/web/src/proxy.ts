@@ -9,10 +9,12 @@ export default auth((req) => {
   const session = req.auth;
   const role = (session?.user as { role?: string })?.role;
 
-  const isAdminRoute     = pathname.startsWith("/admin");
-  const isDashboardRoute = pathname.startsWith("/dashboard");
-  const isSalonRoute     = pathname.startsWith("/salon");
-  const isStylistRoute   = pathname.startsWith("/stylist");
+  // Whole path segments only: "/salons" (public search) must not count as the "/salon" panel.
+  const under = (base: string) => pathname === base || pathname.startsWith(`${base}/`);
+  const isAdminRoute     = under("/admin");
+  const isDashboardRoute = under("/dashboard");
+  const isSalonRoute     = under("/salon");
+  const isStylistRoute   = under("/stylist");
 
   if ((isAdminRoute || isDashboardRoute || isSalonRoute || isStylistRoute) && !session) {
     return NextResponse.redirect(new URL("/signin", req.url));

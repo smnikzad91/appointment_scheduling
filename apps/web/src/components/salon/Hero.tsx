@@ -5,6 +5,7 @@ import { toPersianDigits } from "@/lib/persian";
 import { SocialIcon } from "@/components/common/SocialIcon";
 import OpenStatusBadge from "./OpenStatusBadge";
 import PlaceholderArt from "./PlaceholderArt";
+import FavoriteButton from "@/components/common/FavoriteButton";
 
 export default function Hero({ salon }: { salon: Salon }) {
   const initials = salon.name.trim().slice(0, 1);
@@ -18,6 +19,7 @@ export default function Hero({ salon }: { salon: Salon }) {
         ) : (
           <PlaceholderArt seed={`${salon.id}-cover`} className="h-full w-full" />
         )}
+        <FavoriteButton salonId={salon.id} salonName={salon.name} variant="overlay" className="absolute left-3 top-3" />
       </div>
 
       <div className="mx-auto max-w-3xl px-4">

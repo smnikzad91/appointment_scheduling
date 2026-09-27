@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSalonBySlug } from "@/lib/api/salons";
 import SalonBrandProvider from "@/components/salon/SalonBrandProvider";
-import { BookingProvider } from "@/components/salon/booking/BookingProvider";
+import { BookingProvider, type BookingPrefill } from "@/components/salon/booking/BookingProvider";
+import { addDaysToDateKey, toSalonWallTime } from "@/lib/salonTime";
+import type { Salon } from "@/types/salon";
 import BookingSheet from "@/components/salon/booking/BookingSheet";
 import StickyBookButton from "@/components/salon/StickyBookButton";
 import SalonJsonLd from "@/components/salon/SalonJsonLd";
@@ -16,6 +18,23 @@ import { SITE_URL } from "@/lib/site";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ book?: string; services?: string; stylist?: string; date?: string }>;
+}
+
+/**
+ * `?book=1&services=a,b&stylist=x&date=YYYY-MM-DD` opens the booking sheet pre-filled ("رزرو
+ * دوباره", a waitlist notice). Anything that no longer exists is dropped: inactive services, a
+ * stylist who left or doesn't do all of them, a day outside the next two weeks.
+ */
+function bookingPrefill(salon: Salon, sp: Awaited<PageProps["searchParams"]>): BookingPrefill | null {
+  if (sp.book !== "1") return null;
+  const active = new Set(salon.services.filter((s) => s.active).map((s) => s.id));
+  const serviceIds = [...new Set((sp.services ?? "").split(",").filter((id) => active.has(id)))];
+  const stylist = salon.stylists.find((s) => s.id === sp.stylist);
+  const offersAll = stylist && serviceIds.every((id) => stylist.services.some((x) => x.serviceId === id));
+  const today = toSalonWallTime(new Date(), salon.timezone).dateKey;
+  const dateKey = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) && sp.date >= today && sp.date <= addDaysToDateKey(today, 13) ? sp.date : null;
+  return { serviceIds, stylistId: serviceIds.length && offersAll ? stylist.id : null, dateKey };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -36,15 +55,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function SalonPage({ params }: PageProps) {
+export default async function SalonPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const salon = await getSalonBySlug(slug);
 
   if (!salon) notFound();
+  const prefill = bookingPrefill(salon, await searchParams);
 
   return (
     <SalonBrandProvider brandColor={salon.brandColor}>
-      <BookingProvider salon={salon}>
+      <BookingProvider salon={salon} prefill={prefill}>
         <SalonJsonLd salon={salon} url={`${SITE_URL}/s/${slug}`} />
 
         <div className="pb-20 sm:pb-8">

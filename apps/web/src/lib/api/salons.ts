@@ -38,6 +38,7 @@ interface RawSalon {
   slug: string;
   name: string;
   description: string | null;
+  province: string | null;
   city: string;
   address: string;
   phone: string;
@@ -186,6 +187,7 @@ export async function getSalonBySlug(slug: string): Promise<Salon | null> {
     coverImageUrl: raw.coverImageUrl,
     brandColor: raw.brandColor,
     timezone: raw.timezone,
+    province: raw.province,
     city: raw.city,
     address: raw.address,
     location: raw.latitude !== null && raw.longitude !== null ? { lat: raw.latitude, lng: raw.longitude } : null,

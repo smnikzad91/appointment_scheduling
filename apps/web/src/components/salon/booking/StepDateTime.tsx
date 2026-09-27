@@ -8,6 +8,7 @@ import { toSalonWallTime } from "@/lib/salonTime";
 import type { Salon, TimeSlot } from "@/types/salon";
 import DateStrip from "./DateStrip";
 import TimeSlotGrid from "./TimeSlotGrid";
+import WaitlistButton from "./WaitlistButton";
 
 export default function StepDateTime() {
   const { salon, state, updateState, goNext } = useBooking();
@@ -113,5 +114,12 @@ function SlotsPanel({
     );
   }
 
-  return <TimeSlotGrid slots={slots} selectedMinute={selectedMinute} onSelect={onSelect} />;
+  return (
+    <TimeSlotGrid
+      slots={slots}
+      selectedMinute={selectedMinute}
+      onSelect={onSelect}
+      fullDayAction={<WaitlistButton slug={salon.slug} dateKey={dateKey} serviceIds={serviceIds} stylistId={stylistId} />}
+    />
+  );
 }

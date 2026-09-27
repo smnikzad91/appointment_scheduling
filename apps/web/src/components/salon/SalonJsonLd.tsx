@@ -28,6 +28,7 @@ export default function SalonJsonLd({ salon, url }: { salon: Salon; url: string 
       "@type": "PostalAddress",
       streetAddress: salon.address,
       addressLocality: salon.city,
+      ...(salon.province && { addressRegion: salon.province }),
       addressCountry: "IR",
     },
     geo: salon.location

@@ -12,6 +12,8 @@ const LocationPicker = dynamic(() => import("./LocationPicker"), {
 export default function LocationPickerLoader(props: {
   value: GeoLocation | null;
   onChange: (location: GeoLocation) => void;
+  /** Recentre the map here (e.g. the chosen province's capital) until a pin is placed. */
+  center?: GeoLocation | null;
 }) {
   return <LocationPicker {...props} />;
 }

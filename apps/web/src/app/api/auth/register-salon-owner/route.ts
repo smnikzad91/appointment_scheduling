@@ -8,9 +8,9 @@ const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 
 export async function POST(req: NextRequest) {
   try {
-    const { firstName, lastName, email, phone, password, salonName, city, address } = await req.json();
+    const { firstName, lastName, email, phone, password, salonName, province, city, address, latitude, longitude } = await req.json();
 
-    if (!firstName || !lastName || !phone || !password || !salonName || !city || !address) {
+    if (!firstName || !lastName || !phone || !password || !salonName || !province || !city || !address) {
       return NextResponse.json({ error: "همه فیلدها الزامی هستند" }, { status: 400 });
     }
 
@@ -25,7 +25,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "رمز عبور باید حداقل ۸ کاراکتر باشد" }, { status: 400 });
     }
 
-    await apiRegisterSalonOwner({ firstName, lastName, email, phone, password, salonName, city, address });
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      return NextResponse.json({ error: "محل سالن را روی نقشه مشخص کنید" }, { status: 400 });
+    }
+
+    await apiRegisterSalonOwner({ firstName, lastName, email, phone, password, salonName, province, city, address, latitude, longitude });
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {

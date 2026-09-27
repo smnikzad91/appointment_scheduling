@@ -40,8 +40,12 @@ export default function SignInForm() {
     const session = await res.json();
     const role = session?.user?.role;
 
+    // A customer sent here from a salon page or search (e.g. to save a salon) goes back there.
+    // Same-site paths only, so the parameter can't redirect anywhere else.
+    const back = new URLSearchParams(window.location.search).get("callbackUrl");
+    const safeBack = back && /^\/(?![\/\\])/.test(back) ? back : null; // "/x", never "//x" or "/\\x"
     router.push(
-      role === "PLATFORM_ADMIN" ? "/admin" : role === "SALON_OWNER" ? "/salon" : role === "STYLIST" ? "/stylist" : "/dashboard",
+      role === "PLATFORM_ADMIN" ? "/admin" : role === "SALON_OWNER" ? "/salon" : role === "STYLIST" ? "/stylist" : safeBack ?? "/dashboard",
     );
     router.refresh();
   };

@@ -69,6 +69,7 @@ enum NotificationType {
   PAYOUT_RECORDED
   BOOKING_CONFIRMED
   REVIEW_APPROVED
+  SLOT_OPENED
 }
 
 enum PayoutMethod {
@@ -125,13 +126,15 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  ownedSalons   Salon[]        @relation("SalonOwner")
-  stylist       Stylist?
-  appointments  Appointment[]  @relation("CustomerAppointments")
-  tickets       Ticket[]
-  cards         Card[]
-  deposits      Deposit[]
-  notifications Notification[]
+  ownedSalons     Salon[]         @relation("SalonOwner")
+  stylist         Stylist?
+  appointments    Appointment[]   @relation("CustomerAppointments")
+  tickets         Ticket[]
+  cards           Card[]
+  deposits        Deposit[]
+  notifications   Notification[]
+  favoriteSalons  FavoriteSalon[]
+  waitlistEntries WaitlistEntry[]
 
   @@map("users")
 }
@@ -349,6 +352,9 @@ model Salon {
   name          String
   slug          String      @unique
   description   String?
+  // Province (استان) and county (شهرستان) from packages/iran-locations; province is null only on
+  // salons created before it existed whose city didn't match the list.
+  province      String?
   city          String
   address       String
   phone         String
@@ -372,7 +378,12 @@ model Salon {
   payouts           StylistPayout[]
   expenses          SalonExpense[]
   featured          FeaturedSalon?
+  favoritedBy       FavoriteSalon[]
+  waitlist          WaitlistEntry[]
 
+  @@index([province, city])
+  // Bounding-box prefilter for "near me" (see apps/api src/salons/salon-search.service.ts).
+  @@index([latitude, longitude])
   @@map("salons")
 }
 
@@ -414,6 +425,7 @@ model Stylist {
   reviews       Review[]
   payouts       StylistPayout[]
   featured      FeaturedStylist?
+  waitlist      WaitlistEntry[]
 
   @@index([salonId])
   @@map("stylists")
@@ -697,4 +709,41 @@ model ShowcaseSettings {
   updatedAt  DateTime @updatedAt
 
   @@map("showcase_settings")
+}
+
+// A customer's saved salons ("علاقه‌مندی‌ها").
+model FavoriteSalon {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salonId   String
+  salon     Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, salonId])
+  @@index([salonId])
+  @@map("favorite_salons")
+}
+
+// "Tell me if a time opens up": a customer waiting for a salon-local day (optionally one stylist)
+// that had no free slot. When an appointment on that day is cancelled, waiting customers get a
+// SLOT_OPENED notification (notifiedAt set, so each entry is notified once).
+model WaitlistEntry {
+  id         String    @id @default(cuid())
+  customerId String
+  customer   User      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  salonId    String
+  salon      Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  stylistId  String?
+  stylist    Stylist?  @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  /**
+   * Salon-local day, "YYYY-MM-DD".
+   */
+  dateKey    String
+  serviceIds String[]
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([customerId, salonId, dateKey])
+  @@index([salonId, dateKey])
+  @@map("waitlist_entries")
 }

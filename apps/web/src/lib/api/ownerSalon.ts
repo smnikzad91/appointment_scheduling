@@ -11,6 +11,7 @@ export interface OwnerSalon {
   name: string;
   slug: string;
   description: string | null;
+  province: string | null;
   city: string;
   address: string;
   phone: string;
@@ -34,6 +35,8 @@ export function getMySalon(token: string) {
 export interface UpdateSalonInput {
   name?: string;
   description?: string;
+  /** Province and city are validated together by the API — send both. */
+  province?: string;
   city?: string;
   address?: string;
   phone?: string;

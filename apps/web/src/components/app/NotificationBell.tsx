@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Bell, CalendarCheck2, CalendarPlus, CalendarX, CheckCheck, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Bell, BellRing, CalendarCheck2, CalendarPlus, CalendarX, CheckCheck, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/notifications";
 import { formatToman, toPersianDigits } from "@/lib/persian";
 import { formatSalonDateTime } from "@/lib/salonTime";
+import { dateKeyToDate, formatJalaliFull } from "@/lib/jalali";
 import { PAYOUT_METHOD_LABEL } from "@/lib/api/accounting";
 import { Stars } from "@/components/common/StarRating";
 import Sheet from "./Sheet";
@@ -90,6 +91,17 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
         detail: bookingDetail(n.data),
         href: appointmentsHref,
       };
+    case "SLOT_OPENED": {
+      const d = n.data;
+      const params = new URLSearchParams({ book: "1", services: d.serviceIds.join(","), date: d.dateKey, ...(d.stylistId && { stylist: d.stylistId }) });
+      return {
+        icon: BellRing,
+        tone: "text-app-done",
+        title: `وقت خالی در ${d.salonName}${d.stylistName ? ` با ${d.stylistName}` : ""}`,
+        detail: `${formatJalaliFull(dateKeyToDate(d.dateKey))} — یک نوبت لغو شد؛ تا کسی دیگر نگرفته رزرو کنید.`,
+        href: `/s/${d.salonSlug}?${params}`,
+      };
+    }
     case "REVIEW_APPROVED": {
       const about = n.data.target === "SALON" ? n.data.salonName : `${n.data.stylistName ?? "آرایشگر"} (${n.data.salonName})`;
       return {
@@ -205,7 +217,7 @@ export default function NotificationBell({ token, scope }: { token: string | nul
                 ? "نوبت‌های تازه، لغوها و نظرهای مشتری‌ها اینجا می‌آید."
                 : scope === "stylist"
                   ? "نوبت‌های تازه، لغوها، پرداخت‌های سالن و نظرها اینجا می‌آید."
-                  : "تایید یا لغو نوبت‌هایتان و انتشار نظرهایتان اینجا می‌آید."
+                  : "تایید یا لغو نوبت‌ها، وقت‌های خالی‌شده و انتشار نظرهایتان اینجا می‌آید."
             } />
         ) : (
           <ul className="-mx-1 flex flex-col">

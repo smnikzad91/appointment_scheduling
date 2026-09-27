@@ -16,6 +16,8 @@ import { GalleryModule } from './gallery/gallery.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { AccountingModule } from './accounting/accounting.module.js';
 import { ShowcaseModule } from './showcase/showcase.module.js';
+import { FavoritesModule } from './favorites/favorites.module.js';
+import { WaitlistModule } from './waitlist/waitlist.module.js';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { ShowcaseModule } from './showcase/showcase.module.js';
     NotificationsModule,
     AccountingModule,
     ShowcaseModule,
+    FavoritesModule,
+    WaitlistModule,
   ],
   controllers: [AppController],
   providers: [AppService],

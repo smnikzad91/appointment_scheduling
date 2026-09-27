@@ -3,6 +3,7 @@ import { Calendar } from "lucide-react";
 import InstallAppButton from "@/components/common/InstallAppButton";
 
 const NAV_LINKS = [
+  { href: "/salons", label: "جستجوی سالن" },
   { href: "#features", label: "امکانات" },
   { href: "#apps", label: "اپلیکیشن‌ها" },
   { href: "#pricing", label: "تعرفه‌ها" },

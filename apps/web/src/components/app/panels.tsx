@@ -7,6 +7,7 @@ import {
   Home,
   LifeBuoy,
   Scissors,
+  Search,
   Settings,
   UserRound,
   Users,
@@ -113,12 +114,15 @@ export function CustomerShell({ children }: { children: React.ReactNode }) {
       actions={<NotificationBell token={token} scope="customer" />}
       tabs={[
         { href: "/dashboard", label: "خانه", icon: Home, exact: true },
+        { href: "/dashboard/discover", label: "کشف سالن", icon: Search },
         { href: "/dashboard/bookings", label: "نوبت‌ها", icon: CalendarDays },
         { href: "/dashboard/finance", label: "کیف پول", icon: Wallet },
-        { href: "/dashboard/support", label: "پشتیبانی", icon: LifeBuoy },
         { href: "/dashboard/profile", label: "پروفایل", icon: UserRound },
       ]}
-      accountLinks={[{ href: "/dashboard/account", label: "امنیت و رمز عبور", icon: Settings }]}
+      accountLinks={[
+        { href: "/dashboard/support", label: "پشتیبانی", icon: LifeBuoy },
+        { href: "/dashboard/account", label: "امنیت و رمز عبور", icon: Settings },
+      ]}
     >
       {children}
     </AppShell>

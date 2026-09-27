@@ -14,7 +14,7 @@ export interface CustomerBooking {
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   salon: { name: string; slug: string };
   stylist: { displayName: string };
-  services: { service: { name: string } }[];
+  services: { serviceId: string; service: { name: string } }[];
   reviews: BookingReview[];
 }
 
