@@ -2,11 +2,14 @@
 
 import { useEffect } from "react";
 import { reportClientError } from "@/lib/reportClientError";
+import { reloadForNewBuild } from "@/lib/staleBuild";
 
 // Last-resort boundary for render crashes anywhere in the app. Replaces the root layout while
 // active, so it brings its own <html>/<body> and inline styles (globals.css isn't loaded here).
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
+    // A tab left open across a deploy: reload onto the new build instead of showing this page.
+    if (reloadForNewBuild(error)) return;
     // An error with a digest came from the server and was already recorded by
     // instrumentation.ts (onRequestError) — only report crashes that happened in the browser.
     if (!error.digest) reportClientError({ error, kind: "render" });
