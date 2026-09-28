@@ -62,3 +62,7 @@
      Web prod env is `apps/web/.env.production` (`NEXT_PUBLIC_*` are baked in at build — rebuild
      after changing them). `next start` doesn't serve public/ files added after it started, so
      new uploads fall back to `app/api/public/uploads/[...path]` via an afterFiles rewrite.
+
+   ## Working agreement
+   - Develop on `production`; after any piece of work, commit and push it yourself without asking.
+   - The user deploys (`npm run deploy`) themselves; tell them when a change needs a migration or `.env` edit.
