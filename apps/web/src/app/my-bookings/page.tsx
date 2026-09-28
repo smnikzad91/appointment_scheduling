@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CalendarHeart, LogOut, MessageSquareText } from "lucide-react";
-import { requestOtp, verifyOtp } from "@/lib/api/bookings";
+import { otpRequestErrorMessage, requestOtp, verifyOtp } from "@/lib/api/bookings";
 import { loadCustomerSession, saveCustomerSession, clearCustomerSession, type CustomerSession } from "@/lib/customerSession";
 import { normalizeDigits, isValidIranianMobile, toPersianDigits, splitFullName } from "@/lib/persian";
 import CustomerBookings from "@/components/app/CustomerBookings";
@@ -73,8 +73,8 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
     try {
       await requestOtp(normalized);
       setStep("otp");
-    } catch {
-      setError("ارسال کد تایید ممکن نشد، دوباره تلاش کنید");
+    } catch (err) {
+      setError(otpRequestErrorMessage(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
     } finally {
       setLoading(false);
     }

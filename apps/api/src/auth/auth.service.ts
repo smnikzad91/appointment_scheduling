@@ -1,4 +1,14 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { randomInt } from "node:crypto";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { Role, SalonStatus, User } from "@appointment-scheduling/database";
@@ -9,6 +19,7 @@ import { RegisterSalonOwnerDto } from "./dto/register-salon-owner.dto.js";
 import { assertIranCoordinates, resolveProvinceCity } from "../common/location.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { VerifyOtpDto } from "./dto/otp.dto.js";
+import { NotifycloudService } from "../sms/notifycloud.service.js";
 
 export interface JwtPayload {
   sub: string;
@@ -18,6 +29,9 @@ export interface JwtPayload {
 const DEFAULT_AVATAR_COUNT = 37;
 const OTP_LENGTH = 5;
 const OTP_TTL_MINUTES = 5;
+// Per-phone throttle, so one number can't burn the SMS key's 30/min quota or its balance.
+const OTP_RESEND_COOLDOWN_SECONDS = 60;
+const OTP_MAX_PER_HOUR = 5;
 
 function randomDefaultAvatar(): string {
   const n = Math.floor(Math.random() * DEFAULT_AVATAR_COUNT) + 1;
@@ -25,7 +39,7 @@ function randomDefaultAvatar(): string {
 }
 
 function randomOtpCode(): string {
-  return Math.floor(Math.random() * 10 ** OTP_LENGTH)
+  return randomInt(10 ** OTP_LENGTH)
     .toString()
     .padStart(OTP_LENGTH, "0");
 }
@@ -36,9 +50,12 @@ function randomPassword(): string {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly sms: NotifycloudService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -133,18 +150,50 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
-  /** Passwordless login/signup: request a code, then verify it to get a real session.
-   * No SMS provider is wired up yet — outside production the code is returned directly
-   * so this is testable without one; wire a real provider before shipping. */
+  /** Passwordless login/signup: request a code (sent by SMS via notifycloud), then verify it
+   * to get a real session. Without NOTIFYCLOUD_API_KEY nothing is sent — outside production
+   * the code is returned as devCode so this is testable without the gateway. */
   async requestOtp(phone: string) {
+    await this.assertOtpNotThrottled(phone);
+
     const code = randomOtpCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
-    await this.prisma.otpCode.create({ data: { phone, code, expiresAt } });
+    const otp = await this.prisma.otpCode.create({ data: { phone, code, expiresAt } });
+    const isProduction = process.env.NODE_ENV === "production";
+
+    if (this.sms.enabled) {
+      try {
+        // Kept under 70 chars so it stays a single (cheapest) SMS segment.
+        await this.sms.sendSms(phone, `کد ورود شما: ${code}\nاعتبار: ${OTP_TTL_MINUTES} دقیقه`, otp.id);
+      } catch {
+        // Drop the undeliverable code so it doesn't count against the phone's throttle.
+        await this.prisma.otpCode.delete({ where: { id: otp.id } });
+        throw new ServiceUnavailableException("Could not send the verification code");
+      }
+    } else if (isProduction) {
+      this.logger.error("NOTIFYCLOUD_API_KEY is not set — OTP codes cannot be delivered");
+      await this.prisma.otpCode.delete({ where: { id: otp.id } });
+      throw new ServiceUnavailableException("Could not send the verification code");
+    }
 
     return {
       success: true,
-      ...(process.env.NODE_ENV !== "production" ? { devCode: code } : {}),
+      ...(!isProduction ? { devCode: code } : {}),
     };
+  }
+
+  private async assertOtpNotThrottled(phone: string) {
+    const hourAgo = new Date(Date.now() - 60 * 60_000);
+    const recent = await this.prisma.otpCode.findMany({
+      where: { phone, createdAt: { gt: hourAgo } },
+      select: { createdAt: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const secondsSinceLast = recent.length ? (Date.now() - recent[0].createdAt.getTime()) / 1000 : Infinity;
+    if (secondsSinceLast < OTP_RESEND_COOLDOWN_SECONDS || recent.length >= OTP_MAX_PER_HOUR) {
+      throw new HttpException("Too many code requests, try again later", HttpStatus.TOO_MANY_REQUESTS);
+    }
   }
 
   async verifyOtp(dto: VerifyOtpDto) {

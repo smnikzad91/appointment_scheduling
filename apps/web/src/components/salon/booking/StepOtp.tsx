@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useBooking } from "./BookingProvider";
 import { normalizeDigits, toPersianDigits, splitFullName } from "@/lib/persian";
-import { verifyOtp, requestOtp } from "@/lib/api/bookings";
+import { verifyOtp, requestOtp, otpRequestErrorMessage } from "@/lib/api/bookings";
 import { SalonApiError } from "@/lib/api/salonApiClient";
 
 const OTP_LENGTH = 5;
@@ -55,8 +55,8 @@ export default function StepOtp() {
     try {
       await requestOtp(state.customerPhone);
       setResent(true);
-    } catch {
-      setError("ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید");
+    } catch (err) {
+      setError(otpRequestErrorMessage(err, "ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید"));
     }
   }
 

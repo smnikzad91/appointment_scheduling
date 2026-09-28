@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useBooking } from "./BookingProvider";
 import { normalizeDigits, isValidIranianMobile } from "@/lib/persian";
-import { requestOtp } from "@/lib/api/bookings";
+import { otpRequestErrorMessage, requestOtp } from "@/lib/api/bookings";
 
 export default function StepContact() {
   const { state, updateState, goNext } = useBooking();
@@ -29,8 +29,8 @@ export default function StepContact() {
     try {
       await requestOtp(phone);
       goNext();
-    } catch {
-      setError("ارسال کد تایید ممکن نشد، دوباره تلاش کنید");
+    } catch (err) {
+      setError(otpRequestErrorMessage(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
     } finally {
       setSubmitting(false);
     }

@@ -1,9 +1,16 @@
 import type { Booking, Salon } from "@/types/salon";
-import { salonApiFetch } from "./salonApiClient";
+import { SalonApiError, salonApiFetch } from "./salonApiClient";
 import { salonWallTimeToInstant } from "@/lib/salonTime";
 
 export async function requestOtp(phone: string): Promise<{ success: true; devCode?: string }> {
   return salonApiFetch("/auth/otp/request", { method: "POST", body: JSON.stringify({ phone }) });
+}
+
+/** User-facing message for a failed requestOtp — the api throttles each phone (429). */
+export function otpRequestErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof SalonApiError && err.status === 429
+    ? "درخواست کد بیش از حد مجاز است، لطفاً کمی بعد دوباره تلاش کنید"
+    : fallback;
 }
 
 export interface VerifyOtpResult {
