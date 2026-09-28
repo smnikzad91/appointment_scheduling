@@ -512,6 +512,9 @@ model Appointment {
   tipToman                 Int?
   stylistShareToman        Int?
   completedAt              DateTime?
+  // Set once the reminder SMS has been handled: sent, or skipped because the booking was made
+  // inside the reminder window (see apps/api appointment-reminders.service.ts).
+  reminderSentAt           DateTime?
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 
@@ -520,6 +523,7 @@ model Appointment {
 
   @@index([salonId, startAt])
   @@index([stylistId, startAt])
+  @@index([reminderSentAt, startAt])
   @@map("appointments")
 }
 

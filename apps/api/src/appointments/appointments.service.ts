@@ -14,7 +14,7 @@ import { effectiveCommissionPercent, splitCharge } from "../accounting/share.uti
 import { NotificationsService, type BookingData } from "../notifications/notifications.service.js";
 import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { NotifycloudService } from "../sms/notifycloud.service.js";
-import { bookingSmsText } from "./booking-sms.util.js";
+import { appointmentSmsText, type AppointmentSmsKind } from "./appointment-sms.util.js";
 
 const ACTIVE_STATUSES: AppointmentStatus[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
 
@@ -194,7 +194,7 @@ export class AppointmentsService {
         await this.notifyBooking(appointment.id, NotificationType.NEW_BOOKING, { bySalon }, bookedBy ?? customerId);
         // The customer didn't make this booking themselves, so tell them by SMS too — unless
         // it's a walk-in recorded after the fact. Not awaited: the gateway can take seconds.
-        if (bySalon && appointment.startAt.getTime() > Date.now()) void this.smsBookingToCustomer(appointment.id, timeZone);
+        if (bySalon && appointment.startAt.getTime() > Date.now()) void this.smsCustomer(appointment.id, "booked");
         return appointment;
       }
     }
@@ -252,32 +252,41 @@ export class AppointmentsService {
     if (status === AppointmentStatus.CANCELLED && appointment.status !== AppointmentStatus.CANCELLED) {
       const cancelledBy = user.role === Role.CUSTOMER ? "CUSTOMER" : user.role === Role.STYLIST ? "STYLIST" : "SALON";
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CANCELLED, { cancelledBy }, user.sub);
+      const upcoming = ACTIVE_STATUSES.includes(appointment.status) && appointment.startAt > new Date();
+      // The customer cancelled it themselves, so they already know; otherwise text them.
+      if (upcoming && cancelledBy !== "CUSTOMER") void this.smsCustomer(appointmentId, "cancelled");
       // Only an upcoming booking frees a slot someone could still take.
-      if (ACTIVE_STATUSES.includes(appointment.status) && appointment.startAt > new Date()) await this.waitlist.notifyOpening(appointment);
+      if (upcoming) await this.waitlist.notifyOpening(appointment);
     } else if (status === AppointmentStatus.CONFIRMED && appointment.status === AppointmentStatus.PENDING) {
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CONFIRMED, {}, user.sub, "customer");
     }
     return updated;
   }
 
-  /** Best effort, like the in-app notifications — the booking already happened. */
-  private async smsBookingToCustomer(appointmentId: string, timeZone: string) {
+  /** Best effort, like the in-app notifications — the booking change already happened. Not
+   * awaited by callers: the gateway can take seconds. */
+  private async smsCustomer(appointmentId: string, kind: AppointmentSmsKind) {
     if (!this.sms.enabled) return;
     try {
       const a = await this.prisma.appointment.findUnique({
         where: { id: appointmentId },
         select: {
           startAt: true,
-          salon: { select: { name: true } },
+          salon: { select: { name: true, timezone: true } },
           stylist: { select: { displayName: true } },
           customer: { select: { phone: true } },
         },
       });
       if (!a?.customer.phone) return;
-      const text = bookingSmsText({ salonName: a.salon.name, stylistName: a.stylist.displayName, startAt: a.startAt, timeZone });
-      await this.sms.sendSms(a.customer.phone, text, appointmentId);
+      const text = appointmentSmsText(kind, {
+        salonName: a.salon.name,
+        stylistName: a.stylist.displayName,
+        startAt: a.startAt,
+        timeZone: a.salon.timezone,
+      });
+      await this.sms.sendSms(a.customer.phone, text, `${appointmentId}:${kind}`);
     } catch (err) {
-      this.logger.warn(`Booking SMS for ${appointmentId} failed: ${(err as Error).message}`);
+      this.logger.warn(`${kind} SMS for ${appointmentId} failed: ${(err as Error).message}`);
     }
   }
 
