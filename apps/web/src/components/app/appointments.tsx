@@ -111,21 +111,26 @@ export function AppointmentList({
   showStylist,
   onOpen,
   order = "asc",
+  hideDayHeaders,
 }: {
   appointments: AppAppointment[];
   showStylist?: boolean;
   onOpen: (a: AppAppointment) => void;
   order?: "asc" | "desc";
+  /** For a single day whose heading is already shown (the calendar view). */
+  hideDayHeaders?: boolean;
 }) {
   let index = 0;
   return (
     <div className="flex flex-col gap-5">
       {groupByDay(appointments, order).map((group) => (
         <section key={group.dateKey}>
-          <h3 className="sticky top-[calc(56px+env(safe-area-inset-top))] z-10 -mx-4 mb-2 bg-app-bg/90 px-5 py-1.5 text-[13px] font-black text-app-ink backdrop-blur">
-            {relativeDayLabel(group.dateKey)}
-            <span className="ms-2 font-medium text-app-muted">{toPersianDigits(group.items.length)} نوبت</span>
-          </h3>
+          {!hideDayHeaders && (
+            <h3 className="sticky top-[calc(56px+env(safe-area-inset-top))] z-10 -mx-4 mb-2 bg-app-bg/90 px-5 py-1.5 text-[13px] font-black text-app-ink backdrop-blur">
+              {relativeDayLabel(group.dateKey)}
+              <span className="ms-2 font-medium text-app-muted">{toPersianDigits(group.items.length)} نوبت</span>
+            </h3>
+          )}
           <div className="flex flex-col gap-2.5">
             {group.items.map((a) => (
               <AppointmentCard key={a.id} appointment={a} showStylist={showStylist} onOpen={onOpen} index={index++} />

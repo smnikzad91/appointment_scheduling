@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarX2 } from "lucide-react";
+import { CalendarDays, CalendarX2, List } from "lucide-react";
 import { salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { AppointmentList, AppointmentSheet, useAppointmentActions, type AppAppointment, type AppointmentStatus } from "./appointments";
 import SalonBookingSheet from "./SalonBookingSheet";
-import { ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader } from "./ui";
+import AppointmentCalendar from "./AppointmentCalendar";
+import { ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader, cx } from "./ui";
 
 type Tab = "upcoming" | "pending" | "history" | "cancelled";
+type View = "list" | "calendar";
+const VIEW_KEY = "appointmentsView";
 
 const EMPTY: Record<Tab, string> = {
   upcoming: "نوبت پیش‌رویی ندارید",
@@ -40,6 +43,7 @@ export default function AppointmentsScreen({
   const [appointments, setAppointments] = useState<AppAppointment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("upcoming");
+  const [view, setView] = useState<View>("list");
 
   const reload = useCallback(() => {
     load()
@@ -56,7 +60,20 @@ export default function AppointmentsScreen({
     // Read once after mount (not during render) so SSR and hydration agree.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (new URLSearchParams(window.location.search).get("filter") === "PENDING") setTab("pending");
+    // The list/calendar choice is remembered on this device (a deep link to pending opens the list).
+    else {
+      try {
+        if (localStorage.getItem(VIEW_KEY) === "calendar") setView("calendar");
+      } catch {}
+    }
   }, []);
+
+  const chooseView = (v: View) => {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {}
+  };
 
   const actions = useAppointmentActions(updateStatus, reload);
 
@@ -78,6 +95,31 @@ export default function AppointmentsScreen({
     <>
       <PageHeader title={title} action={headerAction} />
 
+      <div className="mb-3 flex rounded-full border border-app-line bg-app-card p-0.5" role="tablist" aria-label="نمایش نوبت‌ها">
+        {(
+          [
+            ["list", List, "فهرست"],
+            ["calendar", CalendarDays, "تقویم"],
+          ] as const
+        ).map(([v, Icon, label]) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={view === v}
+            onClick={() => chooseView(v)}
+            className={cx(
+              "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full text-[13px] font-bold transition",
+              view === v ? "bg-app-ink text-app-bg" : "text-app-muted",
+            )}
+          >
+            <Icon className="h-4 w-4" aria-hidden />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === "list" && (
       <ChipTabs<Tab>
         value={tab}
         onChange={setTab}
@@ -88,11 +130,14 @@ export default function AppointmentsScreen({
           { value: "cancelled", label: "لغو شده" },
         ]}
       />
+      )}
 
       {error && <ErrorBanner onRetry={reload}>{error}</ErrorBanner>}
 
       {!appointments ? (
         !error && <ListSkeleton />
+      ) : view === "calendar" ? (
+        <AppointmentCalendar appointments={appointments} showStylist={showStylist} onOpen={actions.open} />
       ) : list.length === 0 ? (
         <EmptyState icon={CalendarX2} title={EMPTY[tab]} />
       ) : (

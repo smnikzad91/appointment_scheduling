@@ -220,6 +220,16 @@ await shot("owner-manage-2", "owner", async (p) => {
   await settle(p, 1200);
 }, (p) => ["ویرایش نوبت", "تایید نوبت", "انجام شد", "مشتری نیامد"].map((n) => inSheet(p).getByRole("button", { name: n })));
 await pageFor("owner").then((p) => p.keyboard.press("Escape"));
+await shot("owner-manage-3", "owner", async (p) => {
+  await go("/salon/appointments")(p);
+  await p.getByRole("tab", { name: "تقویم" }).click();
+  await settle(p, 900);
+  await p.getByRole("gridcell").filter({ has: p.locator("span.rounded-full") }).first().click();
+  await settle(p, 600);
+}, (p) => [p.getByRole("tab", { name: "تقویم" }), p.getByRole("gridcell", { selected: true }), p.locator("main button").filter({ hasText: "(نمونه)" }).first()]);
+await pageFor("owner").then(async (p) => {
+  await p.getByRole("tab", { name: "فهرست" }).click().catch(() => {}); // leave the default view for later shots
+});
 
 await shot("owner-gallery-1", "owner", go("/salon/gallery"), (p) => [p.locator("main").getByRole("button", { name: /افزودن/ }).first(), p.locator("main button:has(img)").first()]);
 await shot("owner-gallery-2", "owner", async (p) => {

@@ -20,8 +20,8 @@ import PickerSelect from "./PickerSelect";
 
 // Building blocks shared by the salon accounting page and the stylist earnings page.
 
-/** "‹ مهر ۱۴۰۵ ›" — step through Jalali months; can't go past the current month. */
-export function PeriodSwitcher({ period, onChange }: { period: AccountingPeriod; onChange: (offset: number) => void }) {
+/** "‹ مهر ۱۴۰۵ ›" — step through Jalali months; can't go past the current month unless `allowFuture`. */
+export function PeriodSwitcher({ period, onChange, allowFuture }: { period: AccountingPeriod; onChange: (offset: number) => void; allowFuture?: boolean }) {
   return (
     <div className="mb-4 flex items-center justify-between rounded-3xl border border-app-line bg-app-card p-1.5 shadow-app">
       {/* RTL: the earlier month sits on the right. */}
@@ -40,7 +40,7 @@ export function PeriodSwitcher({ period, onChange }: { period: AccountingPeriod;
       <button
         type="button"
         onClick={() => onChange(period.offset + 1)}
-        disabled={period.offset >= 0}
+        disabled={!allowFuture && period.offset >= 0}
         aria-label="ماه بعد"
         className="flex h-11 w-11 items-center justify-center rounded-2xl text-app-ink active:bg-app-card-2 disabled:opacity-25"
       >
