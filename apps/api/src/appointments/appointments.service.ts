@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { AppointmentStatus, NotificationType, Role } from "@appointment-scheduling/database";
@@ -6,13 +6,15 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { JwtPayload } from "../auth/auth.service.js";
 import { findEligibleStylists } from "../salons/eligible-stylists.util.js";
 import { effectiveServicePricing, sumEffectivePricing } from "../salons/service-pricing.util.js";
-import { CreateAppointmentDto, CreateSalonAppointmentDto } from "./dto/create-appointment.dto.js";
+import { CreateAppointmentDto, CreateSalonAppointmentDto, CreateStylistAppointmentDto } from "./dto/create-appointment.dto.js";
 import { instantToSalonWallTime, salonWallTimeToInstant } from "../availability/salon-time.util.js";
 import { UpdatableAppointmentStatus } from "./dto/update-status.dto.js";
 import { fitsWorkingHours } from "./working-hours.util.js";
 import { effectiveCommissionPercent, splitCharge } from "../accounting/share.util.js";
 import { NotificationsService, type BookingData } from "../notifications/notifications.service.js";
 import { WaitlistService } from "../waitlist/waitlist.service.js";
+import { NotifycloudService } from "../sms/notifycloud.service.js";
+import { bookingSmsText } from "./booking-sms.util.js";
 
 const ACTIVE_STATUSES: AppointmentStatus[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
 
@@ -28,16 +30,19 @@ const SAFE_CUSTOMER_SELECT = { select: { id: true, firstName: true, lastName: tr
 
 @Injectable()
 export class AppointmentsService {
+  private readonly logger = new Logger(AppointmentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly waitlist: WaitlistService,
+    private readonly sms: NotifycloudService,
   ) {}
 
   async create(customerId: string, dto: CreateAppointmentDto) {
     const salon = await this.prisma.salon.findUnique({ where: { id: dto.salonId }, select: { status: true, timezone: true } });
     if (!salon || salon.status !== "ACTIVE") throw new NotFoundException("Salon not found");
-    return this.book(customerId, dto, salon.timezone, false);
+    return this.book(customerId, dto, salon.timezone, null);
   }
 
   /**
@@ -50,21 +55,41 @@ export class AppointmentsService {
     const salon = await this.prisma.salon.findFirst({ where: { ownerId: ownerUserId }, select: { id: true, timezone: true } });
     if (!salon) throw new NotFoundException("You don't own a salon yet");
     const customerId = await this.findOrCreateCustomer(dto);
-    return this.book(customerId, { ...dto, salonId: salon.id }, salon.timezone, true);
+    return this.book(customerId, { ...dto, salonId: salon.id }, salon.timezone, ownerUserId);
   }
 
-  /** A customer who has booked at this salon before, looked up by phone (to prefill the name). */
-  async lookupSalonCustomer(ownerUserId: string, phone: string) {
-    const salon = await this.prisma.salon.findFirst({ where: { ownerId: ownerUserId }, select: { id: true } });
-    if (!salon) throw new NotFoundException("You don't own a salon yet");
+  /** A stylist books a customer with themselves — same rules as a booking by the salon. */
+  async createForStylist(stylistUserId: string, dto: CreateStylistAppointmentDto) {
+    const stylist = await this.prisma.stylist.findUnique({
+      where: { userId: stylistUserId },
+      select: { id: true, active: true, salonId: true, salon: { select: { timezone: true } } },
+    });
+    if (!stylist || !stylist.active) throw new NotFoundException("No active stylist profile for this account");
+    const customerId = await this.findOrCreateCustomer(dto);
+    return this.book(
+      customerId,
+      { ...dto, salonId: stylist.salonId, stylistId: stylist.id },
+      stylist.salon.timezone,
+      stylistUserId,
+    );
+  }
+
+  /** A customer who has booked at this salon before, looked up by phone (to prefill the name).
+   * Open to the salon's owner and its stylists. */
+  async lookupSalonCustomer(user: JwtPayload, phone: string) {
+    const salonId =
+      user.role === Role.STYLIST
+        ? (await this.prisma.stylist.findUnique({ where: { userId: user.sub }, select: { salonId: true } }))?.salonId
+        : (await this.prisma.salon.findFirst({ where: { ownerId: user.sub }, select: { id: true } }))?.id;
+    if (!salonId) throw new NotFoundException("No salon for this account");
     const customer = await this.prisma.user.findFirst({
-      where: { phone, role: Role.CUSTOMER, appointments: { some: { salonId: salon.id } } },
+      where: { phone, role: Role.CUSTOMER, appointments: { some: { salonId } } },
       select: { firstName: true, lastName: true },
     });
     return { found: !!customer, ...customer };
   }
 
-  private async findOrCreateCustomer(dto: CreateSalonAppointmentDto) {
+  private async findOrCreateCustomer(dto: CreateStylistAppointmentDto) {
     const existing = await this.prisma.user.findUnique({ where: { phone: dto.customerPhone }, select: { id: true, role: true } });
     if (existing) {
       if (existing.role !== Role.CUSTOMER) throw new ConflictException("This phone number belongs to a staff account");
@@ -87,7 +112,9 @@ export class AppointmentsService {
     return user.id;
   }
 
-  private async book(customerId: string, dto: CreateAppointmentDto, timeZone: string, bySalon: boolean) {
+  /** `bookedBy`: the owner or stylist booking on the customer's behalf; null for an online booking. */
+  private async book(customerId: string, dto: CreateAppointmentDto, timeZone: string, bookedBy: string | null) {
+    const bySalon = bookedBy !== null;
 
     const services = await this.prisma.service.findMany({
       where: { id: { in: dto.serviceIds }, salonId: dto.salonId, active: true },
@@ -163,8 +190,11 @@ export class AppointmentsService {
 
       if (appointment) {
         // Everyone involved hears about it except whoever made it: online, the owner and the
-        // stylist; by the salon, the stylist and the customer.
-        await this.notifyBooking(appointment.id, NotificationType.NEW_BOOKING, { bySalon }, bySalon ? appointment.salon.ownerId : customerId);
+        // stylist; by the salon or a stylist, the other of those two and the customer.
+        await this.notifyBooking(appointment.id, NotificationType.NEW_BOOKING, { bySalon }, bookedBy ?? customerId);
+        // The customer didn't make this booking themselves, so tell them by SMS too — unless
+        // it's a walk-in recorded after the fact. Not awaited: the gateway can take seconds.
+        if (bySalon && appointment.startAt.getTime() > Date.now()) void this.smsBookingToCustomer(appointment.id, timeZone);
         return appointment;
       }
     }
@@ -228,6 +258,27 @@ export class AppointmentsService {
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CONFIRMED, {}, user.sub, "customer");
     }
     return updated;
+  }
+
+  /** Best effort, like the in-app notifications — the booking already happened. */
+  private async smsBookingToCustomer(appointmentId: string, timeZone: string) {
+    if (!this.sms.enabled) return;
+    try {
+      const a = await this.prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: {
+          startAt: true,
+          salon: { select: { name: true } },
+          stylist: { select: { displayName: true } },
+          customer: { select: { phone: true } },
+        },
+      });
+      if (!a?.customer.phone) return;
+      const text = bookingSmsText({ salonName: a.salon.name, stylistName: a.stylist.displayName, startAt: a.startAt, timeZone });
+      await this.sms.sendSms(a.customer.phone, text, appointmentId);
+    } catch (err) {
+      this.logger.warn(`Booking SMS for ${appointmentId} failed: ${(err as Error).message}`);
+    }
   }
 
   /** Tells the salon owner, the appointment's stylist and the customer — never the person who acted. */

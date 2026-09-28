@@ -148,7 +148,12 @@ export class StylistsService {
   async findMe(userId: string) {
     const stylist = await this.prisma.stylist.findUnique({
       where: { userId },
-      include: { workingHours: true, services: { include: { service: true } } },
+      include: {
+        workingHours: true,
+        services: { include: { service: true } },
+        // For the stylist's own "book a customer" sheet (availability + salon-local times).
+        salon: { select: { slug: true, status: true, timezone: true } },
+      },
     });
     if (!stylist) throw new NotFoundException("No stylist profile for this account");
     return stylist;

@@ -6,7 +6,7 @@ import { Roles } from "../auth/decorators/roles.decorator.js";
 import { Role } from "@appointment-scheduling/database";
 import { JwtPayload } from "../auth/auth.service.js";
 import { AppointmentsService } from "./appointments.service.js";
-import { CreateAppointmentDto, CreateSalonAppointmentDto, CustomerLookupQueryDto } from "./dto/create-appointment.dto.js";
+import { CreateAppointmentDto, CreateSalonAppointmentDto, CreateStylistAppointmentDto, CustomerLookupQueryDto } from "./dto/create-appointment.dto.js";
 import { UpdateAppointmentStatusDto } from "./dto/update-status.dto.js";
 
 @Controller("appointments")
@@ -27,10 +27,16 @@ export class AppointmentsController {
     return this.appointmentsService.createForSalon((req.user as JwtPayload).sub, dto);
   }
 
+  @Post("stylist")
+  @Roles(Role.STYLIST)
+  createForStylist(@Req() req: Request, @Body() dto: CreateStylistAppointmentDto) {
+    return this.appointmentsService.createForStylist((req.user as JwtPayload).sub, dto);
+  }
+
   @Get("salon/customer")
-  @Roles(Role.SALON_OWNER)
+  @Roles(Role.SALON_OWNER, Role.STYLIST)
   lookupCustomer(@Req() req: Request, @Query() query: CustomerLookupQueryDto) {
-    return this.appointmentsService.lookupSalonCustomer((req.user as JwtPayload).sub, query.phone);
+    return this.appointmentsService.lookupSalonCustomer(req.user as JwtPayload, query.phone);
   }
 
   @Get("mine")

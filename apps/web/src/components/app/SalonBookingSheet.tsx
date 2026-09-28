@@ -12,6 +12,7 @@ import {
   type OwnerService,
   type OwnerStylist,
 } from "@/lib/api/ownerSalon";
+import { createMyBooking, getMyStylistProfile } from "@/lib/api/stylistSelf";
 import { salonApiFetch } from "@/lib/api/salonApiClient";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { formatMinutesAsClock, formatToman, isValidIranianMobile, normalizeDigits, toPersianDigits } from "@/lib/persian";
@@ -26,9 +27,23 @@ const STEP = 15;
 const TIME_OPTIONS = Array.from({ length: (24 * 60) / STEP }, (_, i) => i * STEP).filter((m) => m >= 6 * 60);
 
 interface Loaded {
-  salon: OwnerSalon;
-  stylists: OwnerStylist[];
-  services: OwnerService[];
+  salon: Pick<OwnerSalon, "slug" | "status" | "timezone">;
+  stylists: (Pick<OwnerStylist, "id" | "displayName"> & {
+    services: { serviceId: string; overridePriceToman: number | null; overrideDurationMinutes: number | null }[];
+  })[];
+  services: Pick<OwnerService, "id" | "name" | "priceToman" | "durationMinutes">[];
+}
+
+async function loadForOwner(token: string): Promise<Loaded> {
+  const [salon, stylists, services] = await Promise.all([getMySalon(token), listMyStylists(token), listMyServices(token)]);
+  return { salon, stylists: stylists.filter((s) => s.active), services: services.filter((s) => s.active) };
+}
+
+/** A stylist books only with themselves, from the services they offer. */
+async function loadForStylist(token: string): Promise<Loaded> {
+  const me = await getMyStylistProfile(token);
+  if (!me.salon) throw new Error("salon missing from /stylists/me");
+  return { salon: me.salon, stylists: [me], services: me.services.map((s) => s.service).filter((s) => s.active) };
 }
 
 function nextQuarterHour(minuteOfDay: number) {
@@ -36,20 +51,23 @@ function nextQuarterHour(minuteOfDay: number) {
 }
 
 /**
- * The salon books a customer (phone call or walk-in) with a specific stylist. The customer is
- * found by phone — a returning customer's name is filled in — or created. Walk-ins can be
- * recorded for earlier today; the booking is confirmed straight away.
+ * The salon books a customer (phone call or walk-in) with a specific stylist — or, with
+ * `asStylist`, a stylist books one with themselves. The customer is found by phone — a returning
+ * customer's name is filled in — or created. Walk-ins can be recorded for earlier today; the
+ * booking is confirmed straight away, and the api texts the customer about it.
  */
 export default function SalonBookingSheet({
   token,
   open,
   onClose,
   onCreated,
+  asStylist = false,
 }: {
   token: string;
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
+  asStylist?: boolean;
 }) {
   const [data, setData] = useState<Loaded | null>(null);
   const [phone, setPhone] = useState("");
@@ -70,14 +88,13 @@ export default function SalonBookingSheet({
   // the salon's current stylists and services once it's shown.
   useEffect(() => {
     if (!open) return;
-    Promise.all([getMySalon(token), listMyStylists(token), listMyServices(token)])
-      .then(([salon, stylists, services]) => {
-        const active = stylists.filter((s) => s.active);
-        setData({ salon, stylists: active, services: services.filter((s) => s.active) });
-        setStylistId((id) => (active.some((s) => s.id === id) ? id : (active[0]?.id ?? "")));
+    (asStylist ? loadForStylist(token) : loadForOwner(token))
+      .then((loaded) => {
+        setData(loaded);
+        setStylistId((id) => (loaded.stylists.some((s) => s.id === id) ? id : (loaded.stylists[0]?.id ?? "")));
       })
       .catch(() => setError("دریافت اطلاعات سالن انجام نشد"));
-  }, [open, token]);
+  }, [open, token, asStylist]);
 
   // Returning customer? Fill in the name.
   const normalizedPhone = normalizeDigits(phone);
@@ -154,15 +171,15 @@ export default function SalonBookingSheet({
     setBusy(true);
     setError(null);
     try {
-      await createSalonBooking(token, {
+      const input = {
         customerPhone: normalizedPhone,
         customerFirstName: known ? undefined : firstName.trim(),
         customerLastName: known ? undefined : lastName.trim(),
-        stylistId,
         serviceIds: chosenIds,
         startAt: salonWallTimeToInstant(dateKey, minute, data.salon.timezone).toISOString(),
         notes: notes.trim() || undefined,
-      });
+      };
+      await (asStylist ? createMyBooking(token, input) : createSalonBooking(token, { ...input, stylistId }));
       onCreated();
       onClose();
     } catch (err) {
@@ -212,20 +229,22 @@ export default function SalonBookingSheet({
           </div>
         )}
 
-        <Field label="آرایشگر">
-          <Select value={stylistId} onChange={(e) => setStylistId(e.target.value)}>
-            {data?.stylists.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.displayName}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        {!asStylist && (
+          <Field label="آرایشگر">
+            <Select value={stylistId} onChange={(e) => setStylistId(e.target.value)}>
+              {data?.stylists.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.displayName}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
 
         <div>
           <p className="mb-1.5 px-1 text-[13px] font-bold text-app-muted">خدمات</p>
           {stylist && offered.length === 0 ? (
-            <p className="rounded-2xl bg-app-card-2 p-4 text-sm text-app-muted">برای این آرایشگر هنوز خدمتی تعریف نشده است.</p>
+            <p className="rounded-2xl bg-app-card-2 p-4 text-sm text-app-muted">{asStylist ? "هنوز خدمتی برای شما تعریف نشده است." : "برای این آرایشگر هنوز خدمتی تعریف نشده است."}</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {offered.map((s) => {

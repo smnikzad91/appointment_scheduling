@@ -1,4 +1,5 @@
 import { salonApiFetch } from "./salonApiClient";
+import type { SalonBookingInput } from "./ownerSalon";
 
 function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` };
@@ -8,7 +9,7 @@ export interface SelfStylistService {
   serviceId: string;
   overridePriceToman: number | null;
   overrideDurationMinutes: number | null;
-  service: { id: string; name: string; priceToman: number; durationMinutes: number };
+  service: { id: string; name: string; priceToman: number; durationMinutes: number; active: boolean };
 }
 
 export interface SelfStylist {
@@ -22,6 +23,8 @@ export interface SelfStylist {
   active: boolean;
   workingHours: { dayOfWeek: number; startMinute: number; endMinute: number }[];
   services: SelfStylistService[];
+  /** Only on GET /stylists/me. */
+  salon?: { slug: string; status: "PENDING" | "ACTIVE" | "SUSPENDED"; timezone: string };
 }
 
 /** Dispatched on window after the stylist edits their profile, so the app bar refreshes. */
@@ -104,6 +107,11 @@ export interface StylistAppointment {
   notes: string | null;
   services: { service: { name: string } }[];
   customer: { firstName: string; lastName: string; phone: string | null };
+}
+
+/** The stylist books a customer (phone call / walk-in) with themselves; confirmed straight away. */
+export function createMyBooking(token: string, data: Omit<SalonBookingInput, "stylistId">) {
+  return salonApiFetch<StylistAppointment>("/appointments/stylist", { method: "POST", headers: authHeaders(token), body: JSON.stringify(data) });
 }
 
 export function listMyAppointments(token: string) {

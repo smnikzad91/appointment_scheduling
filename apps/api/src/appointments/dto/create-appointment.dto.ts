@@ -21,8 +21,8 @@ export class CreateAppointmentDto {
   notes?: string;
 }
 
-/** The salon booking a customer (phone call or walk-in) with a specific stylist. */
-export class CreateSalonAppointmentDto {
+/** Staff booking a customer (phone call or walk-in): the stylist books themselves. */
+export class CreateStylistAppointmentDto {
   @Matches(/^09\d{9}$/, { message: "Invalid phone number" })
   customerPhone!: string;
 
@@ -37,9 +37,6 @@ export class CreateSalonAppointmentDto {
   @MaxLength(50)
   customerLastName?: string;
 
-  @IsString()
-  stylistId!: string;
-
   @IsArray()
   @ArrayMinSize(1)
   serviceIds!: string[];
@@ -51,6 +48,12 @@ export class CreateSalonAppointmentDto {
   @IsString()
   @MaxLength(500)
   notes?: string;
+}
+
+/** The salon booking a customer (phone call or walk-in) with a specific stylist. */
+export class CreateSalonAppointmentDto extends CreateStylistAppointmentDto {
+  @IsString()
+  stylistId!: string;
 }
 
 export class CustomerLookupQueryDto {
