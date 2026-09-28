@@ -10,11 +10,14 @@ import { cx } from "./ui";
 // bottom sheet of time chips grouped by part of day, instead of a native <select> (unstylable,
 // and a 72-row wheel). Free slots are marked; any time can still be chosen (walk-ins).
 
+/** ۲۴:۰۰ reads as a closing time; formatMinutesAsClock would wrap it to ۰۰:۰۰. */
+const clock = (m: number) => (m === 24 * 60 ? "۲۴:۰۰" : formatMinutesAsClock(m));
+
 const PERIODS = [
   { label: "صبح", from: 0, to: 12 * 60 },
   { label: "ظهر", from: 12 * 60, to: 16 * 60 },
   { label: "عصر", from: 16 * 60, to: 20 * 60 },
-  { label: "شب", from: 20 * 60, to: 24 * 60 },
+  { label: "شب", from: 20 * 60, to: 24 * 60 + 1 }, // includes ۲۴:۰۰ as a closing time
 ];
 
 export default function TimePicker({
@@ -24,6 +27,7 @@ export default function TimePicker({
   free,
   label = "ساعت شروع",
   hint,
+  compact,
 }: {
   /** Minutes after midnight, salon-local. */
   value: number;
@@ -34,6 +38,8 @@ export default function TimePicker({
   label?: string;
   /** Shown above the grid once free slots are known (explains the green chips). */
   hint?: string;
+  /** Small trigger for side-by-side fields (working hours); no badge or «تغییر». */
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const freeSet = new Set(free ?? []);
@@ -41,21 +47,34 @@ export default function TimePicker({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
-        aria-label={`${label}: ${formatMinutesAsClock(value)}`}
-        className="flex h-14 w-full items-center gap-3 rounded-2xl border border-app-line bg-app-card px-4 text-app-ink transition active:scale-[0.99]"
-      >
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-app-accent-soft text-app-accent">
-          <Clock className="h-[18px] w-[18px]" aria-hidden />
-        </span>
-        <span className="flex-1 text-start text-xl font-black tracking-wide">{formatMinutesAsClock(value)}</span>
-        {freeSet.has(value) && <span className="rounded-full bg-app-done/15 px-2 py-0.5 text-[11px] font-bold text-app-done">خالی</span>}
-        <span className="text-xs text-app-muted">تغییر</span>
-        <ChevronDown className="h-4 w-4 text-app-muted" aria-hidden />
-      </button>
+      {compact ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-label={`${label}: ${clock(value)}`}
+          className="flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-2xl border border-app-line bg-app-card px-3 font-bold text-app-ink transition active:scale-[0.98]"
+        >
+          <Clock className="h-4 w-4 shrink-0 text-app-accent" aria-hidden />
+          {clock(value)}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-label={`${label}: ${clock(value)}`}
+          className="flex h-14 w-full items-center gap-3 rounded-2xl border border-app-line bg-app-card px-4 text-app-ink transition active:scale-[0.99]"
+        >
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-app-accent-soft text-app-accent">
+            <Clock className="h-[18px] w-[18px]" aria-hidden />
+          </span>
+          <span className="flex-1 text-start text-xl font-black tracking-wide">{clock(value)}</span>
+          {freeSet.has(value) && <span className="rounded-full bg-app-done/15 px-2 py-0.5 text-[11px] font-bold text-app-done">خالی</span>}
+          <span className="text-xs text-app-muted">تغییر</span>
+          <ChevronDown className="h-4 w-4 text-app-muted" aria-hidden />
+        </button>
+      )}
 
       <Sheet open={open} onClose={() => setOpen(false)} title={label}>
         <TimeGrid
@@ -147,7 +166,7 @@ function TimeGrid({
                           : "border border-app-line bg-app-card text-app-muted",
                     )}
                   >
-                    {formatMinutesAsClock(m)}
+                    {clock(m)}
                     {isFree && !selected && <span className="absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-app-done" aria-label="خالی" />}
                   </button>
                 );

@@ -15,7 +15,8 @@ export function formatPercent(percent: number) {
 import { addDaysToDateKey, formatSalonDate, salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { dateKeyToDate, toJalali } from "@/lib/jalali";
 import type { AccountingPeriod } from "@/lib/accountingPeriod";
-import { Select, cx } from "./ui";
+import { cx } from "./ui";
+import PickerSelect from "./PickerSelect";
 
 // Building blocks shared by the salon accounting page and the stylist earnings page.
 
@@ -110,13 +111,7 @@ export function DaySelect({ value, onChange, fromKey, toKey, label }: { value: s
   const keys: string[] = [];
   for (let k = toKey; k >= fromKey && keys.length < 400; k = addDaysToDateKey(k, -1)) keys.push(k);
   return (
-    <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-      {keys.map((k) => (
-        <option key={k} value={k}>
-          {dayLabel(k, todayKey)}
-        </option>
-      ))}
-    </Select>
+    <PickerSelect title={label} value={value} onChange={onChange} options={keys.map((k) => ({ value: k, label: dayLabel(k, todayKey) }))} />
   );
 }
 

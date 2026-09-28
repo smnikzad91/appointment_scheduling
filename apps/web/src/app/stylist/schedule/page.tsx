@@ -12,11 +12,12 @@ import {
   type WorkingHourEntry,
   type TimeOffEntry,
 } from "@/lib/api/stylistSelf";
-import { formatMinutesAsClock } from "@/lib/persian";
 import { PERSIAN_WEEKDAY_NAMES, WEEK_ORDER_SATURDAY_FIRST, dateKeyToDate, formatJalaliFull } from "@/lib/jalali";
 import { addDaysToDateKey, formatSalonDate, salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import Sheet from "@/components/app/Sheet";
-import { Button, EmptyState, ErrorBanner, Field, IconButton, ListGroup, ListSkeleton, PageHeader, SectionTitle, Select, TextInput, Toggle, cx } from "@/components/app/ui";
+import { Button, EmptyState, ErrorBanner, Field, IconButton, ListGroup, ListSkeleton, PageHeader, SectionTitle, TextInput, Toggle, cx } from "@/components/app/ui";
+import PickerSelect from "@/components/app/PickerSelect";
+import TimePicker from "@/components/app/TimePicker";
 
 interface DayRow {
   open: boolean;
@@ -32,16 +33,7 @@ const TIME_OFF_DAYS_AHEAD = 120;
 const TIME_OPTIONS = Array.from({ length: 49 }, (_, i) => i * 30);
 
 function TimeSelect({ value, onChange, label }: { value: number; onChange: (minute: number) => void; label: string }) {
-  const options = TIME_OPTIONS.includes(value) ? TIME_OPTIONS : [...TIME_OPTIONS, value].sort((a, b) => a - b);
-  return (
-    <Select aria-label={label} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-11 flex-1 text-center font-bold">
-      {options.map((m) => (
-        <option key={m} value={m}>
-          {m === 24 * 60 ? "۲۴:۰۰" : formatMinutesAsClock(m)}
-        </option>
-      ))}
-    </Select>
-  );
+  return <TimePicker compact value={value} onChange={onChange} options={TIME_OPTIONS} free={null} label={label} />;
 }
 
 export default function StylistSchedulePage() {
@@ -277,29 +269,20 @@ export default function StylistSchedulePage() {
       >
         <div className="flex flex-col gap-4">
           <Field label="از روز">
-            <Select
+            <PickerSelect
+              title="از روز"
               value={newTimeOff.start}
-              onChange={(e) =>
-                setNewTimeOff((f) => ({ ...f, start: e.target.value, end: f.end < e.target.value ? e.target.value : f.end }))
-              }
-            >
-              {dayOptions.map((d) => (
-                <option key={d.key} value={d.key}>
-                  {d.label}
-                </option>
-              ))}
-            </Select>
+              options={dayOptions.map((d) => ({ value: d.key, label: d.label }))}
+              onChange={(start) => setNewTimeOff((f) => ({ ...f, start, end: f.end < start ? start : f.end }))}
+            />
           </Field>
           <Field label="تا روز (خود این روز هم شامل مرخصی است)">
-            <Select value={newTimeOff.end} onChange={(e) => setNewTimeOff((f) => ({ ...f, end: e.target.value }))}>
-              {dayOptions
-                .filter((d) => d.key >= newTimeOff.start)
-                .map((d) => (
-                  <option key={d.key} value={d.key}>
-                    {d.label}
-                  </option>
-                ))}
-            </Select>
+            <PickerSelect
+              title="تا روز"
+              value={newTimeOff.end}
+              options={dayOptions.filter((d) => d.key >= newTimeOff.start).map((d) => ({ value: d.key, label: d.label }))}
+              onChange={(end) => setNewTimeOff((f) => ({ ...f, end }))}
+            />
           </Field>
           <Field label="دلیل (اختیاری)">
             <TextInput value={newTimeOff.reason} onChange={(e) => setNewTimeOff((f) => ({ ...f, reason: e.target.value }))} placeholder="مثلاً سفر" />

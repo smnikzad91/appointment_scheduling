@@ -25,13 +25,13 @@ import {
   ListGroup,
   ListSkeleton,
   PageHeader,
-  Select,
   TextInput,
   Toggle,
   cx,
   riseStyle,
 } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
+import PickerSelect from "@/components/app/PickerSelect";
 
 interface ServiceDraft {
   id: string | null; // null = new service
@@ -257,14 +257,12 @@ export default function SalonServicesPage() {
               <TextInput value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="مثلاً کوتاهی مو" autoFocus={!draft.id} />
             </Field>
             <Field label="دسته‌بندی">
-              <Select value={draft.categoryId} onChange={(e) => setDraft({ ...draft, categoryId: e.target.value })}>
-                <option value="">بدون دسته</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
+              <PickerSelect
+                title="دسته‌بندی"
+                value={draft.categoryId}
+                onChange={(categoryId) => setDraft({ ...draft, categoryId })}
+                options={[{ value: "", label: "بدون دسته" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+              />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="مدت (دقیقه)">

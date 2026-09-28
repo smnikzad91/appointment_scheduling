@@ -15,7 +15,8 @@ import { persianApiError } from "@/lib/api/errorMessages";
 import { releaseUploads, uploadImage } from "@/lib/uploadImage";
 import { toPersianDigits } from "@/lib/persian";
 import Sheet from "./Sheet";
-import { Button, ErrorBanner, Field, Select, TextInput, cx } from "./ui";
+import { Button, ErrorBanner, Field, TextInput, cx } from "./ui";
+import PickerSelect from "./PickerSelect";
 
 interface Pending {
   key: string;
@@ -225,14 +226,12 @@ export default function GalleryManager({
             </Field>
             {scope === "salon" && stylists && stylists.length > 0 && (
               <Field label="کار کدام آرایشگر است؟">
-                <Select value={creditId} onChange={(e) => setCreditId(e.target.value)}>
-                  <option value="">کار سالن (بدون نام آرایشگر)</option>
-                  {stylists.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.displayName}
-                    </option>
-                  ))}
-                </Select>
+                <PickerSelect
+                  title="کار کدام آرایشگر است؟"
+                  value={creditId}
+                  onChange={setCreditId}
+                  options={[{ value: "", label: "کار سالن (بدون نام آرایشگر)" }, ...stylists.map((s) => ({ value: s.id, label: s.displayName }))]}
+                />
               </Field>
             )}
             {sheetError && <p className="rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{sheetError}</p>}
