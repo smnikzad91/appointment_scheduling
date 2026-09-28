@@ -5,6 +5,7 @@ import { PublicHtmlLang } from "@/components/public/shared/PublicHtmlLang";
 import { JsonLd } from "@/components/common/JsonLd";
 import React from "react";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import GuestTabBar from "@/components/guest/GuestTabBar";
 
 const organizationJsonLd = {
   "@context": "https://schema.org",
@@ -26,6 +27,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <MarketingHeader />
       <main>{children}</main>
       <MarketingFooter />
+      <GuestTabBar />
     </div>
   );
 }

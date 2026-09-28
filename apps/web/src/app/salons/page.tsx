@@ -6,6 +6,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 import GuestBackdrop from "@/components/guest/GuestBackdrop";
 import GuestLogo from "@/components/guest/GuestLogo";
 import { rise } from "@/components/guest/motion";
+import GuestTabBar from "@/components/guest/GuestTabBar";
 
 interface PageProps {
   searchParams: Promise<{ province?: string; city?: string; q?: string }>;
@@ -49,6 +50,7 @@ export default async function SalonsPage({ searchParams }: PageProps) {
           <SalonSearch initial={{ province, city, q: sp.q?.slice(0, 60) }} />
         </div>
       </main>
+      <GuestTabBar />
     </div>
   );
 }
