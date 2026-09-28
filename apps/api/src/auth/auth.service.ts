@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { Role, SalonStatus, User } from "@appointment-scheduling/database";
@@ -189,14 +189,18 @@ export class AuthService {
    * devCode outside production, and — a temporary bypass until the SMS provider is connected —
    * whenever the driver doesn't really deliver (SMS_DRIVER=log), so booking and sign-in keep
    * working; the web app then fills it in by itself. That means phone numbers aren't verified
-   * while the bypass is on; it ends by itself once SMS_DRIVER=provider. */
+   * while the bypass is on; it ends by itself once SMS_DRIVER=provider. Because the code is handed
+   * to whoever asks, the bypass only ever signs in customers (or creates new ones): staff and admin
+   * accounts sign in with their password until codes really go out by SMS. */
   async requestOtp(phone: string) {
+    const bypass = this.otpBypass();
+    if (bypass) await this.assertCustomerOrNew(phone);
+
     const code = randomOtpCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
     await this.prisma.otpCode.create({ data: { phone, code, expiresAt } });
 
     const sent = await this.sms.send({ kind: "otp", to: phone, params: { code, domain: otpDomain() }, text: otpText(code) });
-    const bypass = process.env.NODE_ENV !== "production" || !this.sms.delivers;
     if (!sent && !bypass) throw new ServiceUnavailableException("Could not send the verification code");
 
     return {
@@ -213,6 +217,9 @@ export class AuthService {
     if (!otp) {
       throw new UnauthorizedException("Invalid or expired code");
     }
+
+    // Codes issued before this check existed could still be for a staff number.
+    if (this.otpBypass()) await this.assertCustomerOrNew(dto.phone);
 
     await this.prisma.otpCode.update({ where: { id: otp.id }, data: { consumed: true } });
 
@@ -234,6 +241,18 @@ export class AuthService {
     }
 
     return this.buildAuthResponse(user);
+  }
+
+  /** Codes are returned in the response instead of (or besides) being texted — see requestOtp. */
+  private otpBypass(): boolean {
+    return process.env.NODE_ENV !== "production" || !this.sms.delivers;
+  }
+
+  private async assertCustomerOrNew(phone: string) {
+    const existing = await this.prisma.user.findUnique({ where: { phone }, select: { role: true } });
+    if (existing && existing.role !== Role.CUSTOMER) {
+      throw new ForbiddenException("Staff accounts sign in with their password");
+    }
   }
 
   private buildAuthResponse(user: User) {

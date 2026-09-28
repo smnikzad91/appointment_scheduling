@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useBooking } from "./BookingProvider";
 import { normalizeDigits, isValidIranianMobile } from "@/lib/persian";
+import { persianApiError } from "@/lib/api/errorMessages";
 import { requestOtp } from "@/lib/api/bookings";
 
 export default function StepContact() {
@@ -30,8 +31,8 @@ export default function StepContact() {
       const { devCode } = await requestOtp(phone);
       updateState({ devCode: devCode ?? null });
       goNext();
-    } catch {
-      setError("ارسال کد تایید ممکن نشد، دوباره تلاش کنید");
+    } catch (err) {
+      setError(persianApiError(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
     } finally {
       setSubmitting(false);
     }

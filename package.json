@@ -9,7 +9,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "build:prod": "npm run build -w api && npm run build -w web",
+    "build:prod": "npm run generate -w @appointment-scheduling/database && npm run build -w api && npm run build -w web",
     "deploy": "npm run build:prod && npm run migrate:deploy -w @appointment-scheduling/database && pm2 startOrReload ecosystem.config.cjs --update-env && pm2 save"
   },
   "devDependencies": {

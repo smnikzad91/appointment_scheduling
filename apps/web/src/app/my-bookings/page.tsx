@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CalendarHeart, LogOut, MessageSquareText } from "lucide-react";
+import { persianApiError } from "@/lib/api/errorMessages";
 import { requestOtp, verifyOtp } from "@/lib/api/bookings";
 import { loadCustomerSession, saveCustomerSession, clearCustomerSession, type CustomerSession } from "@/lib/customerSession";
 import { normalizeDigits, isValidIranianMobile, toPersianDigits, splitFullName } from "@/lib/persian";
@@ -80,8 +81,8 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
         return;
       }
       setStep("otp");
-    } catch {
-      setError("ارسال کد تایید ممکن نشد، دوباره تلاش کنید");
+    } catch (err) {
+      setError(persianApiError(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
     } finally {
       setLoading(false);
     }

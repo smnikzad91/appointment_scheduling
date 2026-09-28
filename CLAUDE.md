@@ -53,7 +53,7 @@
      - `postgres` superuser has no password: `sudo -u postgres psql` (peer auth) only.
      pg_hba rejects everything else; hardening lives in `/etc/postgresql/17/main/pg_hba.conf`
      and `conf.d/10-security.conf` (originals saved as `*.orig`).
-   - Production (dev-iot.ir, this server): `npm run deploy` = build api + web, `migrate deploy`,
+   - Production (dev-iot.ir, this server): `npm run deploy` = `prisma generate`, build api + web, `migrate deploy`,
      `pm2 startOrReload ecosystem.config.cjs`. pm2 apps `salon-api-prod` (127.0.0.1:3011) and
      `salon-web-prod` (127.0.0.1:3010). nginx `/etc/nginx/sites-available/dev-iot.ir`:
      `/backend/*` → api (prefix stripped), everything else → web. HTTPS vhosts on this box listen
