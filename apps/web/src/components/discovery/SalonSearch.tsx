@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { List, LoaderCircle, LocateFixed, Map as MapIcon, Search, SearchX, X } from "lucide-react";
+import { List, LoaderCircle, LocateFixed, Map as MapIcon, Navigation, Search, SearchX, Star, X } from "lucide-react";
 import { searchSalons, type SalonCard, type SalonSearchParams } from "@/lib/api/discovery";
 import { toPersianDigits } from "@/lib/persian";
 import ProvinceCitySelect from "@/components/common/ProvinceCitySelect";
@@ -180,17 +180,6 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
           {loading && results && <LoaderCircle className="ms-2 inline h-4 w-4 animate-spin" aria-hidden />}
         </p>
         <div className="flex items-center gap-2">
-          {near && (
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as "distance" | "rating")}
-              aria-label="مرتب‌سازی"
-              className="h-9 appearance-none rounded-full border border-app-line bg-app-card px-3 text-[13px] font-semibold text-app-ink"
-            >
-              <option value="distance">نزدیک‌ترین</option>
-              <option value="rating">بالاترین امتیاز</option>
-            </select>
-          )}
           <div className="flex rounded-full border border-app-line bg-app-card p-0.5" role="tablist" aria-label="نمایش">
             {(
               [
@@ -213,6 +202,36 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
           </div>
         </div>
       </div>
+
+      {/* Sort only matters around the customer's position; a segmented control, not a native select. */}
+      {near && (
+        <div className="-mt-1 mb-3 flex items-center gap-2">
+          <span className="text-[13px] text-app-muted">مرتب‌سازی</span>
+          <div className="flex rounded-full border border-app-line bg-app-card p-0.5" role="radiogroup" aria-label="مرتب‌سازی">
+            {(
+              [
+                ["distance", Navigation, "نزدیک‌ترین"],
+                ["rating", Star, "بالاترین امتیاز"],
+              ] as const
+            ).map(([v, Icon, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={sort === v}
+                onClick={() => setSort(v)}
+                className={cx(
+                  "flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-semibold transition",
+                  sort === v ? "bg-app-accent text-app-accent-ink" : "text-app-muted",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {failed ? (
         <ErrorBanner onRetry={() => setRetry((n) => n + 1)}>جستجو انجام نشد</ErrorBanner>
