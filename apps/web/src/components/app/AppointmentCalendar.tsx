@@ -9,6 +9,7 @@ import { jalaliMonthPeriod } from "@/lib/accountingPeriod";
 import { toDateKey } from "@/lib/jalali";
 import { toPersianDigits } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
+import { iranHoliday } from "@/lib/iranHolidays";
 import { PeriodSwitcher } from "./accounting";
 import { AppointmentList, relativeDayLabel, type AppAppointment } from "./appointments";
 import { EmptyState, cx } from "./ui";
@@ -16,7 +17,8 @@ import { EmptyState, cx } from "./ui";
 // Month view of the appointments screen (salon and stylist panels): a Jalali month grid with
 // each day's booking count (a dot when some still await confirmation), and the tapped day's
 // appointments underneath using the same cards and action sheet as the list. Days are
-// salon-local (toSalonWallTime), weeks run Saturday → Friday, Friday is the weekend.
+// salon-local (toSalonWallTime), weeks run Saturday → Friday; Fridays and official holidays
+// (lib/iranHolidays) are red, and the tapped day's holiday is named above its list.
 
 const WEEKDAYS = ["ش", "ی", "د", "س", "چ", "پ", "ج"];
 
@@ -24,6 +26,7 @@ interface Cell {
   dateKey: string;
   day: number;
   isFriday: boolean;
+  holiday: string | null;
 }
 
 function monthCells(offset: number, todayKey: string) {
@@ -35,7 +38,8 @@ function monthCells(offset: number, todayKey: string) {
   const cells: (Cell | null)[] = Array.from({ length: lead }, () => null);
   for (let i = 0; i < length; i++) {
     const date = new DateObject(first).add(i, "day").toDate();
-    cells.push({ dateKey: toDateKey(date), day: i + 1, isFriday: date.getDay() === 5 });
+    const dateKey = toDateKey(date);
+    cells.push({ dateKey, day: i + 1, isFriday: date.getDay() === 5, holiday: iranHoliday(dateKey) });
   }
   return cells;
 }
@@ -101,12 +105,20 @@ export default function AppointmentCalendar({
                 type="button"
                 role="gridcell"
                 aria-selected={isSelected}
-                aria-label={`${relativeDayLabel(c.dateKey)}، ${items.length ? `${toPersianDigits(items.length)} نوبت` : "بدون نوبت"}${pending ? "، منتظر تایید دارد" : ""}`}
+                aria-label={`${relativeDayLabel(c.dateKey)}${c.holiday ? `، تعطیل: ${c.holiday}` : ""}، ${items.length ? `${toPersianDigits(items.length)} نوبت` : "بدون نوبت"}${pending ? "، منتظر تایید دارد" : ""}`}
                 onClick={() => setSelected(c.dateKey)}
                 className={cx(
                   "relative flex aspect-square flex-col items-center justify-center rounded-2xl text-[15px] transition active:scale-95",
-                  isSelected ? "bg-app-ink text-app-bg" : isToday ? "bg-app-accent-soft text-app-accent ring-1 ring-app-accent/40" : "text-app-ink",
-                  !isSelected && c.isFriday && "text-app-danger/80",
+                  // one colour class per state — two text-* utilities would be decided by CSS order, not by this list
+                  isSelected
+                    ? "bg-app-ink text-app-bg"
+                    : isToday
+                      ? "bg-app-accent-soft text-app-accent ring-1 ring-app-accent/40"
+                      : c.holiday
+                        ? "bg-app-danger/[0.07] text-app-danger"
+                        : c.isFriday
+                          ? "text-app-danger"
+                          : "text-app-ink",
                   !isSelected && isPast && "opacity-60",
                 )}
               >
@@ -130,9 +142,15 @@ export default function AppointmentCalendar({
           <span>
             {toPersianDigits(monthTotal)} نوبت در {period.label}
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-app-pending" aria-hidden />
-            منتظر تایید
+          <span className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-[4px] bg-app-danger/15" aria-hidden />
+              تعطیل
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-app-pending" aria-hidden />
+              منتظر تایید
+            </span>
           </span>
         </div>
       </div>
@@ -141,6 +159,9 @@ export default function AppointmentCalendar({
         {relativeDayLabel(selected)}
         <span className="ms-2 font-medium text-app-muted">{active.length ? `${toPersianDigits(active.length)} نوبت` : "بدون نوبت"}</span>
       </h3>
+      {iranHoliday(selected) && (
+        <p className="-mt-1 mb-2 px-1 text-xs font-bold text-app-danger">تعطیل رسمی: {iranHoliday(selected)}</p>
+      )}
       {dayList.length === 0 ? (
         <EmptyState icon={CalendarX2} title="در این روز نوبتی نیست" />
       ) : (
