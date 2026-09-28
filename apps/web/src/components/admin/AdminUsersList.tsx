@@ -11,6 +11,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { Modal } from "@/components/ui/modal";
 import DeleteConfirmModal from "@/components/admin/DeleteConfirmModal";
 import { toast } from "sonner";
+import SelectField from "@/components/admin/SelectField";
 
 interface UserRow {
   id: string;
@@ -321,14 +322,15 @@ export default function AdminUsersList() {
 
           <div>
             <label className={labelClass}>{t("userEditRole")}</label>
-            <select
+            <SelectField
+              ariaLabel={t("userEditRole")}
               value={editRole}
-              onChange={(e) => setEditRole(e.target.value as "admin" | "user")}
-              className={inputClass}
-            >
-              <option value="user">{t("roleUser")}</option>
-              <option value="admin">{t("roleAdmin")}</option>
-            </select>
+              onChange={(v) => setEditRole(v as "admin" | "user")}
+              options={[
+                { value: "user", label: t("roleUser") },
+                { value: "admin", label: t("roleAdmin") },
+              ]}
+            />
           </div>
 
           <div>

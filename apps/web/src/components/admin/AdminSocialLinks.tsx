@@ -13,6 +13,7 @@ import DeleteConfirmModal from "@/components/admin/DeleteConfirmModal";
 import { toast } from "sonner";
 import { SocialIcon, PLATFORM_LABELS } from "@/components/common/SocialIcon";
 import type { SocialPlatform } from "@/types/content";
+import SelectField from "@/components/admin/SelectField";
 
 const PLATFORMS: SocialPlatform[] = [
   "telegram","instagram","twitter","youtube",
@@ -137,11 +138,12 @@ function FormFields({ form, onChange, t }: {
     <div className="space-y-4">
       <div>
         <label className={labelClass}>{t("socialFieldPlatform")}</label>
-        <select value={form.platform} onChange={(e) => onChange({ ...form, platform: e.target.value as SocialPlatform })} className={inputClass}>
-          {PLATFORMS.map((p) => (
-            <option key={p} value={p}>{PLATFORM_LABELS[p]}</option>
-          ))}
-        </select>
+        <SelectField
+          ariaLabel={t("socialFieldPlatform")}
+          value={form.platform}
+          onChange={(v) => onChange({ ...form, platform: v as SocialPlatform })}
+          options={PLATFORMS.map((p) => ({ value: p, label: PLATFORM_LABELS[p] }))}
+        />
       </div>
       <div>
         <label className={labelClass}>{t("socialFieldUrl")}</label>
