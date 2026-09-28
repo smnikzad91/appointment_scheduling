@@ -19,69 +19,85 @@ const SLOTS = [
 
 export default function PhoneMockup() {
   return (
-    <div className="relative mx-auto w-full max-w-sm">
-      <div className="rounded-[2.5rem] border-8 border-[#2a1d26] bg-white p-4 shadow-xl">
-        <div className="flex items-center gap-3 border-b border-black/5 pb-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f7f0e8] font-bold text-[#2a1d26]">س</span>
-          <div>
-            <p className="font-bold text-[#2a1d26]">[نام سالن]</p>
-            <p className="text-xs text-gray-500">[آدرس سالن]</p>
+    <div className="relative mx-auto w-full max-w-[340px]">
+      {/* glow behind the phone */}
+      <div aria-hidden className="absolute inset-8 rounded-full bg-[radial-gradient(circle,rgb(242_135_106/0.45),transparent_70%)]" />
+
+      <div className="g-glass g-glow-border relative rounded-[2.6rem] p-2.5">
+        <div className="rounded-[2.1rem] bg-[#130e16]/90 p-4">
+          <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-white/10" />
+          <div className="flex items-center gap-3 border-b border-g-line pb-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[image:var(--g-gradient)] font-black text-[#1a0f14]">س</span>
+            <div>
+              <p className="font-bold text-g-ink">سالن زیبایی رزا</p>
+              <p className="text-xs text-g-faint">تهران، سعادت‌آباد</p>
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-xl bg-white/5 px-3 py-2 text-sm font-medium text-g-muted">رنگ و لایت مو — ۶۰ دقیقه</div>
+
+          <div className="mt-3 flex justify-between gap-1.5">
+            {DAYS.map((d) => (
+              <div
+                key={d.label}
+                className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] ${
+                  d.selected
+                    ? "bg-[image:var(--g-gradient)] font-bold text-[#1a0f14] shadow-[0_6px_18px_-6px_rgb(242_135_106/0.9)]"
+                    : d.muted
+                    ? "bg-white/[0.03] text-g-faint/60"
+                    : "bg-white/5 text-g-muted"
+                }`}
+              >
+                <span>{d.label}</span>
+                <span className="text-sm font-bold">{d.day}</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-4 text-sm font-bold text-g-ink">ساعت‌های خالی</p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {SLOTS.map((s) => (
+              <span
+                key={s.time}
+                className={`rounded-xl py-2 text-center text-sm ${
+                  s.selected
+                    ? "border border-g-accent/70 bg-g-accent/15 font-bold text-g-accent"
+                    : s.disabled
+                    ? "bg-white/[0.03] text-g-faint/50 line-through"
+                    : "bg-white/5 text-g-muted"
+                }`}
+              >
+                {s.time}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-[image:var(--g-gradient)] py-3 text-center text-sm font-black text-[#1a0f14]">
+            تأیید نوبت — یکشنبه ۵ مهر، ۱۱:۳۰
           </div>
         </div>
-
-        <div className="mt-3 rounded-xl bg-[#f7f0e8] px-3 py-2 text-sm font-medium text-[#2a1d26]">۶۰ دقیقه</div>
-
-        <div className="mt-3 flex justify-between gap-1.5">
-          {DAYS.map((d) => (
-            <div
-              key={d.label}
-              className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg py-2 text-xs ${
-                d.selected ? "bg-[#2a1d26] text-white" : d.muted ? "bg-[#f7f0e8] text-gray-400" : "bg-[#f7f0e8] text-[#2a1d26]"
-              }`}
-            >
-              <span>{d.label}</span>
-              <span className="font-bold">{d.day}</span>
-            </div>
-          ))}
-        </div>
-
-        <p className="mt-4 text-sm font-bold text-[#2a1d26]">ساعت‌های خالی</p>
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          {SLOTS.map((s) => (
-            <span
-              key={s.time}
-              className={`rounded-lg py-2 text-center text-sm ${
-                s.selected
-                  ? "bg-[#a34a30] text-white"
-                  : s.disabled
-                  ? "bg-[#f7f0e8] text-gray-300 line-through"
-                  : "bg-[#f7f0e8] text-[#2a1d26]"
-              }`}
-            >
-              {s.time}
-            </span>
-          ))}
-        </div>
-
-        <div className="mt-4 rounded-xl bg-[#2a1d26] py-2.5 text-center text-sm font-bold text-white">
-          تأیید نوبت — یکشنبه ۵ مهر، ۱۱:۳۰
-        </div>
       </div>
 
-      <div className="absolute -end-6 top-16 hidden max-w-[220px] rounded-xl bg-white p-3 text-xs shadow-lg sm:block">
-        <div className="mb-1 flex items-center gap-1.5 font-bold text-[#2a1d26]">
-          <MessageSquare className="h-3.5 w-3.5 text-[#a34a30]" aria-hidden />
+      <div
+        className="g-glass absolute -end-20 top-6 hidden max-w-[200px] rounded-2xl p-3 text-xs lg:block"
+        style={{ animation: "float 6s ease-in-out infinite" }}
+      >
+        <div className="mb-1 flex items-center gap-1.5 font-bold text-g-ink">
+          <MessageSquare className="h-3.5 w-3.5 text-g-accent" aria-hidden />
           پیامک یادآوری
         </div>
-        <p className="text-gray-500">نوبت شما فردا ساعت ۱۱:۳۰ در [نام سالن] است.</p>
+        <p className="leading-5 text-g-faint">نوبت شما فردا ساعت ۱۱:۳۰ در سالن رزا است.</p>
       </div>
 
-      <div className="absolute -start-6 bottom-24 hidden max-w-[180px] rounded-xl bg-white p-3 text-xs shadow-lg sm:block">
-        <div className="mb-1 flex items-center gap-1.5 font-bold text-[#2a1d26]">
-          <CreditCard className="h-3.5 w-3.5 text-[#a34a30]" aria-hidden />
+      <div
+        className="g-glass absolute -start-20 bottom-10 hidden max-w-[170px] rounded-2xl p-3 text-xs lg:block"
+        style={{ animation: "float 7s ease-in-out 1.2s infinite" }}
+      >
+        <div className="mb-1 flex items-center gap-1.5 font-bold text-g-ink">
+          <CreditCard className="h-3.5 w-3.5 text-g-success" aria-hidden />
           بیعانه پرداخت شد
         </div>
-        <p className="text-gray-500">[مبلغ] تومان</p>
+        <p className="text-g-faint">۲۰۰٬۰۰۰ تومان</p>
       </div>
     </div>
   );

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Check } from "lucide-react";
+import SectionHead from "./SectionHead";
 
 const PLANS = [
   {
@@ -28,44 +30,38 @@ const PLANS = [
 
 export default function Pricing() {
   return (
-    <section id="pricing" className="bg-[#f7f0e8] py-20">
-      <div className="mx-auto max-w-6xl px-6 text-center">
-        <span className="text-sm font-bold text-[#a34a30]">تعرفه‌ها</span>
-        <h2 className="mt-3 text-3xl font-extrabold text-[#2a1d26] sm:text-4xl">متناسب با اندازه سالن شما</h2>
-        <p className="mt-4 text-gray-600">[مدت دوره آزمایشی] روز استفاده رایگان از همه امکانات</p>
+    <section id="pricing" className="scroll-mt-20 py-20 sm:py-28">
+      <div className="mx-auto max-w-6xl px-5">
+        <SectionHead center kicker="تعرفه‌ها" title="متناسب با اندازه سالن شما" lead="[مدت دوره آزمایشی] روز استفاده رایگان از همه امکانات" />
 
-        <div className="mt-12 grid gap-6 text-start sm:grid-cols-3">
+        <div className="mt-14 grid items-stretch gap-5 sm:grid-cols-3">
           {PLANS.map((plan) => (
             <div
               key={plan.name}
-              className={`flex flex-col rounded-2xl bg-white p-8 ${
-                plan.recommended ? "border-2 border-[#a34a30]" : "border border-black/5"
+              className={`g-reveal relative flex flex-col rounded-3xl p-8 transition duration-300 hover:-translate-y-1 ${
+                plan.recommended ? "g-glass g-glow-border shadow-[0_30px_80px_-30px_rgb(242_135_106/0.55)]" : "g-glass-soft hover:border-g-line-strong"
               }`}
             >
               {plan.recommended && (
-                <span className="mb-3 inline-block w-fit rounded-full bg-[#f3e2d1] px-3 py-1 text-xs font-bold text-[#a34a30]">
+                <span className="absolute -top-3 right-8 rounded-full bg-[image:var(--g-gradient)] px-3 py-1 text-xs font-black text-[#1a0f14]">
                   پیشنهادی
                 </span>
               )}
-              <h3 className="text-lg font-bold text-[#2a1d26]">{plan.name}</h3>
-              <p className="mt-2 text-2xl font-extrabold text-[#2a1d26]">
-                [قیمت] <span className="text-sm font-normal text-gray-500">تومان / ماه</span>
+              <h3 className="text-lg font-bold text-g-ink">{plan.name}</h3>
+              <p className="mt-3 text-3xl font-black text-g-ink">
+                [قیمت] <span className="text-sm font-normal text-g-faint">تومان / ماه</span>
               </p>
 
-              <ul className="mt-6 flex flex-1 flex-col gap-2 text-sm text-gray-600">
+              <ul className="mt-7 flex flex-1 flex-col gap-3 text-sm text-g-muted">
                 {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
+                  <li key={feature} className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-g-accent" aria-hidden />
+                    {feature}
+                  </li>
                 ))}
               </ul>
 
-              <Link
-                href={plan.cta.href}
-                className={`mt-8 rounded-lg px-4 py-3 text-center text-sm font-bold transition ${
-                  plan.recommended
-                    ? "bg-[#a34a30] text-white hover:bg-[#8f3f28]"
-                    : "border border-[#2a1d26]/15 text-[#2a1d26] hover:border-[#2a1d26]/30"
-                }`}
-              >
+              <Link href={plan.cta.href} className={`g-btn mt-8 h-12 text-sm ${plan.recommended ? "g-btn-primary" : "g-btn-ghost"}`}>
                 {plan.cta.label}
               </Link>
             </div>

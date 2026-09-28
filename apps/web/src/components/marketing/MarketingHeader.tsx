@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Calendar } from "lucide-react";
 import InstallAppButton from "@/components/common/InstallAppButton";
+import GuestLogo from "@/components/guest/GuestLogo";
 
 const NAV_LINKS = [
   { href: "/salons", label: "جستجوی سالن" },
@@ -12,39 +12,28 @@ const NAV_LINKS = [
 
 export default function MarketingHeader() {
   return (
-    <header className="border-b border-black/5 bg-[#f7f0e8]">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:gap-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 text-lg font-bold text-[#2a1d26]">
-          نوبتا
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#a34a30] text-white">
-            <Calendar className="h-4 w-4" aria-hidden />
-          </span>
-        </Link>
+    <header className="app-pt-safe sticky top-0 z-40 border-b border-g-line bg-g-bg/60 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+        <GuestLogo />
 
-        <nav className="hidden items-center gap-6 text-sm font-medium text-[#2a1d26] md:flex">
+        <nav className="hidden items-center gap-1 text-sm font-medium text-g-muted md:flex">
           {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="transition hover:text-[#a34a30]">
+            <a key={link.href} href={link.href} className="rounded-full px-3 py-1.5 transition hover:bg-white/5 hover:text-g-ink">
               {link.label}
             </a>
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <InstallAppButton />
-          <Link href="/signin" className="whitespace-nowrap text-sm font-medium text-[#2a1d26] hover:text-[#a34a30]">
+        <div className="flex items-center gap-2">
+          <InstallAppButton className="hidden sm:inline-flex" />
+          <Link href="/signin" className="whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium text-g-muted transition hover:text-g-ink">
             ورود
           </Link>
-          {/* Customer sign-up; salon owners use the dark button next to it. */}
-          <Link
-            href="/signup"
-            className="whitespace-nowrap rounded-lg border border-[#2a1d26]/20 px-3 py-2 text-sm font-medium text-[#2a1d26] transition hover:border-[#a34a30] hover:text-[#a34a30] sm:px-4"
-          >
+          {/* Customer sign-up; salon owners use the gradient button next to it. */}
+          <Link href="/signup" className="g-btn g-btn-ghost hidden h-10 px-4 text-sm sm:inline-flex">
             ثبت‌نام
           </Link>
-          <Link
-            href="/signup-salon"
-            className="whitespace-nowrap rounded-lg bg-[#2a1d26] px-3 py-2 text-sm font-bold text-white transition hover:bg-[#402c39] sm:px-4"
-          >
+          <Link href="/signup-salon" className="g-btn g-btn-primary h-10 px-4 text-sm">
             ثبت‌نام سالن
           </Link>
         </div>

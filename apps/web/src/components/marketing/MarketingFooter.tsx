@@ -1,4 +1,5 @@
 import Link from "next/link";
+import GuestLogo from "@/components/guest/GuestLogo";
 
 const COLUMNS = [
   {
@@ -28,13 +29,13 @@ const COLUMNS = [
 
 export default function MarketingFooter() {
   return (
-    <footer className="bg-[#2a1d26] py-14 text-white">
+    <footer className="border-t border-g-line bg-g-bg/70 py-14 text-g-ink backdrop-blur-xl">
       <div className="mx-auto max-w-6xl px-6">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="order-last lg:order-first">
-            <p className="text-lg font-bold">نوبتا</p>
-            <p className="mt-2 text-sm text-gray-400">سامانه نوبت‌دهی آنلاین برای سالن‌های زیبایی.</p>
-            <div className="mt-4 inline-flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-white/20 text-xs text-gray-500">
+            <GuestLogo />
+            <p className="mt-2 text-sm text-g-faint">سامانه نوبت‌دهی آنلاین برای سالن‌های زیبایی.</p>
+            <div className="mt-4 inline-flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-g-line-strong text-xs text-g-faint">
               [نماد اعتماد]
             </div>
           </div>
@@ -42,10 +43,10 @@ export default function MarketingFooter() {
           {COLUMNS.map((col) => (
             <div key={col.title}>
               <p className="font-bold">{col.title}</p>
-              <ul className="mt-4 flex flex-col gap-2 text-sm text-gray-400">
+              <ul className="mt-4 flex flex-col gap-2 text-sm text-g-muted">
                 {col.links.map((link) => (
                   <li key={link.label}>
-                    <Link href={link.href} className="transition hover:text-white">
+                    <Link href={link.href} className="transition hover:text-g-accent">
                       {link.label}
                     </Link>
                   </li>
@@ -55,7 +56,7 @@ export default function MarketingFooter() {
           ))}
         </div>
 
-        <div className="mt-12 border-t border-white/10 pt-6 text-center text-sm text-gray-500">
+        <div className="mt-12 border-t border-g-line pt-6 text-center text-sm text-g-faint">
           © ۱۴۰۵ نوبتا — تمامی حقوق محفوظ است.
         </div>
       </div>

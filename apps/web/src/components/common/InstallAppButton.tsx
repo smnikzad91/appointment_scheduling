@@ -18,7 +18,7 @@ export default function InstallAppButton({ className = "" }: { className?: strin
       <button
         type="button"
         onClick={() => (canInstall ? void install() : setIosOpen(true))}
-        className={`inline-flex items-center gap-1.5 rounded-lg border border-[#2a1d26]/15 bg-white px-3 py-2 text-sm font-bold text-[#2a1d26] transition hover:border-[#a34a30] hover:text-[#a34a30] ${className}`}
+        className={`g-btn g-btn-ghost h-10 gap-1.5 px-3 text-sm ${className}`}
       >
         <Download className="h-4 w-4" aria-hidden />
         نصب اپ

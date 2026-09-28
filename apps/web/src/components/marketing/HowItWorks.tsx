@@ -1,3 +1,5 @@
+import SectionHead from "./SectionHead";
+
 const STEPS = [
   {
     number: "۱",
@@ -18,20 +20,23 @@ const STEPS = [
 
 export default function HowItWorks() {
   return (
-    <section className="bg-[#f7f0e8] py-20">
-      <div className="mx-auto max-w-6xl px-6 text-center">
-        <span className="text-sm font-bold text-[#a34a30]">چطور کار می‌کند؟</span>
-        <h2 className="mt-3 text-3xl font-extrabold text-[#2a1d26] sm:text-4xl">سه قدم تا اولین نوبت آنلاین</h2>
+    <section className="py-20 sm:py-28">
+      <div className="mx-auto max-w-6xl px-5">
+        <SectionHead center kicker="چطور کار می‌کند؟" title="سه قدم تا اولین نوبت آنلاین" />
 
-        <div className="mt-12 grid gap-6 text-start sm:grid-cols-3">
+        <ol className="relative mt-14 grid gap-5 sm:grid-cols-3">
+          {/* connecting line behind the step numbers */}
+          <span aria-hidden className="absolute inset-x-[16%] top-8 hidden h-px bg-gradient-to-l from-transparent via-g-accent/50 to-transparent sm:block" />
           {STEPS.map((step) => (
-            <div key={step.number} className="rounded-2xl bg-[#f3e2d1] p-6">
-              <span className="text-3xl font-extrabold text-[#a34a30]">{step.number}</span>
-              <h3 className="mt-4 text-lg font-bold text-[#2a1d26]">{step.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-gray-600">{step.description}</p>
-            </div>
+            <li key={step.number} className="g-glass-soft g-reveal relative rounded-3xl p-6 transition hover:-translate-y-1 hover:border-g-line-strong">
+              <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-[image:var(--g-gradient)] text-lg font-black text-[#1a0f14] shadow-[0_10px_30px_-8px_rgb(242_135_106/0.8)]">
+                {step.number}
+              </span>
+              <h3 className="mt-5 text-lg font-bold text-g-ink">{step.title}</h3>
+              <p className="mt-2 text-sm leading-7 text-g-muted">{step.description}</p>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );

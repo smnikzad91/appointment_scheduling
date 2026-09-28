@@ -1,9 +1,5 @@
 "use client";
 
-import Input from "@/components/form/input/InputField";
-import Label from "@/components/form/Label";
-import { EyeCloseIcon, EyeIcon } from "@/icons";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { signIn } from "next-auth/react";
@@ -12,13 +8,14 @@ import ProvinceCitySelect from "@/components/common/ProvinceCitySelect";
 import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
 import type { GeoLocation } from "@/types/salon";
 import { toPersianDigits } from "@/lib/persian";
+import AuthCard, { AuthLink } from "@/components/guest/AuthCard";
+import { FloatingInput, FloatingTextArea, FormError, PasswordInput, PasswordStrength } from "@/components/guest/fields";
+import GradientButton from "@/components/guest/GradientButton";
+import { rise } from "@/components/guest/motion";
 
-const SELECT_CLASS =
-  "h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent px-4 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90";
 
 export default function SignUpSalonForm() {
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -88,156 +85,99 @@ export default function SignUpSalonForm() {
     router.refresh();
   };
 
-  return (
-    <div className="flex flex-col flex-1 w-full">
-      <div
-        className="w-full max-w-md sm:pt-10 mx-auto mb-5 px-6 sm:px-0"
-        style={{ animation: "fade-in-up 0.4s ease both" }}
-      >
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-all hover:text-brand-500 hover:-translate-x-0.5 dark:text-gray-500"
-        >
-          <svg className="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          بازگشت به سایت
-        </Link>
-      </div>
+  const center = (() => {
+    const c = placeCenter(place.province, place.city);
+    return c ? { lat: c[0], lng: c[1] } : null;
+  })();
 
-      <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto px-6 sm:px-0 pb-10">
-        <div className="mb-7" style={{ animation: "fade-in-up 0.5s ease 0.05s both" }}>
-          <h1 className="mb-1.5 text-2xl font-bold text-gray-800 dark:text-white/90">ثبت‌نام سالن</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            سالن خود را رایگان ثبت کنید و همین امروز نوبت‌دهی آنلاین را شروع کنید.
+  return (
+    <AuthCard
+      wide
+      title="سالن‌تان را آنلاین کنید"
+      subtitle="ثبت رایگان؛ چند دقیقه دیگر لینک رزرو اختصاصی سالن آماده است."
+      footer={
+        <>
+          قبلاً ثبت‌نام کرده‌اید؟ <AuthLink href="/signin">وارد شوید</AuthLink>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <FormError>{error}</FormError>
+
+        <StepTitle n="۱" i={3}>اطلاعات شما</StepTitle>
+        <div className="g-rise grid grid-cols-2 gap-3" style={rise(3.5)}>
+          <FloatingInput label="نام" autoComplete="given-name" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          <FloatingInput label="نام خانوادگی" autoComplete="family-name" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
+        </div>
+        <FloatingInput
+          className="g-rise"
+          style={rise(4)}
+          label="شماره موبایل"
+          hint="09121234567"
+          type="tel"
+          dir="ltr"
+          inputMode="numeric"
+          autoComplete="tel"
+          required
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+        <div className="g-rise" style={rise(4.5)}>
+          <PasswordInput label="رمز عبور" hint="حداقل ۸ کاراکتر" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordStrength password={password} />
+        </div>
+
+        <StepTitle n="۲" i={5}>سالن</StepTitle>
+        <FloatingInput className="g-rise" style={rise(5.5)} label="نام سالن" hint="مثلاً سالن زیبایی رزا" required value={salonName} onChange={(e) => setSalonName(e.target.value)} />
+        <div className="g-rise" style={rise(6)}>
+          <ProvinceCitySelect value={place} onChange={setPlace} required selectClassName="g-select" labelClassName="px-1 text-[13px] text-g-muted" />
+        </div>
+        <FloatingTextArea
+          className="g-rise"
+          style={rise(6.5)}
+          label="آدرس دقیق"
+          hint="خیابان، کوچه، پلاک، طبقه"
+          rows={2}
+          required
+          minLength={5}
+          maxLength={300}
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
+
+        <div className="g-rise" style={rise(7)}>
+          <p className="mb-1.5 px-1 text-[13px] text-g-muted">
+            محل سالن روی نقشه<span className="text-g-danger"> *</span>
+          </p>
+          <div className="h-60 overflow-hidden rounded-2xl border border-g-line-strong">
+            <LocationPickerLoader value={pin} onChange={setPin} center={center} />
+          </div>
+          <p className="mt-2 px-1 text-xs leading-5 text-g-faint">
+            {pin ? (
+              <>
+                پین ثبت شد؛ برای جابه‌جایی آن را بکشید.{" "}
+                <span dir="ltr">{toPersianDigits(`${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}`)}</span>
+              </>
+            ) : (
+              "روی محل دقیق سالن بزنید یا «موقعیت من» را بزنید. با انتخاب استان، نقشه به آن‌جا می‌رود."
+            )}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-5">
-            {error && (
-              <div className="rounded-lg bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-500/10 dark:text-error-400">
-                {error}
-              </div>
-            )}
+        <GradientButton type="submit" loading={loading} loadingLabel="در حال ثبت‌نام…" className="g-rise mt-2" style={rise(8)}>
+          ثبت‌نام و ساخت سالن
+        </GradientButton>
+      </form>
+    </AuthCard>
+  );
+}
 
-            <div className="grid grid-cols-2 gap-4" style={{ animation: "fade-in-up 0.5s ease 0.15s both" }}>
-              <div>
-                <Label>نام <span className="text-error-500">*</span></Label>
-                <Input type="text" placeholder="نام" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-              </div>
-              <div>
-                <Label>نام خانوادگی <span className="text-error-500">*</span></Label>
-                <Input type="text" placeholder="نام خانوادگی" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
-              </div>
-            </div>
-
-            <div style={{ animation: "fade-in-up 0.5s ease 0.2s both" }}>
-              <Label>شماره موبایل <span className="text-error-500">*</span></Label>
-              <Input type="tel" dir="ltr" placeholder="09121234567" required value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </div>
-
-            <div style={{ animation: "fade-in-up 0.5s ease 0.25s both" }}>
-              <Label>رمز عبور <span className="text-error-500">*</span></Label>
-              <div className="relative">
-                <Input
-                  placeholder="حداقل ۸ کاراکتر"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                >
-                  {showPassword ? <EyeIcon className="fill-current" /> : <EyeCloseIcon className="fill-current" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-100 pt-5 dark:border-gray-800" style={{ animation: "fade-in-up 0.5s ease 0.3s both" }}>
-              <Label>نام سالن <span className="text-error-500">*</span></Label>
-              <Input type="text" placeholder="مثلاً سالن زیبایی رزا" required value={salonName} onChange={(e) => setSalonName(e.target.value)} />
-            </div>
-
-            <div style={{ animation: "fade-in-up 0.5s ease 0.35s both" }}>
-              <ProvinceCitySelect
-                value={place}
-                onChange={setPlace}
-                required
-                selectClassName={SELECT_CLASS}
-                labelClassName="text-sm font-medium text-gray-700 dark:text-gray-400"
-              />
-            </div>
-
-            <div style={{ animation: "fade-in-up 0.5s ease 0.38s both" }}>
-              <Label>آدرس دقیق <span className="text-error-500">*</span></Label>
-              <textarea
-                rows={2}
-                required
-                minLength={5}
-                maxLength={300}
-                placeholder="خیابان، کوچه، پلاک، طبقه"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-              />
-            </div>
-
-            <div style={{ animation: "fade-in-up 0.5s ease 0.4s both" }}>
-              <Label>محل سالن روی نقشه <span className="text-error-500">*</span></Label>
-              <div className="h-60 overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700">
-                <LocationPickerLoader
-                  value={pin}
-                  onChange={setPin}
-                  center={(() => {
-                    const c = placeCenter(place.province, place.city);
-                    return c ? { lat: c[0], lng: c[1] } : null;
-                  })()}
-                />
-              </div>
-              <p className="mt-1.5 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                {pin ? (
-                  <>
-                    پین ثبت شد؛ برای جابه‌جایی آن را بکشید.{" "}
-                    <span dir="ltr">{toPersianDigits(`${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}`)}</span>
-                  </>
-                ) : (
-                  "روی محل دقیق سالن بزنید یا «موقعیت من» را بزنید. با انتخاب استان، نقشه به آن‌جا می‌رود."
-                )}
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-brand-500/25 transition-all hover:bg-brand-600 hover:-translate-y-0.5 hover:shadow-brand-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
-              style={{ animation: "fade-in-up 0.5s ease 0.4s both" }}
-            >
-              {loading ? (
-                <>
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  در حال ثبت‌نام...
-                </>
-              ) : (
-                "ثبت‌نام و ساخت سالن"
-              )}
-            </button>
-          </div>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400" style={{ animation: "fade-in-up 0.5s ease 0.45s both" }}>
-          قبلاً ثبت‌نام کرده‌اید؟{" "}
-          <Link href="/signin" className="font-semibold text-brand-500 hover:text-brand-600 dark:text-brand-400">
-            وارد شوید
-          </Link>
-        </p>
-      </div>
-    </div>
+function StepTitle({ n, i, children }: { n: string; i: number; children: React.ReactNode }) {
+  return (
+    <p className="g-rise mt-2 flex items-center gap-2.5 text-sm font-bold text-g-ink first:mt-0" style={rise(i)}>
+      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-g-accent/40 bg-g-accent/10 text-xs text-g-accent">{n}</span>
+      {children}
+      <span className="h-px flex-1 bg-gradient-to-l from-g-line to-transparent" />
+    </p>
   );
 }
