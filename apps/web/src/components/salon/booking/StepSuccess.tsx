@@ -50,7 +50,7 @@ export default function StepSuccess() {
       <CheckCircle2 className="h-14 w-14 text-emerald-500" aria-hidden />
       <div>
         <h3 className="text-lg font-bold">نوبت شما ثبت شد!</h3>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-1 text-sm text-g-muted">
           {formatJalaliFull(dateKeyToDate(result.date))} ساعت {formatMinutesAsClock(result.startMinute)}
         </p>
       </div>
@@ -59,14 +59,14 @@ export default function StepSuccess() {
         <button
           type="button"
           onClick={handleAddToCalendar}
-          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium dark:border-gray-800"
+          className="inline-flex items-center gap-1.5 rounded-full border border-g-line px-4 py-2 text-sm font-medium"
         >
           <CalendarPlus className="h-4 w-4" aria-hidden />
           افزودن به تقویم
         </button>
         <Link
           href="/my-bookings"
-          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium dark:border-gray-800"
+          className="inline-flex items-center gap-1.5 rounded-full border border-g-line px-4 py-2 text-sm font-medium"
         >
           <CalendarCheck className="h-4 w-4" aria-hidden />
           نوبت‌های من

@@ -34,22 +34,22 @@ export default function BookingSheet() {
         className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl bg-app-card sm:max-w-md sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-gray-100 p-4 dark:border-gray-800">
+        <div className="flex items-center justify-between border-b border-g-line p-4">
           {canGoBack ? (
-            <button type="button" onClick={goBack} aria-label="مرحله قبل" className="rounded-full p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800">
+            <button type="button" onClick={goBack} aria-label="مرحله قبل" className="rounded-full p-1.5 hover:bg-white/5">
               <ChevronRight className="h-5 w-5" aria-hidden />
             </button>
           ) : (
             <span className="w-7" />
           )}
           <h2 className="text-sm font-bold">{STEP_TITLES[step]}</h2>
-          <button type="button" onClick={close} aria-label="بستن" className="rounded-full p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800">
+          <button type="button" onClick={close} aria-label="بستن" className="rounded-full p-1.5 hover:bg-white/5">
             <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
 
         {step !== "success" && (
-          <div className="h-1 w-full bg-gray-100 dark:bg-gray-800">
+          <div className="h-1 w-full bg-white/5">
             <div
               className="h-full rounded-e-full transition-all"
               style={{ width: `${progressPercent}%`, backgroundColor: "var(--salon-brand)" }}

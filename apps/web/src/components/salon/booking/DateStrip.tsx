@@ -24,8 +24,8 @@ export default function DateStrip({
             aria-selected={isSelected}
             onClick={() => onSelect(day.dateKey)}
             className={`flex shrink-0 flex-col items-center gap-0.5 rounded-xl border px-3 py-2 text-xs ${
-              day.isWeekend && !isSelected ? "text-rose-500 dark:text-rose-400" : ""
-            } ${isSelected ? "border-transparent text-white" : "border-gray-200 dark:border-gray-800"}`}
+              day.isWeekend && !isSelected ? "text-rose-500 " : ""
+            } ${isSelected ? "border-transparent text-white" : "border-g-line"}`}
             style={isSelected ? { backgroundColor: "var(--salon-brand)" } : undefined}
           >
             <span className="font-medium">{day.isToday ? "امروز" : day.weekdayName}</span>

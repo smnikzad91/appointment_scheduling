@@ -20,3 +20,25 @@ export function withAlpha(hex: string, alpha: number): string {
   const [r, g, b] = hexToRgb(hex);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
+
+function luminance([r, g, b]: [number, number, number]): number {
+  const lin = (v: number) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+/**
+ * The brand colour, mixed toward white until it reads as text on the dark guest pages
+ * (relative luminance ≥ 0.3, roughly 6:1 against #0c090e). Light brand colours come back unchanged.
+ */
+export function readableOnDark(hex: string): string {
+  let [r, g, b] = hexToRgb(hex);
+  for (let i = 0; i < 20 && luminance([r, g, b]) < 0.3; i++) {
+    r += (255 - r) * 0.12;
+    g += (255 - g) * 0.12;
+    b += (255 - b) * 0.12;
+  }
+  return rgbToHex(r, g, b);
+}

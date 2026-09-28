@@ -51,9 +51,9 @@ export default function StepSummary() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-lg border border-gray-100 p-4 text-sm dark:border-gray-800">
+      <div className="flex flex-col gap-3 rounded-lg border border-g-line p-4 text-sm">
         <div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">خدمات</span>
+          <span className="text-xs text-g-muted">خدمات</span>
           <ul className="mt-1 flex flex-col gap-1">
             {services.map((s) => (
               <li key={s.id} className="flex justify-between">
@@ -64,14 +64,14 @@ export default function StepSummary() {
           </ul>
         </div>
 
-        <div className="flex justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
-          <span className="text-xs text-gray-500 dark:text-gray-400">متخصص</span>
+        <div className="flex justify-between border-t border-g-line pt-3">
+          <span className="text-xs text-g-muted">متخصص</span>
           <span>{stylist ? stylist.displayName : "فرقی نمی‌کند"}</span>
         </div>
 
         {state.dateKey && (
           <div className="flex justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400">تاریخ و ساعت</span>
+            <span className="text-xs text-g-muted">تاریخ و ساعت</span>
             <span>
               {formatJalaliFull(dateKeyToDate(state.dateKey))} ساعت {formatMinutesAsClock(state.startMinute ?? 0)}
             </span>
@@ -79,11 +79,11 @@ export default function StepSummary() {
         )}
 
         <div className="flex justify-between">
-          <span className="text-xs text-gray-500 dark:text-gray-400">مدت زمان</span>
+          <span className="text-xs text-g-muted">مدت زمان</span>
           <span>{toPersianDigits(totalDuration)} دقیقه</span>
         </div>
 
-        <div className="flex justify-between border-t border-gray-100 pt-3 font-bold dark:border-gray-800">
+        <div className="flex justify-between border-t border-g-line pt-3 font-bold">
           <span>مبلغ قابل پرداخت</span>
           <span>{formatToman(totalPrice)}</span>
         </div>

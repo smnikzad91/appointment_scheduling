@@ -16,7 +16,7 @@ export default function InfoSection({ salon }: { salon: Salon }) {
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-2 text-sm">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-g-faint" aria-hidden />
             <span>
               {[salon.province, salon.city !== salon.province ? salon.city : null].filter(Boolean).join("، ")}
               {salon.province || salon.city ? "، " : ""}
@@ -24,7 +24,7 @@ export default function InfoSection({ salon }: { salon: Salon }) {
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <Phone className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+            <Phone className="h-4 w-4 shrink-0 text-g-faint" aria-hidden />
             <a href={`tel:${salon.phone}`} dir="ltr" className="text-end">
               {toPersianDigits(salon.phone)}
             </a>
@@ -40,7 +40,7 @@ export default function InfoSection({ salon }: { salon: Salon }) {
                   const isToday = dayOfWeek === today;
                   return (
                     <tr key={dayOfWeek} className={isToday ? "font-medium" : ""}>
-                      <td className="py-1 pe-3 text-gray-600 dark:text-gray-400">{PERSIAN_WEEKDAY_NAMES[dayOfWeek]}</td>
+                      <td className="py-1 pe-3 text-g-muted">{PERSIAN_WEEKDAY_NAMES[dayOfWeek]}</td>
                       <td className="py-1 text-end">
                         {!hours || hours.closed
                           ? "تعطیل"

@@ -72,7 +72,7 @@ export default async function SalonPage({ params, searchParams }: PageProps) {
 
         <div className="pb-20 sm:pb-8">
           <Hero salon={salon} />
-          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="divide-y divide-g-line">
             <ServiceCategoryGroup salon={salon} />
             <StylistList salon={salon} />
             <Gallery images={salon.gallery} />

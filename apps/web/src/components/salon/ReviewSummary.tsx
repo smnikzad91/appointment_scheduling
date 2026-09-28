@@ -11,14 +11,14 @@ export default function ReviewSummary({ reviews, ratingAverage, ratingCount }: {
       <div className="flex flex-col items-center sm:w-32">
         <span className="text-3xl font-bold">{toPersianDigits(ratingAverage.toFixed(1))}</span>
         <Stars value={ratingAverage} className="mt-1" />
-        <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">{toPersianDigits(ratingCount)} امتیاز</span>
+        <span className="mt-1 text-xs text-g-muted">{toPersianDigits(ratingCount)} امتیاز</span>
       </div>
 
       <div className="flex flex-1 flex-col gap-1">
         {[5, 4, 3, 2, 1].map((star, i) => (
-          <div key={star} className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <div key={star} className="flex items-center gap-2 text-xs text-g-muted">
             <span className="w-6 text-end">{toPersianDigits(star)}</span>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/5">
               <div
                 className="h-full rounded-full"
                 style={{ width: `${(distribution[i] / max) * 100}%`, backgroundColor: "var(--salon-brand)" }}

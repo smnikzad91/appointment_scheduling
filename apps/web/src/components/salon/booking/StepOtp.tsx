@@ -62,7 +62,7 @@ export default function StepOtp() {
 
   return (
     <div className="flex flex-col items-center gap-4 text-center">
-      <p className="text-sm text-gray-600 dark:text-gray-400">
+      <p className="text-sm text-g-muted">
         کد تایید ۵ رقمی به شماره{" "}
         <span dir="ltr" className="font-medium">
           {toPersianDigits(state.customerPhone)}
@@ -84,16 +84,16 @@ export default function StepOtp() {
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             aria-label={`رقم ${i + 1} کد تایید`}
-            className="h-12 w-11 rounded-lg border border-gray-200 text-center text-lg focus:outline-none focus-visible:ring-2 dark:border-gray-800 dark:bg-gray-900"
+            className="h-12 w-11 rounded-lg border border-g-line text-center text-lg focus:outline-none focus-visible:ring-2"
             style={{ "--tw-ring-color": "var(--salon-brand)" } as React.CSSProperties}
           />
         ))}
       </div>
 
-      {verifying && <p className="text-xs text-gray-500">در حال بررسی کد...</p>}
+      {verifying && <p className="text-xs text-g-muted">در حال بررسی کد...</p>}
       {error && <p className="text-xs text-rose-500">{error}</p>}
 
-      <button type="button" onClick={handleResend} disabled={resent} className="text-xs font-medium underline disabled:no-underline disabled:opacity-50" style={{ color: "var(--salon-brand)" }}>
+      <button type="button" onClick={handleResend} disabled={resent} className="text-xs font-medium underline disabled:no-underline disabled:opacity-50" style={{ color: "var(--salon-brand-ink)" }}>
         {resent ? "کد مجدد ارسال شد" : "ارسال مجدد کد"}
       </button>
     </div>

@@ -19,13 +19,15 @@ export default function Hero({ salon }: { salon: Salon }) {
         ) : (
           <PlaceholderArt seed={`${salon.id}-cover`} className="h-full w-full" />
         )}
+        {/* cover fades into the page */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-g-bg to-transparent" />
         <FavoriteButton salonId={salon.id} salonName={salon.name} variant="overlay" className="absolute left-3 top-3" />
       </div>
 
       <div className="mx-auto max-w-3xl px-4">
         <div className="relative -mt-10 flex items-end gap-4 sm:-mt-12">
           <div
-            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border-4 border-white text-2xl font-bold text-white shadow-md dark:border-gray-950 sm:h-24 sm:w-24"
+            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border-4 border-g-bg text-2xl font-bold text-white shadow-[0_12px_32px_-10px_rgb(0_0_0/0.8)] ring-1 ring-white/15 sm:h-24 sm:w-24"
             style={{ backgroundColor: "var(--salon-brand)" }}
           >
             {salon.logoUrl ? (
@@ -39,9 +41,9 @@ export default function Hero({ salon }: { salon: Salon }) {
 
         <div className="mt-3 flex flex-col gap-3">
           <div>
-            <h1 className="text-xl font-bold sm:text-2xl">{salon.name}</h1>
+            <h1 className="text-2xl font-black text-g-ink sm:text-3xl">{salon.name}</h1>
             {salon.description && (
-              <p className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-400">{salon.description}</p>
+              <p className="mt-1 text-sm leading-relaxed text-g-muted">{salon.description}</p>
             )}
           </div>
 
@@ -50,7 +52,7 @@ export default function Hero({ salon }: { salon: Salon }) {
               <span className="inline-flex items-center gap-1 text-sm font-medium">
                 <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
                 {toPersianDigits(salon.ratingAverage.toFixed(1))}
-                <span className="font-normal text-gray-500 dark:text-gray-400">
+                <span className="font-normal text-g-muted">
                   ({toPersianDigits(salon.ratingCount)} امتیاز)
                 </span>
               </span>
@@ -61,7 +63,7 @@ export default function Hero({ salon }: { salon: Salon }) {
           <div className="flex gap-2">
             <a
               href={`tel:${salon.phone}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-300 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600"
+              className="inline-flex items-center gap-1.5 rounded-full border border-g-line px-4 py-2 text-sm font-medium text-g-ink transition hover:border-g-line-strong"
             >
               <Phone className="h-4 w-4" aria-hidden />
               تماس
@@ -71,7 +73,7 @@ export default function Hero({ salon }: { salon: Salon }) {
                 href={`https://instagram.com/${salon.instagram}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-300 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600"
+                className="inline-flex items-center gap-1.5 rounded-full border border-g-line px-4 py-2 text-sm font-medium text-g-ink transition hover:border-g-line-strong"
               >
                 <SocialIcon platform="instagram" className="h-4 w-4" />
                 اینستاگرام
@@ -79,7 +81,7 @@ export default function Hero({ salon }: { salon: Salon }) {
             )}
             <Link
               href="/my-bookings"
-              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-300 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600"
+              className="inline-flex items-center gap-1.5 rounded-full border border-g-line px-4 py-2 text-sm font-medium text-g-ink transition hover:border-g-line-strong"
             >
               <CalendarCheck className="h-4 w-4" aria-hidden />
               نوبت‌های من

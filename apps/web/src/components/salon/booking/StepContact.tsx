@@ -44,7 +44,7 @@ export default function StepContact() {
           type="text"
           value={state.customerName}
           onChange={(e) => updateState({ customerName: e.target.value })}
-          className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus-visible:ring-2 dark:border-gray-800 dark:bg-gray-900"
+          className="rounded-lg border border-g-line px-3 py-2.5 text-sm focus:outline-none focus-visible:ring-2"
           style={{ "--tw-ring-color": "var(--salon-brand)" } as React.CSSProperties}
           placeholder="مثلاً سارا احمدی"
         />
@@ -58,7 +58,7 @@ export default function StepContact() {
           dir="ltr"
           value={state.customerPhone}
           onChange={(e) => updateState({ customerPhone: normalizeDigits(e.target.value) })}
-          className="rounded-lg border border-gray-200 px-3 py-2.5 text-end text-sm focus:outline-none focus-visible:ring-2 dark:border-gray-800 dark:bg-gray-900"
+          className="rounded-lg border border-g-line px-3 py-2.5 text-end text-sm focus:outline-none focus-visible:ring-2"
           style={{ "--tw-ring-color": "var(--salon-brand)" } as React.CSSProperties}
           placeholder="۰۹۱۲۳۴۵۶۷۸۹"
           maxLength={11}

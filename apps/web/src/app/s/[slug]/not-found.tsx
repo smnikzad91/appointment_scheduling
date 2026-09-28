@@ -4,12 +4,12 @@ import { SearchX } from "lucide-react";
 export default function SalonNotFound() {
   return (
     <div
-      className={`flex min-h-screen flex-col items-center justify-center gap-3 bg-white px-4 text-center dark:bg-gray-950`}
+      className={`flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center`}
       style={{ fontFamily: "Vazirmatn, Tahoma, sans-serif" }}
     >
-      <SearchX className="h-10 w-10 text-gray-400" aria-hidden />
+      <SearchX className="h-10 w-10 text-g-faint" aria-hidden />
       <h1 className="text-lg font-bold">این سالن پیدا نشد</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400">لینک را دوباره بررسی کنید یا با سالن تماس بگیرید.</p>
+      <p className="text-sm text-g-muted">لینک را دوباره بررسی کنید یا با سالن تماس بگیرید.</p>
       <Link href="/" className="mt-2 text-sm font-medium underline">
         بازگشت به صفحه اصلی
       </Link>

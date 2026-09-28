@@ -23,7 +23,7 @@ export default function WaitlistButton({ slug, dateKey, serviceIds, stylistId }:
       <Link
         href={`/signin?callbackUrl=${encodeURIComponent(back)}`}
         className="mt-3 flex items-center justify-center gap-2 rounded-full border py-2.5 text-sm font-bold"
-        style={{ borderColor: "var(--salon-brand)", color: "var(--salon-brand)" }}
+        style={{ borderColor: "var(--salon-brand)", color: "var(--salon-brand-ink)" }}
       >
         <BellRing className="h-4 w-4" aria-hidden />
         وارد شوید تا اگر وقتی خالی شد خبرتان کنیم
@@ -33,7 +33,7 @@ export default function WaitlistButton({ slug, dateKey, serviceIds, stylistId }:
 
   if (state === "joined") {
     return (
-      <p className="mt-3 flex items-center justify-center gap-2 rounded-full bg-emerald-50 py-2.5 text-sm font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+      <p className="mt-3 flex items-center justify-center gap-2 rounded-full bg-emerald-50 py-2.5 text-sm font-bold text-emerald-700 ">
         <Check className="h-4 w-4" aria-hidden />
         اگر وقتی در این روز خالی شد، خبرتان می‌کنیم
       </p>

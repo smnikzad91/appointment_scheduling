@@ -28,7 +28,7 @@ export default function StylistCard({ salon, stylist }: { salon: Salon; stylist:
   const specialties = salon.serviceCategories.filter((c) => stylist.specialtyCategoryIds.includes(c.id));
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800">
+    <div className="overflow-hidden rounded-xl border border-g-line">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -39,24 +39,24 @@ export default function StylistCard({ salon, stylist }: { salon: Salon; stylist:
           // eslint-disable-next-line @next/next/no-img-element
           <img src={stylist.avatarUrl} alt={stylist.displayName} className="h-14 w-14 shrink-0 rounded-full object-cover" />
         ) : (
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gray-100 text-lg font-bold text-gray-500 dark:bg-gray-800">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/5 text-lg font-bold text-g-muted">
             {stylist.displayName.slice(0, 1)}
           </div>
         )}
 
         <div className="min-w-0 flex-1">
           <h3 className="font-medium">{stylist.displayName}</h3>
-          <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+          <p className="truncate text-xs text-g-muted">
             {specialties.map((c) => c.name).join("، ")}
             {stylist.gallery.length > 0 && (
-              <span className="font-medium" style={{ color: "var(--salon-brand)" }}>
+              <span className="font-medium" style={{ color: "var(--salon-brand-ink)" }}>
                 {specialties.length > 0 && <Sep />}
                 {toPersianDigits(stylist.gallery.length)} نمونه کار
               </span>
             )}
           </p>
           {stylist.rating !== undefined && (
-            <span className="mt-1 inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+            <span className="mt-1 inline-flex items-center gap-1 text-xs text-g-muted">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
               {toPersianDigits(stylist.rating.toFixed(1))}
               <span>({toPersianDigits(stylist.reviewCount ?? 0)} امتیاز)</span>
@@ -64,16 +64,16 @@ export default function StylistCard({ salon, stylist }: { salon: Salon; stylist:
           )}
         </div>
 
-        <ChevronDown className={`h-5 w-5 shrink-0 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden />
+        <ChevronDown className={`h-5 w-5 shrink-0 text-g-faint transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden />
       </button>
 
       {expanded && (
-        <div className="flex flex-col gap-2 border-t border-gray-100 p-4 dark:border-gray-800">
+        <div className="flex flex-col gap-2 border-t border-g-line p-4">
           {stylist.coverImageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={stylist.coverImageUrl} alt={`کاور ${stylist.displayName}`} className="mb-1 h-32 w-full rounded-xl object-cover" />
           )}
-          {stylist.bio && <p className="mb-1 text-sm text-gray-500 dark:text-gray-400">{stylist.bio}</p>}
+          {stylist.bio && <p className="mb-1 text-sm text-g-muted">{stylist.bio}</p>}
           {stylist.gallery.length > 0 && (
             <div className="-mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]" aria-label={`نمونه کارهای ${stylist.displayName}`}>
               {stylist.gallery.map((image, i) => (
@@ -110,7 +110,7 @@ export default function StylistCard({ salon, stylist }: { salon: Salon; stylist:
                   type="button"
                   onClick={() => setShowAllReviews(true)}
                   className="mt-2 text-sm font-medium"
-                  style={{ color: "var(--salon-brand)" }}
+                  style={{ color: "var(--salon-brand-ink)" }}
                 >
                   نمایش همه {toPersianDigits(stylist.reviews.length)} نظر
                 </button>

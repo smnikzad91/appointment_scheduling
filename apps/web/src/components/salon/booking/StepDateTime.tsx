@@ -87,7 +87,7 @@ function SlotsPanel({
 
   if (failed) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+      <div className="flex flex-col items-center gap-2 rounded-lg bg-white/5 p-4 text-center text-sm text-g-muted">
         دریافت زمان‌های خالی ممکن نشد.
         <button
           type="button"
@@ -96,7 +96,7 @@ function SlotsPanel({
             setAttempt((n) => n + 1);
           }}
           className="text-xs font-medium underline"
-          style={{ color: "var(--salon-brand)" }}
+          style={{ color: "var(--salon-brand-ink)" }}
         >
           تلاش دوباره
         </button>
@@ -108,7 +108,7 @@ function SlotsPanel({
     return (
       <div className="grid grid-cols-4 gap-2">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-9 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
+          <div key={i} className="h-9 animate-pulse rounded-lg bg-white/5" />
         ))}
       </div>
     );

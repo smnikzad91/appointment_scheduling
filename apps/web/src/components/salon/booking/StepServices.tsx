@@ -23,7 +23,7 @@ export default function StepServices() {
 
           return (
             <div key={category.id}>
-              <h3 className="mb-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">{category.name}</h3>
+              <h3 className="mb-1.5 text-xs font-semibold text-g-muted">{category.name}</h3>
               <div className="flex flex-col gap-1.5">
                 {services.map((service) => {
                   const isSelected = state.serviceIds.includes(service.id);
@@ -34,13 +34,13 @@ export default function StepServices() {
                       onClick={() => toggleService(service.id)}
                       aria-pressed={isSelected}
                       className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-start transition ${
-                        isSelected ? "border-transparent" : "border-gray-200 dark:border-gray-800"
+                        isSelected ? "border-transparent" : "border-g-line"
                       }`}
                       style={isSelected ? { backgroundColor: "var(--salon-brand-soft)", borderColor: "var(--salon-brand)" } : undefined}
                     >
                       <span>
                         <span className="block text-sm font-medium">{service.name}</span>
-                        <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        <span className="block text-xs text-g-muted">
                           {toPersianDigits(service.durationMinutes)} دقیقه<Sep />{formatToman(service.priceToman)}
                         </span>
                       </span>
@@ -49,7 +49,7 @@ export default function StepServices() {
                         style={
                           isSelected
                             ? { backgroundColor: "var(--salon-brand)", borderColor: "var(--salon-brand)" }
-                            : { borderColor: "var(--color-gray-300, #d1d5db)" }
+                            : { borderColor: "var(--g-line-strong)" }
                         }
                       >
                         {isSelected && <Check className="h-3 w-3 text-white" aria-hidden />}
@@ -64,8 +64,8 @@ export default function StepServices() {
       </div>
 
       {selected.length > 0 && (
-        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800/50">
-          <span className="text-gray-500 dark:text-gray-400">
+        <div className="flex items-center justify-between rounded-lg bg-white/5 p-3 text-sm">
+          <span className="text-g-muted">
             {toPersianDigits(selected.length)} خدمت<Sep />{toPersianDigits(totalDuration)} دقیقه
           </span>
           <span className="font-bold">{formatToman(totalPrice)}</span>
