@@ -111,7 +111,9 @@ function TimeGrid({
   const selectedRef = useRef<HTMLButtonElement>(null);
   const [onlyFree, setOnlyFree] = useState(false);
   // Open on the current choice, not at 06:00.
-  useEffect(() => selectedRef.current?.scrollIntoView({ block: "center" }), []);
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView({ block: "center" });
+  }, []);
 
   const shown = onlyFree ? all.filter((m) => freeSet.has(m)) : all;
 

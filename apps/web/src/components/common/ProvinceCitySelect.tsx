@@ -39,7 +39,9 @@ export default function ProvinceCitySelect({
   const [guest, setGuest] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   // The sheet renders in a portal outside the page; carry the guest theme over so it stays dark.
-  useEffect(() => setGuest(!!rootRef.current?.closest(".guest-root")), []);
+  useEffect(() => {
+    setGuest(!!rootRef.current?.closest(".guest-root"));
+  }, []);
 
   const cities = citiesOf(value.province);
   const provinces = useMemo(() => IRAN_PROVINCES.map((p) => p.name), []);

@@ -40,7 +40,9 @@ export default function PickerSelect({
   const [guest, setGuest] = useState(false);
   const rootRef = useRef<HTMLButtonElement>(null);
   // The sheet is portalled out of the page; keep the dark guest theme if we're on a guest page.
-  useEffect(() => setGuest(!!rootRef.current?.closest(".guest-root")), []);
+  useEffect(() => {
+    setGuest(!!rootRef.current?.closest(".guest-root"));
+  }, []);
   const current = options.find((o) => o.value === value);
 
   return (
@@ -91,7 +93,9 @@ function OptionList({
 }) {
   const [query, setQuery] = useState("");
   const selectedRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => selectedRef.current?.scrollIntoView({ block: "center" }), []);
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView({ block: "center" });
+  }, []);
 
   const q = normalizePlaceName(query);
   const shown = q ? options.filter((o) => normalizePlaceName(`${o.label} ${o.hint ?? ""}`).includes(q)) : options;
