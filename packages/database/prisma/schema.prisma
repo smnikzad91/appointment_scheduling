@@ -769,3 +769,37 @@ model WaitlistEntry {
   @@index([salonId, dateKey])
   @@map("waitlist_entries")
 }
+
+// Salon subscription plans for the landing page's pricing section, edited at /admin/pricing
+// (apps/web, Prisma directly). Limits are numbers rather than feature text so plan enforcement
+// can read them later: maxStylists null = unlimited, smsPerMonth null = no SMS line shown.
+model PricingPlan {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  // null = negotiated price ("توافقی"), 0 = free
+  monthlyPriceToman Int?
+  maxStylists       Int?
+  smsPerMonth       Int?
+  // Extra feature lines, shown after the generated stylist/SMS lines
+  features          String[]
+  recommended       Boolean  @default(false)
+  ctaLabel          String   @default("انتخاب پلن")
+  ctaHref           String   @default("/signup-salon")
+  sortOrder         Int      @default(0)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([active, sortOrder])
+  @@map("pricing_plans")
+}
+
+model PricingSettings {
+  id        String   @id @default("singleton")
+  // Free trial length shown under the pricing heading; 0 hides it.
+  trialDays Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("pricing_settings")
+}

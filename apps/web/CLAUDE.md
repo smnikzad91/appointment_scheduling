@@ -28,7 +28,7 @@ Originally a Persian-language SaaS dashboard template (auth, wallet/finance, CMS
 
 ## Wire-format vs. DB enums
 
-Several Prisma enums (`SocialPlatform`, `ContactStatus`, `TicketStatus`, `TicketReplySender`, `DepositStatus`, `LegalPageType`) are uppercase in Postgres, but every CMS/finance/support API route keeps the original lowercase string wire format so existing frontend components needed zero changes. The one role-related holdover is the admin users API (`/api/admin/users/**` + `AdminUsersList`), which still sends `"admin"`/`"user"` for `User.role`, collapsing the four Postgres roles to two. Translate at the route boundary — see `src/app/api/admin/social-links/route.ts` for the pattern. Shared lowercase union types live in `src/types/content.ts`.
+Several Prisma enums (`SocialPlatform`, `ContactStatus`, `TicketStatus`, `TicketReplySender`, `DepositStatus`, `LegalPageType`) are uppercase in Postgres, but every CMS/finance/support API route keeps the original lowercase string wire format so existing frontend components needed zero changes. The admin users API (`/api/admin/users/**` + `AdminUsersList`) sends `User.role` lowercased (`platform_admin`/`salon_owner`/`stylist`/`customer`, `UserRole`); it only lets the admin switch an account between customer and platform admin — owner/stylist roles belong to their Salon/Stylist rows. Translate at the route boundary — see `src/app/api/admin/social-links/route.ts` for the pattern. Shared lowercase union types live in `src/types/content.ts`.
 
 `User.phone` is nullable (`String? @unique`) rather than required — Postgres allows multiple `NULL`s under a unique constraint, which is what lets more than one user have "no phone" (matching the old Mongoose sparse-partial-unique-index behavior). Always write `null`, never `""`, when clearing it.
 
@@ -115,7 +115,7 @@ Page-level route protection (redirect anonymous users to `/signin`, wrong roles 
 
 | Model | Key fields |
 |---|---|
-| `User` | `firstName`, `lastName`, `email?`, `passwordHash`, `role` (Prisma enum, mapped to `admin`/`user` at the wire boundary here), `walletBalance`, `avatarUrl`, `phone?` (nullable+unique) |
+| `User` | `firstName`, `lastName`, `email?`, `passwordHash`, `role` (Prisma enum, lowercased at the wire boundary here), `walletBalance`, `avatarUrl`, `phone?` (nullable+unique) |
 | `Card` | User's Iranian bank card — `cardNumber`, `ownerName`, `bankName`, `userId` |
 | `AdminCard` | Admin-owned bank card shown to users for deposits |
 | `Deposit` | `userId`, `cardId`, `amount`, `receiptImage`, `status`, `adminNote`, `interceptionCode` (generated in route code, no DB computed-default equivalent) |
@@ -171,6 +171,10 @@ The salon also books customers itself (phone calls, walk-ins): `POST /appointmen
 ## Home page showcase
 
 The landing page (`/`) shows, after the hero, `components/marketing/Showcase.tsx` (server component, `GET /showcase`, revalidated every 60 s; hidden if apps/api is down or there's nothing to show): a supplier banner, up to three featured salons and three featured stylists, and the top-rated salons and stylists. The platform admin edits it at `/admin/homepage` (apps/api `showcase` module, `admin/showcase/*`, PLATFORM_ADMIN only): banner image (uploaded to `/uploads/banners/`, 3:1, recommended 1200×400 — shown at 3:1 everywhere so advertiser text is never cropped), supplier name, link (http/https only; opens in a new tab with `rel="sponsored"` and an «تبلیغ» label) and an on/off switch; featured lists are saved in priority order (`FeaturedSalon`/`FeaturedStylist.priority` 1–3). Only ACTIVE salons and active stylists of ACTIVE salons are shown or can be featured. Top-rated uses approved reviews with stars, ranked by a weighted average (`apps/api/src/showcase/rating.util.ts`: 3 prior ratings of 4) so one 5★ review can't beat a long 4.8★ record, and a salon/stylist needs at least `ShowcaseSettings.minRatings` approved star ratings (default 3, 1–50, set in `/admin/homepage`, `PUT admin/showcase/settings`) to be ranked at all.
+
+## Pricing plans
+
+The landing page's pricing section (`components/marketing/Pricing.tsx`, server component, `#pricing`; `/pricing` redirects there) reads `PricingPlan` rows (active, by `sortOrder`) and the `PricingSettings` singleton (`trialDays`, 0 hides the "N روز استفاده رایگان" line) straight from Prisma; no active plans hides the section. The platform admin edits them at `/admin/pricing` (`components/admin/AdminPricing.tsx`, routes under `/api/admin/pricing/**`, validated by `src/lib/pricingInput.ts`): add/edit in a modal, reorder, show/hide, delete, trial days. Limits are numbers, not text, so plan enforcement can read them later: `monthlyPriceToman` (null = «توافقی», 0 = «رایگان»), `maxStylists` (null = unlimited), `smsPerMonth` (null = no line); `planFeatureLines()` in `src/lib/pricing.ts` turns them into the first feature lines, then the free-text `features`. Only one plan is `recommended` (saving one clears the rest). CTA links must be a same-site path or http(s) (`isSafeCtaHref`). Salons don't have a subscription yet — nothing enforces the limits.
 
 ## Salon location and discovery
 
