@@ -16,6 +16,13 @@ export type SmsMessage =
       to: string;
       params: { time: string; customer: string; services: string };
       text: string;
+    }
+  | {
+      /** The salon or the stylist booked, moved or cancelled the customer's appointment. */
+      kind: "booked-customer" | "rescheduled-customer" | "cancelled-customer";
+      to: string;
+      params: { day: string; time: string; salon: string; stylist: string };
+      text: string;
     };
 
 export type SmsKind = SmsMessage["kind"];

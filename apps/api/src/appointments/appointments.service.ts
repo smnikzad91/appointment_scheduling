@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { AppointmentStatus, NotificationType, Role } from "@appointment-scheduling/database";
@@ -14,6 +14,11 @@ import { fitsWorkingHours } from "./working-hours.util.js";
 import { effectiveCommissionPercent, splitCharge } from "../accounting/share.util.js";
 import { NotificationsService, type BookingData } from "../notifications/notifications.service.js";
 import { WaitlistService } from "../waitlist/waitlist.service.js";
+import { SmsService } from "../sms/sms.service.js";
+import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
+import { clock, customerBookingText, jalaliDay } from "../sms/sms.text.js";
+
+type CustomerSmsKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer";
 
 const ACTIVE_STATUSES: AppointmentStatus[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED];
 
@@ -29,10 +34,14 @@ const SAFE_CUSTOMER_SELECT = { select: { id: true, firstName: true, lastName: tr
 
 @Injectable()
 export class AppointmentsService {
+  private readonly logger = new Logger(AppointmentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly waitlist: WaitlistService,
+    private readonly sms: SmsService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   async create(customerId: string, dto: CreateAppointmentDto) {
@@ -182,6 +191,9 @@ export class AppointmentsService {
         // Everyone involved hears about it except whoever made it (the customer online; the owner
         // or the stylist themselves when booked by the salon).
         await this.notifyBooking(appointment.id, NotificationType.NEW_BOOKING, { bySalon }, actorUserId);
+        // Booked by the salon: the customer didn't do it themselves, so text them — unless it's a
+        // walk-in recorded after it started.
+        if (bySalon && appointment.startAt > new Date()) void this.smsCustomer(appointment.id, "booked-customer");
         return appointment;
       }
     }
@@ -239,8 +251,11 @@ export class AppointmentsService {
     if (status === AppointmentStatus.CANCELLED && appointment.status !== AppointmentStatus.CANCELLED) {
       const cancelledBy = user.role === Role.CUSTOMER ? "CUSTOMER" : user.role === Role.STYLIST ? "STYLIST" : "SALON";
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CANCELLED, { cancelledBy }, user.sub);
+      const upcoming = ACTIVE_STATUSES.includes(appointment.status) && appointment.startAt > new Date();
+      // The customer who cancelled knows; otherwise text them.
+      if (upcoming && cancelledBy !== "CUSTOMER") void this.smsCustomer(appointmentId, "cancelled-customer");
       // Only an upcoming booking frees a slot someone could still take.
-      if (ACTIVE_STATUSES.includes(appointment.status) && appointment.startAt > new Date()) await this.waitlist.notifyOpening(appointment);
+      if (upcoming) await this.waitlist.notifyOpening(appointment);
     } else if (status === AppointmentStatus.CONFIRMED && appointment.status === AppointmentStatus.PENDING) {
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CONFIRMED, {}, user.sub, "customer");
     }
@@ -329,8 +344,40 @@ export class AppointmentsService {
       await this.notifyBooking(appointment.id, NotificationType.BOOKING_UPDATED, { updatedBy, previousStartAt: appointment.startAt.toISOString() }, user.sub);
       // Moving an upcoming booking frees its old time for whoever is waiting on that day.
       if (startAt.getTime() !== appointment.startAt.getTime() && appointment.startAt > new Date()) await this.waitlist.notifyOpening(appointment);
+      if (startAt.getTime() !== appointment.startAt.getTime() && startAt > new Date()) void this.smsCustomer(appointment.id, "rescheduled-customer");
     }
     return updated;
+  }
+
+  /**
+   * SMS to the customer about a booking staff made, moved or cancelled. Out of the salon plan's
+   * monthly SMS allowance like the reminders; best effort and not awaited by callers (a gateway
+   * can take seconds) — the booking change already happened.
+   */
+  private async smsCustomer(appointmentId: string, kind: CustomerSmsKind) {
+    try {
+      const a = await this.prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: {
+          salonId: true,
+          startAt: true,
+          salon: { select: { name: true, timezone: true } },
+          stylist: { select: { displayName: true } },
+          customer: { select: { phone: true } },
+        },
+      });
+      if (!a?.customer.phone) return;
+      if (!(await this.subscriptions.takeReminderSms(a.salonId))) return;
+      const params = {
+        day: jalaliDay(a.startAt, a.salon.timezone),
+        time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
+        salon: a.salon.name,
+        stylist: a.stylist.displayName,
+      };
+      await this.sms.send({ kind, to: a.customer.phone, params, text: customerBookingText(kind, params) });
+    } catch (err) {
+      this.logger.warn(`${kind} SMS for ${appointmentId} failed: ${(err as Error).message}`);
+    }
   }
 
   /** Tells the salon owner, the appointment's stylist and the customer — never the person who acted. */

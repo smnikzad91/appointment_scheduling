@@ -2,6 +2,8 @@ import { AppointmentsService } from './appointments.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { NotificationsService } from '../notifications/notifications.service.js';
 import type { WaitlistService } from '../waitlist/waitlist.service.js';
+import type { SmsService } from '../sms/sms.service.js';
+import type { SubscriptionsService } from '../subscriptions/subscriptions.service.js';
 import type { JwtPayload } from '../auth/auth.service.js';
 
 const owner = { sub: 'owner-1', role: 'SALON_OWNER' } as JwtPayload;
@@ -41,6 +43,8 @@ function setup(
       prisma as unknown as PrismaService,
       notifications as unknown as NotificationsService,
       waitlist as unknown as WaitlistService,
+      { send: vi.fn() } as unknown as SmsService,
+      { takeReminderSms: vi.fn() } as unknown as SubscriptionsService,
     ),
   };
 }
