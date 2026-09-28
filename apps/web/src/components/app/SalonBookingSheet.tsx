@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarPlus, Save, UserCheck } from "lucide-react";
+import { CalendarPlus, Check, Save, UserCheck } from "lucide-react";
 import {
   createSalonBooking,
   getMySalon,
@@ -20,7 +20,7 @@ import Sep from "@/components/common/Sep";
 import Sheet from "./Sheet";
 import TimePicker from "./TimePicker";
 import type { AppAppointment } from "./appointments";
-import { Button, Field, Select, TextArea, TextInput, cx } from "./ui";
+import { Avatar, Button, Field, TextArea, TextInput, cx } from "./ui";
 
 const DAYS_AHEAD = 30;
 const STEP = 15;
@@ -31,6 +31,7 @@ interface Loaded {
   stylists: {
     id: string;
     displayName: string;
+    avatarUrl?: string | null;
     services: { serviceId: string; overridePriceToman: number | null; overrideDurationMinutes: number | null }[];
   }[];
   services: { id: string; name: string; priceToman: number; durationMinutes: number }[];
@@ -286,15 +287,36 @@ export default function SalonBookingSheet({
         )}
 
         {!asStylist && !editing && (
-          <Field label="آرایشگر">
-            <Select value={stylistId} onChange={(e) => setStylistId(e.target.value)}>
-              {data?.stylists.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.displayName}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <div>
+            <p className="mb-1.5 px-1 text-[13px] font-bold text-app-muted">آرایشگر</p>
+            {/* Tap-to-choose cards instead of a native <select>; a salon has a handful of stylists. */}
+            <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]" role="radiogroup" aria-label="آرایشگر">
+              {data?.stylists.map((s) => {
+                const on = s.id === stylistId;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => setStylistId(s.id)}
+                    className={cx(
+                      "relative flex w-[92px] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl border px-2 pb-2.5 pt-3 transition active:scale-95",
+                      on ? "border-app-accent bg-app-accent-soft" : "border-app-line bg-app-card",
+                    )}
+                  >
+                    <Avatar name={s.displayName} src={s.avatarUrl} size={48} className={on ? "ring-2 ring-app-accent ring-offset-2 ring-offset-app-bg" : ""} />
+                    <span className={cx("w-full truncate text-center text-[13px] font-bold", on ? "text-app-ink" : "text-app-muted")}>{s.displayName}</span>
+                    {on && (
+                      <span className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-app-accent text-app-accent-ink">
+                        <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         <div>
