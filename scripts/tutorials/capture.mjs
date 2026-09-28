@@ -209,6 +209,25 @@ await shot("owner-booking-4", "owner", async (p) => {
 }, (p) => [inSheet(p).getByRole("button", { name: /^۱۶:۰۰/ })]);
 await pageFor("owner").then((p) => p.keyboard.press("Escape"));
 
+// Managing an existing appointment (nothing is changed — the sheet is only opened).
+await shot("owner-manage-1", "owner", async (p) => {
+  await go("/salon/appointments")(p);
+  await p.getByRole("tab", { name: /منتظر/ }).click();
+  await settle(p, 900);
+}, (p) => [p.getByRole("tab", { name: /منتظر/ }), p.locator("main button").filter({ hasText: "(نمونه)" }).first()]);
+await shot("owner-manage-2", "owner", async (p) => {
+  await p.locator("main button").filter({ hasText: "(نمونه)" }).first().click();
+  await settle(p, 1200);
+}, (p) => ["ویرایش نوبت", "تایید نوبت", "انجام شد", "مشتری نیامد"].map((n) => inSheet(p).getByRole("button", { name: n })));
+await pageFor("owner").then((p) => p.keyboard.press("Escape"));
+
+await shot("owner-gallery-1", "owner", go("/salon/gallery"), (p) => [p.locator("main").getByRole("button", { name: /افزودن/ }).first(), p.locator("main button:has(img)").first()]);
+await shot("owner-gallery-2", "owner", async (p) => {
+  await p.locator("main button:has(img)").first().click();
+  await settle(p, 1200);
+}, (p) => [inSheet(p).getByRole("button", { name: /^کار کدام آرایشگر است؟:/ }), inSheet(p).getByRole("button", { name: /حذف عکس/ })]);
+await pageFor("owner").then((p) => p.keyboard.press("Escape"));
+
 // Accounting — the demo's completed appointments are in the previous Jalali month.
 const prevMonth = async (p) => {
   await p.getByRole("button", { name: "ماه قبل" }).click();
@@ -265,6 +284,14 @@ await shot("stylist-appointments-2", "stylist", async (p) => {
   await card.click();
   await settle(p, 1200);
 }, (p) => [inSheet(p).getByRole("button", { name: /تأیید|تایید|انجام شد/ }).first()]);
+await pageFor("stylist").then((p) => p.keyboard.press("Escape"));
+
+await shot("stylist-book-1", "stylist", go("/stylist/appointments"), (p) => [p.getByRole("button", { name: "ثبت نوبت برای مشتری" })]);
+await shot("stylist-book-2", "stylist", async (p) => {
+  await p.getByRole("button", { name: "ثبت نوبت برای مشتری" }).click();
+  await settle(p, 1500);
+  await inSheet(p).locator('input[type="tel"], input[inputmode="tel"]').first().fill("09121112233");
+}, (p) => [inSheet(p).locator('input[type="tel"], input[inputmode="tel"]').first(), inSheet(p).getByText("خدمات", { exact: true }).locator("xpath=following-sibling::*[1]")]);
 await pageFor("stylist").then((p) => p.keyboard.press("Escape"));
 
 await shot("stylist-schedule-1", "stylist", go("/stylist/schedule"), (p) => [p.getByRole("switch").first(), p.locator('button[aria-haspopup="dialog"]').first(), p.locator('button[aria-haspopup="dialog"]').nth(1)]);
@@ -370,5 +397,64 @@ await shot("customer-bookings-2", "customer", async (p) => {
   await p.getByRole("tab", { name: /گذشته/ }).click();
   await settle(p, 1500);
 }, (p) => [p.getByRole("tab", { name: /گذشته/ }), p.locator("main").getByRole("link", { name: /رزرو دوباره/ }).first()]);
+
+// Account: sign-up (not submitted) and sign-in.
+await shot("customer-signup-1", "guest", async (p) => {
+  await go("/signup")(p);
+  await p.getByLabel("نام", { exact: true }).fill("نگار");
+  await p.getByLabel("نام خانوادگی").fill("رضایی");
+  await p.getByLabel("ایمیل").fill("negar@example.com");
+  await p.getByLabel("شماره موبایل").fill("09123334455");
+}, (p) => [p.getByLabel("نام", { exact: true }), p.getByLabel("ایمیل"), p.getByLabel("شماره موبایل"), p.getByLabel("رمز عبور")]);
+await shot("customer-signup-2", "guest", async (p) => {
+  await p.getByLabel("رمز عبور").fill("Negar1405x");
+  // the square itself — the label's centre is the terms/privacy links
+  await p.locator('label:has(input[type="checkbox"]) > span[aria-hidden]').first().click();
+  await scrollTo(p.getByRole("button", { name: "ساخت حساب" }));
+}, (p) => [p.locator('label:has(input[type="checkbox"])').first(), p.getByRole("button", { name: "ساخت حساب" })]);
+await shot("customer-signin-1", "guest", go("/signin"), (p) => [p.getByLabel("ایمیل یا شماره موبایل"), p.getByLabel("رمز عبور"), p.getByRole("link", { name: /فراموش/ })]);
+
+// Reviews: editing one sends it back to "pending", which the owner moderation shot below uses.
+await shot("customer-review-1", "customer", async (p) => {
+  await go("/dashboard/bookings")(p);
+  await p.getByRole("tab", { name: /گذشته/ }).click();
+  await settle(p, 1200);
+}, (p) => [p.getByRole("button", { name: "ویرایش نظر درباره سالن" }).first()]);
+await shot("customer-review-2", "customer", async (p) => {
+  await p.getByRole("button", { name: "ویرایش نظر درباره سالن" }).first().click();
+  await settle(p, 1000);
+  await inSheet(p).getByRole("radio", { name: /^۵ ستاره/ }).click();
+  await inSheet(p).getByLabel("متن نظر").fill("برخورد عالی و کار تمیز؛ حتماً دوباره می‌آیم.");
+  await settle(p, 400);
+}, (p) => [inSheet(p).getByRole("radiogroup", { name: "امتیاز" }), inSheet(p).getByLabel("متن نظر"), inSheet(p).getByRole("button", { name: "ذخیره تغییرات" })]);
+if ("customer-review-2".startsWith(ONLY)) {
+  const p = await pageFor("customer");
+  await inSheet(p).getByRole("button", { name: "ذخیره تغییرات" }).click().catch(() => {});
+  await settle(p, 1500);
+}
+
+// Saved salons (the demo customer already saved demo-rose — shown, not toggled).
+await shot("customer-saved-1", "customer", go("/s/demo-rose"), (p) => [p.getByRole("button", { name: /سالن‌های محبوب/ }).first()]);
+await shot("customer-saved-2", "customer", go("/dashboard"), (p) => [p.locator("main a").filter({ hasText: "(نمونه)" }).filter({ hasNotText: "نوبت بعدی" }).first()]);
+
+// Wallet, support, profile.
+await shot("customer-wallet-1", "customer", go("/dashboard/finance"), (p) => [p.getByRole("button", { name: "افزودن کارت" }).or(p.getByRole("link", { name: "افزودن کارت" })).first(), p.getByRole("button", { name: "واریز جدید" }).or(p.getByRole("link", { name: "واریز جدید" })).first()]);
+await shot("customer-support-1", "customer", go("/dashboard/support"), (p) => [p.getByRole("button", { name: "تیکت جدید" }).or(p.getByRole("link", { name: "تیکت جدید" })).first()]);
+await shot("customer-support-2", "customer", async (p) => {
+  await p.getByRole("button", { name: "تیکت جدید" }).or(p.getByRole("link", { name: "تیکت جدید" })).first().click();
+  await settle(p, 1200);
+}, (p) => [p.getByPlaceholder(/به‌طور خلاصه/), p.getByPlaceholder(/جزئیات/)]);
+await shot("customer-profile-1", "customer", async (p) => {
+  await go("/dashboard")(p);
+  await scrollTo(p.getByRole("link", { name: /امنیت و رمز عبور/ }));
+}, (p) => [p.getByRole("link", { name: /ویرایش پروفایل/ }), p.getByRole("link", { name: /امنیت و رمز عبور/ })]);
+
+// Moderation — the customer's edited review above is now waiting.
+await shot("owner-reviews-1", "owner", go("/salon/reviews"), (p) => [p.getByRole("tab").first(), p.getByRole("button", { name: "تایید و نمایش" }).first(), p.getByRole("button", { name: "رد", exact: true }).first()]);
+await shot("stylist-reviews-1", "stylist", async (p) => {
+  await go("/stylist/reviews")(p);
+  await p.getByRole("tab", { name: "منتشرشده" }).click();
+  await settle(p, 900);
+}, (p) => [p.getByRole("tab", { name: "منتشرشده" }), p.getByRole("button", { name: "پنهان کردن" }).first()]);
 
 await browser.close();
