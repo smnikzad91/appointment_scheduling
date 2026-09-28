@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CalendarHeart, LogOut, MessageSquareText } from "lucide-react";
 import { otpRequestErrorMessage, requestOtp, verifyOtp } from "@/lib/api/bookings";
+import { formatCountdown, useResendCountdown } from "@/hooks/useResendCountdown";
 import { loadCustomerSession, saveCustomerSession, clearCustomerSession, type CustomerSession } from "@/lib/customerSession";
 import { normalizeDigits, isValidIranianMobile, toPersianDigits, splitFullName } from "@/lib/persian";
 import CustomerBookings from "@/components/app/CustomerBookings";
@@ -137,37 +138,93 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
             </Button>
           </form>
         ) : (
-          <form onSubmit={handleVerify} className="flex flex-col gap-4">
-            <TextInput
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              dir="ltr"
-              maxLength={OTP_LENGTH}
-              value={code}
-              onChange={(e) => setCode(normalizeDigits(e.target.value).replace(/\D/g, ""))}
-              placeholder="-----"
-              aria-label="کد تایید"
-              autoFocus
-              className="h-14 text-center text-2xl font-black tracking-[0.6em]"
-            />
-            {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
-            <Button type="submit" block busy={loading} disabled={code.length !== OTP_LENGTH}>
-              تایید و ورود
-            </Button>
-            <Button
-              variant="ghost"
-              block
-              onClick={() => {
-                setStep("phone");
-                setCode("");
-                setError(null);
-              }}
-            >
-              تغییر شماره
-            </Button>
-          </form>
+          <OtpForm
+            phone={phone}
+            code={code}
+            setCode={setCode}
+            error={error}
+            setError={setError}
+            loading={loading}
+            onSubmit={handleVerify}
+            onChangePhone={() => {
+              setStep("phone");
+              setCode("");
+              setError(null);
+            }}
+          />
         )}
       </Card>
     </>
+  );
+}
+
+/** Mounted when the code is sent, so its resend countdown starts then. */
+function OtpForm({
+  phone,
+  code,
+  setCode,
+  error,
+  setError,
+  loading,
+  onSubmit,
+  onChangePhone,
+}: {
+  phone: string;
+  code: string;
+  setCode: (code: string) => void;
+  error: string | null;
+  setError: (error: string | null) => void;
+  loading: boolean;
+  onSubmit: (e: React.FormEvent) => void;
+  onChangePhone: () => void;
+}) {
+  const { secondsLeft, restart } = useResendCountdown();
+  const [resending, setResending] = useState(false);
+
+  async function resend() {
+    setError(null);
+    setResending(true);
+    try {
+      await requestOtp(phone);
+      setCode("");
+      restart();
+    } catch (err) {
+      setError(otpRequestErrorMessage(err, "ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید"));
+    } finally {
+      setResending(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <TextInput
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        dir="ltr"
+        maxLength={OTP_LENGTH}
+        value={code}
+        onChange={(e) => setCode(normalizeDigits(e.target.value).replace(/\D/g, ""))}
+        placeholder="-----"
+        aria-label="کد تایید"
+        autoFocus
+        className="h-14 text-center text-2xl font-black tracking-[0.6em]"
+      />
+      {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
+      <Button type="submit" block busy={loading} disabled={code.length !== OTP_LENGTH}>
+        تایید و ورود
+      </Button>
+      {secondsLeft > 0 ? (
+        <p className="text-center text-xs leading-6 text-app-muted">
+          پیامک ممکن است چند ثانیه طول بکشد. ارسال مجدد کد تا <span dir="ltr">{formatCountdown(secondsLeft)}</span> دیگر
+        </p>
+      ) : (
+        <Button variant="ghost" block busy={resending} onClick={resend}>
+          کد را دریافت نکردید؟ ارسال مجدد
+        </Button>
+      )}
+      <Button variant="ghost" block onClick={onChangePhone}>
+        تغییر شماره
+      </Button>
+    </form>
   );
 }

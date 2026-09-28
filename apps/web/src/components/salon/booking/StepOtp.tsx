@@ -5,6 +5,7 @@ import { useBooking } from "./BookingProvider";
 import { normalizeDigits, toPersianDigits, splitFullName } from "@/lib/persian";
 import { verifyOtp, requestOtp, otpRequestErrorMessage } from "@/lib/api/bookings";
 import { SalonApiError } from "@/lib/api/salonApiClient";
+import { formatCountdown, useResendCountdown } from "@/hooks/useResendCountdown";
 
 const OTP_LENGTH = 5;
 
@@ -13,18 +14,27 @@ export default function StepOtp() {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
-  const [resent, setResent] = useState(false);
+  const [resending, setResending] = useState(false);
+  const { secondsLeft, restart } = useResendCountdown();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   function handleChange(index: number, raw: string) {
-    const value = normalizeDigits(raw).replace(/[^0-9]/g, "").slice(-1);
+    const typed = normalizeDigits(raw).replace(/[^0-9]/g, "");
     const next = [...digits];
-    next[index] = value;
+    if (typed.length > 1) {
+      // Pasted, or filled in from the SMS by the keyboard (autocomplete="one-time-code"):
+      // spread the digits over the boxes from this one on.
+      typed
+        .slice(0, OTP_LENGTH - index)
+        .split("")
+        .forEach((d, i) => (next[index + i] = d));
+      inputRefs.current[Math.min(index + typed.length, OTP_LENGTH - 1)]?.focus();
+    } else {
+      next[index] = typed;
+      if (typed && index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus();
+    }
     setDigits(next);
 
-    if (value && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
     if (next.every((d) => d !== "")) {
       void handleVerify(next.join(""));
     }
@@ -52,11 +62,16 @@ export default function StepOtp() {
 
   async function handleResend() {
     setError(null);
+    setResending(true);
     try {
       await requestOtp(state.customerPhone);
-      setResent(true);
+      setDigits(Array(OTP_LENGTH).fill(""));
+      inputRefs.current[0]?.focus();
+      restart();
     } catch (err) {
       setError(otpRequestErrorMessage(err, "ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید"));
+    } finally {
+      setResending(false);
     }
   }
 
@@ -79,7 +94,9 @@ export default function StepOtp() {
             }}
             type="tel"
             inputMode="numeric"
-            maxLength={1}
+            autoComplete={i === 0 ? "one-time-code" : "off"}
+            autoFocus={i === 0}
+            maxLength={i === 0 ? OTP_LENGTH : 1}
             value={digit ? toPersianDigits(digit) : ""}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
@@ -93,9 +110,21 @@ export default function StepOtp() {
       {verifying && <p className="text-xs text-gray-500">در حال بررسی کد...</p>}
       {error && <p className="text-xs text-rose-500">{error}</p>}
 
-      <button type="button" onClick={handleResend} disabled={resent} className="text-xs font-medium underline disabled:no-underline disabled:opacity-50" style={{ color: "var(--salon-brand)" }}>
-        {resent ? "کد مجدد ارسال شد" : "ارسال مجدد کد"}
-      </button>
+      {secondsLeft > 0 ? (
+        <p className="text-xs text-gray-500">
+          پیامک ممکن است چند ثانیه طول بکشد. ارسال مجدد کد تا <span dir="ltr">{formatCountdown(secondsLeft)}</span> دیگر
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={resending}
+          className="text-xs font-medium underline disabled:no-underline disabled:opacity-50"
+          style={{ color: "var(--salon-brand)" }}
+        >
+          {resending ? "در حال ارسال..." : "کد را دریافت نکردید؟ ارسال مجدد"}
+        </button>
+      )}
     </div>
   );
 }
