@@ -7,15 +7,15 @@ type Variant = "primary" | "secondary" | "ghost";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-lg font-semibold transition-all duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100";
+  "group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl font-bold transition-all duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-g-bg disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100";
 
+// Public pages render in the guest theme (always dark): primary is the guest gradient CTA
+// (lift, glow and sheen come from .g-btn-primary in globals.css).
 const variants: Record<Variant, string> = {
-  primary:
-    "bg-gradient-to-r from-brand-500 to-theme-purple-500 bg-[length:160%_100%] bg-right text-white shadow-md shadow-brand-500/25 hover:-translate-y-0.5 hover:bg-left hover:shadow-lg hover:shadow-brand-500/40 active:translate-y-0 active:shadow-md",
+  primary: "g-btn-primary",
   secondary:
-    "border border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600 dark:hover:bg-gray-800",
-  ghost:
-    "text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10",
+    "border border-g-line-strong bg-g-glass-soft text-g-ink backdrop-blur-md hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.07]",
+  ghost: "text-g-accent hover:bg-white/5",
 };
 
 const sizes: Record<Size, string> = {

@@ -5,15 +5,15 @@ const COLUMNS = [
   {
     title: "محصول",
     links: [
-      { label: "امکانات", href: "#features" },
-      { label: "تعرفه‌ها", href: "#pricing" },
-      { label: "اپلیکیشن‌ها", href: "#apps" },
+      { label: "امکانات", href: "/#features" },
+      { label: "تعرفه‌ها", href: "/#pricing" },
+      { label: "اپلیکیشن‌ها", href: "/#apps" },
     ],
   },
   {
     title: "پشتیبانی",
     links: [
-      { label: "سؤالات متداول", href: "#faq" },
+      { label: "سؤالات متداول", href: "/#faq" },
       { label: "راهنمای سالن‌ها", href: "/faq" },
       { label: "تماس با ما", href: "/contact" },
     ],

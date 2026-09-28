@@ -4,10 +4,10 @@ import GuestLogo from "@/components/guest/GuestLogo";
 
 const NAV_LINKS = [
   { href: "/salons", label: "جستجوی سالن" },
-  { href: "#features", label: "امکانات" },
-  { href: "#apps", label: "اپلیکیشن‌ها" },
-  { href: "#pricing", label: "تعرفه‌ها" },
-  { href: "#faq", label: "سؤالات متداول" },
+  { href: "/#features", label: "امکانات" },
+  { href: "/#apps", label: "اپلیکیشن‌ها" },
+  { href: "/#pricing", label: "تعرفه‌ها" },
+  { href: "/#faq", label: "سؤالات متداول" },
 ];
 
 export default function MarketingHeader() {

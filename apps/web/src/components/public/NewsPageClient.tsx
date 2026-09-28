@@ -6,7 +6,6 @@ import { useState } from "react";
 import { Newspaper } from "lucide-react";
 import { Reveal } from "@/components/public/shared/Reveal";
 import { Stagger, StaggerItem } from "@/components/public/shared/Stagger";
-import { AmbientGlow } from "@/components/public/shared/AmbientGlow";
 import { newsTagConfig, stripHash, formatDateFa } from "@/components/public/shared/contentTaxonomy";
 
 export interface NewsItem {
@@ -35,27 +34,23 @@ export default function NewsPageClient({ news }: Props) {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Background */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[500px] bg-gradient-to-b from-brand-50/60 via-white to-white dark:from-brand-950/15 dark:via-gray-900 dark:to-gray-900" />
-      <AmbientGlow className="-left-24 -top-24 h-[380px] w-[380px] bg-brand-500/15 blur-[110px] dark:bg-brand-500/15" duration={20} />
-      <AmbientGlow className="left-[calc(50%-150px)] -top-10 h-[300px] w-[300px] bg-theme-purple-500/10 blur-[110px] dark:bg-theme-purple-500/10" duration={25} />
 
       <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
 
         {/* ─── Header ─── */}
         <Reveal className="text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1.5 text-xs font-semibold tracking-wide text-brand-600 shadow-theme-xs backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-brand-400">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-1.5 text-xs font-semibold tracking-wide text-brand-600 shadow-theme-xs backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-g-accent">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
             آخرین به‌روزرسانی‌ها
           </span>
-          <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-5xl">
+          <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-gray-900 dark:text-g-ink sm:text-5xl">
             اخبار و اعلانات
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-gray-500 dark:text-gray-400">
+          <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-gray-500 dark:text-g-muted">
             قابلیت‌های جدید، به‌روزرسانی‌های سرویس و اطلاعیه‌های مهم.
           </p>
           <div className="mt-5">
-            <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-brand-500 dark:text-gray-500 dark:hover:text-brand-400">
+            <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-brand-500 dark:text-g-faint dark:hover:text-g-accent">
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
@@ -72,8 +67,8 @@ export default function NewsPageClient({ news }: Props) {
               onClick={() => setActiveTag(tag)}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 ${
                 activeTag === tag
-                  ? "bg-gradient-to-r from-brand-500 to-theme-purple-500 text-white shadow-md shadow-brand-500/25"
-                  : "border border-gray-200 bg-white text-gray-600 hover:border-brand-300 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                  ? "bg-gradient-to-r from-brand-500 to-g-accent-2 text-white shadow-md shadow-brand-500/25"
+                  : "border border-gray-200 bg-white text-gray-600 hover:border-brand-300 hover:text-brand-600 dark:border-g-line-strong dark:bg-g-glass dark:backdrop-blur-xl dark:text-g-muted"
               }`}
             >
               {tag}
@@ -85,7 +80,7 @@ export default function NewsPageClient({ news }: Props) {
         <section className="mt-12">
 
           {filtered.length === 0 && (
-            <div className="py-24 text-center text-gray-400 dark:text-gray-500">
+            <div className="py-24 text-center text-gray-400 dark:text-g-faint">
               خبری در این دسته یافت نشد.
             </div>
           )}
@@ -99,7 +94,7 @@ export default function NewsPageClient({ news }: Props) {
                 className="group relative block overflow-hidden rounded-3xl shadow-lg shadow-black/5 transition-all duration-300 hover:shadow-xl hover:shadow-black/10 hover:-translate-y-0.5"
               >
                 {/* Banner */}
-                <div className={`relative overflow-hidden ${featured.image ? "h-56 sm:h-64 bg-gray-900" : `h-44 sm:h-52 bg-gradient-to-br ${newsTagConfig[featured.category]?.gradient ?? "from-brand-500 to-indigo-600"}`}`}>
+                <div className={`relative overflow-hidden ${featured.image ? "h-56 sm:h-64 bg-gray-900" : `h-44 sm:h-52 bg-gradient-to-br ${newsTagConfig[featured.category]?.gradient ?? "from-g-accent-3 via-g-accent to-g-accent-2"}`}`}>
                   {featured.image
                     ? <>
                         <Image src={featured.image} alt={featured.title} fill sizes="(max-width: 1024px) 100vw, 1152px" className="object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -108,7 +103,7 @@ export default function NewsPageClient({ news }: Props) {
                     : <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
                   }
                   {/* Icon */}
-                  <div className="absolute bottom-0 right-8 flex h-20 w-20 translate-y-1/2 items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-br from-brand-500 to-theme-purple-500 text-white shadow-theme-lg dark:border-gray-900">
+                  <div className="absolute bottom-0 right-8 flex h-20 w-20 translate-y-1/2 items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-br from-brand-500 to-g-accent-2 text-white shadow-theme-lg dark:border-g-line">
                     <FeaturedIcon className="h-8 w-8" aria-hidden="true" />
                   </div>
                   {/* New badge */}
@@ -123,31 +118,31 @@ export default function NewsPageClient({ news }: Props) {
                 </div>
 
                 {/* Card body */}
-                <div className="border border-gray-200/80 border-t-0 rounded-b-3xl bg-white px-8 pb-8 pt-14 dark:border-gray-800 dark:bg-gray-900">
+                <div className="border border-gray-200/80 border-t-0 rounded-b-3xl bg-white px-8 pb-8 pt-14 dark:border-g-line dark:bg-g-glass dark:backdrop-blur-xl">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`rounded-lg px-3 py-1 text-xs font-bold ${newsTagConfig[featured.category]?.badge}`}>
                       {stripHash(featured.category)}
                     </span>
                     {featured.publishedAt && (
-                      <span className="rounded-lg bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">{formatDateFa(featured.publishedAt)}</span>
+                      <span className="rounded-lg bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 dark:bg-white/5 dark:text-g-muted">{formatDateFa(featured.publishedAt)}</span>
                     )}
                   </div>
-                  <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-gray-900 transition-colors group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-400 sm:text-3xl">
+                  <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-gray-900 transition-colors group-hover:text-brand-600 dark:text-g-ink dark:group-hover:text-g-accent sm:text-3xl">
                     {featured.title}
                   </h2>
-                  <p className="mt-3 max-w-2xl text-base leading-relaxed text-gray-500 dark:text-gray-400">
+                  <p className="mt-3 max-w-2xl text-base leading-relaxed text-gray-500 dark:text-g-muted">
                     {featured.body}
                   </p>
                   {featured.hashtags && featured.hashtags.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {featured.hashtags.map((tag) => (
-                        <span key={tag} className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-[10px] font-semibold text-brand-600 dark:border-brand-700 dark:bg-brand-500/10 dark:text-brand-400">
+                        <span key={tag} className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-[10px] font-semibold text-brand-600 dark:border-g-accent/30 dark:bg-brand-500/10 dark:text-g-accent">
                           #{stripHash(tag)}
                         </span>
                       ))}
                     </div>
                   )}
-                  <div className="mt-5 flex items-center gap-1.5 text-sm font-bold text-brand-600 transition-all group-hover:gap-2.5 dark:text-brand-400">
+                  <div className="mt-5 flex items-center gap-1.5 text-sm font-bold text-brand-600 transition-all group-hover:gap-2.5 dark:text-g-accent">
                     بیشتر بخوانید
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
@@ -169,7 +164,7 @@ export default function NewsPageClient({ news }: Props) {
                   <StaggerItem key={item.id}>
                     <Link
                       href={`/news/${item.id}`}
-                      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/5 dark:border-gray-800 dark:bg-gray-900"
+                      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/5 dark:border-g-line dark:bg-g-glass dark:backdrop-blur-xl"
                     >
                       {/* Image or color strip */}
                       {item.image
@@ -187,21 +182,21 @@ export default function NewsPageClient({ news }: Props) {
                             <Icon className="h-5 w-5" aria-hidden="true" />
                           </div>
                           {item.publishedAt && (
-                            <span className="rounded-lg bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">{formatDateFa(item.publishedAt)}</span>
+                            <span className="rounded-lg bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 dark:bg-white/5 dark:text-g-muted">{formatDateFa(item.publishedAt)}</span>
                           )}
                         </div>
 
-                        <h2 className="mt-4 text-base font-bold leading-snug text-gray-900 transition-colors group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-400">
+                        <h2 className="mt-4 text-base font-bold leading-snug text-gray-900 transition-colors group-hover:text-brand-600 dark:text-g-ink dark:group-hover:text-g-accent">
                           {item.title}
                         </h2>
-                        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-500 dark:text-g-muted">
                           {item.body}
                         </p>
 
                         {item.hashtags && item.hashtags.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-1.5">
                             {item.hashtags.map((tag) => (
-                              <span key={tag} className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-[10px] font-semibold text-brand-600 dark:border-brand-700 dark:bg-brand-500/10 dark:text-brand-400">
+                              <span key={tag} className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-[10px] font-semibold text-brand-600 dark:border-g-accent/30 dark:bg-brand-500/10 dark:text-g-accent">
                                 #{stripHash(tag)}
                               </span>
                             ))}

@@ -21,7 +21,7 @@ export function Accordion({ items, variant = "default", className }: AccordionPr
 
   return (
     <div
-      className={`divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white shadow-theme-sm dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900 ${className ?? ""}`}
+      className={`divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white shadow-theme-sm dark:divide-g-line dark:border-g-line dark:bg-g-glass dark:backdrop-blur-xl ${className ?? ""}`}
     >
       {items.map((item) => {
         const open = openId === item.id;
@@ -36,14 +36,14 @@ export function Accordion({ items, variant = "default", className }: AccordionPr
             >
               <span
                 className={`text-sm font-semibold leading-relaxed transition-colors ${
-                  open ? "text-brand-600 dark:text-brand-400" : "text-gray-900 dark:text-white"
+                  open ? "text-brand-600 dark:text-g-accent" : "text-gray-900 dark:text-g-ink"
                 }`}
               >
                 {item.question}
               </span>
               <span
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors duration-200 ${
-                  open ? "bg-gradient-to-br from-brand-500 to-theme-purple-500 text-white" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                  open ? "bg-gradient-to-br from-brand-500 to-g-accent-2 text-white" : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-g-muted"
                 }`}
               >
                 <motion.svg
@@ -68,7 +68,7 @@ export function Accordion({ items, variant = "default", className }: AccordionPr
                   transition={{ duration: 0.25, ease: easeSignal }}
                   className="overflow-hidden"
                 >
-                  <p className={`text-sm leading-relaxed text-gray-500 dark:text-gray-400 ${variant === "compact" ? "px-5 pb-4" : "px-6 pb-5"}`}>
+                  <p className={`text-sm leading-relaxed text-gray-500 dark:text-g-muted ${variant === "compact" ? "px-5 pb-4" : "px-6 pb-5"}`}>
                     {item.answer}
                   </p>
                 </motion.div>

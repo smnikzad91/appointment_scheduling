@@ -19,7 +19,7 @@ export interface CategoryConfig {
 export const blogCategoryConfig: Record<string, CategoryConfig> = {
   "آموزش": {
     badge: "bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300",
-    gradient: "from-brand-500 to-indigo-600",
+    gradient: "from-g-accent-3 via-g-accent to-g-accent-2",
     icon: BookOpen,
     light: "bg-brand-50 dark:bg-brand-500/10",
   },
@@ -31,7 +31,7 @@ export const blogCategoryConfig: Record<string, CategoryConfig> = {
   },
   "معرفی": {
     badge: "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
-    gradient: "from-violet-500 to-purple-600",
+    gradient: "from-g-accent-2 to-[#7e58d2]",
     icon: Sparkles,
     light: "bg-violet-50 dark:bg-violet-500/10",
   },
@@ -40,7 +40,7 @@ export const blogCategoryConfig: Record<string, CategoryConfig> = {
 export const newsTagConfig: Record<string, CategoryConfig> = {
   "راه‌اندازی": {
     badge: "bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300",
-    gradient: "from-brand-500 to-indigo-600",
+    gradient: "from-g-accent-3 via-g-accent to-g-accent-2",
     icon: Rocket,
     light: "bg-brand-50 dark:bg-brand-500/10",
   },
@@ -52,7 +52,7 @@ export const newsTagConfig: Record<string, CategoryConfig> = {
   },
   "اتصال": {
     badge: "bg-blue-light-100 text-blue-light-700 dark:bg-blue-light-500/20 dark:text-blue-light-300",
-    gradient: "from-blue-light-500 to-cyan-600",
+    gradient: "from-[#5fb3a8] to-[#2f6f68]",
     icon: Link2,
     light: "bg-blue-light-50 dark:bg-blue-light-500/10",
   },

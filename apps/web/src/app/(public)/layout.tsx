@@ -1,5 +1,6 @@
-import PublicNavbar from "@/components/public/PublicNavbar";
-import PublicFooter from "@/components/public/PublicFooter";
+import MarketingHeader from "@/components/marketing/MarketingHeader";
+import MarketingFooter from "@/components/marketing/MarketingFooter";
+import GuestBackdrop from "@/components/guest/GuestBackdrop";
 import { PublicHtmlLang } from "@/components/public/shared/PublicHtmlLang";
 import { JsonLd } from "@/components/common/JsonLd";
 import React from "react";
@@ -14,21 +15,17 @@ const organizationJsonLd = {
   description: SITE_DESCRIPTION,
 };
 
-export default function PublicLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      dir="rtl"
-      className="font-vazirmatn min-h-screen bg-white dark:bg-gray-900"
-    >
+    // Same guest theme as the landing page. `dark` switches the public components' dark:
+    // variants on (mapped to guest tokens); app-root remaps brand-*/gray-* to terracotta/warm.
+    <div dir="rtl" className="app-root guest-root dark min-h-screen overflow-x-clip">
+      <GuestBackdrop />
       <PublicHtmlLang />
       <JsonLd data={organizationJsonLd} />
-      <PublicNavbar />
+      <MarketingHeader />
       <main>{children}</main>
-      <PublicFooter />
+      <MarketingFooter />
     </div>
   );
 }
