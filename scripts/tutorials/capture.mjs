@@ -209,6 +209,50 @@ await shot("owner-booking-4", "owner", async (p) => {
 }, (p) => [inSheet(p).getByRole("button", { name: /^۱۶:۰۰/ })]);
 await pageFor("owner").then((p) => p.keyboard.press("Escape"));
 
+// Accounting — the demo's completed appointments are in the previous Jalali month.
+const prevMonth = async (p) => {
+  await p.getByRole("button", { name: "ماه قبل" }).click();
+  await settle(p, 1500);
+};
+await shot("owner-accounting-1", "owner", async (p) => {
+  await go("/salon/accounting")(p);
+  await prevMonth(p);
+}, (p) => [p.getByRole("button", { name: "ماه قبل" }).locator(".."), p.getByText(/^سود خالص سالن/).locator("..")]);
+await shot("owner-accounting-2", "owner", async (p) => {
+  await scrollTo(p.getByRole("tab", { name: "آرایشگرها" }));
+}, (p) => [p.getByRole("tablist").first(), p.locator("main button").filter({ hasText: "سارا احمدی" }).first().getByText(/^طلب/)]);
+await shot("owner-accounting-3", "owner", async (p) => {
+  await p.locator("main button").filter({ hasText: "سارا احمدی" }).first().click();
+  await settle(p, 1200);
+  await scrollTo(inSheet(p).getByLabel("مبلغ"));
+}, (p) => [inSheet(p).getByLabel("مبلغ").locator("xpath=ancestor::label[1]"), inSheet(p).getByRole("button", { name: /^تاریخ پرداخت:/ })]);
+await shot("owner-accounting-4", "owner", async (p) => {
+  await p.keyboard.press("Escape");
+  await settle(p);
+  await p.getByRole("tab", { name: /درآمدها/ }).click();
+  await settle(p, 1000);
+  await scrollTo(p.getByRole("tab", { name: /درآمدها/ }));
+}, (p) => [p.locator("main button").filter({ hasText: "(نمونه)" }).first()]);
+await shot("owner-accounting-5", "owner", async (p) => {
+  await p.locator("main button").filter({ hasText: "(نمونه)" }).first().click();
+  await settle(p, 1200);
+}, (p) => [inSheet(p).getByText("مبلغی که مشتری پرداخت کرد").locator(".."), inSheet(p).getByText("انعام برای آرایشگر (اختیاری)").locator("..")]);
+await shot("owner-accounting-6", "owner", async (p) => {
+  await p.keyboard.press("Escape");
+  await settle(p);
+  await p.getByRole("tab", { name: "هزینه‌ها" }).click();
+  await settle(p, 800);
+  await p.getByRole("button", { name: "افزودن هزینه" }).click();
+  await settle(p, 1000);
+}, (p) => [inSheet(p).getByRole("button", { name: "اجاره", exact: true }).locator(".."), inSheet(p).getByLabel("مبلغ").locator("xpath=ancestor::label[1]")]);
+await shot("owner-accounting-7", "owner", async (p) => {
+  await p.keyboard.press("Escape");
+  await settle(p);
+  await p.getByRole("button", { name: "خروجی اکسل یا PDF" }).click();
+  await settle(p, 1000);
+}, (p) => [inSheet(p).locator("button").filter({ hasText: "CSV" }), inSheet(p).locator("button").filter({ hasText: "PDF / چاپ" })]);
+await pageFor("owner").then((p) => p.keyboard.press("Escape"));
+
 // ─────────────────────────────── Stylists ───────────────────────────────
 
 if (shared.setupToken) {
@@ -238,6 +282,22 @@ await shot("stylist-schedule-4", "stylist", async (p) => {
   await settle(p);
 }, (p) => [inSheet(p).getByRole("button", { name: /^از روز:/ }), inSheet(p).getByRole("button", { name: /^تا روز:/ })]);
 await pageFor("stylist").then((p) => p.keyboard.press("Escape"));
+
+await shot("stylist-earnings-1", "stylist", async (p) => {
+  await go("/stylist/earnings")(p);
+  await p.getByRole("button", { name: "ماه قبل" }).click();
+  await settle(p, 1500);
+}, (p) => [
+  p.getByRole("button", { name: "ماه قبل" }).locator(".."),
+  p.locator("main section").filter({ hasText: /سهم شما در/ }).first(),
+  p.getByText(/مانده طلب شما|حساب شما با سالن تسویه|پیش‌دریافت/).first().locator(".."),
+]);
+await shot("stylist-earnings-2", "stylist", async (p) => {
+  await scrollTo(p.getByText("نوبت‌های انجام‌شده").first());
+}, (p) => [p.getByText("نوبت‌های انجام‌شده").first().locator("..").locator("xpath=following-sibling::*[1]")]);
+await shot("stylist-earnings-3", "stylist", async (p) => {
+  await scrollTo(p.getByText("پرداخت‌های سالن به شما").first());
+}, (p) => [p.getByText("پرداخت‌های سالن به شما").first().locator("..").locator("xpath=following-sibling::*[1]")]);
 
 await shot("stylist-services-1", "stylist", go("/stylist/services"), (p) => [p.locator("main input").first()]);
 await shot("stylist-profile-1", "stylist", go("/stylist/profile"), (p) => [p.locator("main textarea").first()]);
