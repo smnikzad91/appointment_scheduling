@@ -10,6 +10,10 @@ import { X } from "lucide-react";
  * Rendered in a portal (so no transformed ancestor can trap it) that re-applies .app-root so
  * the design tokens still resolve.
  */
+// Open sheets, innermost last, so Escape closes only the top one when sheets stack
+// (e.g. the time picker over the booking sheet).
+const openStack: symbol[] = [];
+
 export default function Sheet({
   open,
   onClose,
@@ -28,18 +32,27 @@ export default function Sheet({
 }) {
   const [dragY, setDragY] = useState(0);
   const dragStart = useRef<number | null>(null);
+  // Latest onClose without re-running the effect below (callers pass inline arrows, and
+  // re-registering would reorder the stack).
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const id = Symbol("sheet");
+    openStack.push(id);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && openStack[openStack.length - 1] === id && onCloseRef.current();
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previous;
       document.removeEventListener("keydown", onKey);
+      openStack.splice(openStack.indexOf(id), 1);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || typeof document === "undefined") return null;
 

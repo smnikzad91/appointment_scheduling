@@ -18,6 +18,7 @@ import { addDaysToDateKey, salonWallTimeToInstant, toSalonWallTime } from "@/lib
 import { dateKeyToDate, toJalali } from "@/lib/jalali";
 import Sep from "@/components/common/Sep";
 import Sheet from "./Sheet";
+import TimePicker from "./TimePicker";
 import type { AppAppointment } from "./appointments";
 import { Button, Field, Select, TextArea, TextInput, cx } from "./ui";
 
@@ -372,13 +373,13 @@ export default function SalonBookingSheet({
               ))}
             </div>
           )}
-          <Select aria-label="ساعت شروع" value={minute} onChange={(e) => setMinute(Number(e.target.value))} className="text-center font-bold">
-            {(TIME_OPTIONS.includes(minute) ? TIME_OPTIONS : [...TIME_OPTIONS, minute].sort((a, b) => a - b)).map((m) => (
-              <option key={m} value={m}>
-                {formatMinutesAsClock(m)}
-              </option>
-            ))}
-          </Select>
+          <TimePicker
+            value={minute}
+            onChange={setMinute}
+            options={TIME_OPTIONS}
+            free={freeSlots}
+            hint="ساعت‌های سبز خالی‌اند؛ برای مشتری حضوری هر ساعتی را می‌توانید انتخاب کنید."
+          />
           <p className="mt-1.5 px-1 text-xs leading-6 text-app-muted">
             {freeSlots && freeSlots.length > 0
               ? "زمان‌های بالا خالی‌اند؛ برای مشتری حضوری هر ساعتی را هم می‌توانید انتخاب کنید."
