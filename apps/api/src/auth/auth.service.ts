@@ -1,10 +1,10 @@
 import {
-  BadRequestException,
   ConflictException,
   HttpException,
   HttpStatus,
   Injectable,
   Logger,
+  NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -32,6 +32,7 @@ const OTP_TTL_MINUTES = 5;
 // Per-phone throttle, so one number can't burn the SMS key's 30/min quota or its balance.
 const OTP_RESEND_COOLDOWN_SECONDS = 60;
 const OTP_MAX_PER_HOUR = 5;
+const OTP_MAX_ATTEMPTS = 5;
 
 function randomDefaultAvatar(): string {
   const n = Math.floor(Math.random() * DEFAULT_AVATAR_COUNT) + 1;
@@ -197,26 +198,43 @@ export class AuthService {
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
+    // Only the phone's latest code counts, and each code allows OTP_MAX_ATTEMPTS tries — counted
+    // atomically before comparing, so parallel guesses can't exceed it. With the request throttle
+    // that's at most 25 guesses an hour at a 5-digit code.
     const otp = await this.prisma.otpCode.findFirst({
-      where: { phone: dto.phone, code: dto.code, consumed: false, expiresAt: { gt: new Date() } },
+      where: { phone: dto.phone, consumed: false, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: "desc" },
     });
-    if (!otp) {
+    const tried = otp
+      ? await this.prisma.otpCode.updateMany({
+          where: { id: otp.id, attempts: { lt: OTP_MAX_ATTEMPTS } },
+          data: { attempts: { increment: 1 } },
+        })
+      : { count: 0 };
+    if (!otp || tried.count === 0 || otp.code !== dto.code) {
       throw new UnauthorizedException("Invalid or expired code");
     }
 
-    await this.prisma.otpCode.update({ where: { id: otp.id }, data: { consumed: true } });
-
     let user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    // Checked before the code is used up: signing in (no name given) with a phone that has no
+    // account yet — the panels' sign-in page — says so instead of creating one.
+    const { firstName, lastName } = dto;
+    if (!user && (!firstName || !lastName)) {
+      throw new NotFoundException("No account with this phone number");
+    }
+
+    // Conditional, so the same code can't be used twice concurrently.
+    const claimed = await this.prisma.otpCode.updateMany({ where: { id: otp.id, consumed: false }, data: { consumed: true } });
+    if (claimed.count === 0) {
+      throw new UnauthorizedException("Invalid or expired code");
+    }
+
     if (!user) {
-      if (!dto.firstName || !dto.lastName) {
-        throw new BadRequestException("firstName and lastName are required for a new account");
-      }
       user = await this.prisma.user.create({
         data: {
           phone: dto.phone,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
+          firstName: firstName!,
+          lastName: lastName!,
           role: Role.CUSTOMER,
           passwordHash: await bcrypt.hash(randomPassword(), 10),
           avatarUrl: randomDefaultAvatar(),

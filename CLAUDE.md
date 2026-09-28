@@ -35,7 +35,8 @@
      pnpm was considered but skipped — this machine can't symlink into `/usr/bin` without
      root, so npm workspaces (matching apps/web's existing lockfile) was simpler.
    - Auth architecture: apps/api issues JWTs for both Android apps and the web app.
-     apps/web keeps NextAuth, but its credentials provider calls apps/api's /auth/login
+     apps/web keeps NextAuth, but its credentials providers call apps/api's /auth/login
+     (password) or /auth/otp/verify (SMS code)
      (src/lib/apiAuth.ts) to verify login rather than checking a DB directly.
    - Data-access split: apps/api owns the salon/booking domain + auth. apps/web owns
      everything else (CMS, finance/wallet, tickets, user profile) via its own Prisma

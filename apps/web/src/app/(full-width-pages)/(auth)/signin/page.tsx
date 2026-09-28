@@ -3,7 +3,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "ورود",
-  description: "برای ورود به حساب نوبتا ایمیل یا شماره موبایل و رمز عبور خود را وارد کنید.",
+  description: "ورود به حساب نوبتا با کد پیامکی یا رمز عبور.",
 };
 
 export default function SignIn() {
