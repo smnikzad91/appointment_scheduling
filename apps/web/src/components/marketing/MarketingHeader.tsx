@@ -1,6 +1,7 @@
 import Link from "next/link";
 import InstallAppButton from "@/components/common/InstallAppButton";
 import GuestLogo from "@/components/guest/GuestLogo";
+import MobileNav from "./MobileNav";
 
 const NAV_LINKS = [
   { href: "/salons", label: "جستجوی سالن" },
@@ -37,6 +38,7 @@ export default function MarketingHeader() {
           <Link href="/signup-salon" className="g-btn g-btn-primary h-10 px-4 text-sm">
             ثبت‌نام سالن
           </Link>
+          <MobileNav links={NAV_LINKS} />
         </div>
       </div>
     </header>
