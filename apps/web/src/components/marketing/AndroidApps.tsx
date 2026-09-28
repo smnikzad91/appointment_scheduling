@@ -33,10 +33,6 @@ export default function AndroidApps() {
                   <h3 className="text-lg font-bold text-g-ink">{app.title}</h3>
                 </div>
                 <p className="mt-3 text-sm leading-7 text-g-muted">{app.description}</p>
-                <div className="mt-6 flex flex-wrap gap-2.5">
-                  <span className="rounded-xl bg-g-ink px-4 py-2 text-sm font-bold text-g-bg">دریافت از کافه‌بازار</span>
-                  <span className="rounded-xl border border-g-line-strong px-4 py-2 text-sm font-bold text-g-ink">دریافت از مایکت</span>
-                </div>
               </div>
             ))}
           </div>
