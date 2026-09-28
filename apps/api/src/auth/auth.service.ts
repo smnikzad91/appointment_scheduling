@@ -1,4 +1,14 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
+import {
+  ConflictException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { randomInt } from "node:crypto";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { Role, SalonStatus, User } from "@appointment-scheduling/database";
@@ -23,6 +33,11 @@ export interface JwtPayload {
 const DEFAULT_AVATAR_COUNT = 37;
 const OTP_LENGTH = 5;
 const OTP_TTL_MINUTES = 5;
+// Per-phone throttle, so one number can't burn the SMS key's quota (30/min) or balance.
+const OTP_RESEND_COOLDOWN_SECONDS = 60;
+const OTP_MAX_PER_HOUR = 5;
+// Tries per code — with the throttle, at most 25 guesses an hour at a 5-digit code.
+const OTP_MAX_ATTEMPTS = 5;
 
 function randomDefaultAvatar(): string {
   const n = Math.floor(Math.random() * DEFAULT_AVATAR_COUNT) + 1;
@@ -30,7 +45,7 @@ function randomDefaultAvatar(): string {
 }
 
 function randomOtpCode(): string {
-  return Math.floor(Math.random() * 10 ** OTP_LENGTH)
+  return randomInt(10 ** OTP_LENGTH)
     .toString()
     .padStart(OTP_LENGTH, "0");
 }
@@ -195,6 +210,7 @@ export class AuthService {
   async requestOtp(phone: string) {
     const bypass = this.otpBypass();
     if (bypass) await this.assertCustomerOrNew(phone);
+    await this.assertOtpNotThrottled(phone);
 
     const code = randomOtpCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
@@ -210,8 +226,9 @@ export class AuthService {
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
+    // Only the phone's latest code counts.
     const otp = await this.prisma.otpCode.findFirst({
-      where: { phone: dto.phone, code: dto.code, consumed: false, expiresAt: { gt: new Date() } },
+      where: { phone: dto.phone, consumed: false, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: "desc" },
     });
     if (!otp) {
@@ -221,18 +238,35 @@ export class AuthService {
     // Codes issued before this check existed could still be for a staff number.
     if (this.otpBypass()) await this.assertCustomerOrNew(dto.phone);
 
-    await this.prisma.otpCode.update({ where: { id: otp.id }, data: { consumed: true } });
+    // Each try is counted atomically before comparing, so parallel guesses can't exceed the limit.
+    const tried = await this.prisma.otpCode.updateMany({
+      where: { id: otp.id, attempts: { lt: OTP_MAX_ATTEMPTS } },
+      data: { attempts: { increment: 1 } },
+    });
+    if (tried.count === 0 || otp.code !== dto.code) {
+      throw new UnauthorizedException("Invalid or expired code");
+    }
 
     let user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    // Checked before the code is used up: signing in (no name given) with a phone that has no
+    // account — the panels' sign-in page — says so instead of creating one.
+    const { firstName, lastName } = dto;
+    if (!user && (!firstName || !lastName)) {
+      throw new NotFoundException("No account with this phone number");
+    }
+
+    // Conditional, so the same code can't be used twice concurrently.
+    const claimed = await this.prisma.otpCode.updateMany({ where: { id: otp.id, consumed: false }, data: { consumed: true } });
+    if (claimed.count === 0) {
+      throw new UnauthorizedException("Invalid or expired code");
+    }
+
     if (!user) {
-      if (!dto.firstName || !dto.lastName) {
-        throw new BadRequestException("firstName and lastName are required for a new account");
-      }
       user = await this.prisma.user.create({
         data: {
           phone: dto.phone,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
+          firstName: firstName!,
+          lastName: lastName!,
           role: Role.CUSTOMER,
           passwordHash: await bcrypt.hash(randomPassword(), 10),
           avatarUrl: randomDefaultAvatar(),
@@ -241,6 +275,18 @@ export class AuthService {
     }
 
     return this.buildAuthResponse(user);
+  }
+
+  private async assertOtpNotThrottled(phone: string) {
+    const recent = await this.prisma.otpCode.findMany({
+      where: { phone, createdAt: { gt: new Date(Date.now() - 60 * 60_000) } },
+      select: { createdAt: true },
+      orderBy: { createdAt: "desc" },
+    });
+    const secondsSinceLast = recent.length ? (Date.now() - recent[0].createdAt.getTime()) / 1000 : Infinity;
+    if (secondsSinceLast < OTP_RESEND_COOLDOWN_SECONDS || recent.length >= OTP_MAX_PER_HOUR) {
+      throw new HttpException("Too many code requests, try again later", HttpStatus.TOO_MANY_REQUESTS);
+    }
   }
 
   /** Codes are returned in the response instead of (or besides) being texted — see requestOtp. */

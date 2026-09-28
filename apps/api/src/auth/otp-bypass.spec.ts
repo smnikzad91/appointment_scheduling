@@ -13,7 +13,9 @@ function setup(existingRole: Role | null, delivers = false) {
     otpCode: {
       create: vi.fn().mockResolvedValue({}),
       findFirst: vi.fn().mockResolvedValue({ id: 'o1' }),
+      findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
   };
   const sms = { send: vi.fn().mockResolvedValue(delivers), delivers };
@@ -43,5 +45,6 @@ describe('OTP bypass (codes not really delivered)', () => {
     const { service, prisma } = setup(Role.SALON_OWNER);
     await expect(service.verifyOtp({ phone: '09120000001', code: '123456' })).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.otpCode.update).not.toHaveBeenCalled();
+    expect(prisma.otpCode.updateMany).not.toHaveBeenCalled();
   });
 });
