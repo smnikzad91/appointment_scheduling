@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { X, ChevronRight } from "lucide-react";
 import { useBooking, BOOKING_STEPS } from "./BookingProvider";
 import StepServices from "./StepServices";
@@ -23,13 +24,23 @@ const STEP_TITLES: Record<(typeof BOOKING_STEPS)[number], string> = {
 export default function BookingSheet() {
   const { isOpen, close, step, goBack, canGoBack } = useBooking();
 
+  // The page (and its map) must not scroll behind the open sheet.
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const stepIndex = BOOKING_STEPS.indexOf(step);
   const progressPercent = ((stepIndex + 1) / BOOKING_STEPS.length) * 100;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label="رزرو نوبت">
+    <div className="fixed inset-0 z-[100000] flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label="رزرو نوبت">
       <div
         className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl bg-app-card sm:max-w-md sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
