@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { Role, SalonStatus, User } from "@appointment-scheduling/database";
@@ -11,6 +11,8 @@ import { LoginDto } from "./dto/login.dto.js";
 import { VerifyOtpDto } from "./dto/otp.dto.js";
 import { CompletePasswordSetupDto } from "./dto/password-setup.dto.js";
 import { hashSetupToken } from "./password-setup.util.js";
+import { SmsService } from "../sms/sms.service.js";
+import { otpText } from "../sms/sms.text.js";
 
 export interface JwtPayload {
   sub: string;
@@ -41,6 +43,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly sms: SmsService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -178,12 +181,15 @@ export class AuthService {
   }
 
   /** Passwordless login/signup: request a code, then verify it to get a real session.
-   * No SMS provider is wired up yet — outside production the code is returned directly
-   * so this is testable without one; wire a real provider before shipping. */
+   * The code goes out by SMS (SmsService; SMS_DRIVER picks the provider). Outside production it
+   * is also returned as devCode, so flows are testable with the log driver. */
   async requestOtp(phone: string) {
     const code = randomOtpCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
     await this.prisma.otpCode.create({ data: { phone, code, expiresAt } });
+
+    const sent = await this.sms.send({ kind: "otp", to: phone, params: { code }, text: otpText(code) });
+    if (!sent && process.env.NODE_ENV === "production") throw new ServiceUnavailableException("Could not send the verification code");
 
     return {
       success: true,

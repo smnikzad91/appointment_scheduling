@@ -517,6 +517,8 @@ model Appointment {
   tipToman                 Int?
   stylistShareToman        Int?
   completedAt              DateTime?
+  // When the "1 hour before" SMS went out (customer + stylist); cleared when the time changes.
+  reminderSentAt           DateTime?
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 

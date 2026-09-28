@@ -18,6 +18,7 @@ import { AccountingModule } from './accounting/accounting.module.js';
 import { ShowcaseModule } from './showcase/showcase.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { WaitlistModule } from './waitlist/waitlist.module.js';
+import { SmsModule } from './sms/sms.module.js';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { WaitlistModule } from './waitlist/waitlist.module.js';
     ShowcaseModule,
     FavoritesModule,
     WaitlistModule,
+    SmsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

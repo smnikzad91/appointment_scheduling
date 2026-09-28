@@ -18,6 +18,7 @@ const BY_API_MESSAGE: Record<string, string> = {
   "You can only review a completed appointment": "فقط برای نوبت‌های انجام‌شده می‌توانید نظر بدهید",
   "A review needs a rating or a comment": "امتیاز بدهید یا چند کلمه بنویسید",
   "Invalid phone number": "شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد",
+  "Could not send the verification code": "ارسال پیامک کد تایید ممکن نشد؛ چند دقیقه بعد دوباره تلاش کنید",
   "This phone number belongs to a staff account": "این شماره متعلق به حساب آرایشگر یا مدیر سالن است",
   "Your stylist account is inactive": "حساب آرایشگری شما غیرفعال است",
   "This appointment can no longer be edited": "این نوبت بسته شده و دیگر قابل ویرایش نیست",
