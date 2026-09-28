@@ -12,16 +12,18 @@ import { Modal } from "@/components/ui/modal";
 import DeleteConfirmModal from "@/components/admin/DeleteConfirmModal";
 import { toast } from "sonner";
 import SelectField from "@/components/admin/SelectField";
+import type { UserRole } from "@/types/content";
+import type { TranslationKey } from "@/i18n/translations";
 
 interface UserRow {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
-  role: "admin" | "user";
+  role: UserRole;
   walletBalance: number;
   avatar: string;
-  phone: string;
+  phone: string | null;
   createdAt: string;
 }
 
@@ -29,7 +31,7 @@ type GridCtx = {
   isRTL: boolean;
   onEdit: (user: UserRow) => void;
   onDelete: (id: string, name: string) => void;
-  labels: { edit: string; del: string };
+  labels: { edit: string; del: string; roles: Record<UserRole, string> };
 };
 
 // ── Themes ─────────────────────────────────────────────────────────────────────
@@ -83,10 +85,37 @@ function NameCell({ data, context }: { data: UserRow; context: GridCtx }) {
   );
 }
 
-function RoleCell({ data }: { data: UserRow }) {
-  return data.role === "admin"
-    ? <span className="rounded-lg bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">Admin</span>
-    : <span className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-400">User</span>;
+const ROLE_LABEL: Record<UserRole, TranslationKey> = {
+  platform_admin: "rolePlatformAdmin",
+  salon_owner:    "roleSalonOwner",
+  stylist:        "roleStylist",
+  customer:       "roleCustomer",
+};
+
+const ROLE_BADGE: Record<UserRole, string> = {
+  platform_admin: "bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300",
+  salon_owner:    "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  stylist:        "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
+  customer:       "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+};
+
+// Only these two can be switched from here; see /api/admin/users/[id].
+const ASSIGNABLE_ROLES: UserRole[] = ["customer", "platform_admin"];
+
+// apps/web's own admin routes reply in English; show the admin's language instead.
+const API_ERRORS: Record<string, TranslationKey> = {
+  "You can't change your own role": "userErrSelfRole",
+  "Salon owner and stylist roles can't be changed": "userRoleLocked",
+  "This phone number belongs to another user": "userErrPhoneTaken",
+  "This user has a salon, bookings or payments and can't be deleted": "userErrHasRecords",
+};
+
+function RoleCell({ data, context }: { data: UserRow; context: GridCtx }) {
+  return (
+    <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${ROLE_BADGE[data.role]}`}>
+      {context.labels.roles[data.role]}
+    </span>
+  );
 }
 
 function PhoneCell({ value }: { value: string }) {
@@ -162,7 +191,7 @@ export default function AdminUsersList() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [editTarget, setEditTarget] = useState<UserRow | null>(null);
-  const [editRole, setEditRole] = useState<"admin" | "user">("user");
+  const [editRole, setEditRole] = useState<UserRole>("customer");
   const [editPhone, setEditPhone] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
@@ -183,8 +212,9 @@ export default function AdminUsersList() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     return {
       total:     users.length,
-      admins:    users.filter((u) => u.role === "admin").length,
-      regular:   users.filter((u) => u.role === "user").length,
+      owners:    users.filter((u) => u.role === "salon_owner").length,
+      stylists:  users.filter((u) => u.role === "stylist").length,
+      customers: users.filter((u) => u.role === "customer").length,
       newMonth:  users.filter((u) => new Date(u.createdAt) >= monthStart).length,
     };
   }, [users]);
@@ -196,6 +226,12 @@ export default function AdminUsersList() {
     setEditError("");
   };
 
+  const errorText = async (res: Response) => {
+    const data = await res.json().catch(() => ({}));
+    const key = typeof data.error === "string" ? API_ERRORS[data.error] : undefined;
+    return t(key ?? "userErrGeneric");
+  };
+
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
@@ -204,12 +240,14 @@ export default function AdminUsersList() {
     const res = await fetch(`/api/admin/users/${editTarget.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: editRole, phone: editPhone }),
+      body: JSON.stringify({
+        ...(ASSIGNABLE_ROLES.includes(editTarget.role) ? { role: editRole } : {}),
+        phone: editPhone.trim() || null,
+      }),
     });
     setEditSaving(false);
     if (!res.ok) {
-      const data = await res.json();
-      setEditError(data.error ?? t("userSave"));
+      setEditError(await errorText(res));
       return;
     }
     toast.success(t("userSaved"));
@@ -224,8 +262,13 @@ export default function AdminUsersList() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
-    await fetch(`/api/admin/users/${deleteTarget.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/users/${deleteTarget.id}`, { method: "DELETE" });
     setIsDeleting(false);
+    if (!res.ok) {
+      toast.error(await errorText(res));
+      setDeleteTarget(null);
+      return;
+    }
     toast.success(t("userDeleted"));
     setDeleteTarget(null);
     fetchUsers();
@@ -238,6 +281,12 @@ export default function AdminUsersList() {
     labels: {
       edit: t("userEdit"),
       del:  t("userDelete"),
+      roles: {
+        platform_admin: t(ROLE_LABEL.platform_admin),
+        salon_owner:    t(ROLE_LABEL.salon_owner),
+        stylist:        t(ROLE_LABEL.stylist),
+        customer:       t(ROLE_LABEL.customer),
+      },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [isRTL, lang]);
@@ -246,7 +295,7 @@ export default function AdminUsersList() {
     const cols: ColDef<UserRow>[] = [
       { headerName: "#", width: 60, sortable: false, filter: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
       { field: "firstName", headerName: t("colUser"), flex: 2, minWidth: 200, sortable: true, filter: false, cellRenderer: NameCell },
-      { field: "role", headerName: t("colRole"), width: 110, sortable: true, filter: false, cellRenderer: RoleCell },
+      { field: "role", headerName: t("colRole"), width: 130, sortable: true, filter: false, cellRenderer: RoleCell },
       { field: "phone", headerName: t("colPhone"), width: 150, sortable: false, filter: false, cellRenderer: PhoneCell },
       { field: "walletBalance", headerName: t("colWallet"), width: 130, sortable: true, filter: false, cellRenderer: WalletCell },
       { field: "createdAt", headerName: t("colJoined"), width: 150, sortable: true, filter: false, cellRenderer: DateCell },
@@ -262,12 +311,13 @@ export default function AdminUsersList() {
     <div className="p-6 space-y-6" dir={isRTL ? "rtl" : "ltr"}>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         {[
           { label: t("statTotalUsers"),   value: stats.total },
-          { label: t("statAdmins"),        value: stats.admins },
-          { label: t("statRegularUsers"),  value: stats.regular },
-          { label: t("statNewThisMonth"),  value: stats.newMonth },
+          { label: t("statSalonOwners"),  value: stats.owners },
+          { label: t("statStylists"),     value: stats.stylists },
+          { label: t("statCustomers"),    value: stats.customers },
+          { label: t("statNewThisMonth"), value: stats.newMonth },
         ].map((s) => (
           <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
             <p className="text-sm text-gray-500 dark:text-gray-400">{s.label}</p>
@@ -322,15 +372,21 @@ export default function AdminUsersList() {
 
           <div>
             <label className={labelClass}>{t("userEditRole")}</label>
-            <SelectField
-              ariaLabel={t("userEditRole")}
-              value={editRole}
-              onChange={(v) => setEditRole(v as "admin" | "user")}
-              options={[
-                { value: "user", label: t("roleUser") },
-                { value: "admin", label: t("roleAdmin") },
-              ]}
-            />
+            {editTarget && ASSIGNABLE_ROLES.includes(editTarget.role) ? (
+              <SelectField
+                ariaLabel={t("userEditRole")}
+                value={editRole}
+                onChange={(v) => setEditRole(v as UserRole)}
+                options={ASSIGNABLE_ROLES.map((r) => ({ value: r, label: t(ROLE_LABEL[r]) }))}
+              />
+            ) : editTarget ? (
+              <>
+                <span className={`inline-block rounded-lg px-2.5 py-1 text-xs font-semibold ${ROLE_BADGE[editTarget.role]}`}>
+                  {t(ROLE_LABEL[editTarget.role])}
+                </span>
+                <p className="mt-1.5 text-xs text-gray-400">{t("userRoleLocked")}</p>
+              </>
+            ) : null}
           </div>
 
           <div>
