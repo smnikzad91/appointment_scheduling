@@ -14,6 +14,9 @@ export interface AdminSalon {
   status: "PENDING" | "ACTIVE" | "SUSPENDED";
   createdAt: string;
   owner: { id: string; firstName: string; lastName: string; phone: string | null };
+  plan: { id: string; name: string } | null;
+  /** null = no end date */
+  planExpiresAt: string | null;
 }
 
 export function listAdminSalons(token: string, status?: AdminSalon["status"]) {
@@ -27,4 +30,12 @@ export function setSalonStatus(token: string, id: string, status: AdminSalon["st
     headers: authHeaders(token),
     body: JSON.stringify({ status }),
   });
+}
+
+/** planId null removes the plan (no limits); expiresAt null = no end date. */
+export function setSalonSubscription(token: string, id: string, planId: string | null, expiresAt: string | null) {
+  return salonApiFetch<{ id: string; planId: string | null; planExpiresAt: string | null; plan: { id: string; name: string } | null }>(
+    `/admin/salons/${id}/subscription`,
+    { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ planId, expiresAt }) },
+  );
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
+import { SubscriptionCard, useMySubscription } from "@/components/app/Subscription";
 import { Check, ChevronLeft, Images, Calculator, BookOpen } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput, SALON_UPDATED_EVENT } from "@/lib/api/ownerSalon";
@@ -23,6 +24,7 @@ const BRAND_SWATCHES = ["#a34a30", "#c2185b", "#8e44ad", "#1f6f78", "#2e7d32", "
 
 export default function SalonSettingsPage() {
   const token = useApiAccessToken();
+  const subscription = useMySubscription(token);
   const [salon, setSalon] = useState<OwnerSalon | null>(null);
   const [form, setForm] = useState<UpdateSalonInput>({});
   const [dirty, setDirty] = useState(false);
@@ -128,6 +130,13 @@ export default function SalonSettingsPage() {
       <ReviewsLinkCard token={token} scope="salon" className="mt-3" />
       <LinkCard href="/salon/accounting" icon={Calculator} title="حسابداری" subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها" className="mt-3" />
       <LinkCard href="/tutorials?role=owner" icon={BookOpen} title="راهنمای استفاده" subtitle="راهنمای تصویری قدم‌به‌قدم همه بخش‌های پنل سالن" className="mt-3" />
+
+      {subscription && (
+        <div id="subscription" className="scroll-mt-20">
+          <SectionTitle>اشتراک</SectionTitle>
+          <SubscriptionCard sub={subscription} />
+        </div>
+      )}
 
       <SectionTitle>اطلاعات سالن</SectionTitle>
       <Card className="flex flex-col gap-4 p-4">

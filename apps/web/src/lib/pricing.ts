@@ -7,9 +7,9 @@ export interface PricingPlanData {
   description: string | null;
   /** null = negotiated ("توافقی"), 0 = free */
   monthlyPriceToman: number | null;
-  /** null = unlimited */
+  /** Active stylists a salon on this plan may have; null = unlimited */
   maxStylists: number | null;
-  /** null = no SMS line */
+  /** Reminder SMS per Jalali month; null = none included (no line on the site) */
   smsPerMonth: number | null;
   features: string[];
   recommended: boolean;
@@ -17,6 +17,8 @@ export interface PricingPlanData {
   ctaHref: string;
   sortOrder: number;
   active: boolean;
+  /** Admin listing only: salons currently on this plan */
+  salonCount?: number;
 }
 
 export interface PricingSettingsData {

@@ -19,6 +19,7 @@ import { ShowcaseModule } from './showcase/showcase.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { WaitlistModule } from './waitlist/waitlist.module.js';
 import { SmsModule } from './sms/sms.module.js';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { SmsModule } from './sms/sms.module.js';
     FavoritesModule,
     WaitlistModule,
     SmsModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

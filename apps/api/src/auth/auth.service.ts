@@ -12,6 +12,7 @@ import { VerifyOtpDto } from "./dto/otp.dto.js";
 import { CompletePasswordSetupDto } from "./dto/password-setup.dto.js";
 import { hashSetupToken } from "./password-setup.util.js";
 import { SmsService } from "../sms/sms.service.js";
+import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
 import { otpDomain, otpText } from "../sms/sms.text.js";
 
 export interface JwtPayload {
@@ -44,6 +45,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly sms: SmsService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -72,6 +74,7 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const slug = await generateUniqueSlug(this.prisma, dto.salonName);
+    const subscription = await this.subscriptions.initialFor(dto.planId);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const owner = await tx.user.create({
@@ -99,6 +102,7 @@ export class AuthService {
           phone: dto.salonPhone ?? dto.phone,
           // New salons need platform-admin approval before they're publicly visible.
           status: SalonStatus.PENDING,
+          ...subscription,
         },
       });
 

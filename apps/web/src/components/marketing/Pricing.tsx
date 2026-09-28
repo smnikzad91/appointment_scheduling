@@ -32,6 +32,8 @@ export default async function Pricing() {
           {plans.map((plan) => {
             const price = planPriceLabel(plan.monthlyPriceToman);
             const external = /^https?:/i.test(plan.ctaHref);
+            // Sign-up preselects the plan whose button was pressed.
+            const href = plan.ctaHref === "/signup-salon" ? `/signup-salon?plan=${encodeURIComponent(plan.id)}` : plan.ctaHref;
             const ctaClass = `g-btn mt-8 h-12 text-sm ${plan.recommended ? "g-btn-primary" : "g-btn-ghost"}`;
             return (
               <div
@@ -66,7 +68,7 @@ export default async function Pricing() {
                     {plan.ctaLabel}
                   </a>
                 ) : (
-                  <Link href={plan.ctaHref} className={ctaClass}>
+                  <Link href={href} className={ctaClass}>
                     {plan.ctaLabel}
                   </Link>
                 )}

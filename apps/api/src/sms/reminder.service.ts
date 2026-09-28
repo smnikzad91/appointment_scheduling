@@ -4,6 +4,7 @@ import { AppointmentStatus } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { instantToSalonWallTime } from "../availability/salon-time.util.js";
 import { SmsService } from "./sms.service.js";
+import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
 import { clock, customerReminderText, stylistReminderText } from "./sms.text.js";
 
 const TICK_MS = 60_000;
@@ -16,8 +17,9 @@ const GRACE_MINUTES = 10;
  * appointment. Every minute it takes bookings starting in (now+50, now+60] minutes that haven't
  * been reminded, claims each with a conditional update (so two API instances never both send),
  * then sends. Bookings made less than an hour ahead get none. Rescheduling clears
- * reminderSentAt (AppointmentsService.update) so the new time is reminded. SMS_REMINDERS=off
- * disables it.
+ * reminderSentAt (AppointmentsService.update) so the new time is reminded. Each message comes out
+ * of the salon plan's monthly allowance (SubscriptionsService.takeReminderSms) — none left, none
+ * sent. SMS_REMINDERS=off disables it.
  */
 @Injectable()
 export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -29,6 +31,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
     private readonly prisma: PrismaService,
     private readonly sms: SmsService,
     private readonly config: ConfigService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   onApplicationBootstrap() {
@@ -69,11 +72,11 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
         if (a.startAt.getTime() - a.createdAt.getTime() < LEAD_MINUTES * 60_000) continue; // booked within the hour
 
         const time = clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay);
-        if (a.customer.phone) {
+        if (a.customer.phone && (await this.subscriptions.takeReminderSms(a.salonId, now))) {
           const params = { time, salon: a.salon.name, stylist: a.stylist.displayName };
           if (await this.sms.send({ kind: "reminder-customer", to: a.customer.phone, params, text: customerReminderText(params) })) sent++;
         }
-        if (a.stylist.user.phone) {
+        if (a.stylist.user.phone && (await this.subscriptions.takeReminderSms(a.salonId, now))) {
           const customer = `${a.customer.firstName} ${a.customer.lastName}`.trim();
           const params = { time, customer, services: a.services.map((s) => s.service.name).join("، ") };
           if (await this.sms.send({ kind: "reminder-stylist", to: a.stylist.user.phone, params, text: stylistReminderText(params) })) sent++;

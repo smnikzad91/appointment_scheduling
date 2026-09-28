@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
-import { listAdminSalons, setSalonStatus, type AdminSalon } from "@/lib/api/adminSalons";
+import { listAdminSalons, setSalonStatus, setSalonSubscription, type AdminSalon } from "@/lib/api/adminSalons";
+import { getAdminPricing } from "@/lib/api/adminPricing";
+import type { PricingPlanData } from "@/lib/pricing";
+import { normalizeDigits } from "@/lib/persian";
+import { Modal } from "@/components/ui/modal";
+import SelectField from "@/components/admin/SelectField";
 import Sep from "@/components/common/Sep";
 import { useT } from "@/i18n/useT";
 import { useLocaleFormat } from "@/i18n/useLocaleFormat";
@@ -35,6 +40,12 @@ export default function AdminSalonsPage() {
   const [salons, setSalons] = useState<AdminSalon[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [plans, setPlans] = useState<PricingPlanData[]>([]);
+  const [planFor, setPlanFor] = useState<AdminSalon | null>(null);
+
+  useEffect(() => {
+    getAdminPricing().then((d) => setPlans(d.plans)).catch(() => setPlans([]));
+  }, []);
 
   function reload() {
     if (!token) return;
@@ -115,6 +126,25 @@ export default function AdminSalonsPage() {
                     <Sep />
                     {t("slRegistered")}: {date(salon.createdAt)}
                   </p>
+                  <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
+                    {t("slPlan")}:{" "}
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">{salon.plan?.name ?? t("slNoPlan")}</span>
+                    {salon.plan && (
+                      <>
+                        <Sep />
+                        {!salon.planExpiresAt ? (
+                          t("slNoEnd")
+                        ) : new Date(salon.planExpiresAt) <= new Date() ? (
+                          <span className="font-semibold text-rose-600">{t("slExpiredOn")} {date(salon.planExpiresAt)}</span>
+                        ) : (
+                          <>{t("slUntil")} {date(salon.planExpiresAt)}</>
+                        )}
+                      </>
+                    )}
+                    <button type="button" onClick={() => setPlanFor(salon)} className="font-semibold text-brand-500 hover:underline">
+                      {t("slChangePlan")}
+                    </button>
+                  </p>
                 </div>
 
                 <div className="flex shrink-0 gap-2">
@@ -144,6 +174,141 @@ export default function AdminSalonsPage() {
           ))}
         </div>
       )}
+
+      {planFor && token && (
+        <PlanEditor
+          token={token}
+          salon={planFor}
+          plans={plans}
+          onClose={() => setPlanFor(null)}
+          onSaved={() => {
+            setPlanFor(null);
+            reload();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Assign a plan and an end date by hand (no payment gateway yet). The end date is "N days from"
+ * the current end when renewing the same plan before it runs out, otherwise from today.
+ */
+function PlanEditor({
+  token,
+  salon,
+  plans,
+  onClose,
+  onSaved,
+}: {
+  token: string;
+  salon: AdminSalon;
+  plans: PricingPlanData[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const t = useT();
+  const { date, num, apiError } = useLocaleFormat();
+  const [planId, setPlanId] = useState(salon.plan?.id ?? "");
+  const [mode, setMode] = useState<"none" | "days">(salon.planExpiresAt ? "days" : "none");
+  const [days, setDays] = useState("30");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [now] = useState(() => Date.now());
+  const currentEnd = salon.planExpiresAt ? new Date(salon.planExpiresAt).getTime() : null;
+  const base = planId === salon.plan?.id && currentEnd && currentEnd > now ? currentEnd : now;
+  const n = Number(days);
+  const validDays = Number.isInteger(n) && n >= 1 && n <= 3650;
+  const expiresAt = mode === "days" && validDays ? new Date(base + n * DAY_MS).toISOString() : null;
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      await setSalonSubscription(token, salon.id, planId || null, planId ? expiresAt : null);
+      onSaved();
+    } catch (err) {
+      setError(apiError(err, t("slStatusError")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const btn = "rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5";
+  return (
+    <Modal isOpen onClose={onClose} className="mx-4 max-w-md">
+      <div className="flex flex-col gap-4 p-6 sm:p-8">
+        <div>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">{t("slPlanTitle")}</h3>
+          <p className="mt-1 text-sm text-gray-500">{salon.name}</p>
+        </div>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("slPlan")}</span>
+          <SelectField
+            ariaLabel={t("slPlan")}
+            value={planId}
+            onChange={setPlanId}
+            options={[
+              { value: "", label: t("slNoPlanOption") },
+              ...plans.map((p) => ({ value: p.id, label: p.active ? p.name : `${p.name} (${t("prHidden")})` })),
+            ]}
+          />
+        </label>
+
+        {planId && (
+          <div className="flex flex-col gap-2.5">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("slEnd")}</span>
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input type="radio" checked={mode === "none"} onChange={() => setMode("none")} className="accent-brand-500" />
+              {t("slNoEnd")}
+            </label>
+            <label className="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input type="radio" checked={mode === "days"} onChange={() => setMode("days")} className="accent-brand-500" />
+              <input
+                className="h-9 w-20 rounded-lg border border-gray-300 bg-transparent px-2 text-center text-sm outline-none focus:border-brand-300 dark:border-gray-700 dark:text-white/90"
+                inputMode="numeric"
+                dir="ltr"
+                value={days}
+                onFocus={() => setMode("days")}
+                onChange={(e) => setDays(normalizeDigits(e.target.value).replace(/\D/g, "").slice(0, 4))}
+                aria-label={t("slDays")}
+              />
+              {t("slDaysFrom")} {base === now ? t("slToday") : date(new Date(base).toISOString())}
+            </label>
+            {mode === "days" && (
+              <div className="flex flex-wrap gap-2 ps-6">
+                {[30, 90, 180, 365].map((d) => (
+                  <button key={d} type="button" className={btn} onClick={() => setDays(String(d))}>
+                    {num(d)} {t("slDays")}
+                  </button>
+                ))}
+              </div>
+            )}
+            {expiresAt && <p className="ps-6 text-xs text-gray-500">{t("slUntil")} {date(expiresAt)}</p>}
+          </div>
+        )}
+
+        {error && <p className="text-sm text-rose-500">{error}</p>}
+
+        <div className="flex justify-end gap-3">
+          <button type="button" className={btn} onClick={onClose} disabled={busy}>
+            {t("prCancel")}
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={busy || (!!planId && mode === "days" && !validDays)}
+            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+          >
+            {busy ? t("prSaving") : t("prSave")}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }

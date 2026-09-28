@@ -32,6 +32,14 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
-  await prisma.pricingPlan.deleteMany({ where: { id } });
+  try {
+    await prisma.pricingPlan.deleteMany({ where: { id } });
+  } catch (err) {
+    // Salon.planId restricts deletes: salons on this plan keep their limits.
+    if ((err as { code?: string }).code === "P2003") {
+      return NextResponse.json({ error: "This plan is used by salons — hide it instead of deleting" }, { status: 409 });
+    }
+    throw err;
+  }
   return NextResponse.json({ ok: true });
 }

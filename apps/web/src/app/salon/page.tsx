@@ -7,6 +7,7 @@ import { Calculator, CalendarCheck2, CalendarClock, ExternalLink, Hourglass, Sha
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, listMySalonAppointments, listMyStylists, updateAppointmentStatus, type OwnerSalon, type OwnerAppointment, type OwnerStylist } from "@/lib/api/ownerSalon";
 import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
+import { SubscriptionNotice, useMySubscription } from "@/components/app/Subscription";
 import { formatToman } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
 import SalonBookingSheet from "@/components/app/SalonBookingSheet";
@@ -21,6 +22,7 @@ const STATUS_PILL: Record<OwnerSalon["status"], { label: string; className: stri
 
 export default function SalonOverviewPage() {
   const token = useApiAccessToken();
+  const subscription = useMySubscription(token);
   const [salon, setSalon] = useState<OwnerSalon | null>(null);
   const [appointments, setAppointments] = useState<OwnerAppointment[] | null>(null);
   const [stylists, setStylists] = useState<OwnerStylist[]>([]);
@@ -149,6 +151,7 @@ export default function SalonOverviewPage() {
 
       <LinkCard href="/salon/accounting" icon={Calculator} title="حسابداری" subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها" className="mt-3" />
       <ZeroCommissionNotice stylists={stylists} className="mt-3" />
+      <SubscriptionNotice sub={subscription} className="mt-3" />
 
       {needsConfirmation.length > 0 && (
         <>

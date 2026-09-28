@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, KeyRound, Link2, Plus, UserPlus, Users } from "lucide-react";
+import { persianApiError } from "@/lib/api/errorMessages";
+import { SubscriptionNotice, useMySubscription } from "@/components/app/Subscription";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyStylists,
@@ -45,6 +47,8 @@ const EMPTY_INVITE = { phone: "", firstName: "", lastName: "", displayName: "", 
 export default function SalonStylistsPage() {
   const token = useApiAccessToken();
   const [stylists, setStylists] = useState<OwnerStylist[] | null>(null);
+  // Reloads when the active count changes, so the plan's seat count stays current.
+  const subscription = useMySubscription(token, stylists?.filter((s) => s.active).length);
   const [services, setServices] = useState<OwnerService[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,8 +124,8 @@ export default function SalonStylistsPage() {
     setStylists((list) => list?.map((s) => (s.id === stylist.id ? { ...s, active: !s.active } : s)) ?? list);
     try {
       await updateStylist(token, stylist.id, { active: !stylist.active });
-    } catch {
-      setError("تغییر وضعیت آرایشگر انجام نشد");
+    } catch (err) {
+      setError(persianApiError(err, "تغییر وضعیت آرایشگر انجام نشد"));
       reload();
     }
   }
@@ -263,7 +267,11 @@ export default function SalonStylistsPage() {
       }
       reload();
     } catch (err) {
-      setInviteError(err instanceof SalonApiError && err.status === 409 ? "این شماره قبلاً در نوبتا ثبت شده و نمی‌توان آن را به‌عنوان آرایشگر اضافه کرد" : "افزودن آرایشگر انجام نشد");
+      setInviteError(
+        err instanceof SalonApiError && err.status === 409
+          ? "این شماره قبلاً در نوبتا ثبت شده و نمی‌توان آن را به‌عنوان آرایشگر اضافه کرد"
+          : persianApiError(err, "افزودن آرایشگر انجام نشد"), // e.g. the plan's stylist limit
+      );
     } finally {
       setInviting(false);
     }
@@ -285,11 +293,16 @@ export default function SalonStylistsPage() {
     <>
       <PageHeader
         title="آرایشگرها"
-        subtitle={`${toPersianDigits(stylists.filter((s) => s.active).length)} آرایشگر فعال`}
+        subtitle={
+          subscription?.stylists.limit != null
+            ? `${toPersianDigits(stylists.filter((s) => s.active).length)} از ${toPersianDigits(subscription.stylists.limit)} آرایشگر فعال پلن`
+            : `${toPersianDigits(stylists.filter((s) => s.active).length)} آرایشگر فعال`
+        }
         action={<IconButton icon={Plus} label="دعوت آرایشگر" onClick={() => setInviteOpen(true)} />}
       />
 
       {error && <ErrorBanner onRetry={reload}>{error}</ErrorBanner>}
+      <SubscriptionNotice sub={subscription} seats className="mb-4" />
       <ZeroCommissionNotice
         stylists={stylists}
         onPick={(id) => {

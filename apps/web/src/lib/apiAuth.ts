@@ -51,6 +51,7 @@ export function apiRegisterSalonOwner(input: {
   latitude: number;
   longitude: number;
   salonPhone?: string;
+  planId?: string;
 }) {
   return apiFetch<ApiAuthResponse>("/auth/register-salon-owner", {
     method: "POST",

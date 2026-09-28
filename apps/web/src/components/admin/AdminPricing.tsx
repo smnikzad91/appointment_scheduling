@@ -76,7 +76,7 @@ export default function AdminPricing() {
     try {
       // The route validates and keeps only the plan fields; id/sortOrder ride along unused.
       const saved = await updatePlan(plan.id, { ...plan, active: !plan.active });
-      setPlans((ps) => ps?.map((p) => (p.id === plan.id ? saved : p)) ?? null);
+      setPlans((ps) => ps?.map((p) => (p.id === plan.id ? { ...saved, salonCount: p.salonCount } : p)) ?? null);
     } catch (err) {
       toast.error(apiError(err, t("prSaveFailed")));
     } finally {
@@ -104,7 +104,12 @@ export default function AdminPricing() {
     toast.success(t("prSaved"));
     // A new «recommended» plan takes the badge from the others, so reload rather than patch.
     if (saved.recommended) load();
-    else setPlans((ps) => (ps?.some((p) => p.id === saved.id) ? ps.map((p) => (p.id === saved.id ? saved : p)) : [...(ps ?? []), saved]));
+    else
+      setPlans((ps) =>
+        ps?.some((p) => p.id === saved.id)
+          ? ps.map((p) => (p.id === saved.id ? { ...saved, salonCount: p.salonCount } : p))
+          : [...(ps ?? []), { ...saved, salonCount: 0 }],
+      );
   }
 
   const unpriced = plans?.filter((p) => p.active && p.monthlyPriceToman === null) ?? [];
@@ -170,6 +175,7 @@ export default function AdminPricing() {
         isOpen={!!deleting}
         title={t("prDeleteTitle")}
         itemName={deleting?.name ?? ""}
+        warning={deleting?.salonCount ? t("prInUseHint") : undefined}
         confirmLabel={t("prDelete")}
         cancelLabel={t("prCancel")}
         isDeleting={busy}
@@ -247,6 +253,7 @@ function PlanCard({
   onDelete: () => void;
 }) {
   const t = useT();
+  const { num } = useLocaleFormat();
   const price = planPriceLabel(plan.monthlyPriceToman);
 
   return (
@@ -297,6 +304,7 @@ function PlanCard({
           {plan.ctaLabel} ← <span dir="ltr">{plan.ctaHref}</span>
         </p>
       </div>
+      <p className="mt-2 text-xs font-medium text-gray-500">{t("prSalonCount").replace("{n}", num(plan.salonCount ?? 0))}</p>
 
       <div className="mt-4 flex gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
         <button type="button" className={`${ghostBtn} inline-flex flex-1 items-center justify-center gap-1.5`} onClick={onEdit}>

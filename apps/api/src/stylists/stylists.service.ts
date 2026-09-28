@@ -4,6 +4,7 @@ import { Role } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { assertOwnsSalon } from "../salons/salon-ownership.util.js";
+import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
 import { issueSetupToken, unusablePassword } from "../auth/password-setup.util.js";
 import {
   InviteStylistDto,
@@ -24,6 +25,7 @@ export class StylistsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly salonsService: SalonsService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   async listMine(userId: string) {
@@ -36,6 +38,7 @@ export class StylistsService {
 
   async invite(userId: string, dto: InviteStylistDto) {
     const salon = await this.salonsService.findMine(userId);
+    await this.subscriptions.assertCanAddStylist(salon.id);
 
     const existingUser = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
     if (existingUser) {
@@ -102,6 +105,8 @@ export class StylistsService {
 
   async update(userId: string, stylistId: string, dto: UpdateStylistDto) {
     const stylist = await this.findOwned(userId, stylistId);
+    // Re-activating a stylist takes a seat on the plan like adding one.
+    if (dto.active === true && !stylist.active) await this.subscriptions.assertCanAddStylist(stylist.salonId);
     const [updated] = await this.prisma.$transaction([
       this.prisma.stylist.update({ where: { id: stylist.id }, data: dto }),
       ...this.syncAccountAvatar(stylist.userId, dto.avatarUrl),

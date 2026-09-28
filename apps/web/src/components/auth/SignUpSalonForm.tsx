@@ -12,10 +12,21 @@ import AuthCard, { AuthLink } from "@/components/guest/AuthCard";
 import { FloatingInput, FloatingTextArea, FormError, PasswordInput, PasswordStrength } from "@/components/guest/fields";
 import GradientButton from "@/components/guest/GradientButton";
 import { rise } from "@/components/guest/motion";
+import { planFeatureLines, planPriceLabel, type PricingPlanData } from "@/lib/pricing";
 
+export type SignUpPlan = Pick<PricingPlanData, "id" | "name" | "monthlyPriceToman" | "maxStylists" | "smsPerMonth" | "features" | "recommended">;
 
-export default function SignUpSalonForm() {
+export default function SignUpSalonForm({
+  plans,
+  initialPlanId,
+  trialDays,
+}: {
+  plans: SignUpPlan[];
+  initialPlanId: string | null;
+  trialDays: number;
+}) {
   const router = useRouter();
+  const [planId, setPlanId] = useState(initialPlanId);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -62,6 +73,7 @@ export default function SignUpSalonForm() {
         address,
         latitude: pin.lat,
         longitude: pin.lng,
+        planId: planId ?? undefined,
       }),
     });
 
@@ -164,11 +176,52 @@ export default function SignUpSalonForm() {
           </p>
         </div>
 
+        {plans.length > 0 && (
+          <>
+            <StepTitle n="۳" i={7.5}>پلن</StepTitle>
+            <div role="radiogroup" aria-label="انتخاب پلن" className="g-rise grid gap-2.5 sm:grid-cols-2" style={rise(7.75)}>
+              {plans.map((plan) => (
+                <PlanOption key={plan.id} plan={plan} selected={plan.id === planId} onSelect={() => setPlanId(plan.id)} />
+              ))}
+            </div>
+            <p className="g-rise -mt-1 px-1 text-xs leading-5 text-g-faint" style={rise(7.75)}>
+              {trialDays > 0
+                ? `${toPersianDigits(trialDays)} روز اول رایگان است؛ بعداً می‌توانید پلن را عوض کنید.`
+                : "بعداً می‌توانید پلن را عوض کنید."}
+            </p>
+          </>
+        )}
+
         <GradientButton type="submit" loading={loading} loadingLabel="در حال ثبت‌نام…" className="g-rise mt-2" style={rise(8)}>
           ثبت‌نام و ساخت سالن
         </GradientButton>
       </form>
     </AuthCard>
+  );
+}
+
+function PlanOption({ plan, selected, onSelect }: { plan: SignUpPlan; selected: boolean; onSelect: () => void }) {
+  const price = planPriceLabel(plan.monthlyPriceToman);
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={`flex flex-col gap-1 rounded-2xl border p-3.5 text-start transition ${
+        selected ? "border-g-accent bg-g-accent/10" : "border-g-line-strong hover:border-g-accent/50"
+      }`}
+    >
+      <span className="flex items-center justify-between gap-2">
+        <span className="font-bold text-g-ink">{plan.name}</span>
+        {plan.recommended && <span className="rounded-full bg-g-accent/15 px-2 py-0.5 text-[11px] font-bold text-g-accent">پیشنهادی</span>}
+      </span>
+      <span className="text-sm font-semibold text-g-ink">
+        {price.amount}
+        {price.perMonth && <span className="text-xs font-normal text-g-faint"> تومان / ماه</span>}
+      </span>
+      <span className="text-xs leading-5 text-g-muted">{planFeatureLines(plan).slice(0, 2).join("، ")}</span>
+    </button>
   );
 }
 

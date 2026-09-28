@@ -371,10 +371,16 @@ model Salon {
   latitude      Float?
   longitude     Float?
   status        SalonStatus @default(PENDING)
+  // Subscription (apps/api src/subscriptions): no plan = no limits (salons from before plans
+  // existed, until the admin assigns one). planExpiresAt null = no end date.
+  planId        String?
+  plan          PricingPlan? @relation(fields: [planId], references: [id], onDelete: Restrict)
+  planExpiresAt DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
   stylists          Stylist[]
+  smsUsage          SalonSmsUsage[]
   services          Service[]
   serviceCategories ServiceCategory[]
   appointments      Appointment[]
@@ -770,15 +776,16 @@ model WaitlistEntry {
   @@map("waitlist_entries")
 }
 
-// Salon subscription plans for the landing page's pricing section, edited at /admin/pricing
-// (apps/web, Prisma directly). Limits are numbers rather than feature text so plan enforcement
-// can read them later: maxStylists null = unlimited, smsPerMonth null = no SMS line shown.
+// Salon subscription plans: the landing page's pricing section and each salon's limits. Edited at
+// /admin/pricing (apps/web, Prisma directly); enforced by apps/api (src/subscriptions).
 model PricingPlan {
   id                String   @id @default(cuid())
   name              String
   description       String?
   // null = negotiated price ("توافقی"), 0 = free
   monthlyPriceToman Int?
+  // Enforced by apps/api for salons on this plan: null = unlimited stylists; reminder SMS per
+  // Jalali month, null = none included.
   maxStylists       Int?
   smsPerMonth       Int?
   // Extra feature lines, shown after the generated stylist/SMS lines
@@ -791,6 +798,8 @@ model PricingPlan {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  salons Salon[]
+
   @@index([active, sortOrder])
   @@map("pricing_plans")
 }
@@ -802,4 +811,16 @@ model PricingSettings {
   updatedAt DateTime @updatedAt
 
   @@map("pricing_settings")
+}
+
+// Reminder SMS sent per salon per Jalali month ("1405-07", salon timezone), checked against the
+// plan's smsPerMonth before each send (apps/api src/sms/reminder.service.ts).
+model SalonSmsUsage {
+  salonId String
+  salon   Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  period  String
+  sent    Int    @default(0)
+
+  @@id([salonId, period])
+  @@map("salon_sms_usage")
 }

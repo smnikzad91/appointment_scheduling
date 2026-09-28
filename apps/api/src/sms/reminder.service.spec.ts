@@ -2,12 +2,14 @@ import { ReminderService } from './reminder.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { SmsService } from './sms.service.js';
 import type { ConfigService } from '@nestjs/config';
+import type { SubscriptionsService } from '../subscriptions/subscriptions.service.js';
 
 const NOW = new Date('2026-10-05T10:00:00Z'); // 13:30 in Tehran
 
 function appt(overrides: Record<string, unknown> = {}) {
   return {
     id: 'a1',
+    salonId: 's1',
     startAt: new Date('2026-10-05T10:55:00Z'), // 14:25 Tehran, 55 min ahead
     createdAt: new Date('2026-10-04T08:00:00Z'),
     salon: { name: 'سالن رز', timezone: 'Asia/Tehran' },
@@ -18,7 +20,7 @@ function appt(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function setup(rows: ReturnType<typeof appt>[], claimCount = 1) {
+function setup(rows: ReturnType<typeof appt>[], claimCount = 1, allowance = Infinity) {
   const prisma = {
     appointment: {
       findMany: vi.fn().mockResolvedValue(rows),
@@ -26,8 +28,15 @@ function setup(rows: ReturnType<typeof appt>[], claimCount = 1) {
     },
   };
   const sms = { send: vi.fn().mockResolvedValue(true) };
-  const service = new ReminderService(prisma as unknown as PrismaService, sms as unknown as SmsService, { get: () => undefined } as unknown as ConfigService);
-  return { service, prisma, sms };
+  let left = allowance;
+  const subscriptions = { takeReminderSms: vi.fn(async () => left-- > 0) };
+  const service = new ReminderService(
+    prisma as unknown as PrismaService,
+    sms as unknown as SmsService,
+    { get: () => undefined } as unknown as ConfigService,
+    subscriptions as unknown as SubscriptionsService,
+  );
+  return { service, prisma, sms, subscriptions };
 }
 
 describe('ReminderService.tick', () => {
@@ -62,5 +71,13 @@ describe('ReminderService.tick', () => {
     const { service, sms } = setup([appt({ stylist: { displayName: 'سارا', user: { phone: null } } })]);
     expect(await service.tick(NOW)).toBe(1);
     expect(sms.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops at the salon plan's monthly allowance, customer first", async () => {
+    const { service, sms, subscriptions } = setup([appt()], 1, 1);
+    expect(await service.tick(NOW)).toBe(1);
+    expect(subscriptions.takeReminderSms).toHaveBeenCalledWith('s1', NOW);
+    expect(sms.send).toHaveBeenCalledTimes(1);
+    expect(sms.send.mock.calls[0][0].kind).toBe('reminder-customer');
   });
 });

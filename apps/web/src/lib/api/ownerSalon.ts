@@ -25,6 +25,24 @@ export interface OwnerSalon {
   timezone: string;
 }
 
+// --- subscription (plan + limits; plans are edited at /admin/pricing) ---
+
+export interface OwnerSubscription {
+  /** "none" = no plan assigned, so no limits */
+  status: "none" | "active" | "expired";
+  plan: { id: string; name: string; monthlyPriceToman: number | null; maxStylists: number | null; smsPerMonth: number | null } | null;
+  /** null = no end date */
+  expiresAt: string | null;
+  /** limit null = unlimited */
+  stylists: { active: number; limit: number | null };
+  /** This Jalali month's reminder SMS; limit null = unlimited (no plan) */
+  sms: { period: string; sent: number; limit: number | null };
+}
+
+export function getMySubscription(token: string) {
+  return salonApiFetch<OwnerSubscription>("/salons/mine/subscription", { headers: authHeaders(token) });
+}
+
 /** Fired on window after the salon's name or logo changes, so the app bar can refresh. */
 export const SALON_UPDATED_EVENT = "salon:updated";
 

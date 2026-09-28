@@ -56,6 +56,7 @@ export class SalonsService {
       orderBy: { createdAt: "desc" },
       include: {
         owner: { select: { id: true, firstName: true, lastName: true, phone: true } },
+        plan: { select: { id: true, name: true } },
       },
     });
   }

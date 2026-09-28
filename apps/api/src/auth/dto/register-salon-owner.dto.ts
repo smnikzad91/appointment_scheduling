@@ -46,4 +46,9 @@ export class RegisterSalonOwnerDto {
   @IsOptional()
   @IsString()
   salonPhone?: string;
+
+  /** The plan picked on the pricing section / sign-up form; omitted = the recommended plan. */
+  @IsOptional()
+  @IsString()
+  planId?: string;
 }
