@@ -31,6 +31,8 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Invalid link URL": "لینک باید با http:// یا https:// شروع شود",
   "Invalid or expired link": "این لینک دیگر معتبر نیست؛ از مدیر سالن بخواهید لینک تازه‌ای برایتان بفرستد",
   "Upload a banner image before turning it on": "برای نمایش بنر، ابتدا تصویر آن را آپلود کنید",
+  "Too many code requests, try again later": "درخواست کد بیش از حد مجاز است؛ یک دقیقه بعد دوباره تلاش کنید",
+  "No account with this phone number": "حسابی با این شماره موبایل وجود ندارد",
   "Staff accounts sign in with their password": "این شماره متعلق به حساب مدیر یا آرایشگر است؛ از صفحه ورود با رمز عبور وارد شوید",
   "Your plan's stylist limit is reached": "ظرفیت آرایشگر پلن شما پر است؛ برای افزودن، یک آرایشگر را غیرفعال کنید یا پلن را ارتقا دهید",
   "Your subscription has expired": "اشتراک سالن به پایان رسیده است؛ برای تمدید با پشتیبانی تماس بگیرید",

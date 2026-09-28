@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CalendarHeart, LogOut, MessageSquareText } from "lucide-react";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { requestOtp, verifyOtp } from "@/lib/api/bookings";
+import { formatCountdown, useResendCountdown } from "@/hooks/useResendCountdown";
 import { loadCustomerSession, saveCustomerSession, clearCustomerSession, type CustomerSession } from "@/lib/customerSession";
 import { normalizeDigits, isValidIranianMobile, toPersianDigits, splitFullName } from "@/lib/persian";
 import { useWebOtp } from "@/lib/useWebOtp";
@@ -173,6 +174,14 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
             <Button type="submit" block busy={loading} disabled={code.length !== OTP_LENGTH}>
               تایید و ورود
             </Button>
+            <ResendCode
+              phone={phone}
+              onSent={() => {
+                setCode("");
+                setError(null);
+              }}
+              onError={setError}
+            />
             <Button
               variant="ghost"
               block
@@ -188,5 +197,34 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
         )}
       </Card>
     </>
+  );
+}
+
+/** Mounted with the code step, so its countdown starts when the code was sent (the api allows one per minute). */
+function ResendCode({ phone, onSent, onError }: { phone: string; onSent: () => void; onError: (message: string) => void }) {
+  const { secondsLeft, restart } = useResendCountdown();
+  const [busy, setBusy] = useState(false);
+
+  async function resend() {
+    setBusy(true);
+    try {
+      await requestOtp(phone);
+      onSent();
+      restart();
+    } catch (err) {
+      onError(persianApiError(err, "ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return secondsLeft > 0 ? (
+    <p className="text-center text-xs leading-6 text-app-muted">
+      پیامک ممکن است چند ثانیه طول بکشد. ارسال مجدد کد تا <span dir="ltr">{formatCountdown(secondsLeft)}</span> دیگر
+    </p>
+  ) : (
+    <Button variant="ghost" block busy={busy} onClick={resend}>
+      کد را دریافت نکردید؟ ارسال مجدد
+    </Button>
   );
 }

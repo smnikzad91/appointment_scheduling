@@ -25,6 +25,14 @@ export function apiLogin(identifier: string, password: string) {
   });
 }
 
+/** Signs in with an SMS code (requested via /auth/otp/request). 404 = no account for this phone. */
+export function apiVerifyOtp(phone: string, code: string) {
+  return apiFetch<ApiAuthResponse>("/auth/otp/verify", {
+    method: "POST",
+    body: JSON.stringify({ phone, code }),
+  });
+}
+
 export function apiRegister(input: {
   phone: string;
   email?: string;

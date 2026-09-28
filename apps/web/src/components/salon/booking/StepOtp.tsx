@@ -6,6 +6,8 @@ import { normalizeDigits, toPersianDigits, splitFullName } from "@/lib/persian";
 import { verifyOtp, requestOtp } from "@/lib/api/bookings";
 import { SalonApiError } from "@/lib/api/salonApiClient";
 import { useWebOtp } from "@/lib/useWebOtp";
+import { persianApiError } from "@/lib/api/errorMessages";
+import { formatCountdown, useResendCountdown } from "@/hooks/useResendCountdown";
 
 const OTP_LENGTH = 5;
 
@@ -17,7 +19,9 @@ export default function StepOtp() {
   );
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
-  const [resent, setResent] = useState(false);
+  const [resending, setResending] = useState(false);
+  // The api allows one code per phone per minute.
+  const { secondsLeft, restart } = useResendCountdown();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -77,15 +81,21 @@ export default function StepOtp() {
 
   async function handleResend() {
     setError(null);
+    setResending(true);
     try {
       const { devCode } = await requestOtp(state.customerPhone);
-      setResent(true);
+      restart();
       if (devCode?.length === OTP_LENGTH) {
         setDigits(devCode.split(""));
         void handleVerify(devCode);
+      } else {
+        setDigits(Array(OTP_LENGTH).fill(""));
+        inputRefs.current[0]?.focus();
       }
-    } catch {
-      setError("ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید");
+    } catch (err) {
+      setError(persianApiError(err, "ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید"));
+    } finally {
+      setResending(false);
     }
   }
 
@@ -122,9 +132,21 @@ export default function StepOtp() {
       {verifying && <p className="text-xs text-g-muted">در حال بررسی کد...</p>}
       {error && <p className="text-xs text-rose-500">{error}</p>}
 
-      <button type="button" onClick={handleResend} disabled={resent} className="text-xs font-medium underline disabled:no-underline disabled:opacity-50" style={{ color: "var(--salon-brand-ink)" }}>
-        {resent ? "کد مجدد ارسال شد" : "ارسال مجدد کد"}
-      </button>
+      {secondsLeft > 0 ? (
+        <p className="text-xs text-g-muted">
+          پیامک ممکن است چند ثانیه طول بکشد. ارسال مجدد کد تا <span dir="ltr">{formatCountdown(secondsLeft)}</span> دیگر
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={resending}
+          className="text-xs font-medium underline disabled:no-underline disabled:opacity-50"
+          style={{ color: "var(--salon-brand-ink)" }}
+        >
+          {resending ? "در حال ارسال..." : "کد را دریافت نکردید؟ ارسال مجدد"}
+        </button>
+      )}
     </div>
   );
 }
