@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useBooking } from "./BookingProvider";
 import { normalizeDigits, toPersianDigits, splitFullName } from "@/lib/persian";
 import { verifyOtp, requestOtp } from "@/lib/api/bookings";
@@ -10,11 +10,22 @@ const OTP_LENGTH = 5;
 
 export default function StepOtp() {
   const { state, updateState, goNext } = useBooking();
-  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  // No SMS provider yet: the API returned the code, so show it filled in and verify by itself.
+  const [digits, setDigits] = useState<string[]>(() =>
+    state.devCode?.length === OTP_LENGTH ? state.devCode.split("") : Array(OTP_LENGTH).fill(""),
+  );
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [resent, setResent] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (state.devCode?.length !== OTP_LENGTH) return;
+    const t = setTimeout(() => void handleVerify(state.devCode!), 400);
+    return () => clearTimeout(t);
+    // once, on arrival with a code
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleChange(index: number, raw: string) {
     const value = normalizeDigits(raw).replace(/[^0-9]/g, "").slice(-1);
@@ -53,8 +64,12 @@ export default function StepOtp() {
   async function handleResend() {
     setError(null);
     try {
-      await requestOtp(state.customerPhone);
+      const { devCode } = await requestOtp(state.customerPhone);
       setResent(true);
+      if (devCode?.length === OTP_LENGTH) {
+        setDigits(devCode.split(""));
+        void handleVerify(devCode);
+      }
     } catch {
       setError("ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید");
     }

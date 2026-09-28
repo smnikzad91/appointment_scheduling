@@ -15,6 +15,8 @@ interface BookingState {
   customerName: string;
   customerPhone: string;
   accessToken: string | null; // set once OTP verification succeeds
+  /** The code, when the API hands it back (no SMS provider yet) — StepOtp then verifies by itself. */
+  devCode: string | null;
 }
 
 const INITIAL_STATE: BookingState = {
@@ -25,6 +27,7 @@ const INITIAL_STATE: BookingState = {
   customerName: "",
   customerPhone: "",
   accessToken: null,
+  devCode: null,
 };
 
 interface BookingContextValue {

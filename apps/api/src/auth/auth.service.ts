@@ -181,19 +181,23 @@ export class AuthService {
   }
 
   /** Passwordless login/signup: request a code, then verify it to get a real session.
-   * The code goes out by SMS (SmsService; SMS_DRIVER picks the provider). Outside production it
-   * is also returned as devCode, so flows are testable with the log driver. */
+   * The code goes out by SMS (SmsService; SMS_DRIVER picks the provider). It is also returned as
+   * devCode outside production, and — a temporary bypass until the SMS provider is connected —
+   * whenever the driver doesn't really deliver (SMS_DRIVER=log), so booking and sign-in keep
+   * working; the web app then fills it in by itself. That means phone numbers aren't verified
+   * while the bypass is on; it ends by itself once SMS_DRIVER=provider. */
   async requestOtp(phone: string) {
     const code = randomOtpCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
     await this.prisma.otpCode.create({ data: { phone, code, expiresAt } });
 
     const sent = await this.sms.send({ kind: "otp", to: phone, params: { code }, text: otpText(code) });
-    if (!sent && process.env.NODE_ENV === "production") throw new ServiceUnavailableException("Could not send the verification code");
+    const bypass = process.env.NODE_ENV !== "production" || !this.sms.delivers;
+    if (!sent && !bypass) throw new ServiceUnavailableException("Could not send the verification code");
 
     return {
       success: true,
-      ...(process.env.NODE_ENV !== "production" ? { devCode: code } : {}),
+      ...(bypass ? { devCode: code } : {}),
     };
   }
 

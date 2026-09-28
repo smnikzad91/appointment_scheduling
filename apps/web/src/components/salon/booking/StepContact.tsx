@@ -27,7 +27,8 @@ export default function StepContact() {
     setSubmitting(true);
     updateState({ customerPhone: phone });
     try {
-      await requestOtp(phone);
+      const { devCode } = await requestOtp(phone);
+      updateState({ devCode: devCode ?? null });
       goNext();
     } catch {
       setError("ارسال کد تایید ممکن نشد، دوباره تلاش کنید");

@@ -71,7 +71,13 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
     setLoading(true);
     setPhone(normalized);
     try {
-      await requestOtp(normalized);
+      const { devCode } = await requestOtp(normalized);
+      // No SMS provider yet: the API returned the code, so sign in without the code step.
+      if (devCode) {
+        const { accessToken, user } = await verifyOtp(normalized, devCode, splitFullName(name));
+        onLoggedIn({ token: accessToken, firstName: user.firstName });
+        return;
+      }
       setStep("otp");
     } catch {
       setError("ارسال کد تایید ممکن نشد، دوباره تلاش کنید");
