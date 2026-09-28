@@ -31,7 +31,7 @@ export default function BookingSheet() {
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label="رزرو نوبت">
       <div
-        className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl bg-white sm:max-w-md sm:rounded-2xl dark:bg-gray-900"
+        className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl bg-app-card sm:max-w-md sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-gray-100 p-4 dark:border-gray-800">

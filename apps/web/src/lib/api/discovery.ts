@@ -79,7 +79,7 @@ export interface WaitlistEntry {
 }
 
 export function joinWaitlist(token: string, slug: string, data: { date: string; serviceIds: string[]; stylistId?: string }) {
-  return salonApiFetch<{ id: string }>(`/salons/${slug}/waitlist`, { method: "POST", headers: auth(token), body: JSON.stringify(data) });
+  return salonApiFetch<{ id: string }>(`/salons/${encodeURIComponent(slug)}/waitlist`, { method: "POST", headers: auth(token), body: JSON.stringify(data) });
 }
 
 export function listMyWaitlist(token: string) {

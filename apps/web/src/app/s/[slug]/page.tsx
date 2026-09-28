@@ -14,7 +14,7 @@ import StylistList from "@/components/salon/StylistList";
 import Gallery from "@/components/salon/Gallery";
 import Reviews from "@/components/salon/Reviews";
 import InfoSection from "@/components/salon/InfoSection";
-import { SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -41,13 +41,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const salon = await getSalonBySlug(slug);
   if (!salon) return {};
+  const description = salon.description || `${salon.name}، سالن زیبایی در ${salon.city} — مشاهده خدمات، آرایشگرها و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`;
 
   return {
     title: salon.name,
-    description: salon.description ?? undefined,
+    description,
+    // Prefill links (?book=1…) are the same page — point search engines at the clean URL.
+    alternates: { canonical: `${SITE_URL}/s/${encodeURIComponent(slug)}` },
     openGraph: {
       title: salon.name,
-      description: salon.description ?? undefined,
+      description,
       type: "website",
       locale: "fa_IR",
       images: [{ url: `/s/${slug}/opengraph-image`, width: 1200, height: 630, alt: salon.name }],

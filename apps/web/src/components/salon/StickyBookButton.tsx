@@ -9,7 +9,7 @@ export default function StickyBookButton() {
   if (isOpen) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-100 bg-white/95 p-3 backdrop-blur sm:hidden dark:border-gray-800 dark:bg-gray-950/95">
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-app-line bg-app-bg/95 p-3 backdrop-blur sm:hidden">
       <button
         type="button"
         onClick={open}

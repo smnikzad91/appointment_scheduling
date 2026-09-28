@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { GalleryImage, Salon, Stylist, WorkingHours, Review, WeekDay } from "@/types/salon";
 import { salonApiFetch, SalonApiError } from "./salonApiClient";
 
@@ -145,14 +146,16 @@ function mapReview(raw: RawReview): Review {
   };
 }
 
-export async function getSalonBySlug(slug: string): Promise<Salon | null> {
+/** Wrapped in React `cache()` so generateMetadata and the page share one fetch per request. */
+export const getSalonBySlug = cache(async (slug: string): Promise<Salon | null> => {
+  const path = `/salons/${encodeURIComponent(slug)}`;
   let raw: RawSalon;
   let rawReviews: RawReview[];
 
   try {
     [raw, rawReviews] = await Promise.all([
-      salonApiFetch<RawSalon>(`/salons/${slug}`),
-      salonApiFetch<RawReview[]>(`/salons/${slug}/reviews`),
+      salonApiFetch<RawSalon>(path),
+      salonApiFetch<RawReview[]>(`${path}/reviews`),
     ]);
   } catch (err) {
     if (err instanceof SalonApiError && err.status === 404) return null;
@@ -202,4 +205,4 @@ export async function getSalonBySlug(slug: string): Promise<Salon | null> {
     ratingAverage,
     ratingCount,
   };
-}
+});

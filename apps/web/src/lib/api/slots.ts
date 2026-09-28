@@ -22,7 +22,7 @@ export async function getAvailableSlots({ salon, stylistId, serviceIds, dateKey 
   const params = new URLSearchParams({ date: dateKey, serviceIds: serviceIds.join(",") });
   if (stylistId) params.set("stylistId", stylistId);
 
-  return salonApiFetch<TimeSlot[]>(`/salons/${salon.slug}/availability?${params.toString()}`);
+  return salonApiFetch<TimeSlot[]>(`/salons/${encodeURIComponent(salon.slug)}/availability?${params.toString()}`);
 }
 
 export function getPartOfDay(startMinute: number): PartOfDay {

@@ -154,7 +154,7 @@ export default function SalonBookingSheet({
     if (!data || data.salon.status !== "ACTIVE" || !stylistId || !chosenKey) return;
     let cancelled = false;
     const params = new URLSearchParams({ date: dateKey, serviceIds: chosenKey, stylistId });
-    salonApiFetch<{ startMinute: number; available: boolean }[]>(`/salons/${data.salon.slug}/availability?${params}`)
+    salonApiFetch<{ startMinute: number; available: boolean }[]>(`/salons/${encodeURIComponent(data.salon.slug)}/availability?${params}`)
       .then((list) => {
         if (!cancelled) setSlots({ key: `${stylistId}|${chosenKey}|${dateKey}`, free: list.filter((s) => s.available).map((s) => s.startMinute) });
       })
