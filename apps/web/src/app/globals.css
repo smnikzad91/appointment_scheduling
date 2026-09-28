@@ -1308,6 +1308,12 @@ button.g-select { background-image: none; padding: 0 1rem; } /* ProvinceCitySele
   .g-reveal { animation: g-rise linear both; animation-timeline: view(); animation-range: entry 5% cover 22%; }
 }
 
+/* Help Center screenshot callouts (components/tutorials/Screenshot.tsx) */
+@keyframes tut-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgb(246 180 107 / 0.25), 0 0 18px 2px rgb(242 135 106 / 0.55); }
+  50% { box-shadow: 0 0 0 6px rgb(246 180 107 / 0.12), 0 0 26px 6px rgb(242 135 106 / 0.35); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .g-orb, .g-mesh, .g-gradient-text, .g-rise, .g-reveal { animation: none !important; }
   .g-btn, .g-btn::after, .g-label, .g-eye { transition: none; }

@@ -14,7 +14,8 @@ const COLUMNS = [
     title: "پشتیبانی",
     links: [
       { label: "سؤالات متداول", href: "/#faq" },
-      { label: "راهنمای سالن‌ها", href: "/faq" },
+      { label: "مرکز راهنما", href: "/tutorials" },
+      { label: "سؤالات متداول سالن‌ها", href: "/faq" },
       { label: "تماس با ما", href: "/contact" },
     ],
   },
