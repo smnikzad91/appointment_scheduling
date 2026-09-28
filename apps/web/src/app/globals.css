@@ -1269,6 +1269,7 @@ textarea.g-input { height: auto; min-height: 5.5rem; padding-top: 1.75rem; resiz
 }
 .g-select:focus { border-color: rgb(242 135 106 / 0.8); box-shadow: 0 0 0 4px var(--g-ring); }
 .g-select:disabled { opacity: 0.45; }
+button.g-select { background-image: none; padding: 0 1rem; } /* ProvinceCitySelect draws its own icons */
 .g-select option { background: #1d1520; color: var(--g-ink); }
 
 /* ── buttons ── */

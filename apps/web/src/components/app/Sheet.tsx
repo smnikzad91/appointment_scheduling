@@ -16,12 +16,15 @@ export default function Sheet({
   title,
   children,
   footer,
+  themeClassName = "",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Extra theme class for the portal root, e.g. "guest-root" so a sheet opened on a guest page stays dark. */
+  themeClassName?: string;
 }) {
   const [dragY, setDragY] = useState(0);
   const dragStart = useRef<number | null>(null);
@@ -55,7 +58,7 @@ export default function Sheet({
 
   return createPortal(
     // Inline background: .app-root's own (unlayered) paper background would otherwise win over a utility.
-    <div className={`app-root fixed inset-0 z-[100000] flex items-end justify-center`} style={{ background: "transparent" }} dir="rtl">
+    <div className={`app-root ${themeClassName} fixed inset-0 z-[100000] flex items-end justify-center`} style={{ background: "transparent" }} dir="rtl">
       <div className="app-fade-in absolute inset-0 bg-[#1a1016]/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div
         role="dialog"
