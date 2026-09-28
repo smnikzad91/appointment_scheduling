@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, CalendarX2, List } from "lucide-react";
+import { CalendarDays, CalendarRange, CalendarX2, List } from "lucide-react";
 import { salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { AppointmentList, AppointmentSheet, useAppointmentActions, type AppAppointment, type AppointmentStatus } from "./appointments";
 import SalonBookingSheet from "./SalonBookingSheet";
 import AppointmentCalendar from "./AppointmentCalendar";
+import AppointmentWeek from "./AppointmentWeek";
 import { ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader, cx } from "./ui";
 
 type Tab = "upcoming" | "pending" | "history" | "cancelled";
-type View = "list" | "calendar";
+type View = "list" | "week" | "calendar";
 const VIEW_KEY = "appointmentsView";
 
 const EMPTY: Record<Tab, string> = {
@@ -63,7 +64,8 @@ export default function AppointmentsScreen({
     // The list/calendar choice is remembered on this device (a deep link to pending opens the list).
     else {
       try {
-        if (localStorage.getItem(VIEW_KEY) === "calendar") setView("calendar");
+        const saved = localStorage.getItem(VIEW_KEY);
+        if (saved === "calendar" || saved === "week") setView(saved);
       } catch {}
     }
   }, []);
@@ -99,7 +101,8 @@ export default function AppointmentsScreen({
         {(
           [
             ["list", List, "فهرست"],
-            ["calendar", CalendarDays, "تقویم"],
+            ["week", CalendarRange, "هفته"],
+            ["calendar", CalendarDays, "ماه"],
           ] as const
         ).map(([v, Icon, label]) => (
           <button
@@ -136,6 +139,8 @@ export default function AppointmentsScreen({
 
       {!appointments ? (
         !error && <ListSkeleton />
+      ) : view === "week" ? (
+        <AppointmentWeek appointments={appointments} showStylist={showStylist} onOpen={actions.open} />
       ) : view === "calendar" ? (
         <AppointmentCalendar appointments={appointments} showStylist={showStylist} onOpen={actions.open} />
       ) : list.length === 0 ? (

@@ -222,11 +222,22 @@ await shot("owner-manage-2", "owner", async (p) => {
 await pageFor("owner").then((p) => p.keyboard.press("Escape"));
 await shot("owner-manage-3", "owner", async (p) => {
   await go("/salon/appointments")(p);
-  await p.getByRole("tab", { name: "تقویم" }).click();
+  await p.getByRole("tab", { name: "ماه" }).click();
   await settle(p, 900);
   await p.getByRole("gridcell").filter({ has: p.locator("span.rounded-full") }).first().click();
   await settle(p, 600);
-}, (p) => [p.getByRole("tab", { name: "تقویم" }), p.getByRole("gridcell", { selected: true }), p.locator("main button").filter({ hasText: "(نمونه)" }).first()]);
+}, (p) => [p.getByRole("tab", { name: "ماه" }), p.getByRole("gridcell", { selected: true }), p.locator("main button").filter({ hasText: "(نمونه)" }).first()]);
+await shot("owner-manage-4", "owner", async (p) => {
+  await p.getByRole("tab", { name: "هفته" }).click();
+  await settle(p, 900);
+  await p.getByRole("button", { name: "هفته بعد" }).click(); // the demo's busier week
+  await settle(p, 700);
+  // filter chips at the top of the screen keeps the evening bookings in view below them
+  await p.getByRole("radiogroup", { name: "آرایشگر" }).evaluate((el) => {
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 70);
+  });
+  await settle(p, 400);
+}, (p) => [p.getByRole("radiogroup", { name: "آرایشگر" }), p.locator('main button[aria-label*=" تا "]').first()]);
 await pageFor("owner").then(async (p) => {
   await p.getByRole("tab", { name: "فهرست" }).click().catch(() => {}); // leave the default view for later shots
 });
