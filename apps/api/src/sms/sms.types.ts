@@ -4,7 +4,7 @@
  * that take free text. A driver uses whichever its API needs.
  */
 export type SmsMessage =
-  | { kind: "otp"; to: string; params: { code: string }; text: string }
+  | { kind: "otp"; to: string; params: { code: string; domain: string }; text: string }
   | {
       kind: "reminder-customer";
       to: string;

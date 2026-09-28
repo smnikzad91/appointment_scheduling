@@ -5,6 +5,7 @@ import { useBooking } from "./BookingProvider";
 import { normalizeDigits, toPersianDigits, splitFullName } from "@/lib/persian";
 import { verifyOtp, requestOtp } from "@/lib/api/bookings";
 import { SalonApiError } from "@/lib/api/salonApiClient";
+import { useWebOtp } from "@/lib/useWebOtp";
 
 const OTP_LENGTH = 5;
 
@@ -27,8 +28,21 @@ export default function StepOtp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Chrome on Android reads the code from the SMS itself.
+  useWebOtp(!state.devCode, (code) => fillCode(code));
+
+  function fillCode(raw: string) {
+    const code = normalizeDigits(raw).replace(/[^0-9]/g, "").slice(0, OTP_LENGTH);
+    if (code.length !== OTP_LENGTH) return;
+    setDigits(code.split(""));
+    void handleVerify(code);
+  }
+
   function handleChange(index: number, raw: string) {
-    const value = normalizeDigits(raw).replace(/[^0-9]/g, "").slice(-1);
+    const typed = normalizeDigits(raw).replace(/[^0-9]/g, "");
+    // A pasted or autofilled whole code (iOS keyboard suggestion) lands in one box.
+    if (typed.length >= OTP_LENGTH) return fillCode(typed);
+    const value = typed.slice(-1);
     const next = [...digits];
     next[index] = value;
     setDigits(next);
@@ -94,7 +108,7 @@ export default function StepOtp() {
             }}
             type="tel"
             inputMode="numeric"
-            maxLength={1}
+            autoComplete={i === 0 ? "one-time-code" : "off"}
             value={digit ? toPersianDigits(digit) : ""}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}

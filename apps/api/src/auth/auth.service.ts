@@ -12,7 +12,7 @@ import { VerifyOtpDto } from "./dto/otp.dto.js";
 import { CompletePasswordSetupDto } from "./dto/password-setup.dto.js";
 import { hashSetupToken } from "./password-setup.util.js";
 import { SmsService } from "../sms/sms.service.js";
-import { otpText } from "../sms/sms.text.js";
+import { otpDomain, otpText } from "../sms/sms.text.js";
 
 export interface JwtPayload {
   sub: string;
@@ -191,7 +191,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
     await this.prisma.otpCode.create({ data: { phone, code, expiresAt } });
 
-    const sent = await this.sms.send({ kind: "otp", to: phone, params: { code }, text: otpText(code) });
+    const sent = await this.sms.send({ kind: "otp", to: phone, params: { code, domain: otpDomain() }, text: otpText(code) });
     const bypass = process.env.NODE_ENV !== "production" || !this.sms.delivers;
     if (!sent && !bypass) throw new ServiceUnavailableException("Could not send the verification code");
 

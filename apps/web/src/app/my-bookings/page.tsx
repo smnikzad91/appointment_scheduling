@@ -5,6 +5,7 @@ import { CalendarHeart, LogOut, MessageSquareText } from "lucide-react";
 import { requestOtp, verifyOtp } from "@/lib/api/bookings";
 import { loadCustomerSession, saveCustomerSession, clearCustomerSession, type CustomerSession } from "@/lib/customerSession";
 import { normalizeDigits, isValidIranianMobile, toPersianDigits, splitFullName } from "@/lib/persian";
+import { useWebOtp } from "@/lib/useWebOtp";
 import CustomerBookings from "@/components/app/CustomerBookings";
 import { Button, Card, Field, IconButton, ListSkeleton, TextInput } from "@/components/app/ui";
 
@@ -88,10 +89,14 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
+    await verify(code);
+  }
+
+  async function verify(otp: string) {
     setError(null);
     setLoading(true);
     try {
-      const { accessToken, user } = await verifyOtp(phone, code, splitFullName(name));
+      const { accessToken, user } = await verifyOtp(phone, otp, splitFullName(name));
       onLoggedIn({ token: accessToken, firstName: user.firstName });
     } catch {
       setError("کد وارد شده صحیح نیست");
@@ -99,6 +104,13 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
       setLoading(false);
     }
   }
+
+  // Chrome on Android reads the code from the SMS itself and signs in.
+  useWebOtp(step === "otp", (otp) => {
+    const digits = normalizeDigits(otp).replace(/\D/g, "").slice(0, OTP_LENGTH);
+    setCode(digits);
+    if (digits.length === OTP_LENGTH) void verify(digits);
+  });
 
   return (
     <>
