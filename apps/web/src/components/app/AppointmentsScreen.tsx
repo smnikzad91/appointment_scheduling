@@ -45,6 +45,8 @@ export default function AppointmentsScreen({
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("upcoming");
   const [view, setView] = useState<View>("list");
+  // tap-to-book from the week view (remounted per slot so the form starts fresh)
+  const [newAt, setNewAt] = useState<{ dateKey: string; minute: number; stylistId?: string; n: number } | null>(null);
 
   const reload = useCallback(() => {
     load()
@@ -140,7 +142,12 @@ export default function AppointmentsScreen({
       {!appointments ? (
         !error && <ListSkeleton />
       ) : view === "week" ? (
-        <AppointmentWeek appointments={appointments} showStylist={showStylist} onOpen={actions.open} />
+        <AppointmentWeek
+          appointments={appointments}
+          showStylist={showStylist}
+          onOpen={actions.open}
+          onCreateAt={edit ? (slot) => setNewAt({ ...slot, n: Date.now() }) : undefined}
+        />
       ) : view === "calendar" ? (
         <AppointmentCalendar appointments={appointments} showStylist={showStylist} onOpen={actions.open} />
       ) : list.length === 0 ? (
@@ -163,6 +170,17 @@ export default function AppointmentsScreen({
         busyStatus={actions.busyStatus}
         error={actions.error}
       />
+      {edit && newAt && (
+        <SalonBookingSheet
+          key={newAt.n}
+          token={edit.token}
+          asStylist={edit.asStylist}
+          prefill={newAt}
+          open
+          onClose={() => setNewAt(null)}
+          onCreated={reload}
+        />
+      )}
       {edit && actions.editing && (
         <SalonBookingSheet
           key={actions.editing.id}

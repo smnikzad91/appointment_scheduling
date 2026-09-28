@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
-import { Check, ChevronLeft, Images, Calculator } from "lucide-react";
+import { Check, ChevronLeft, Images, Calculator, BookOpen } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput, SALON_UPDATED_EVENT } from "@/lib/api/ownerSalon";
 import { toPersianDigits } from "@/lib/persian";
@@ -127,6 +127,7 @@ export default function SalonSettingsPage() {
       </Link>
       <ReviewsLinkCard token={token} scope="salon" className="mt-3" />
       <LinkCard href="/salon/accounting" icon={Calculator} title="حسابداری" subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها" className="mt-3" />
+      <LinkCard href="/tutorials?role=owner" icon={BookOpen} title="راهنمای استفاده" subtitle="راهنمای تصویری قدم‌به‌قدم همه بخش‌های پنل سالن" className="mt-3" />
 
       <SectionTitle>اطلاعات سالن</SectionTitle>
       <Card className="flex flex-col gap-4 p-4">

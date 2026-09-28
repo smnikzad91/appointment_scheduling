@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BookOpen,
   CalendarClock,
   CalendarDays,
   Clock3,
@@ -79,6 +80,7 @@ export function SalonShell({ children }: { children: React.ReactNode }) {
         { href: "/salon/stylists", label: "آرایشگرها", icon: Users },
         { href: "/salon/settings", label: "تنظیمات", icon: Settings },
       ]}
+      accountLinks={[{ href: "/tutorials?role=owner", label: "راهنمای استفاده", icon: BookOpen }]}
     >
       {children}
     </AppShell>
@@ -100,6 +102,7 @@ export function StylistShell({ children }: { children: React.ReactNode }) {
         { href: "/stylist/services", label: "خدمات", icon: Scissors },
         { href: "/stylist/profile", label: "پروفایل", icon: UserRound },
       ]}
+      accountLinks={[{ href: "/tutorials?role=stylist", label: "راهنمای استفاده", icon: BookOpen }]}
     >
       {children}
     </AppShell>
@@ -122,6 +125,7 @@ export function CustomerShell({ children }: { children: React.ReactNode }) {
       accountLinks={[
         { href: "/dashboard/support", label: "پشتیبانی", icon: LifeBuoy },
         { href: "/dashboard/account", label: "امنیت و رمز عبور", icon: Settings },
+        { href: "/tutorials?role=customer", label: "راهنمای استفاده", icon: BookOpen },
       ]}
     >
       {children}

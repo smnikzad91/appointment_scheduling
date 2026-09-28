@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarPlus, Check, Save, UserCheck } from "lucide-react";
 import {
   createSalonBooking,
@@ -22,7 +22,8 @@ import TimePicker from "./TimePicker";
 import type { AppAppointment } from "./appointments";
 import { Avatar, Button, Field, TextArea, TextInput, cx } from "./ui";
 
-const DAYS_AHEAD = 30;
+/** How far ahead the day strip goes (the week view only offers tap-to-book inside it). */
+export const DAYS_AHEAD = 30;
 const STEP = 15;
 const TIME_OPTIONS = Array.from({ length: (24 * 60) / STEP }, (_, i) => i * STEP).filter((m) => m >= 6 * 60);
 
@@ -70,11 +71,14 @@ export default function SalonBookingSheet({
   onCreated,
   asStylist = false,
   appointment,
+  prefill,
 }: {
   token: string;
   asStylist?: boolean;
   /** Edit this booking rather than create one. */
   appointment?: AppAppointment | null;
+  /** New booking at a chosen slot (the week view's tap-to-book): day, start minute, maybe the stylist. */
+  prefill?: { dateKey: string; minute: number; stylistId?: string } | null;
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
@@ -86,14 +90,15 @@ export default function SalonBookingSheet({
   const [lastName, setLastName] = useState("");
   const editing = appointment ?? null;
   const bookedStart = editing ? toSalonWallTime(new Date(editing.startAt)) : null;
-  const [stylistId, setStylistId] = useState(editing?.stylistId ?? "");
+  const [stylistId, setStylistId] = useState(editing?.stylistId ?? prefill?.stylistId ?? "");
   const [serviceIds, setServiceIds] = useState<string[]>(() => editing?.services.map((s) => s.serviceId) ?? []);
   // Editing sends only what was changed, so a service the stylist no longer offers isn't dropped by accident.
   const [servicesTouched, setServicesTouched] = useState(false);
   const todayKey = toSalonWallTime(new Date()).dateKey;
-  const [dateKey, setDateKey] = useState(bookedStart?.dateKey ?? todayKey);
-  const [minute, setMinute] = useState(() => bookedStart?.minuteOfDay ?? nextQuarterHour(toSalonWallTime(new Date()).minuteOfDay));
+  const [dateKey, setDateKey] = useState(bookedStart?.dateKey ?? prefill?.dateKey ?? todayKey);
+  const [minute, setMinute] = useState(() => bookedStart?.minuteOfDay ?? prefill?.minute ?? nextQuarterHour(toSalonWallTime(new Date()).minuteOfDay));
   const [slots, setSlots] = useState<{ key: string; free: number[] } | null>(null);
+  const dayStripRef = useRef<HTMLDivElement>(null);
   const [notes, setNotes] = useState(editing?.notes ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +114,14 @@ export default function SalonBookingSheet({
       })
       .catch(() => setError("دریافت اطلاعات سالن انجام نشد"));
   }, [open, token, asStylist]);
+
+  // An edited booking or a week-view tap can start on a day further along the strip: show it.
+  useEffect(() => {
+    if (!data) return;
+    dayStripRef.current?.querySelector<HTMLElement>(`[data-day="${dateKey}"]`)?.scrollIntoView({ inline: "center", block: "nearest" });
+    // only once the strip has rendered; later day taps are already on screen
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   // Returning customer? Fill in the name.
   const normalizedPhone = normalizeDigits(phone);
@@ -358,11 +371,12 @@ export default function SalonBookingSheet({
 
         <div>
           <p className="mb-1.5 px-1 text-[13px] font-bold text-app-muted">روز</p>
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+          <div ref={dayStripRef} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
             {days.map((d) => (
               <button
                 key={d.key}
                 type="button"
+                data-day={d.key}
                 onClick={() => setDateKey(d.key)}
                 className={cx(
                   "flex h-16 w-[72px] shrink-0 flex-col items-center justify-center rounded-2xl text-center transition active:scale-95",

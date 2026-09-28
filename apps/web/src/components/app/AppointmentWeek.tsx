@@ -8,11 +8,14 @@ import { formatMinutesAsClock, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, toSalonWallTime } from "@/lib/salonTime";
 import { STATUS_META, type AppAppointment, type AppointmentStatus } from "./appointments";
 import { cx } from "./ui";
+import { DAYS_AHEAD } from "./SalonBookingSheet";
 
 // Week view of the appointments screen: Saturday → Friday columns on an hour ruler, each booking a
 // block sized by its duration and coloured by status, so busy and free hours read at a glance.
 // Tap a block for the usual action sheet. Overlapping bookings (different stylists at the same
 // time) split the column into lanes; owners can filter to one stylist. Salon-local wall time.
+// With `onCreateAt`, tapping an empty spot (today … DAYS_AHEAD) starts a booking at that
+// quarter hour — with the filtered stylist, if any.
 
 const HOUR_PX = 44;
 const WEEKDAY_SHORT = ["ش", "ی", "د", "س", "چ", "پ", "ج"];
@@ -61,10 +64,12 @@ export default function AppointmentWeek({
   appointments,
   showStylist,
   onOpen,
+  onCreateAt,
 }: {
   appointments: AppAppointment[];
   showStylist?: boolean;
   onOpen: (a: AppAppointment) => void;
+  onCreateAt?: (slot: { dateKey: string; minute: number; stylistId?: string }) => void;
 }) {
   const todayKey = toSalonWallTime(new Date()).dateKey;
   const [start, setStart] = useState(() => weekStart(todayKey));
@@ -98,6 +103,16 @@ export default function AppointmentWeek({
   }, [appointments, days, stylist]);
 
   const hours = Array.from({ length: week.to - week.from }, (_, i) => week.from + i);
+  const lastBookable = addDaysToDateKey(todayKey, DAYS_AHEAD - 1);
+  const bookable = (d: string) => !!onCreateAt && d >= todayKey && d <= lastBookable;
+  const stylistId = stylist ? appointments.find((a) => a.stylist?.displayName === stylist)?.stylistId : undefined;
+
+  const tapColumn = (d: string, e: React.MouseEvent<HTMLDivElement>) => {
+    if (!bookable(d) || !onCreateAt) return;
+    const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
+    const minute = Math.min(23 * 60 + 45, week.from * 60 + Math.floor(((y / HOUR_PX) * 60) / 15) * 15);
+    onCreateAt({ dateKey: d, minute, ...(stylistId && { stylistId }) });
+  };
   const first = toJalali(dateKeyToDate(days[0]));
   const last = toJalali(dateKeyToDate(days[6]));
   const label =
@@ -146,6 +161,7 @@ export default function AppointmentWeek({
         </div>
       )}
 
+      {onCreateAt && <p className="mb-2 px-1 text-xs text-app-muted">برای ثبت نوبت، روی یک ساعت خالی بزنید.</p>}
       <div className="overflow-hidden rounded-3xl border border-app-line bg-app-card shadow-app">
         {/* day headers */}
         <div className="grid grid-cols-[34px_repeat(7,minmax(0,1fr))] border-b border-app-line">
@@ -182,7 +198,11 @@ export default function AppointmentWeek({
           {days.map((d, di) => {
             const { placed, lanes } = week.byDay[di];
             return (
-              <div key={d} className={cx("relative border-r border-app-line/70", iranHoliday(d) && "bg-app-danger/[0.04]")}>
+              <div
+                key={d}
+                onClick={(e) => tapColumn(d, e)}
+                className={cx("relative border-r border-app-line/70", iranHoliday(d) && "bg-app-danger/[0.04]", bookable(d) && "cursor-pointer active:bg-app-accent-soft/40")}
+              >
                 {hours.map((h, i) => (
                   <span key={h} aria-hidden className="absolute inset-x-0 border-t border-app-line/60" style={{ top: i * HOUR_PX }} />
                 ))}
@@ -199,7 +219,10 @@ export default function AppointmentWeek({
                     <button
                       key={a.id}
                       type="button"
-                      onClick={() => onOpen(a)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // don't also start a new booking underneath
+                        onOpen(a);
+                      }}
                       aria-label={`${formatMinutesAsClock(s)} تا ${formatMinutesAsClock(e)}${who ? `، ${who}` : ""}${a.stylist ? `، ${a.stylist.displayName}` : ""}، ${STATUS_META[a.status].label}`}
                       className={cx("absolute z-10 overflow-hidden rounded-md px-0.5 text-start shadow-sm ring-1 ring-app-card transition active:scale-95", BLOCK[a.status])}
                       style={{ top: top + 1, height, right: `${(lane / lanes) * 100}%`, width: `calc(${100 / lanes}% - 2px)` }}
