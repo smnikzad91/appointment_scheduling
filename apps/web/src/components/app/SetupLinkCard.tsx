@@ -95,7 +95,8 @@ export default function SetupLinkCard({
 
       {qrFull &&
         createPortal(
-          // Above the bottom sheet (z-[100000]); white so it scans well in dark mode too.
+          // Above the bottom sheet (z-[100000]). Dim backdrop; the code itself sits on a white card
+          // (with its quiet zone) so it still scans well.
           <div
             role="dialog"
             aria-modal="true"
@@ -107,18 +108,20 @@ export default function SetupLinkCard({
               e.stopPropagation();
               history.back();
             }}
-            className="app-pt-safe app-pb-safe fixed inset-0 z-[100001] flex flex-col items-center justify-center gap-6 bg-white px-6"
+            className="app-pt-safe app-pb-safe fixed inset-0 z-[100001] flex flex-col items-center justify-center gap-6 bg-black/85 px-6 backdrop-blur-sm"
           >
             {/* No handler of its own: the tap bubbles to the overlay above, which goes back once. */}
             <button
               type="button"
               aria-label="بستن کد QR"
-              className="absolute left-4 top-[calc(env(safe-area-inset-top,0px)+1rem)] flex h-11 w-11 items-center justify-center rounded-full bg-black/5 text-[#2a1d26]"
+              className="absolute left-4 top-[calc(env(safe-area-inset-top,0px)+1rem)] flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white"
             >
               <X className="h-5 w-5" aria-hidden />
             </button>
-            <QRCodeSVG value={url} size={512} level="M" marginSize={2} style={{ width: "min(88vw, 70vh)", height: "auto" }} />
-            <p className="text-center text-sm leading-7 text-[#6b5a63]">
+            <div className="rounded-3xl bg-white p-4 shadow-2xl">
+              <QRCodeSVG value={url} size={512} level="M" marginSize={1} style={{ width: "min(80vw, 64vh)", height: "auto", display: "block" }} />
+            </div>
+            <p className="text-center text-sm leading-7 text-white/75">
               کد را با دوربین گوشی {stylistName} اسکن کنید.
               <br />
               برای بستن، بازگشت بزنید.
