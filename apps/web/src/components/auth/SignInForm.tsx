@@ -35,7 +35,7 @@ async function goToPanel(router: ReturnType<typeof useRouter>) {
 
 export default function SignInForm() {
   const router = useRouter();
-  const [mode, setMode] = useState<"otp" | "password">("otp");
+  const [mode, setMode] = useState<"otp" | "password">("password");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -74,8 +74,8 @@ export default function SignInForm() {
       <div role="tablist" className="g-rise mb-5 grid grid-cols-2 gap-1 rounded-2xl border border-g-line p-1" style={rise(2)}>
         {(
           [
-            ["otp", "ورود با کد پیامکی"],
             ["password", "ورود با رمز عبور"],
+            ["otp", "ورود با کد پیامکی"],
           ] as const
         ).map(([value, label]) => (
           <button
