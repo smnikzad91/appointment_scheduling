@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Check } from "lucide-react";
 import PhoneMockup from "./PhoneMockup";
@@ -10,6 +11,17 @@ export default function Hero() {
     <section className="relative">
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-14 md:grid-cols-2 md:pb-28 md:pt-24">
         <div className="text-center md:text-start">
+          {/* Full brand logo (medal + arched text + wordmark), branding/logo_vertical_with_text.png */}
+          <Image
+            src="/images/logo/logo_vertical_with_text.png"
+            alt="نوبتت — سامانه نوبت دهی آنلاین زیبایی"
+            width={554}
+            height={610}
+            priority
+            sizes="176px"
+            className="g-rise mx-auto mb-7 h-auto w-40 rounded-3xl shadow-[0_24px_60px_-24px_rgb(0_0_0/0.8)] ring-1 ring-white/5 sm:w-44 md:mx-0"
+            style={rise(0)}
+          />
           <span className="g-kicker g-rise" style={rise(0)}>
             سامانه نوبت‌دهی آنلاین مخصوص سالن‌های زیبایی
           </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
@@ -23,8 +24,6 @@ import {
   UserCircleIcon,
   ShootingStarIcon,
 } from "../icons/index";
-import MarkIcon from "@/brand/mark.svg";
-import MarkWhiteIcon from "@/brand/mark-white.svg";
 import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -226,8 +225,7 @@ const AppSidebar: React.FC = () => {
     >
       {/* Logo */}
       <div className={`flex h-16 shrink-0 items-center border-b border-gray-100 px-4 dark:border-gray-800 ${expanded ? "justify-start gap-2.5" : "justify-center"}`}>
-        <MarkIcon viewBox="6 12 36 36" className="shrink-0 dark:hidden" width={36} height={36} />
-        <MarkWhiteIcon viewBox="6 12 36 36" className="shrink-0 hidden dark:block" width={36} height={36} />
+        <Image src="/images/logo/logo_symbol_transparent.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
         {expanded && (
           <Link href="/admin" className="text-base font-bold tracking-tight text-gray-900 dark:text-white">
             نوبتت

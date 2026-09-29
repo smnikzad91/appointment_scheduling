@@ -12,7 +12,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: SITE_NAME,
   url: SITE_URL,
-  logo: `${SITE_URL}/images/logo/logo-icon.svg`,
+  logo: `${SITE_URL}/images/logo/logo_symbol_transparent.png`,
   description: SITE_DESCRIPTION,
 };
 
