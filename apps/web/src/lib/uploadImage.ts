@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 const MAX_EDGE = 1920; // px — plenty for phone screens
 const JPEG_QUALITY = 0.85;
 // Uploads are kept under ~1 MB: a web server in front of the app may reject bigger request bodies
@@ -13,6 +15,15 @@ export class UploadError extends Error {
     super(message);
     this.name = "UploadError";
   }
+}
+
+/**
+ * A photo that's too large: besides the inline error the screen shows, a toast says so right away
+ * (at the top, clear of the panels' bottom tab bar and of any open sheet's footer).
+ */
+function tooLarge(message: string): UploadError {
+  toast.error(message, { position: "top-center", id: "upload-too-large" });
+  return new UploadError(message);
 }
 
 /** Decodes with createImageBitmap, or an <img> where that fails (older Safari; HEIC on iOS). */
@@ -62,7 +73,7 @@ const isHeic = (file: File) => /hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(
 async function prepareForUpload(file: File): Promise<File> {
   const webType = WEB_TYPES.includes(file.type);
   if (file.type === "image/gif") {
-    if (file.size > MAX_BYTES) throw new UploadError("حجم این عکس متحرک بیش از ۵ مگابایت است");
+    if (file.size > MAX_BYTES) throw tooLarge("حجم این عکس متحرک بیش از ۵ مگابایت است؛ عکس کوچک‌تری انتخاب کنید");
     return file;
   }
 
@@ -72,7 +83,7 @@ async function prepareForUpload(file: File): Promise<File> {
       throw new UploadError("این گوشی عکس را با فرمت HEIC ذخیره کرده که مرورگر نمی‌تواند باز کند؛ از عکس اسکرین‌شات بگیرید یا در تنظیمات دوربین فرمت JPEG را انتخاب کنید");
     }
     // Not decodable here but maybe fine for the server (it checks the bytes itself).
-    if (file.size > MAX_BYTES) throw new UploadError("حجم عکس بیش از ۵ مگابایت است");
+    if (file.size > MAX_BYTES) throw tooLarge("حجم عکس بیش از ۵ مگابایت است؛ عکس کوچک‌تری انتخاب کنید");
     return file;
   }
 
@@ -118,8 +129,10 @@ export async function uploadImage(file: File, folder: "salons" | "stylists" | "b
 
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (body?.error === "File too large (max 5 MB)" || res.status === 413) {
+      throw tooLarge("حجم عکس بیش از حد مجاز است؛ عکس کوچک‌تری انتخاب کنید");
+    }
     if (body?.error && UPLOAD_MESSAGES[body.error]) throw new UploadError(UPLOAD_MESSAGES[body.error]);
-    if (res.status === 413) throw new UploadError("حجم عکس برای سرور زیاد است؛ عکس کوچک‌تری انتخاب کنید");
     if (res.status === 401) throw new UploadError(UPLOAD_MESSAGES.Unauthorized);
     throw new UploadError("آپلود عکس انجام نشد، دوباره تلاش کنید");
   }
