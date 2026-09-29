@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Phone } from "lucide-react";
 import GuestLogo from "@/components/guest/GuestLogo";
+import { CONSULT_PHONE, CONSULT_PHONE_DISPLAY } from "@/lib/site";
 
 const COLUMNS = [
   {
@@ -36,6 +38,13 @@ export default function MarketingFooter() {
           <div className="order-last lg:order-first">
             <GuestLogo />
             <p className="mt-2 text-sm text-g-faint">سامانه نوبت‌دهی آنلاین برای سالن‌های زیبایی.</p>
+            <a href={`tel:${CONSULT_PHONE}`} className="mt-4 flex items-center gap-2 text-sm text-g-muted transition hover:text-g-accent">
+              <Phone className="h-4 w-4 shrink-0" aria-hidden />
+              مشاوره و فروش:
+              <span dir="ltr" className="font-bold text-g-ink">
+                {CONSULT_PHONE_DISPLAY}
+              </span>
+            </a>
             <div className="mt-4 inline-flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-g-line-strong text-xs text-g-faint">
               [نماد اعتماد]
             </div>

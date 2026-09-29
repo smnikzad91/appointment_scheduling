@@ -9,3 +9,8 @@ export const SITE_TITLE = "نوبتا — سامانه نوبت‌دهی آنل�
 
 export const SITE_DESCRIPTION =
   "نوبتا سامانه نوبت‌دهی آنلاین مخصوص سالن‌های زیبایی است. مشتری‌ها بدون تماس نوبت می‌گیرند و شما با تقویم آنلاین، پیامک یادآوری و بیعانه بانکی مدیریت می‌کنید.";
+
+/** Sales / consulting phone on the landing page (tap to call). */
+export const CONSULT_PHONE = "09233033415";
+/** Shown with Persian digits, grouped; render it dir="ltr" so it doesn't flip in RTL text. */
+export const CONSULT_PHONE_DISPLAY = "۰۹۲۳ ۳۰۳ ۳۴۱۵";

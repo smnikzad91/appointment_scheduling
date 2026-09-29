@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Phone } from "lucide-react";
+import { CONSULT_PHONE, CONSULT_PHONE_DISPLAY } from "@/lib/site";
 
 export default function FinalCta() {
   return (
@@ -11,10 +12,22 @@ export default function FinalCta() {
             <h2 className="text-2xl font-black text-g-ink sm:text-3xl">سالن‌تان را امروز آنلاین کنید</h2>
             <p className="mt-2 text-g-muted">راه‌اندازی در کمتر از یک روز، با پشتیبانی فارسی.</p>
           </div>
-          <Link href="/signup-salon" className="g-btn g-btn-primary relative h-14 shrink-0 px-8 text-[15px]">
-            شروع رایگان
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-          </Link>
+          <div className="relative flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            <a
+              href={`tel:${CONSULT_PHONE}`}
+              className="g-glass flex h-14 shrink-0 items-center justify-center gap-2 rounded-2xl border border-g-line-strong px-6 text-[15px] font-bold text-g-ink transition hover:text-g-accent"
+            >
+              <Phone className="h-4 w-4" aria-hidden />
+              مشاوره تلفنی
+              <span dir="ltr" className="font-black tracking-wide">
+                {CONSULT_PHONE_DISPLAY}
+              </span>
+            </a>
+            <Link href="/signup-salon" className="g-btn g-btn-primary h-14 shrink-0 px-8 text-[15px]">
+              شروع رایگان
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+            </Link>
+          </div>
         </div>
       </div>
     </section>
