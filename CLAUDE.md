@@ -70,8 +70,9 @@
      on `127.0.0.1:8444 ssl proxy_protocol` behind a stream SNI router on :443 (shared with xray) —
      never `listen 443` or `certbot --nginx`; certs via `certbot certonly --webroot -w /var/www/html`.
      Cloudflare proxies dev-iot.ir: behind the SNI router $remote_addr is 127.0.0.1 and the connecting address
-     (a Cloudflare edge) is $proxy_protocol_addr, so the visitor's IP comes from `deploy/nginx/cloudflare-client-ip.conf` (install into conf.d; how-to in
-     the file): `$client_ip` = CF-Connecting-IP only when $proxy_protocol_addr is in Cloudflare's ranges, passed
+     (a Cloudflare edge) is $proxy_protocol_addr, so the visitor's IP comes from Cloudflare real-IP blocks that are **inline at the top of the vhost file**
+     (repo reference copy: `deploy/nginx/cloudflare-client-ip.conf` — never also install it into conf.d, that
+     breaks `nginx -t` with a duplicate `cf_client`): `$client_ip` = CF-Connecting-IP only when $proxy_protocol_addr is in Cloudflare's ranges, passed
      to the apps as X-Real-IP / X-Forwarded-For and logged by the `cf_client` log format. Server-side, apps/web
      calls the API through the internal `API_URL` (127.0.0.1:3011), never the public domain.
      Web prod env is `apps/web/.env.production` (`NEXT_PUBLIC_*` are baked in at build — rebuild
