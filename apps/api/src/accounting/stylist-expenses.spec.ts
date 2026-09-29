@@ -1,4 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { CreateStylistExpenseDto, UpdateStylistExpenseDto } from './dto/accounting.dto.js';
 import { AccountingService } from './accounting.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { SalonsService } from '../salons/salons.service.js';
@@ -87,5 +90,22 @@ describe('Stylist expenses', () => {
     expect(r.expenses).toHaveLength(1);
     // the salon balance is about payouts, not the stylist's own costs
     expect(r.balanceToman).toBe(100_000);
+  });
+});
+
+describe('Stylist expense DTOs', () => {
+  const base = { category: 'SUPPLIES', amountToman: 10_000, spentAt: period.from };
+  const errorsFor = async <T extends object>(cls: new () => T, body: object) =>
+    (await validate(plainToInstance(cls, body))).map((e) => e.property);
+
+  it('rejects a description of only spaces on create and update', async () => {
+    expect(await errorsFor(CreateStylistExpenseDto, { ...base, description: '   ' })).toContain('description');
+    expect(await errorsFor(UpdateStylistExpenseDto, { description: ' \t ' })).toContain('description');
+  });
+
+  it('trims a real description', async () => {
+    const dto = plainToInstance(CreateStylistExpenseDto, { ...base, description: '  رنگ مو ' });
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.description).toBe('رنگ مو');
   });
 });

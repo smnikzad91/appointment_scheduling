@@ -1,7 +1,10 @@
 import { ExpenseCategory, PayoutMethod, StylistExpenseCategory } from "@appointment-scheduling/database";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 import { IsOptionalImageUrl } from "../../common/image-url.js";
+
+/** Trims text before validation, so "   " fails @IsNotEmpty instead of being stored as "". */
+const Trim = () => Transform(({ value }) => (typeof value === "string" ? value.trim() : value));
 
 const MAX_AMOUNT = 2_000_000_000; // fits Postgres INTEGER; far above any single salon transaction
 
@@ -145,6 +148,7 @@ export class CreateStylistExpenseDto {
   @IsDateString()
   spentAt!: string;
 
+  @Trim()
   @IsString()
   @IsNotEmpty()
   @MaxLength(300)
@@ -171,6 +175,7 @@ export class UpdateStylistExpenseDto {
   spentAt?: string;
 
   @IsOptional()
+  @Trim()
   @IsString()
   @IsNotEmpty()
   @MaxLength(300)

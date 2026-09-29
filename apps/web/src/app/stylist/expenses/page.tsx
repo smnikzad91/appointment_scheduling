@@ -48,6 +48,10 @@ export default function StylistExpensesPage() {
     listMyExpenses(token, { from: period.from, to: period.to }, { category: filter === "ALL" ? undefined : filter, page, pageSize: PAGE_SIZE })
       .then((data) => {
         if (cancelled) return;
+        // The page ran past the end (its last item deleted here or on another device): show the
+        // last page that exists instead of an empty list.
+        const lastPage = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
+        if (page > lastPage) return setPage(lastPage);
         setError(null);
         setState({ key, data });
       })
@@ -190,11 +194,13 @@ function ExpenseSheet({
   onSaved: () => void;
 }) {
   // A new expense is dated inside the month on screen (today at the latest); an existing one can
-  // move to any past day in the last year.
+  // move to any past day in the last year, or back to its own date if that's older.
   const todayKey = toSalonWallTime(new Date()).dateKey;
   const lastKey = addDaysToDateKey(instantToDayKey(periodTo), -1);
   const toKey = expense || lastKey > todayKey ? todayKey : lastKey;
-  const fromKey = expense ? addDaysToDateKey(todayKey, -365) : instantToDayKey(periodFrom);
+  const yearAgoKey = addDaysToDateKey(todayKey, -365);
+  const ownKey = expense ? instantToDayKey(expense.spentAt) : null;
+  const fromKey = ownKey ? (ownKey < yearAgoKey ? ownKey : yearAgoKey) : instantToDayKey(periodFrom);
   const [category, setCategory] = useState<StylistExpenseCategory>(expense?.category ?? "SUPPLIES");
   const [amount, setAmount] = useState<number | null>(expense?.amountToman ?? null);
   const [dayKey, setDayKey] = useState(expense ? instantToDayKey(expense.spentAt) : toKey);
