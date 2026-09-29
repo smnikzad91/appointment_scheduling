@@ -1,9 +1,14 @@
 // Separate from "@/lib/apiClient" (which is server-only, used for NextAuth's login proxy).
 // The salon page and its booking flow call apps/api directly from the browser — public salon
-// browsing needs no session, and a booking's own auth comes from OTP verification, not NextAuth —
-// so this uses the NEXT_PUBLIC_ variable, readable both server-side (for the page's SSR fetch) and
-// client-side (for the booking flow's fetches).
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3001";
+// browsing needs no session, and a booking's own auth comes from OTP verification, not NextAuth.
+// The browser uses the public NEXT_PUBLIC_API_URL (baked in at build). On the server — SSR of
+// salon pages, the showcase, sitemap, OG images — it uses the internal API_URL (127.0.0.1 in
+// production, read at runtime): going out through the public URL would leave the box and come back
+// through Cloudflare, adding latency and failing whenever an edge address is unreachable.
+const API_URL =
+  typeof window === "undefined"
+    ? (process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3001")
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3001");
 
 export class SalonApiError extends Error {
   constructor(

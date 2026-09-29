@@ -69,6 +69,11 @@
      `/backend/*` → api (prefix stripped), everything else → web. HTTPS vhosts on this box listen
      on `127.0.0.1:8444 ssl proxy_protocol` behind a stream SNI router on :443 (shared with xray) —
      never `listen 443` or `certbot --nginx`; certs via `certbot certonly --webroot -w /var/www/html`.
+     Cloudflare proxies dev-iot.ir: after `real_ip_header proxy_protocol` $remote_addr is a Cloudflare edge,
+     so the visitor's IP comes from `deploy/nginx/cloudflare-client-ip.conf` (install into conf.d; how-to in
+     the file): `$client_ip` = CF-Connecting-IP only when the connection is from Cloudflare's ranges, passed
+     to the apps as X-Real-IP / X-Forwarded-For and logged by the `cf_client` log format. Server-side, apps/web
+     calls the API through the internal `API_URL` (127.0.0.1:3011), never the public domain.
      Web prod env is `apps/web/.env.production` (`NEXT_PUBLIC_*` are baked in at build — rebuild
      after changing them). `next start` doesn't serve public/ files added after it started, so
      new uploads fall back to `app/api/public/uploads/[...path]` via an afterFiles rewrite.
