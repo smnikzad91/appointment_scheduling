@@ -56,6 +56,9 @@ done
 if ! node scripts/pm2-check.cjs; then
   echo "deploy: ERROR — the running processes don't match api=$api_next web=$web_next (see above)." >&2
   echo "deploy: the live files already point at the new build; fix pm2, or roll back (see top of this file)." >&2
+  # The switch has happened: save pm2's process list anyway, so a reboot starts what's configured
+  # (ecosystem.config.cjs reads the live files) rather than an older saved list.
+  pm2 save || echo "deploy: pm2 save failed too — run \`pm2 save\` once the processes are right." >&2
   exit 1
 fi
 pm2 save

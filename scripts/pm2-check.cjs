@@ -34,9 +34,11 @@ function procEnv(pid) {
   }
 }
 
+// pm2 rewrites the process title, after which cmdline is one space-padded string
+// ("node /root/…/apps/api/start.cjs      ") instead of NUL-separated arguments, so split on both.
 function procCmdline(pid) {
   try {
-    return readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").filter(Boolean);
+    return readFileSync(`/proc/${pid}/cmdline`, "utf8").split(/[\0\s]+/).filter(Boolean);
   } catch {
     return null;
   }
@@ -74,8 +76,9 @@ async function answers(port) {
     const script = expectedScript(app);
     if (e.pm_exec_path !== script) fail(`pm2 runs ${e.pm_exec_path}, config says ${script}`);
     const cmd = procCmdline(p.pid);
-    // Only a different script file in argv is a mismatch: pm2's container or a process.title
-    // rewrite (next start → "next-server …") may hide the script, which isn't.
+    // pm_exec_path and the env var below are the real signals. The cmdline only adds one: a
+    // *different* script file under apps/ in argv is a mismatch; pm2's container or a
+    // process.title rewrite (next start → "next-server …") may hide the script, which isn't.
     const other = cmd
       ?.map((a) => resolve(e.pm_cwd ?? root, a))
       .find((a) => a.startsWith(resolve(root, "apps")) && /\.c?js$/.test(a) && a !== script);
