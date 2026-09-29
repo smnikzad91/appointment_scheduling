@@ -81,19 +81,18 @@ export const stylistConfirmNudgeText = (p: { day: string; time: string; customer
   fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل نوبتت تایید کنید`);
 
 /**
- * "Time to book again" to the customer. It carries a booking link, which can't fit one segment
- * next to the names, so this one text is allowed two (≤134 Unicode chars, SMS_TWO_SEGMENTS);
- * the names are shortened with "…" beyond that, the link never is.
+ * "Time to book again" to the customer: one segment (≤70 chars) and no link — Iranian operators'
+ * filters can block SMS that carry a domain. Long names are shortened with "…". The /r/<code> page
+ * still exists (params.link, for a template API or a later link-friendly line); customers opt out
+ * of these texts from their dashboard (User.promoSmsOptOut).
  */
 export const SMS_TWO_SEGMENTS = 134;
 
-export const rebookText = (p: { customer: string; days: string; service: string; salon: string; link: string }) =>
+export const rebookText = (p: { customer: string; days: string; service: string; salon: string; link?: string }) =>
   fitSms(
-    p,
+    { customer: p.customer, days: p.days, service: p.service, salon: p.salon },
     ["customer", "service", "salon"],
-    // The link's page offers both "book again" and "stop these texts" (promotional opt-out).
-    (q) => `${q.customer} عزیز، ${q.days} روز از ${q.service} در ${q.salon} گذشته. رزرو نوبت یا لغو این پیامک‌ها:\n${q.link}`,
-    SMS_TWO_SEGMENTS,
+    (q) => `${q.customer} عزیز، ${q.days} روز از ${q.service} در ${q.salon} گذشت؛ وقت نوبت بعدی است`,
   );
 
 // GSM 03.38 basic set (+ the escape-table chars, which cost two septets). Anything else — Persian

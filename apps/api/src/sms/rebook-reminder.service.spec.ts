@@ -41,7 +41,7 @@ function setup(rows: ReturnType<typeof appt>[], { claim = 1, rebooked = false, a
 }
 
 describe('RebookReminderService', () => {
-  it('texts the customer 30 days after a completed appointment, at noon, with a book-or-stop link', async () => {
+  it('texts the customer 30 days after a completed appointment, at noon, in one SMS with no link', async () => {
     const { service, sms, prisma, subscriptions } = setup([appt()]);
     expect(await service.run(NOON)).toBe(1);
 
@@ -51,13 +51,13 @@ describe('RebookReminderService', () => {
     expect(claim.where).toEqual({ id: 'a1', rebookReminderSentAt: null, rebookReminderAttempts: 0 });
     expect(claim.data).toMatchObject({ rebookReminderSentAt: NOON, rebookReminderAttempts: { increment: 1 } });
     expect(claim.data.rebookCode).toMatch(/^[A-Za-z2-9]{8}$/);
-    expect(subscriptions.takeReminderSms).toHaveBeenCalledWith('s1', NOON, 2); // two SMS parts
+    expect(subscriptions.takeReminderSms).toHaveBeenCalledWith('s1', NOON, 1); // one SMS part
     const msg = sms.send.mock.calls[0][0];
     expect(msg).toMatchObject({ kind: 'rebook-customer', to: '09120000001', params: { customer: 'نگار', days: '۳۰', service: 'کوتاهی مو', salon: 'سالن رز' } });
-    expect(msg.params.link).toBe(`https://dev-iot.ir/r/${claim.data.rebookCode}`);
-    expect(msg.text).toContain('لغو این پیامک‌ها');
-    expect(msg.text.endsWith(msg.params.link)).toBe(true);
-    expect(msg.text.length).toBeLessThanOrEqual(134);
+    expect(msg.params.link).toBe(`https://dev-iot.ir/r/${claim.data.rebookCode}`); // kept for the /r page, not in the text
+    expect(msg.text).not.toMatch(/https?:\/\//);
+    expect(msg.text).toBe('نگار عزیز، ۳۰ روز از کوتاهی مو در سالن رز گذشت؛ وقت نوبت بعدی است');
+    expect([...msg.text].length).toBeLessThanOrEqual(70);
   });
 
   it('waits for noon Tehran time, and stops before quiet hours', async () => {
@@ -145,7 +145,7 @@ describe('RebookReminderService', () => {
     expect(service.sleep).toHaveBeenCalledWith(2_500);
   });
 
-  it('keeps long names within two SMS segments without cutting the link', async () => {
+  it('keeps long names within one SMS segment, with no link', async () => {
     const long = appt({
       customer: { firstName: 'فاطمه‌السادات', phone: '09120000001' },
       salon: { name: 'سالن زیبایی بین‌المللی ملکه‌های شهر تهران', slug: 'salon-malake-tehran', timezone: 'Asia/Tehran' },
@@ -154,7 +154,8 @@ describe('RebookReminderService', () => {
     const { service, sms } = setup([long]);
     await service.run(NOON);
     const text: string = sms.send.mock.calls[0][0].text;
-    expect(text.length).toBeLessThanOrEqual(134);
-    expect(text).toMatch(/https:\/\/dev-iot\.ir\/r\/[A-Za-z2-9]{8}$/);
+    expect([...text].length).toBeLessThanOrEqual(70);
+    expect(text).not.toMatch(/https?:\/\//);
+    expect(text).toContain('وقت نوبت بعدی است');
   });
 });
