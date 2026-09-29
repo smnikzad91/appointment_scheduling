@@ -26,8 +26,9 @@ export type SmsMessage =
       text: string;
     }
   | {
-      /** The customer booked online; the stylist is asked to confirm it in their panel. */
-      kind: "new-booking-stylist";
+      /** The customer booked online (or it's still unconfirmed hours later); the stylist is asked
+       * to confirm it in their panel. */
+      kind: "new-booking-stylist" | "confirm-nudge-stylist";
       to: string;
       params: { day: string; time: string; customer: string };
       text: string;

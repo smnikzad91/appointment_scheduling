@@ -18,7 +18,7 @@ export const otpDomain = () => process.env.SMS_OTP_DOMAIN?.trim().replace(/^http
 /** Kept within one Unicode segment (70 chars) even with the WebOTP line: longer texts go out in
  * parts, which some phones show as two separate messages. */
 export const otpText = (code: string) => {
-  const text = `کد ورود نوبتا: ${code}\nآن را به کسی ندهید.`;
+  const text = `کد تایید نوبتا: ${code}\nآن را به کسی ندهید.`;
   const domain = otpDomain();
   return domain ? `${text}\n\n@${domain} #${code}` : text;
 };
@@ -75,3 +75,7 @@ export const stylistReminderText = (p: { time: string; customer: string; service
 /** To the stylist when a customer books online: the booking waits for their confirmation. */
 export const stylistNewBookingText = (p: { day: string; time: string; customer: string }) =>
   fitSms(p, ["customer"], (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتا تایید کنید`);
+
+/** Once, when an online booking is still unconfirmed a couple of hours later. */
+export const stylistConfirmNudgeText = (p: { day: string; time: string; customer: string }) =>
+  fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل نوبتا تایید کنید`);

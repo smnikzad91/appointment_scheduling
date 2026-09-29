@@ -21,15 +21,27 @@ import PickerSelect from "./PickerSelect";
 // Building blocks shared by the salon accounting page and the stylist earnings page.
 
 /** "‹ مهر ۱۴۰۵ ›" — step through Jalali months; can't go past the current month unless `allowFuture`. */
-export function PeriodSwitcher({ period, onChange, allowFuture }: { period: AccountingPeriod; onChange: (offset: number) => void; allowFuture?: boolean }) {
+/** `minOffset` (e.g. -11) stops going further back; without it any past month can be opened. */
+export function PeriodSwitcher({
+  period,
+  onChange,
+  allowFuture,
+  minOffset,
+}: {
+  period: AccountingPeriod;
+  onChange: (offset: number) => void;
+  allowFuture?: boolean;
+  minOffset?: number;
+}) {
   return (
     <div className="mb-4 flex items-center justify-between rounded-3xl border border-app-line bg-app-card p-1.5 shadow-app">
       {/* RTL: the earlier month sits on the right. */}
       <button
         type="button"
         onClick={() => onChange(period.offset - 1)}
+        disabled={minOffset !== undefined && period.offset <= minOffset}
         aria-label="ماه قبل"
-        className="flex h-11 w-11 items-center justify-center rounded-2xl text-app-ink active:bg-app-card-2"
+        className="flex h-11 w-11 items-center justify-center rounded-2xl text-app-ink active:bg-app-card-2 disabled:opacity-25"
       >
         <ChevronRight className="h-5 w-5" aria-hidden />
       </button>

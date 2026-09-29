@@ -28,6 +28,7 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Invalid period": "بازه زمانی معتبر نیست",
   "Payout not found": "این پرداخت دیگر وجود ندارد",
   "Expense not found": "این هزینه دیگر وجود ندارد",
+  "Expense date is too old": "هزینه‌ها را فقط تا یک سال گذشته می‌توانید ثبت کنید",
   "Invalid link URL": "لینک باید با http:// یا https:// شروع شود",
   "Invalid or expired link": "این لینک دیگر معتبر نیست؛ از مدیر سالن بخواهید لینک تازه‌ای برایتان بفرستد",
   "Upload a banner image before turning it on": "برای نمایش بنر، ابتدا تصویر آن را آپلود کنید",

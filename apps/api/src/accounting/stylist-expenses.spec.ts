@@ -109,3 +109,25 @@ describe('Stylist expense DTOs', () => {
     expect(dto.description).toBe('رنگ مو');
   });
 });
+
+describe('Stylist expense date limit', () => {
+  const longAgo = new Date(Date.now() - 500 * 86_400_000).toISOString();
+
+  it('refuses a new expense dated more than about a year back', async () => {
+    const { prisma, service } = setup();
+    await expect(
+      service.createStylistExpense('sty-user-1', { category: 'OTHER', amountToman: 1_000, spentAt: longAgo, description: 'قدیمی' }),
+    ).rejects.toThrow('Expense date is too old');
+    expect(prisma.stylistExpense.create).not.toHaveBeenCalled();
+  });
+
+  it('still lets an older expense be edited when its date stays the same', async () => {
+    const { prisma, service } = setup();
+    prisma.stylistExpense.findFirst.mockResolvedValue({ id: 'exp-old', spentAt: new Date(longAgo) });
+    await service.updateStylistExpense('sty-user-1', 'exp-old', { spentAt: longAgo, amountToman: 2_000 });
+    expect(prisma.stylistExpense.update).toHaveBeenCalled();
+    await expect(
+      service.updateStylistExpense('sty-user-1', 'exp-old', { spentAt: new Date(Date.now() - 600 * 86_400_000).toISOString() }),
+    ).rejects.toThrow('Expense date is too old');
+  });
+});

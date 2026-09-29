@@ -25,6 +25,8 @@ import { DaySelect, PeriodSwitcher, dayKeyToInstant, instantToDayKey, shortDate 
 import { Button, ChipTabs, EmptyState, ErrorBanner, Field, IconButton, ListSkeleton, PageHeader, TextArea, cx, riseStyle } from "@/components/app/ui";
 
 const PAGE_SIZE = 20;
+/** Expenses go back 12 months: this month and the 11 before it (the API has the same limit). */
+const OLDEST_MONTH = -11;
 const CATEGORIES = Object.keys(STYLIST_EXPENSE_CATEGORY_LABEL) as StylistExpenseCategory[];
 type Filter = StylistExpenseCategory | "ALL";
 
@@ -74,6 +76,7 @@ export default function StylistExpensesPage() {
       />
       <PeriodSwitcher
         period={period}
+        minOffset={OLDEST_MONTH}
         onChange={(o) => {
           setOffset(o);
           setPage(1);

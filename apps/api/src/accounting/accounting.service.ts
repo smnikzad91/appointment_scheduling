@@ -19,6 +19,8 @@ import {
 const MAX_PERIOD_DAYS = 400;
 const LIST_LIMIT = 500;
 const EXPENSE_PAGE_SIZE = 20;
+/** Stylist expenses reach back about a year (the panel shows this month and the 11 before). */
+const EXPENSE_MAX_AGE_DAYS = 400;
 
 const STYLIST_EXPENSE_SELECT = {
   id: true,
@@ -410,6 +412,7 @@ export class AccountingService {
 
   async createStylistExpense(userId: string, dto: CreateStylistExpenseDto) {
     const stylist = await this.myStylist(userId);
+    this.assertExpenseDate(new Date(dto.spentAt));
     return this.prisma.stylistExpense.create({
       data: {
         stylistId: stylist.id,
@@ -426,8 +429,10 @@ export class AccountingService {
 
   async updateStylistExpense(userId: string, expenseId: string, dto: UpdateStylistExpenseDto) {
     const stylist = await this.myStylist(userId);
-    const expense = await this.prisma.stylistExpense.findFirst({ where: { id: expenseId, stylistId: stylist.id }, select: { id: true } });
+    const expense = await this.prisma.stylistExpense.findFirst({ where: { id: expenseId, stylistId: stylist.id }, select: { id: true, spentAt: true } });
     if (!expense) throw new NotFoundException("Expense not found");
+    // An older expense can still be edited as long as its date isn't moved.
+    if (dto.spentAt && new Date(dto.spentAt).getTime() !== expense.spentAt.getTime()) this.assertExpenseDate(new Date(dto.spentAt));
     return this.prisma.stylistExpense.update({
       where: { id: expense.id },
       data: {
@@ -446,6 +451,10 @@ export class AccountingService {
     const { count } = await this.prisma.stylistExpense.deleteMany({ where: { id: expenseId, stylistId: stylist.id } });
     if (count === 0) throw new NotFoundException("Expense not found");
     return { ok: true };
+  }
+
+  private assertExpenseDate(spentAt: Date) {
+    if (spentAt.getTime() < Date.now() - EXPENSE_MAX_AGE_DAYS * 86_400_000) throw new BadRequestException("Expense date is too old");
   }
 
   private async myStylist(userId: string) {

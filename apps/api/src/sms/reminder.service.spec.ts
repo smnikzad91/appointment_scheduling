@@ -20,10 +20,11 @@ function appt(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function setup(rows: ReturnType<typeof appt>[], claimCount = 1, allowance = Infinity) {
+function setup(rows: ReturnType<typeof appt>[], claimCount = 1, allowance = Infinity, nudgeRows: ReturnType<typeof appt>[] = []) {
   const prisma = {
     appointment: {
-      findMany: vi.fn().mockResolvedValue(rows),
+      // first query: 1-hour reminders; second: unconfirmed online bookings to nudge
+      findMany: vi.fn().mockResolvedValueOnce(rows).mockResolvedValue(nudgeRows),
       updateMany: vi.fn().mockResolvedValue({ count: claimCount }),
     },
   };
@@ -79,5 +80,32 @@ describe('ReminderService.tick', () => {
     expect(subscriptions.takeReminderSms).toHaveBeenCalledWith('s1', NOW);
     expect(sms.send).toHaveBeenCalledTimes(1);
     expect(sms.send.mock.calls[0][0].kind).toBe('reminder-customer');
+  });
+});
+
+describe('ReminderService unconfirmed-booking nudge', () => {
+  const pending = () => appt({ id: 'p1', createdAt: new Date('2026-10-05T07:00:00Z'), startAt: new Date('2026-10-06T08:00:00Z') });
+
+  it('texts the stylist once about an online booking still pending 2 hours later', async () => {
+    const { service, sms, prisma } = setup([], 1, Infinity, [pending()]);
+    expect(await service.tick(NOW)).toBe(1);
+
+    const where = prisma.appointment.findMany.mock.calls[1][0].where;
+    expect(where).toMatchObject({ status: 'PENDING', confirmNudgedAt: null, startAt: { gt: NOW } });
+    expect(where.createdAt).toEqual({ lte: new Date('2026-10-05T08:00:00Z') });
+    expect(prisma.appointment.updateMany).toHaveBeenCalledWith({ where: { id: 'p1', confirmNudgedAt: null }, data: { confirmNudgedAt: NOW } });
+
+    const msg = sms.send.mock.calls[0][0];
+    expect(msg).toMatchObject({ kind: 'confirm-nudge-stylist', to: '09120000002', params: { customer: 'نگار رضایی' } });
+    expect(msg.text).toContain('هنوز تایید نشده');
+    expect(msg.text.length).toBeLessThanOrEqual(70);
+  });
+
+  it('sends nothing when another instance claimed it or the SMS allowance is used up', async () => {
+    const claimed = setup([], 0, Infinity, [pending()]);
+    expect(await claimed.service.tick(NOW)).toBe(0);
+    const noAllowance = setup([], 1, 0, [pending()]);
+    expect(await noAllowance.service.tick(NOW)).toBe(0);
+    expect(noAllowance.sms.send).not.toHaveBeenCalled();
   });
 });
