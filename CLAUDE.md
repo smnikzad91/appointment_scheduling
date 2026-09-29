@@ -59,8 +59,12 @@
      alternate between `apps/api/dist-a|dist-b` (plain `tsc`; `nest build` would wipe `dist/`) and web between
      `apps/web/.next-a|.next-b` (`NEXT_DIST_DIR` → next.config `distDir`); the live names are in
      `apps/api/.dist-live` / `apps/web/.next-live` (gitignored), which ecosystem.config.cjs reads. They're flipped
-     only after both builds and the migration succeed, so a failed deploy leaves the site as it was; rollback =
-     write the previous folder name back and `pm2 startOrReload ecosystem.config.cjs --update-env`. pm2 apps
+     only after both builds and the migration succeed, so a failed deploy leaves the site as it was. pm2 never
+     applies a changed `script` on reload, so script paths stay fixed and the folder travels as env: the api runs
+     `apps/api/start.cjs` (loads `$API_DIST/main.js`), the web gets `NEXT_DIST_DIR`. deploy.sh recreates any
+     process whose running script differs from the config, then `scripts/pm2-check.cjs` verifies (pm2 jlist +
+     /proc environ + HTTP) that both run the live folders and fails the deploy if not. Rollback = write the
+     previous folder name back, `pm2 startOrReload ecosystem.config.cjs --update-env`, `node scripts/pm2-check.cjs`. pm2 apps
      `salon-api-prod` (127.0.0.1:3011) and `salon-web-prod` (127.0.0.1:3010). nginx `/etc/nginx/sites-available/dev-iot.ir`:
      `/backend/*` → api (prefix stripped), everything else → web. HTTPS vhosts on this box listen
      on `127.0.0.1:8444 ssl proxy_protocol` behind a stream SNI router on :443 (shared with xray) —

@@ -8,7 +8,13 @@
 # never deletes or rewrites files the running processes are using. Only after both builds and the
 # migration succeed are the live files flipped and pm2 reloaded. Any failure (set -e) stops here
 # and leaves the site exactly as it was. The previous build stays on disk: to roll back, write the
-# old folder name back into the live file and run `pm2 startOrReload ecosystem.config.cjs --update-env`.
+# old folder name back into the live file, run `pm2 startOrReload ecosystem.config.cjs --update-env`,
+# then `node scripts/pm2-check.cjs`.
+#
+# pm2 never applies a changed `script` on reload, so script paths are fixed (the api runs
+# apps/api/start.cjs, which loads $API_DIST/main.js) and the folder is passed as env, which
+# --update-env does apply. Any process whose running script still differs from the config is
+# recreated (a few seconds' downtime for that app), and the result is verified at the end.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -35,6 +41,22 @@ npm run migrate:deploy -w @appointment-scheduling/database
 # Switch: write the live names atomically, then reload (pm2 re-reads ecosystem.config.cjs).
 echo "$api_next" > apps/api/.dist-live.tmp && mv apps/api/.dist-live.tmp apps/api/.dist-live
 echo "$web_next" > apps/web/.next-live.tmp && mv apps/web/.next-live.tmp apps/web/.next-live
+for app in $(node scripts/pm2-check.cjs --scripts); do
+  echo "deploy: $app runs a different script than ecosystem.config.cjs — recreating it"
+  pm2 delete "$app" 2>/dev/null || true
+  pm2 start ecosystem.config.cjs --only "$app"
+done
 pm2 startOrReload ecosystem.config.cjs --update-env
+
+# Verify the processes really run the new folders; give them a moment to come up.
+for i in 1 2 3 4 5 6; do
+  node scripts/pm2-check.cjs >/dev/null 2>&1 && break
+  sleep 5
+done
+if ! node scripts/pm2-check.cjs; then
+  echo "deploy: ERROR — the running processes don't match api=$api_next web=$web_next (see above)." >&2
+  echo "deploy: the live files already point at the new build; fix pm2, or roll back (see top of this file)." >&2
+  exit 1
+fi
 pm2 save
-echo "deploy: live api=$api_next web=$web_next"
+echo "deploy: live api=$api_next web=$web_next (verified)"

@@ -13,6 +13,11 @@
 // Build folders: `npm run deploy` (scripts/deploy.sh) builds into dist-a|dist-b and .next-a|.next-b
 // alternately and records the live one in apps/api/.dist-live and apps/web/.next-live, read here on
 // every (re)load. Before the first such deploy they don't exist and the old dist / .next are used.
+//
+// Script paths must stay fixed: `pm2 reload`/`startOrReload` never apply a changed `script` to a
+// process that already exists (only env, via --update-env). So the api runs apps/api/start.cjs,
+// which loads $API_DIST/main.js, and the web picks its folder from NEXT_DIST_DIR. deploy.sh still
+// recreates a process whose running script differs from this file, and verifies both afterwards.
 
 const { readFileSync } = require("fs");
 const { join } = require("path");
@@ -33,8 +38,9 @@ module.exports = {
     {
       name: "salon-api-prod",
       cwd: "./apps/api",
-      script: `${apiDist}/main.js`,
-      env: { NODE_ENV: "production", PORT: "3011", HOST: "127.0.0.1" },
+      script: "start.cjs",
+      // start.cjs loads ${API_DIST}/main.js.
+      env: { NODE_ENV: "production", PORT: "3011", HOST: "127.0.0.1", API_DIST: apiDist },
       max_memory_restart: "600M",
       time: true,
     },
