@@ -8,6 +8,7 @@ import SessionWrapper from "@/components/common/SessionWrapper";
 import ToastProvider from "@/components/common/ToastProvider";
 import AgGridSetup from "@/components/common/AgGridSetup";
 import ClientErrorReporter from "@/components/common/ClientErrorReporter";
+import SplashScreen from "@/components/common/SplashScreen";
 import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
@@ -78,6 +79,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="dark:bg-gray-900">
+        {/* Once per session; hidden before paint on later loads (theme-init.js). */}
+        <SplashScreen />
         <AgGridSetup />
         <ClientErrorReporter />
         <ServiceWorkerRegister />
