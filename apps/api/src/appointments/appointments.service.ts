@@ -16,7 +16,7 @@ import { NotificationsService, type BookingData } from "../notifications/notific
 import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { clock, customerBookingText, jalaliDay } from "../sms/sms.text.js";
+import { clock, customerBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
 
 type CustomerSmsKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
 
@@ -377,14 +377,15 @@ export class AppointmentsService {
         },
       });
       if (!a?.customer.phone) return;
-      if (!(await this.subscriptions.takeReminderSms(a.salonId))) return;
       const params = {
         day: jalaliDay(a.startAt, a.salon.timezone),
         time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
         salon: a.salon.name,
         stylist: a.stylist.displayName,
       };
-      await this.sms.send({ kind, to: a.customer.phone, params, text: customerBookingText(kind, params) });
+      const text = customerBookingText(kind, params);
+      if (!(await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text)))) return;
+      await this.sms.send({ kind, to: a.customer.phone, params, text });
     } catch (err) {
       this.logger.warn(`${kind} SMS for ${appointmentId} failed: ${(err as Error).message}`);
     }

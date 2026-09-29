@@ -49,7 +49,11 @@ export class SubscriptionsService {
    * Takes one reminder SMS from the salon's allowance for the current Jalali month; false means
    * don't send. The conditional increment is atomic, so parallel senders can't overshoot.
    */
-  async takeReminderSms(salonId: string, now = new Date()): Promise<boolean> {
+  /**
+   * Takes `parts` SMS (see smsParts: what the gateway bills) from the salon's monthly allowance, all
+   * or nothing: false when they don't all fit (or the plan has none / has expired).
+   */
+  async takeReminderSms(salonId: string, now = new Date(), parts = 1): Promise<boolean> {
     const salon = await this.prisma.salon.findUnique({
       where: { id: salonId },
       select: { timezone: true, planId: true, planExpiresAt: true, plan: { select: { smsPerMonth: true } } },
@@ -63,8 +67,8 @@ export class SubscriptionsService {
     const period = jalaliPeriod(now, salon.timezone);
     await this.prisma.salonSmsUsage.createMany({ data: [{ salonId, period }], skipDuplicates: true });
     const taken = await this.prisma.salonSmsUsage.updateMany({
-      where: { salonId, period, ...(limit !== null && { sent: { lt: limit } }) },
-      data: { sent: { increment: 1 } },
+      where: { salonId, period, ...(limit !== null && { sent: { lte: limit - parts } }) },
+      data: { sent: { increment: parts } },
     });
     return taken.count === 1;
   }

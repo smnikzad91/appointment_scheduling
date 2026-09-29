@@ -5,7 +5,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { instantToSalonWallTime } from "../availability/salon-time.util.js";
 import { SmsService } from "./sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { clock, customerReminderText, jalaliDay, stylistConfirmNudgeText, stylistNewBookingText, stylistReminderText } from "./sms.text.js";
+import { clock, customerReminderText, jalaliDay, smsParts, stylistConfirmNudgeText, stylistNewBookingText, stylistReminderText } from "./sms.text.js";
 import { maySendNow, parseQuietHours, type QuietWindow } from "./quiet-hours.util.js";
 
 const TICK_MS = 60_000;
@@ -159,7 +159,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       }
       // Count the try first: the allowance is charged only when this is the very first one.
       await this.prisma.appointment.update({ where: { id: a.id }, data: { [ATTEMPTS[who]]: { increment: 1 } } });
-      if (attempts === 0 && !(await this.subscriptions.takeReminderSms(a.salonId, now))) {
+      if (attempts === 0 && !(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(message.text)))) {
         await this.prisma.appointment.update({ where: { id: a.id }, data: { [ATTEMPTS[who]]: MAX_ATTEMPTS } }); // none left: give up
         done[who] = true;
         continue;
@@ -195,13 +195,14 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       if (!maySendNow(now, a.salon.timezone, a.startAt, this.quiet)) continue; // after quiet hours
       const claimed = await this.prisma.appointment.updateMany({ where: { id: a.id, newBookingTextedAt: null }, data: { newBookingTextedAt: now } });
       if (claimed.count !== 1 || !a.stylist.user.phone) continue;
-      if (!(await this.subscriptions.takeReminderSms(a.salonId, now))) continue;
       const params = {
         day: jalaliDay(a.startAt, a.salon.timezone),
         time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
         customer: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
       };
-      if (await this.sms.send({ kind: "new-booking-stylist", to: a.stylist.user.phone, params, text: stylistNewBookingText(params) })) sent++;
+      const text = stylistNewBookingText(params);
+      if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text)))) continue;
+      if (await this.sms.send({ kind: "new-booking-stylist", to: a.stylist.user.phone, params, text })) sent++;
     }
     return sent;
   }
@@ -225,13 +226,14 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       if (!maySendNow(now, a.salon.timezone, a.startAt, this.quiet)) continue; // after quiet hours
       const claimed = await this.prisma.appointment.updateMany({ where: { id: a.id, confirmNudgedAt: null }, data: { confirmNudgedAt: now } });
       if (claimed.count !== 1 || !a.stylist.user.phone) continue;
-      if (!(await this.subscriptions.takeReminderSms(a.salonId, now))) continue;
       const params = {
         day: jalaliDay(a.startAt, a.salon.timezone),
         time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
         customer: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
       };
-      if (await this.sms.send({ kind: "confirm-nudge-stylist", to: a.stylist.user.phone, params, text: stylistConfirmNudgeText(params) })) sent++;
+      const text = stylistConfirmNudgeText(params);
+      if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text)))) continue;
+      if (await this.sms.send({ kind: "confirm-nudge-stylist", to: a.stylist.user.phone, params, text })) sent++;
     }
     return sent;
   }

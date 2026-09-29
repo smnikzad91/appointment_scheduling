@@ -137,6 +137,9 @@ model User {
   /// True for an invited stylist until they choose a password via their one-time link (their
   /// passwordHash until then is random and unknown to anyone).
   mustSetPassword Boolean  @default(false)
+  /// Promotional SMS ("time to book again") stopped by the customer — via the link in the text
+  /// (/r/<code>) or their dashboard. Transactional texts (codes, reminders, booking changes) still go.
+  promoSmsOptOut  Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -466,8 +469,8 @@ model Service {
   priceToman            Int
   active                Boolean          @default(true)
   // "Time to book again" SMS to the customer this many days after a completed appointment with
-  // this service (apps/api RebookReminderService). Off unless the salon turns it on.
-  rebookReminderEnabled Boolean          @default(false)
+  // this service (apps/api RebookReminderService). On at 30 days for new services.
+  rebookReminderEnabled Boolean          @default(true)
   rebookReminderDays    Int              @default(30)
   createdAt             DateTime         @default(now())
 
@@ -561,6 +564,8 @@ model Appointment {
   // "Time to book again" SMS after this (COMPLETED) appointment: set once sent or given up.
   rebookReminderSentAt     DateTime?
   rebookReminderAttempts   Int               @default(0)
+  // The short code in that SMS's link (/r/<code>): book again, or stop these texts.
+  rebookCode               String?           @unique
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 

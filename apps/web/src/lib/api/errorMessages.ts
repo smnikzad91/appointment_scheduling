@@ -90,6 +90,7 @@ const BY_API_MESSAGE: Record<string, string> = {
   "startAt must be before endAt": "زمان شروع باید قبل از زمان پایان باشد",
   "Time off not found": "این مرخصی دیگر وجود ندارد",
   "Not your time off": "این مرخصی مربوط به شما نیست",
+  "Link not found": "این لینک معتبر نیست یا منقضی شده است",
 };
 
 /** Persian message for an error thrown by apiFetch / salonApiFetch (anything with status + message). */

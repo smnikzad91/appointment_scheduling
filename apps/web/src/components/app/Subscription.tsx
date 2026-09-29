@@ -108,7 +108,12 @@ export function SubscriptionCard({ sub, className }: { sub: OwnerSubscription | 
       </div>
 
       <Usage icon={Users} label="آرایشگر فعال" used={sub.stylists.active} limit={sub.stylists.limit} />
-      <Usage icon={MessageSquareText} label="پیامک یادآوری این ماه" used={sub.sms.sent} limit={sub.sms.limit} none="در این پلن نیست" />
+      <Usage icon={MessageSquareText} label="پیامک این ماه" used={sub.sms.sent} limit={sub.sms.limit} none="در این پلن نیست" />
+      {sub.sms.limit !== 0 && (
+        <p className="-mt-2 ps-8 text-xs leading-6 text-app-muted">
+          هر ۷۰ نویسه یک پیامک حساب می‌شود؛ پیامک «وقت نوبت بعدی» (با لینک رزرو) معمولاً ۲ پیامک است.
+        </p>
+      )}
 
       <p className="text-xs leading-6 text-app-muted">
         برای تمدید یا تغییر پلن{" "}

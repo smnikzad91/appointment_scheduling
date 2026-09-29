@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useT } from "@/i18n/useT";
 import { toast } from "sonner";
+import PromoSmsSetting from "@/components/common/PromoSmsSetting";
 
 export default function AccountSettingsPage() {
   const t = useT();
@@ -109,6 +110,8 @@ export default function AccountSettingsPage() {
           </div>
         </form>
       </div>
+
+      <PromoSmsSetting />
 
       {/* Danger zone */}
       <div className="rounded-2xl border border-error-200 bg-white p-6 dark:border-error-800 dark:bg-gray-900">

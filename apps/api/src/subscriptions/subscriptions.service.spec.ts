@@ -52,7 +52,7 @@ describe('SubscriptionsService.takeReminderSms', () => {
     expect(await service.takeReminderSms('s1', NOW)).toBe(true);
     expect(prisma.salonSmsUsage.createMany).toHaveBeenCalledWith({ data: [{ salonId: 's1', period: '1405-07' }], skipDuplicates: true });
     expect(prisma.salonSmsUsage.updateMany).toHaveBeenCalledWith({
-      where: { salonId: 's1', period: '1405-07', sent: { lt: 100 } },
+      where: { salonId: 's1', period: '1405-07', sent: { lte: 99 } },
       data: { sent: { increment: 1 } },
     });
   });

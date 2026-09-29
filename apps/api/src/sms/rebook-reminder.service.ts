@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { Injectable, Logger, type OnApplicationBootstrap, type OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AppointmentStatus } from "@appointment-scheduling/database";
@@ -5,7 +6,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { addDaysToDateKey, instantToSalonWallTime } from "../availability/salon-time.util.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
 import { SmsService } from "./sms.service.js";
-import { faDigits, rebookText } from "./sms.text.js";
+import { faDigits, rebookText, smsParts } from "./sms.text.js";
 
 /** How often the job looks for due reminders. */
 const TICK_MS = 5 * 60_000;
@@ -20,12 +21,19 @@ const SEND_SPACING_MS = 2_500;
 /** No setting can be more than this, so older appointments are never looked at. */
 const MAX_REBOOK_DAYS = 365;
 
+const CODE_ALPHABET = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O, 1/l/I
+/** 8 random chars (~46 bits): the /r/<code> link in the SMS, unguessable and short. */
+export function newRebookCode(): string {
+  return [...randomBytes(8)].map((b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
+}
+
 type Candidate = {
   id: string;
   salonId: string;
   customerId: string;
   startAt: Date;
   rebookReminderAttempts: number;
+  rebookCode: string | null;
   salon: { name: string; slug: string; timezone: string };
   stylist: {
     displayName: string;
@@ -51,6 +59,10 @@ type Candidate = {
  * try; a failed send is released and retried on later runs that day, up to MAX_ATTEMPTS. At most
  * MAX_SENDS_PER_RUN texts per run, SEND_SPACING_MS apart, to respect the gateway's rate limit —
  * the rest go out on the next run. SMS_REBOOK_REMINDERS=off disables it.
+ *
+ * It's promotional, so customers can stop it: the text's link (/r/<rebookCode>, apps/web) offers
+ * "book again" and "stop these texts", and the customer dashboard has the same switch
+ * (User.promoSmsOptOut). Opted-out customers are skipped. The allowance is charged by SMS parts.
  */
 @Injectable()
 export class RebookReminderService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -93,6 +105,7 @@ export class RebookReminderService implements OnApplicationBootstrap, OnModuleDe
           status: AppointmentStatus.COMPLETED,
           rebookReminderSentAt: null,
           rebookReminderAttempts: { lt: MAX_ATTEMPTS },
+          customer: { promoSmsOptOut: false },
           startAt: { gte: new Date(now.getTime() - (MAX_REBOOK_DAYS + 2) * 86_400_000), lt: now },
           OR: [
             { services: { some: { service: { rebookReminderEnabled: true } } } },
@@ -106,6 +119,7 @@ export class RebookReminderService implements OnApplicationBootstrap, OnModuleDe
           customerId: true,
           startAt: true,
           rebookReminderAttempts: true,
+          rebookCode: true,
           salon: { select: { name: true, slug: true, timezone: true } },
           stylist: {
             select: {
@@ -160,10 +174,12 @@ export class RebookReminderService implements OnApplicationBootstrap, OnModuleDe
   }
 
   private async remind(a: Candidate, due: { name: string; days: number }, now: Date): Promise<boolean> {
-    // Claim: exactly one instance wins this appointment (and this attempt number).
+    // Claim: exactly one instance wins this appointment (and this attempt number). A retry keeps
+    // the code it already has, so a link from an earlier try still works.
+    const code = a.rebookCode ?? newRebookCode();
     const claimed = await this.prisma.appointment.updateMany({
       where: { id: a.id, rebookReminderSentAt: null, rebookReminderAttempts: a.rebookReminderAttempts },
-      data: { rebookReminderSentAt: now, rebookReminderAttempts: { increment: 1 } },
+      data: { rebookReminderSentAt: now, rebookReminderAttempts: { increment: 1 }, rebookCode: code },
     });
     if (claimed.count !== 1) return false;
 
@@ -179,17 +195,17 @@ export class RebookReminderService implements OnApplicationBootstrap, OnModuleDe
     });
     if (rebooked || !a.customer.phone) return false;
 
-    // The allowance is charged once per appointment, on its first try.
-    if (a.rebookReminderAttempts === 0 && !(await this.subscriptions.takeReminderSms(a.salonId, now))) return false;
-
     const params = {
       customer: a.customer.firstName || "مشتری",
       days: faDigits(due.days),
       service: due.name,
       salon: a.salon.name,
-      link: `${this.siteUrl}/s/${a.salon.slug}?book=1`,
+      link: `${this.siteUrl}/r/${code}`,
     };
-    if (await this.sms.send({ kind: "rebook-customer", to: a.customer.phone, params, text: rebookText(params) })) return true;
+    const text = rebookText(params);
+    // The allowance is charged once per appointment, on its first try, by SMS parts (this is 2).
+    if (a.rebookReminderAttempts === 0 && !(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text)))) return false;
+    if (await this.sms.send({ kind: "rebook-customer", to: a.customer.phone, params, text })) return true;
 
     // Failed: release the claim for a retry on a later run, unless that was the last try.
     if (a.rebookReminderAttempts + 1 < MAX_ATTEMPTS) {

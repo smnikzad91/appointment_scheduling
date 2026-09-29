@@ -91,6 +91,29 @@ export const rebookText = (p: { customer: string; days: string; service: string;
   fitSms(
     p,
     ["customer", "service", "salon"],
-    (q) => `${q.customer} عزیز، ${q.days} روز از ${q.service} شما در ${q.salon} گذشته؛ وقت نوبت بعدی است:\n${q.link}`,
+    // The link's page offers both "book again" and "stop these texts" (promotional opt-out).
+    (q) => `${q.customer} عزیز، ${q.days} روز از ${q.service} در ${q.salon} گذشته. رزرو نوبت یا لغو این پیامک‌ها:\n${q.link}`,
     SMS_TWO_SEGMENTS,
   );
+
+// GSM 03.38 basic set (+ the escape-table chars, which cost two septets). Anything else — Persian
+// included — makes the whole message UCS-2.
+const GSM7 = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+const GSM7_EXT = "^{}\\[~]|€";
+
+/**
+ * How many SMS parts a text is billed as: UCS-2 (any Persian) 70 chars in one part, else 67 per
+ * part; GSM-7 160 septets in one, else 153 per part. The salon's monthly allowance is charged
+ * this many (SubscriptionsService.takeReminderSms), matching what the gateway bills.
+ */
+export function smsParts(text: string): number {
+  const chars = [...text];
+  if (chars.length === 0) return 1;
+  const gsm = chars.every((c) => GSM7.includes(c) || GSM7_EXT.includes(c));
+  if (gsm) {
+    const septets = chars.reduce((n, c) => n + (GSM7_EXT.includes(c) ? 2 : 1), 0);
+    return septets <= 160 ? 1 : Math.ceil(septets / 153);
+  }
+  // UCS-2 counts UTF-16 code units (an emoji is two).
+  return text.length <= SMS_SEGMENT ? 1 : Math.ceil(text.length / 67);
+}

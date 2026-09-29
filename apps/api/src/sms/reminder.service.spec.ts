@@ -107,7 +107,7 @@ describe('ReminderService.tick', () => {
   it("stops at the salon plan's monthly allowance, customer first, and gives the other up", async () => {
     const { service, sms, subscriptions, prisma } = setup([appt()], 1, 1);
     expect(await service.tick(NOW)).toBe(1);
-    expect(subscriptions.takeReminderSms).toHaveBeenCalledWith('s1', NOW);
+    expect(subscriptions.takeReminderSms).toHaveBeenCalledWith('s1', NOW, 1);
     expect(sms.send).toHaveBeenCalledTimes(1);
     expect(sms.send.mock.calls[0][0].kind).toBe('reminder-customer');
     expect(updates(prisma)).toContainEqual({ stylistReminderAttempts: 3 });

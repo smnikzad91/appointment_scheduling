@@ -14,6 +14,7 @@ function appt(over: Record<string, unknown> = {}) {
     customerId: 'c1',
     startAt: at('2026-09-05T16:00:00'), // 30 days before 2026-10-05
     rebookReminderAttempts: 0,
+    rebookCode: null as string | null,
     salon: { name: 'سالن رز', slug: 'salon-rose', timezone: 'Asia/Tehran' },
     stylist: { displayName: 'سارا', services: [] as { serviceId: string; overrideRebookReminderEnabled: boolean | null; overrideRebookReminderDays: number | null }[] },
     customer: { firstName: 'نگار', phone: '09120000001' },
@@ -40,21 +41,22 @@ function setup(rows: ReturnType<typeof appt>[], { claim = 1, rebooked = false, a
 }
 
 describe('RebookReminderService', () => {
-  it('texts the customer 30 days after a completed appointment, at noon, with a booking link', async () => {
+  it('texts the customer 30 days after a completed appointment, at noon, with a book-or-stop link', async () => {
     const { service, sms, prisma, subscriptions } = setup([appt()]);
     expect(await service.run(NOON)).toBe(1);
 
     const where = prisma.appointment.findMany.mock.calls[0][0].where;
-    expect(where).toMatchObject({ status: 'COMPLETED', rebookReminderSentAt: null });
-    expect(prisma.appointment.updateMany).toHaveBeenCalledWith({
-      where: { id: 'a1', rebookReminderSentAt: null, rebookReminderAttempts: 0 },
-      data: { rebookReminderSentAt: NOON, rebookReminderAttempts: { increment: 1 } },
-    });
-    expect(subscriptions.takeReminderSms).toHaveBeenCalledWith('s1', NOON);
+    expect(where).toMatchObject({ status: 'COMPLETED', rebookReminderSentAt: null, customer: { promoSmsOptOut: false } });
+    const claim = prisma.appointment.updateMany.mock.calls[0][0];
+    expect(claim.where).toEqual({ id: 'a1', rebookReminderSentAt: null, rebookReminderAttempts: 0 });
+    expect(claim.data).toMatchObject({ rebookReminderSentAt: NOON, rebookReminderAttempts: { increment: 1 } });
+    expect(claim.data.rebookCode).toMatch(/^[A-Za-z2-9]{8}$/);
+    expect(subscriptions.takeReminderSms).toHaveBeenCalledWith('s1', NOON, 2); // two SMS parts
     const msg = sms.send.mock.calls[0][0];
     expect(msg).toMatchObject({ kind: 'rebook-customer', to: '09120000001', params: { customer: 'نگار', days: '۳۰', service: 'کوتاهی مو', salon: 'سالن رز' } });
-    expect(msg.params.link).toBe('https://dev-iot.ir/s/salon-rose?book=1');
-    expect(msg.text).toContain('https://dev-iot.ir/s/salon-rose?book=1');
+    expect(msg.params.link).toBe(`https://dev-iot.ir/r/${claim.data.rebookCode}`);
+    expect(msg.text).toContain('لغو این پیامک‌ها');
+    expect(msg.text.endsWith(msg.params.link)).toBe(true);
     expect(msg.text.length).toBeLessThanOrEqual(134);
   });
 
@@ -118,9 +120,10 @@ describe('RebookReminderService', () => {
     expect(await failed.service.run(NOON)).toBe(0);
     expect(failed.prisma.appointment.update).toHaveBeenCalledWith({ where: { id: 'a1' }, data: { rebookReminderSentAt: null } });
 
-    const retry = setup([appt({ rebookReminderAttempts: 1 })]);
+    const retry = setup([appt({ rebookReminderAttempts: 1, rebookCode: 'Keep1234' })]);
     expect(await retry.service.run(at('2026-10-05T12:05:00'))).toBe(1);
     expect(retry.subscriptions.takeReminderSms).not.toHaveBeenCalled();
+    expect(retry.prisma.appointment.updateMany.mock.calls[0][0].data.rebookCode).toBe('Keep1234'); // same link
 
     const lastTry = setup([appt({ rebookReminderAttempts: 2 })], { sendOk: false });
     await lastTry.service.run(NOON);
@@ -152,6 +155,6 @@ describe('RebookReminderService', () => {
     await service.run(NOON);
     const text: string = sms.send.mock.calls[0][0].text;
     expect(text.length).toBeLessThanOrEqual(134);
-    expect(text.endsWith('https://dev-iot.ir/s/salon-malake-tehran?book=1')).toBe(true);
+    expect(text).toMatch(/https:\/\/dev-iot\.ir\/r\/[A-Za-z2-9]{8}$/);
   });
 });
