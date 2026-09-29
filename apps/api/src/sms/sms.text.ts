@@ -15,8 +15,10 @@ export const clock = (minuteOfDay: number) =>
  */
 export const otpDomain = () => process.env.SMS_OTP_DOMAIN?.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "") || "";
 
+/** Kept within one Unicode segment (70 chars) even with the WebOTP line: longer texts go out in
+ * parts, which some phones show as two separate messages. */
 export const otpText = (code: string) => {
-  const text = `کد تایید نوبتا: ${code}\nاین کد را در اختیار دیگران قرار ندهید.`;
+  const text = `کد ورود نوبتا: ${code}\nآن را به کسی ندهید.`;
   const domain = otpDomain();
   return domain ? `${text}\n\n@${domain} #${code}` : text;
 };
