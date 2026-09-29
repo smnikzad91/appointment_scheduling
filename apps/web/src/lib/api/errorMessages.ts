@@ -68,6 +68,8 @@ const BY_API_MESSAGE: Record<string, string> = {
 /** Persian message for an error thrown by apiFetch / salonApiFetch (anything with status + message). */
 export function persianApiError(err: unknown, fallback = "خطایی رخ داد، دوباره تلاش کنید"): string {
   if (typeof err !== "object" || err === null) return fallback;
+  // lib/uploadImage's UploadError already carries a Persian message meant for the user.
+  if (err instanceof Error && err.name === "UploadError") return err.message;
   const { status, message } = err as { status?: number; message?: string };
   if (message && BY_API_MESSAGE[message]) return BY_API_MESSAGE[message];
   if (status === 401) return "نشست شما منقضی شده؛ لطفاً دوباره وارد شوید";
