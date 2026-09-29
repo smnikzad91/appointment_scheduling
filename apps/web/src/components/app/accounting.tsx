@@ -104,12 +104,19 @@ function dayLabel(key: string, todayKey: string) {
 
 /**
  * Pick a salon-local day with Persian labels (no native date input). Days run from `fromKey` to
- * `toKey` inclusive, newest first. Value/onChange are "YYYY-MM-DD" keys.
+ * `toKey` inclusive (at most 400 of them), newest first, plus `value` itself when it falls
+ * outside that list. Value/onChange are "YYYY-MM-DD" keys.
  */
 export function DaySelect({ value, onChange, fromKey, toKey, label }: { value: string; onChange: (key: string) => void; fromKey: string; toKey: string; label: string }) {
   const todayKey = toSalonWallTime(new Date()).dateKey;
   const keys: string[] = [];
   for (let k = toKey; k >= fromKey && keys.length < 400; k = addDaysToDateKey(k, -1)) keys.push(k);
+  // The list is capped at 400 days, but the current value is always listed (e.g. an expense
+  // older than that), so the picker shows it and saving keeps it. Keys sort as dates.
+  if (value && !keys.includes(value)) {
+    if (keys.length === 0 || value > keys[0]) keys.unshift(value);
+    else keys.push(value);
+  }
   return (
     <PickerSelect title={label} value={value} onChange={onChange} options={keys.map((k) => ({ value: k, label: dayLabel(k, todayKey) }))} />
   );
