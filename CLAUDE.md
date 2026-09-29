@@ -64,7 +64,9 @@
      (what `startOrReload` does) replaces them one at a time — the api signals `process.send("ready")` after
      `app.listen` (`wait_ready`), the web counts as up once its new worker listens (`listen_timeout`). SMS/background
      jobs run in api instance 0 only (`NODE_APP_INSTANCE`, `src/sms/job-runner.ts`). apps/web retries server-side
-     GETs to the api once or twice on ECONNREFUSED/ECONNRESET (`salonApiClient.ts`). pm2 never
+     GETs to the api once or twice on ECONNREFUSED/ECONNRESET/UND_ERR_SOCKET/UND_ERR_CLOSED (`salonApiClient.ts`). On
+     SIGINT the api drains instead of dropping keep-alive sockets (main.ts: stop listening, `Connection: close` on
+     in-flight responses, idle sockets left to the client, exit when none remain or after 6.5 s; keepAliveTimeout 5 s). pm2 never
      applies a changed `script` on reload, so script paths stay fixed and the folder travels as env: the api runs
      `apps/api/start.cjs` (loads `$API_DIST/main.js`), the web gets `NEXT_DIST_DIR`. deploy.sh recreates any
      app pm2 can't reload into the config (a different script, fork instead of cluster mode, a different instance

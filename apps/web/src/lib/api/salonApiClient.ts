@@ -20,7 +20,9 @@ export class SalonApiError extends Error {
 }
 
 const RETRY_DELAYS_MS = [300, 600];
-const RETRYABLE_CODES = new Set(["ECONNREFUSED", "ECONNRESET"]);
+// Connection-level failures of a restarting API instance: refused, reset, or (undici) a pooled
+// keep-alive socket the other side closed as it shut down.
+const RETRYABLE_CODES = new Set(["ECONNREFUSED", "ECONNRESET", "UND_ERR_SOCKET", "UND_ERR_CLOSED"]);
 
 /** Node's fetch wraps socket errors: TypeError("fetch failed") with the real one as `cause`. */
 function connectionErrorCode(err: unknown): string | undefined {
@@ -32,7 +34,7 @@ function connectionErrorCode(err: unknown): string | undefined {
 }
 
 /**
- * fetch, retried on the server when the API refused or dropped the connection — a pm2 reload
+ * fetch, retried on the server when the API refused, reset or closed the connection — a pm2 reload
  * blip — up to twice (300 ms, 600 ms). Only GET/HEAD, which are safe to repeat; never on an HTTP
  * error response (that's an answer, not a blip), and never in the browser.
  */
