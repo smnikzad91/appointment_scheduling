@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BellRing, Clock, FolderCog, Plus, Scissors, Trash2 } from "lucide-react";
+import { BellOff, BellRing, Clock, FolderCog, Plus, Scissors, Trash2 } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyCategories,
@@ -281,24 +281,38 @@ export default function SalonServicesPage() {
                   <Sep className="mx-0" />
                   <span className="font-semibold text-app-ink/80">{formatToman(service.priceToman)}</span>
                 </p>
-                {service.rebookReminderEnabled && (
-                  <p className="mt-1 flex items-center gap-1.5 text-[12px] text-app-muted">
-                    <BellRing className="h-3.5 w-3.5" aria-hidden />
-                    یادآوری نوبت بعدی: {toPersianDigits(service.rebookReminderDays)} روز بعد
-                  </p>
-                )}
+                {/* Always shown, on or off: it's set in the edit sheet, not by the switch beside it. */}
+                <p className="mt-1 flex items-center gap-1.5 text-[12px] text-app-muted">
+                  {service.rebookReminderEnabled ? (
+                    <>
+                      <BellRing className="h-3.5 w-3.5" aria-hidden />
+                      پیامک یادآوری: {toPersianDigits(service.rebookReminderDays)} روز بعد
+                    </>
+                  ) : (
+                    <>
+                      <BellOff className="h-3.5 w-3.5" aria-hidden />
+                      پیامک یادآوری: خاموش
+                    </>
+                  )}
+                </p>
                 {filter === "all" && categoryName(service.categoryId) && (
                   <span className="mt-2 inline-block rounded-full bg-app-card-2 px-2.5 py-0.5 text-[11px] font-semibold text-app-muted">
                     {categoryName(service.categoryId)}
                   </span>
                 )}
               </button>
-              <Toggle
-                checked={service.active}
-                disabled={pendingActive.has(service.id)}
-                onChange={() => handleToggleActive(service)}
-                label={`فعال بودن ${service.name}`}
-              />
+              {/* This switch is the service itself (bookable or not) — labelled so it isn't read as the SMS reminder. */}
+              <div className="flex shrink-0 flex-col items-center gap-1">
+                <Toggle
+                  checked={service.active}
+                  disabled={pendingActive.has(service.id)}
+                  onChange={() => handleToggleActive(service)}
+                  label={`فعال بودن ${service.name}`}
+                />
+                <span className={cx("text-[11px] font-bold", service.active ? "text-app-accent" : "text-app-muted")}>
+                  {service.active ? "فعال" : "غیرفعال"}
+                </span>
+              </div>
             </div>
           ))}
         </div>
