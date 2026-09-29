@@ -1,6 +1,7 @@
 import { readdir, stat, unlink } from "fs/promises";
 import { join } from "path";
 import { prisma } from "@/lib/prisma";
+import { uploadsDir } from "@/lib/privateUploads";
 
 // Salon/stylist/banner photos live on disk under public/uploads/<folder>/ while the DB (written by
 // apps/api) only stores their URL. A file is deleted only once no row points at it any more, so
@@ -9,9 +10,6 @@ import { prisma } from "@/lib/prisma";
 const MANAGED_FOLDERS = ["salons", "stylists", "banners", "expenses"] as const;
 const MANAGED_URL = /^\/uploads\/(salons|stylists|banners|expenses)\/([\w-]+\.(?:jpe?g|png|webp|gif))$/i;
 
-function uploadsDir(folder: string) {
-  return join(process.cwd(), "public", "uploads", folder);
-}
 
 /** URLs from the given list that some salon, stylist, gallery piece, user, the home banner or an expense receipt still uses. */
 async function referencedUrls(urls: string[]): Promise<Set<string>> {

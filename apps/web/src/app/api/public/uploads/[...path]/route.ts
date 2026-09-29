@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import { extname, join, resolve, sep } from "path";
 import { NextResponse } from "next/server";
+import { isPrivateFolder } from "@/lib/privateUploads";
 
 // `next start` only serves the public/ files that existed when it started, so a photo uploaded
 // afterwards 404s until the next restart. next.config's afterFiles rewrite sends /uploads/* here
@@ -18,6 +19,8 @@ const TYPES: Record<string, string> = {
 
 export async function GET(_req: Request, ctx: RouteContext<"/api/public/uploads/[...path]">) {
   const { path } = await ctx.params;
+  // Private folders (expense receipts) are never served here, even if a copy sits in public/.
+  if (isPrivateFolder(path[0] ?? "")) return new NextResponse(null, { status: 404 });
   const file = resolve(join(UPLOADS, ...path));
   const type = TYPES[extname(file).toLowerCase()];
   // Only images, and never anything outside public/uploads (no "../" escapes).

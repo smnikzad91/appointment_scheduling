@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
+import { isPrivateFolder, uploadsDir } from "@/lib/privateUploads";
 
 const MAX_SIZE = 5 * 1024 * 1024;
 const ALLOWED  = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
@@ -16,6 +17,8 @@ export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const folderParam = searchParams.get("folder") ?? "tickets";
   const folder = ALLOWED_FOLDERS.includes(folderParam) ? folderParam : "tickets";
+  // Expense receipts are only uploaded by stylists, and stored privately (lib/privateUploads.ts).
+  if (isPrivateFolder(folder) && session.user.role !== "STYLIST") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
@@ -26,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   const ext      = (file.name.split(".").pop() ?? "jpg").toLowerCase();
   const filename = `${randomUUID()}.${ext}`;
-  const dir      = join(process.cwd(), "public", "uploads", folder);
+  const dir      = uploadsDir(folder);
 
   await mkdir(dir, { recursive: true });
   const buffer = Buffer.from(await file.arrayBuffer());

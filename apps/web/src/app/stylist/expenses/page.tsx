@@ -213,6 +213,11 @@ function ExpenseSheet({
   const fileInput = useRef<HTMLInputElement>(null);
   // Receipts uploaded in this sheet; whichever isn't saved is released on close.
   const uploaded = useRef<string[]>([]);
+  // The server only serves a receipt once a saved expense owns it, so a just-picked one is shown
+  // from the phone's own copy.
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+  useEffect(() => () => void (localPreview && URL.revokeObjectURL(localPreview)), [localPreview]);
+  const previewSrc = receiptUrl && localPreview ? localPreview : receiptUrl;
 
   function close() {
     releaseUploads(uploaded.current);
@@ -227,6 +232,7 @@ function ExpenseSheet({
       const url = await uploadImage(file, "expenses");
       uploaded.current.push(url);
       setReceiptUrl(url);
+      setLocalPreview(URL.createObjectURL(file));
     } catch (err) {
       setError(err instanceof Error ? err.message : "آپلود رسید انجام نشد");
     } finally {
@@ -321,14 +327,17 @@ function ExpenseSheet({
           <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => pickReceipt(e.target.files?.[0])} />
           {receiptUrl ? (
             <div className="relative overflow-hidden rounded-2xl border border-app-line bg-app-card-2">
-              <a href={receiptUrl} target="_blank" rel="noopener noreferrer">
+              <a href={previewSrc ?? receiptUrl} target="_blank" rel="noopener noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={receiptUrl} alt="رسید هزینه" className="max-h-56 w-full object-contain" />
+                <img src={previewSrc ?? receiptUrl} alt="رسید هزینه" className="max-h-56 w-full object-contain" />
               </a>
               <button
                 type="button"
                 aria-label="حذف رسید"
-                onClick={() => setReceiptUrl(null)}
+                onClick={() => {
+                  setReceiptUrl(null);
+                  setLocalPreview(null);
+                }}
                 className="absolute end-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white active:scale-90"
               >
                 <X className="h-4 w-4" aria-hidden />

@@ -7,7 +7,12 @@ const nextConfig: NextConfig = {
   // Photos uploaded after `next start` aren't served from public/ — fall back to reading them from
   // disk (plain array = afterFiles: only used when no public file matched).
   async rewrites() {
-    return [{ source: "/uploads/:path*", destination: "/api/public/uploads/:path*" }];
+    return [
+      // Expense receipts are private (stored outside public/, see lib/privateUploads.ts): only
+      // their owner may read them. Listed first so the public route below never serves them.
+      { source: "/uploads/expenses/:file", destination: "/api/receipts/:file" },
+      { source: "/uploads/:path*", destination: "/api/public/uploads/:path*" },
+    ];
   },
   // The service worker must never be cached by the browser/CDN, or updates to it get stuck.
   async headers() {
