@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Production builds alternate between .next-a and .next-b (scripts/deploy.sh), so a build never
+  // writes into the folder `next start` is serving; pm2 passes the live one in NEXT_DIST_DIR.
+  // Unset (dev, local builds) it's the usual .next.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // `next dev` refuses its own /_next resources (HMR, lazily loaded chunks such as the Leaflet
   // map) to any host but localhost; this lets the dev server be used via its IP. Dev-only.
   allowedDevOrigins: ["127.0.0.1", "91.107.143.45"],

@@ -54,9 +54,14 @@
      - `postgres` superuser has no password: `sudo -u postgres psql` (peer auth) only.
      pg_hba rejects everything else; hardening lives in `/etc/postgresql/17/main/pg_hba.conf`
      and `conf.d/10-security.conf` (originals saved as `*.orig`).
-   - Production (dev-iot.ir, this server): `npm run deploy` = `prisma generate`, build api + web, `migrate deploy`,
-     `pm2 startOrReload ecosystem.config.cjs`. pm2 apps `salon-api-prod` (127.0.0.1:3011) and
-     `salon-web-prod` (127.0.0.1:3010). nginx `/etc/nginx/sites-available/dev-iot.ir`:
+   - Production (dev-iot.ir, this server): `npm run deploy` = `scripts/deploy.sh`: `prisma generate`, build api + web,
+     `migrate deploy`, then `pm2 startOrReload ecosystem.config.cjs`. Builds never touch what's live: api builds
+     alternate between `apps/api/dist-a|dist-b` (plain `tsc`; `nest build` would wipe `dist/`) and web between
+     `apps/web/.next-a|.next-b` (`NEXT_DIST_DIR` → next.config `distDir`); the live names are in
+     `apps/api/.dist-live` / `apps/web/.next-live` (gitignored), which ecosystem.config.cjs reads. They're flipped
+     only after both builds and the migration succeed, so a failed deploy leaves the site as it was; rollback =
+     write the previous folder name back and `pm2 startOrReload ecosystem.config.cjs --update-env`. pm2 apps
+     `salon-api-prod` (127.0.0.1:3011) and `salon-web-prod` (127.0.0.1:3010). nginx `/etc/nginx/sites-available/dev-iot.ir`:
      `/backend/*` → api (prefix stripped), everything else → web. HTTPS vhosts on this box listen
      on `127.0.0.1:8444 ssl proxy_protocol` behind a stream SNI router on :443 (shared with xray) —
      never `listen 443` or `certbot --nginx`; certs via `certbot certonly --webroot -w /var/www/html`.

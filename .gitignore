@@ -8,6 +8,9 @@ node_modules/
 
 # build outputs
 dist/
+dist-a/
+dist-b/
+.dist-live
 build/
 .next/
 out/

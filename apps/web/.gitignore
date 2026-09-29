@@ -12,6 +12,9 @@
 
 # next.js
 /.next/
+/.next-a/
+/.next-b/
+/.next-live
 /out/
 
 # production

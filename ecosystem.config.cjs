@@ -9,13 +9,31 @@
 //   https://dev-iot.ir/backend/  → salon-api-prod (3011)
 // Secrets stay in the apps' .env files (apps/api/.env, apps/web/.env + .env.production); only
 // ports and hosts are set here, and these win over the .env files.
+//
+// Build folders: `npm run deploy` (scripts/deploy.sh) builds into dist-a|dist-b and .next-a|.next-b
+// alternately and records the live one in apps/api/.dist-live and apps/web/.next-live, read here on
+// every (re)load. Before the first such deploy they don't exist and the old dist / .next are used.
+
+const { readFileSync } = require("fs");
+const { join } = require("path");
+
+function live(file, fallback) {
+  try {
+    return readFileSync(join(__dirname, file), "utf8").trim() || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+const apiDist = live("apps/api/.dist-live", "dist");
+const webDist = live("apps/web/.next-live", ".next");
 
 module.exports = {
   apps: [
     {
       name: "salon-api-prod",
       cwd: "./apps/api",
-      script: "dist/main.js",
+      script: `${apiDist}/main.js`,
       env: { NODE_ENV: "production", PORT: "3011", HOST: "127.0.0.1" },
       max_memory_restart: "600M",
       time: true,
@@ -25,7 +43,8 @@ module.exports = {
       cwd: "./apps/web",
       script: "../../node_modules/next/dist/bin/next",
       args: "start -p 3010 -H 127.0.0.1",
-      env: { NODE_ENV: "production" },
+      // next.config reads distDir from NEXT_DIST_DIR.
+      env: { NODE_ENV: "production", NEXT_DIST_DIR: webDist },
       max_memory_restart: "1G",
       time: true,
     },
