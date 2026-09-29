@@ -1,3 +1,4 @@
+import { bookingCustomerFullName } from "../appointments/booking-customer-name.util.js";
 import { Injectable, Logger, type OnApplicationBootstrap, type OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AppointmentStatus } from "@appointment-scheduling/database";
@@ -141,7 +142,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
     const customerParams = { time, salon: a.salon.name, stylist: a.stylist.displayName };
     const stylistParams = {
       time,
-      customer: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
+      customer: bookingCustomerFullName(a),
       services: a.services.map((s) => s.service.name).join("، "),
     };
     const messages = {
@@ -199,7 +200,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       const params = {
         day: jalaliDay(a.startAt, a.salon.timezone),
         time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
-        customer: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
+        customer: bookingCustomerFullName(a),
       };
       const text = stylistNewBookingText(params);
       if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text)))) continue;
@@ -230,7 +231,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       const params = {
         day: jalaliDay(a.startAt, a.salon.timezone),
         time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
-        customer: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
+        customer: bookingCustomerFullName(a),
       };
       const text = stylistConfirmNudgeText(params);
       if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text)))) continue;

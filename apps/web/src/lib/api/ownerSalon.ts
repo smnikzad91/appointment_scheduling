@@ -297,8 +297,16 @@ export function createSalonBooking(token: string, data: SalonBookingInput) {
   return salonApiFetch<OwnerAppointment>("/appointments/salon", { method: "POST", headers: authHeaders(token), body: JSON.stringify(data) });
 }
 
-/** Staff (owner, or the appointment's stylist) change an open appointment; omitted fields stay. */
-export function updateAppointmentDetails(token: string, id: string, data: { serviceIds?: string[]; startAt?: string; notes?: string | null }) {
+/**
+ * Staff (owner, or the appointment's stylist) change an open appointment; omitted fields stay.
+ * `customerFirstName`/`customerLastName` rename the customer on this booking only (never their
+ * account); `null` goes back to the account's name.
+ */
+export function updateAppointmentDetails(
+  token: string,
+  id: string,
+  data: { serviceIds?: string[]; startAt?: string; notes?: string | null; customerFirstName?: string | null; customerLastName?: string | null },
+) {
   return salonApiFetch<OwnerAppointment>(`/appointments/${id}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify(data) });
 }
 

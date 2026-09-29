@@ -1,3 +1,4 @@
+import { bookingCustomerFullName, withBookingCustomerName } from "./booking-customer-name.util.js";
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
@@ -217,11 +218,12 @@ export class AppointmentsService {
       throw new NotFoundException("No stylist profile for this account");
     }
 
-    return this.prisma.appointment.findMany({
+    const rows = await this.prisma.appointment.findMany({
       where: { stylistId: stylist.id },
       orderBy: { startAt: "desc" },
       include: { ...APPOINTMENT_INCLUDE, customer: SAFE_CUSTOMER_SELECT },
     });
+    return rows.map(withBookingCustomerName);
   }
 
   async findMineAsSalonOwner(userId: string) {
@@ -230,11 +232,12 @@ export class AppointmentsService {
       throw new NotFoundException("You don't own a salon yet");
     }
 
-    return this.prisma.appointment.findMany({
+    const rows = await this.prisma.appointment.findMany({
       where: { salonId: salon.id },
       orderBy: { startAt: "desc" },
       include: { ...APPOINTMENT_INCLUDE, customer: SAFE_CUSTOMER_SELECT, stylist: true },
     });
+    return rows.map(withBookingCustomerName);
   }
 
   async updateStatus(user: JwtPayload, appointmentId: string, status: UpdatableAppointmentStatus) {
@@ -344,6 +347,8 @@ export class AppointmentsService {
           }),
           priceToman: pricing.reduce((sum, p) => sum + p.priceToman, 0),
           ...(dto.notes !== undefined && { notes: dto.notes?.trim() || null }),
+          ...(dto.customerFirstName !== undefined && { customerFirstName: dto.customerFirstName || null }),
+          ...(dto.customerLastName !== undefined && { customerLastName: dto.customerLastName || null }),
         },
         include: APPOINTMENT_INCLUDE,
       });
@@ -405,6 +410,8 @@ export class AppointmentsService {
         select: {
           startAt: true,
           customerId: true,
+          customerFirstName: true,
+          customerLastName: true,
           salon: { select: { ownerId: true, name: true } },
           stylist: { select: { userId: true, displayName: true } },
           customer: { select: { firstName: true, lastName: true } },
@@ -418,7 +425,7 @@ export class AppointmentsService {
         {
           appointmentId,
           salonName: a.salon.name,
-          customerName: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
+          customerName: bookingCustomerFullName(a),
           stylistName: a.stylist.displayName,
           services: a.services.map((s) => s.service.name),
           startAt: a.startAt.toISOString(),

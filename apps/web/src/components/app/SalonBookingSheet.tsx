@@ -86,9 +86,10 @@ export default function SalonBookingSheet({
   const [data, setData] = useState<Loaded | null>(null);
   const [phone, setPhone] = useState("");
   const [lookup, setLookup] = useState<{ phone: string; name: { firstName: string; lastName: string } | null } | null>(null);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const editing = appointment ?? null;
+  // Editing: the customer's name on this booking (the API already shows any earlier override here).
+  const [firstName, setFirstName] = useState(editing?.customer.firstName ?? "");
+  const [lastName, setLastName] = useState(editing?.customer.lastName ?? "");
   const bookedStart = editing ? toSalonWallTime(new Date(editing.startAt)) : null;
   const [stylistId, setStylistId] = useState(editing?.stylistId ?? prefill?.stylistId ?? "");
   const [serviceIds, setServiceIds] = useState<string[]>(() => editing?.services.map((s) => s.serviceId) ?? []);
@@ -192,6 +193,7 @@ export default function SalonBookingSheet({
   async function saveEdit(a: AppAppointment) {
     if (!data) return;
     if (servicesTouched && chosenIds.length === 0) return setError("دست‌کم یک خدمت انتخاب کنید");
+    if (!firstName.trim()) return setError("نام مشتری را وارد کنید");
     const startAt = salonWallTimeToInstant(dateKey, minute, data.salon.timezone).toISOString();
     setBusy(true);
     setError(null);
@@ -200,6 +202,9 @@ export default function SalonBookingSheet({
         ...(servicesTouched && { serviceIds: chosenIds }),
         ...(new Date(startAt).getTime() !== new Date(a.startAt).getTime() && { startAt }),
         notes: notes.trim() || null,
+        // Only a changed name is saved on the booking, so an untouched one keeps following the account.
+        ...(firstName.trim() !== a.customer.firstName && { customerFirstName: firstName.trim() }),
+        ...(lastName.trim() !== a.customer.lastName && { customerLastName: lastName.trim() || null }),
       });
       onCreated();
       onClose();
@@ -257,16 +262,22 @@ export default function SalonBookingSheet({
     >
       <div className="flex flex-col gap-4">
         {editing ? (
-          <p className="flex flex-wrap items-center gap-x-2 rounded-2xl bg-app-card-2 px-4 py-3 text-sm font-bold text-app-ink">
-            <UserCheck className="h-4 w-4 text-app-muted" aria-hidden />
-            {editing.customer.firstName} {editing.customer.lastName}
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="نام مشتری">
+                <TextInput value={firstName} maxLength={50} onChange={(e) => setFirstName(e.target.value)} />
+              </Field>
+              <Field label="نام خانوادگی">
+                <TextInput value={lastName} maxLength={50} onChange={(e) => setLastName(e.target.value)} />
+              </Field>
+            </div>
             {editing.stylist && !asStylist && (
-              <span className="font-medium text-app-muted">
-                <Sep />
+              <p className="-mt-2 flex items-center gap-2 text-sm font-medium text-app-muted">
+                <UserCheck className="h-4 w-4" aria-hidden />
                 {editing.stylist.displayName}
-              </span>
+              </p>
             )}
-          </p>
+          </>
         ) : (
           <>
             <Field label="موبایل مشتری">

@@ -535,6 +535,10 @@ model Appointment {
   status                   AppointmentStatus @default(PENDING)
   priceToman               Int
   notes                    String?
+  /// The customer's name as staff set it on this booking (edit sheet); null = the account's name.
+  /// Only this booking changes — the customer's account and other salons never see it.
+  customerFirstName        String?
+  customerLastName         String?
   // Accounting, frozen when the appointment is COMPLETED and cleared if it leaves that status:
   // the amount actually received (defaults to priceToman; the owner can correct it), the stylist's
   // commission percent at that moment, and their share. The salon's share is the rest.

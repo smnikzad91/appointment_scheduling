@@ -1,3 +1,4 @@
+import { bookingCustomerFullName } from "../appointments/booking-customer-name.util.js";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { AppointmentStatus, NotificationType, Prisma } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -39,6 +40,8 @@ const INCOME_SELECT = {
   stylistCommissionPercent: true,
   tipToman: true,
   stylistShareToman: true,
+  customerFirstName: true,
+  customerLastName: true,
   customer: { select: { firstName: true, lastName: true } },
   stylist: { select: { id: true, displayName: true } },
   services: { select: { service: { select: { name: true } } } },
@@ -58,7 +61,7 @@ function toIncomeItem(a: IncomeRow) {
   return {
     id: a.id,
     startAt: a.startAt,
-    customerName: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
+    customerName: bookingCustomerFullName(a),
     stylist: a.stylist,
     services: a.services.map((s) => s.service.name),
     priceToman: a.priceToman,

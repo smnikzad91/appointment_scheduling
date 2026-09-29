@@ -40,6 +40,7 @@ type Candidate = {
     displayName: string;
     services: { serviceId: string; overrideRebookReminderEnabled: boolean | null; overrideRebookReminderDays: number | null }[];
   };
+  customerFirstName: string | null;
   customer: { firstName: string; phone: string | null };
   services: { service: { id: string; name: string; rebookReminderEnabled: boolean; rebookReminderDays: number } }[];
 };
@@ -128,6 +129,7 @@ export class RebookReminderService implements OnApplicationBootstrap, OnModuleDe
               services: { select: { serviceId: true, overrideRebookReminderEnabled: true, overrideRebookReminderDays: true } },
             },
           },
+          customerFirstName: true,
           customer: { select: { firstName: true, phone: true } },
           services: { select: { service: { select: { id: true, name: true, rebookReminderEnabled: true, rebookReminderDays: true } } } },
         },
@@ -197,7 +199,7 @@ export class RebookReminderService implements OnApplicationBootstrap, OnModuleDe
     if (rebooked || !a.customer.phone) return false;
 
     const params = {
-      customer: a.customer.firstName || "مشتری",
+      customer: (a.customerFirstName ?? a.customer.firstName) || "مشتری",
       days: faDigits(due.days),
       service: due.name,
       salon: a.salon.name,
