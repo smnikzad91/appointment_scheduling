@@ -44,3 +44,7 @@ yarn-error.log*
 
 # Demo-data artwork (scripts/demo/make-images.py) — regenerate, never commit
 apps/web/public/uploads/demo/
+
+# uptime monitor counters (scripts/uptime-monitor.cjs)
+.uptime-state.json
+.uptime-state.json.tmp

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { HealthController } from './health.controller.js';
 import { ErrorLogModule } from './error-log/error-log.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { SalonsModule } from './salons/salons.module.js';
@@ -43,7 +44,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
     SmsModule,
     SubscriptionsModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
 export class AppModule {}

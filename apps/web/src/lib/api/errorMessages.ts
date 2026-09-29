@@ -91,6 +91,7 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Time off not found": "این مرخصی دیگر وجود ندارد",
   "Not your time off": "این مرخصی مربوط به شما نیست",
   "Link not found": "این لینک معتبر نیست یا منقضی شده است",
+  "Database unavailable": "سرویس موقتاً در دسترس نیست؛ چند دقیقه دیگر تلاش کنید",
 };
 
 /** Persian message for an error thrown by apiFetch / salonApiFetch (anything with status + message). */
