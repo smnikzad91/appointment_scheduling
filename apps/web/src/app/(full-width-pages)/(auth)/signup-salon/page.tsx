@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "ثبت‌نام سالن",
-  description: "سالن زیبایی خود را رایگان در نوبتا ثبت کنید و نوبت‌دهی آنلاین را همین امروز شروع کنید.",
+  description: "سالن زیبایی خود را رایگان در نوبتت ثبت کنید و نوبت‌دهی آنلاین را همین امروز شروع کنید.",
 };
 
 // ?plan=<id> comes from a plan's button in the landing page's pricing section.

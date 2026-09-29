@@ -39,7 +39,7 @@ export default function FaqPageClient() {
             سوالات متداول
           </h1>
           <p className="mt-4 text-base leading-relaxed text-gray-500 dark:text-g-muted">
-            پاسخ رایج‌ترین سوال‌ها درباره نوبتا را اینجا پیدا کنید.
+            پاسخ رایج‌ترین سوال‌ها درباره نوبتت را اینجا پیدا کنید.
           </p>
           <p className="mt-2 text-sm text-gray-400 dark:text-g-faint">
             پاسخ سوال خود را نیافتید؟{" "}

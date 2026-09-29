@@ -235,7 +235,7 @@ export default function BlogPostClient({ post, related }: Props) {
                 <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-g-accent-2 p-6 text-white">
                   <h3 className="text-lg font-bold">سالن خود را آنلاین کنید</h3>
                   <p className="mt-2 text-sm text-brand-100 leading-relaxed">
-                    با نوبتا، صفحه رزرو اختصاصی سالن‌تان را در چند دقیقه راه بیندازید.
+                    با نوبتت، صفحه رزرو اختصاصی سالن‌تان را در چند دقیقه راه بیندازید.
                   </p>
                   <Button
                     href="/signup-salon"

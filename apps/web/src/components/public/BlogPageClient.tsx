@@ -47,7 +47,7 @@ export default function BlogPageClient({ posts }: Props) {
             وبلاگ
           </h1>
           <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-gray-500 dark:text-g-muted">
-            راهنمای مدیریت سالن زیبایی، جذب مشتری و استفاده از نوبتا.
+            راهنمای مدیریت سالن زیبایی، جذب مشتری و استفاده از نوبتت.
           </p>
           <div className="mt-5">
             <Link href="/news" className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-brand-500 dark:text-g-faint dark:hover:text-g-accent">

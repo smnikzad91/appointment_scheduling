@@ -4,7 +4,7 @@
 import { ProviderSmsDriver } from "../sms/drivers/provider.driver.js";
 
 async function main() {
-  const [to, text = "پیام آزمایشی نوبتا"] = process.argv.slice(2);
+  const [to, text = "پیام آزمایشی نوبتت"] = process.argv.slice(2);
   if (!to || !/^09\d{9}$/.test(to)) {
     console.error("Usage: npm run sms:test -w api -- 09xxxxxxxxx [text]");
     process.exit(1);

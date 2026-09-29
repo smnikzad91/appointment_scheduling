@@ -120,7 +120,7 @@ export default function SignUpForm() {
 
         <div className="g-rise" style={rise(7)}>
           <GlassCheckbox checked={agreed} onChange={setAgreed}>
-            با <AuthLink href="/terms">شرایط استفاده</AuthLink> و <AuthLink href="/privacy">حریم خصوصی</AuthLink> نوبتا موافقم.
+            با <AuthLink href="/terms">شرایط استفاده</AuthLink> و <AuthLink href="/privacy">حریم خصوصی</AuthLink> نوبتت موافقم.
           </GlassCheckbox>
         </div>
 

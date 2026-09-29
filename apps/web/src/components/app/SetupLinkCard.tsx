@@ -58,7 +58,7 @@ export default function SetupLinkCard({
   }
   const message =
     `سلام ${stylistName}،\n` +
-    `برای ورود به پنل آرایشگر${salonName ? ` ${salonName}` : ""} در نوبتا، از این لینک رمز عبور خودتان را انتخاب کنید. ` +
+    `برای ورود به پنل آرایشگر${salonName ? ` ${salonName}` : ""} در نوبتت، از این لینک رمز عبور خودتان را انتخاب کنید. ` +
     `لینک یک‌بار مصرف است و تا ${formatSalonDate(expiresAt)} اعتبار دارد.`;
 
   async function copy() {

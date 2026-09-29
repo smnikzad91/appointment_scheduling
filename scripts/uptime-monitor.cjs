@@ -34,12 +34,12 @@ function decide(state, results, now = new Date()) {
     const prev = state[t.id] ?? { fails: 0, alerted: false };
     const r = results[t.id];
     if (r === true) {
-      if (prev.alerted) messages.push({ id: t.id, kind: "recovered", text: `✅ نوبتا: ${t.name} دوباره در دسترس است (${when}).` });
+      if (prev.alerted) messages.push({ id: t.id, kind: "recovered", text: `✅ نوبتت: ${t.name} دوباره در دسترس است (${when}).` });
       next[t.id] = { fails: 0, alerted: false };
     } else {
       const fails = prev.fails + 1;
       const alert = !prev.alerted && fails >= FAIL_THRESHOLD;
-      if (alert) messages.push({ id: t.id, kind: "down", text: `🔴 نوبتا: ${t.name} ${fails} دقیقه است پاسخ نمی‌دهد (${r}). ${when}` });
+      if (alert) messages.push({ id: t.id, kind: "down", text: `🔴 نوبتت: ${t.name} ${fails} دقیقه است پاسخ نمی‌دهد (${r}). ${when}` });
       next[t.id] = { fails, alerted: prev.alerted || alert };
     }
   }

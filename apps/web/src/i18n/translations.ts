@@ -895,7 +895,7 @@ const translations = {
     seoSettingsTitle: "تنظیمات سئو",
     seoSettingsSubtitle: "عنوان، توضیحات و کلمات کلیدی که موتورهای جستجو برای صفحه اصلی سایت می‌بینند را کنترل می‌کند.",
     seoFieldTitle: "عنوان صفحه *",
-    seoFieldTitlePlaceholder: "مثلاً: نوبتا — نوبت‌دهی آنلاین سالن‌های زیبایی",
+    seoFieldTitlePlaceholder: "مثلاً: نوبتت — نوبت‌دهی آنلاین سالن‌های زیبایی",
     seoFieldDescription: "توضیحات متا *",
     seoFieldDescriptionPlaceholder: "خلاصه‌ای کوتاه که در نتایج جستجو نمایش داده می‌شود…",
     seoFieldKeywords: "کلمات کلیدی",

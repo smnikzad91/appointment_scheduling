@@ -1,6 +1,6 @@
 import { ProviderSmsDriver } from './provider.driver.js';
 
-const message = { kind: 'otp', to: '09121234567', params: { code: '12345', domain: '' }, text: 'کد تایید نوبتا: 12345' } as const;
+const message = { kind: 'otp', to: '09121234567', params: { code: '12345', domain: '' }, text: 'کد تایید نوبتت: 12345' } as const;
 
 describe('ProviderSmsDriver (notifycloud)', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -14,7 +14,7 @@ describe('ProviderSmsDriver (notifycloud)', () => {
     expect(url).toBe('https://notifycloud.ir/api/v1/sms');
     expect(init.headers.Authorization).toBe('Bearer ncsms_test');
     const body = JSON.parse(init.body);
-    expect(body).toMatchObject({ number: '09121234567', text: 'کد تایید نوبتا: 12345' });
+    expect(body).toMatchObject({ number: '09121234567', text: 'کد تایید نوبتت: 12345' });
     expect(body.clientSmsId).toMatch(/^otp:/);
   });
 

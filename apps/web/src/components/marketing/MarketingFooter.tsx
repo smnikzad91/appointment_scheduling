@@ -67,7 +67,7 @@ export default function MarketingFooter() {
         </div>
 
         <div className="mt-12 border-t border-g-line pt-6 text-center text-sm text-g-faint">
-          © ۱۴۰۵ نوبتا — تمامی حقوق محفوظ است.
+          © ۱۴۰۵ نوبتت — تمامی حقوق محفوظ است.
         </div>
       </div>
     </footer>

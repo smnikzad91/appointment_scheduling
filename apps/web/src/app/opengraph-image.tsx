@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
-export const alt = "نوبتا — سامانه نوبت‌دهی آنلاین سالن‌های زیبایی";
+export const alt = "نوبتت — سامانه نوبت‌دهی آنلاین سالن‌های زیبایی";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

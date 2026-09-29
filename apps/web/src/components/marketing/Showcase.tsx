@@ -22,7 +22,7 @@ export default async function Showcase() {
       {banner && <SupplierBanner banner={banner} />}
 
       {featuredSalons.length > 0 && (
-        <Section kicker="انتخاب نوبتا" title="سالن‌های منتخب">
+        <Section kicker="انتخاب نوبتت" title="سالن‌های منتخب">
           <Row>
             {featuredSalons.map((s, i) => (
               <SalonCard key={s.id} salon={s} featured={i === 0} />
@@ -32,7 +32,7 @@ export default async function Showcase() {
       )}
 
       {featuredStylists.length > 0 && (
-        <Section kicker="انتخاب نوبتا" title="آرایشگرهای منتخب">
+        <Section kicker="انتخاب نوبتت" title="آرایشگرهای منتخب">
           <Row>
             {featuredStylists.map((s) => (
               <StylistCard key={s.id} stylist={s} />

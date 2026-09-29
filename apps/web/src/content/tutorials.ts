@@ -35,7 +35,7 @@ export const TUTORIALS: Tutorial[] = [
   {
     slug: "register-salon",
     role: "owner",
-    title: "ثبت‌نام سالن در نوبتا",
+    title: "ثبت‌نام سالن در نوبتت",
     summary: "در چند دقیقه حساب سالن را بسازید، محل آن را روی نقشه بگذارید و وارد پنل سالن شوید.",
     minutes: 3,
     keywords: ["ثبت نام", "ساخت سالن", "حساب", "نقشه", "استان", "شهر"],

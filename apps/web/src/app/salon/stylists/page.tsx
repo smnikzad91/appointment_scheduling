@@ -269,7 +269,7 @@ export default function SalonStylistsPage() {
     } catch (err) {
       setInviteError(
         err instanceof SalonApiError && err.status === 409
-          ? "این شماره قبلاً در نوبتا ثبت شده و نمی‌توان آن را به‌عنوان آرایشگر اضافه کرد"
+          ? "این شماره قبلاً در نوبتت ثبت شده و نمی‌توان آن را به‌عنوان آرایشگر اضافه کرد"
           : persianApiError(err, "افزودن آرایشگر انجام نشد"), // e.g. the plan's stylist limit
       );
     } finally {

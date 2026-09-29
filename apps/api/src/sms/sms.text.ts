@@ -18,7 +18,7 @@ export const otpDomain = () => process.env.SMS_OTP_DOMAIN?.trim().replace(/^http
 /** Kept within one Unicode segment (70 chars) even with the WebOTP line: longer texts go out in
  * parts, which some phones show as two separate messages. */
 export const otpText = (code: string) => {
-  const text = `کد تایید نوبتا: ${code}\nآن را به کسی ندهید.`;
+  const text = `کد تایید نوبتت: ${code}\nآن را به کسی ندهید.`;
   const domain = otpDomain();
   return domain ? `${text}\n\n@${domain} #${code}` : text;
 };
@@ -42,7 +42,7 @@ export function fitSms<T extends Record<string, string>>(p: T, trimmable: (keyof
 }
 
 export const customerReminderText = (p: { time: string; salon: string; stylist: string }) =>
-  fitSms(p, ["salon", "stylist"], (q) => `یادآوری نوبتا: ساعت ${q.time} در ${q.salon} با ${q.stylist}`);
+  fitSms(p, ["salon", "stylist"], (q) => `یادآوری نوبتت: ساعت ${q.time} در ${q.salon} با ${q.stylist}`);
 
 /** "سه‌شنبه ۷ مهر" — weekday and Jalali date of an instant, in the salon's time zone. */
 export const jalaliDay = (instant: Date, timeZone: string) =>
@@ -59,26 +59,26 @@ export const customerBookingText = (kind: "booked-customer" | "rescheduled-custo
   };
   switch (kind) {
     case "booked-customer":
-      return withStylist((q, by) => `نوبتا: نوبت ${q.day} ساعت ${q.time} در ${q.salon}${by} ثبت شد`);
+      return withStylist((q, by) => `نوبتت: نوبت ${q.day} ساعت ${q.time} در ${q.salon}${by} ثبت شد`);
     case "rescheduled-customer":
-      return withStylist((q, by) => `نوبتا: نوبت شما به ${q.day} ساعت ${q.time} در ${q.salon}${by} منتقل شد`);
+      return withStylist((q, by) => `نوبتت: نوبت شما به ${q.day} ساعت ${q.time} در ${q.salon}${by} منتقل شد`);
     case "confirmed-customer":
-      return withStylist((q, by) => `نوبتا: نوبت ${q.day} ساعت ${q.time} در ${q.salon}${by} تایید شد`);
+      return withStylist((q, by) => `نوبتت: نوبت ${q.day} ساعت ${q.time} در ${q.salon}${by} تایید شد`);
     case "cancelled-customer":
-      return fitSms(p, ["salon"], (q) => `نوبتا: نوبت ${q.day} ساعت ${q.time} در ${q.salon} لغو شد`);
+      return fitSms(p, ["salon"], (q) => `نوبتت: نوبت ${q.day} ساعت ${q.time} در ${q.salon} لغو شد`);
   }
 };
 
 export const stylistReminderText = (p: { time: string; customer: string; services: string }) =>
-  fitSms(p, ["customer", "services"], (q) => `یادآوری نوبتا: ساعت ${q.time} نوبت ${q.customer} (${q.services})`);
+  fitSms(p, ["customer", "services"], (q) => `یادآوری نوبتت: ساعت ${q.time} نوبت ${q.customer} (${q.services})`);
 
 /** To the stylist when a customer books online: the booking waits for their confirmation. */
 export const stylistNewBookingText = (p: { day: string; time: string; customer: string }) =>
-  fitSms(p, ["customer"], (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتا تایید کنید`);
+  fitSms(p, ["customer"], (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتت تایید کنید`);
 
 /** Once, when an online booking is still unconfirmed a couple of hours later. */
 export const stylistConfirmNudgeText = (p: { day: string; time: string; customer: string }) =>
-  fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل نوبتا تایید کنید`);
+  fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل نوبتت تایید کنید`);
 
 /**
  * "Time to book again" to the customer. It carries a booking link, which can't fit one segment
