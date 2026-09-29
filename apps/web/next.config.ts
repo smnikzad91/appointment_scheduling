@@ -10,7 +10,8 @@ const nextConfig: NextConfig = {
     return [
       // Expense receipts are private (stored outside public/, see lib/privateUploads.ts): only
       // their owner may read them. Listed first so the public route below never serves them.
-      { source: "/uploads/expenses/:file", destination: "/api/receipts/:file" },
+      { source: "/uploads/expenses/:file", destination: "/api/receipts/expenses/:file" },
+      { source: "/uploads/salon-expenses/:file", destination: "/api/receipts/salon-expenses/:file" },
       { source: "/uploads/:path*", destination: "/api/public/uploads/:path*" },
     ];
   },

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, ImagePlus, Paperclip, Plus, Receipt, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Paperclip, Plus, Receipt, Trash2 } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   STYLIST_EXPENSE_CATEGORY_LABEL,
@@ -17,7 +17,7 @@ import { persianApiError } from "@/lib/api/errorMessages";
 import { jalaliMonthPeriod } from "@/lib/accountingPeriod";
 import { formatToman, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, toSalonWallTime } from "@/lib/salonTime";
-import { releaseUploads, uploadImage } from "@/lib/uploadImage";
+import { ReceiptField, useReceipt } from "@/components/app/ReceiptField";
 import MoneyInput from "@/components/app/MoneyInput";
 import Sheet from "@/components/app/Sheet";
 import Sep from "@/components/common/Sep";
@@ -205,40 +205,14 @@ function ExpenseSheet({
   const [amount, setAmount] = useState<number | null>(expense?.amountToman ?? null);
   const [dayKey, setDayKey] = useState(expense ? instantToDayKey(expense.spentAt) : toKey);
   const [description, setDescription] = useState(expense?.description ?? "");
-  const [receiptUrl, setReceiptUrl] = useState<string | null>(expense?.receiptUrl ?? null);
-  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-  // Receipts uploaded in this sheet; whichever isn't saved is released on close.
-  const uploaded = useRef<string[]>([]);
-  // The server only serves a receipt once a saved expense owns it, so a just-picked one is shown
-  // from the phone's own copy.
-  const [localPreview, setLocalPreview] = useState<string | null>(null);
-  useEffect(() => () => void (localPreview && URL.revokeObjectURL(localPreview)), [localPreview]);
-  const previewSrc = receiptUrl && localPreview ? localPreview : receiptUrl;
+  const receipt = useReceipt(expense?.receiptUrl ?? null, "expenses", setError);
 
   function close() {
-    releaseUploads(uploaded.current);
+    receipt.discard();
     onClose();
-  }
-
-  async function pickReceipt(file: File | undefined) {
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const url = await uploadImage(file, "expenses");
-      uploaded.current.push(url);
-      setReceiptUrl(url);
-      setLocalPreview(URL.createObjectURL(file));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "آپلود رسید انجام نشد");
-    } finally {
-      setUploading(false);
-      if (fileInput.current) fileInput.current.value = "";
-    }
   }
 
   async function save() {
@@ -247,11 +221,10 @@ function ExpenseSheet({
     setBusy("save");
     setError(null);
     try {
-      const data = { category, amountToman: amount, spentAt: dayKeyToInstant(dayKey), description: description.trim(), receiptUrl };
+      const data = { category, amountToman: amount, spentAt: dayKeyToInstant(dayKey), description: description.trim(), receiptUrl: receipt.url };
       if (expense) await updateMyExpense(token, expense.id, data);
       else await createMyExpense(token, data);
-      // The saved receipt stays; the replaced one and any other uploads here are released.
-      uploaded.current = [...uploaded.current, expense?.receiptUrl ?? ""].filter((u) => u && u !== receiptUrl);
+      receipt.saved();
       onSaved();
       close();
     } catch (err) {
@@ -266,7 +239,7 @@ function ExpenseSheet({
     setBusy("delete");
     try {
       await deleteMyExpense(token, expense.id);
-      uploaded.current = [...uploaded.current, expense.receiptUrl ?? ""];
+      receipt.deleted();
       onSaved();
       close();
     } catch (err) {
@@ -278,10 +251,10 @@ function ExpenseSheet({
   return (
     <Sheet
       open
-      onClose={() => !busy && !uploading && close()}
+      onClose={() => !busy && !receipt.uploading && close()}
       title={expense ? "ویرایش هزینه" : "هزینه جدید"}
       footer={
-        <Button block busy={busy === "save"} disabled={busy !== null || uploading} onClick={save}>
+        <Button block busy={busy === "save"} disabled={busy !== null || receipt.uploading} onClick={save}>
           {expense ? "ذخیره تغییرات" : "ثبت هزینه"}
         </Button>
       }
@@ -322,33 +295,7 @@ function ExpenseSheet({
           />
         </Field>
 
-        <div>
-          <p className="mb-1.5 px-1 text-[13px] font-bold text-app-muted">رسید یا فاکتور (اختیاری)</p>
-          <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => pickReceipt(e.target.files?.[0])} />
-          {receiptUrl ? (
-            <div className="relative overflow-hidden rounded-2xl border border-app-line bg-app-card-2">
-              <a href={previewSrc ?? receiptUrl} target="_blank" rel="noopener noreferrer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={previewSrc ?? receiptUrl} alt="رسید هزینه" className="max-h-56 w-full object-contain" />
-              </a>
-              <button
-                type="button"
-                aria-label="حذف رسید"
-                onClick={() => {
-                  setReceiptUrl(null);
-                  setLocalPreview(null);
-                }}
-                className="absolute end-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white active:scale-90"
-              >
-                <X className="h-4 w-4" aria-hidden />
-              </button>
-            </div>
-          ) : (
-            <Button variant="secondary" block icon={ImagePlus} busy={uploading} onClick={() => fileInput.current?.click()}>
-              افزودن عکس رسید
-            </Button>
-          )}
-        </div>
+        <ReceiptField receipt={receipt} />
 
         {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
         {expense && (

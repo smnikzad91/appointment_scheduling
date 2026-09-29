@@ -77,6 +77,10 @@ export class CreateExpenseDto {
   @IsString()
   @MaxLength(200)
   note?: string;
+
+  /** Optional uploaded receipt photo. */
+  @IsOptionalImageUrl()
+  receiptUrl?: string | null;
 }
 
 export class UpdateExpenseDto {
@@ -98,6 +102,10 @@ export class UpdateExpenseDto {
   @IsString()
   @MaxLength(200)
   note?: string | null;
+
+  /** null removes the receipt. */
+  @IsOptionalImageUrl()
+  receiptUrl?: string | null;
 }
 
 export class PayoutQueryDto {

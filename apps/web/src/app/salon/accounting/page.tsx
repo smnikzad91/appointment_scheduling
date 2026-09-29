@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Banknote, CalendarCheck2, Download, Plus, Receipt, Scissors, Trash2, Users, Wallet } from "lucide-react";
+import { Banknote, CalendarCheck2, Download, Paperclip, Plus, Receipt, Scissors, Trash2, Users, Wallet } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   EXPENSE_CATEGORY_LABEL,
@@ -32,6 +32,7 @@ import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
 import { formatToman, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, toSalonWallTime } from "@/lib/salonTime";
 import MoneyInput from "@/components/app/MoneyInput";
+import { ReceiptField, useReceipt } from "@/components/app/ReceiptField";
 import Sheet from "@/components/app/Sheet";
 import Sep from "@/components/common/Sep";
 import { BalanceChip, DaySelect, HeroAmount, MoneyFigure, PeriodSwitcher, dayKeyToInstant, formatPercent, instantToDayKey, shortDate } from "@/components/app/accounting";
@@ -280,7 +281,10 @@ export default function SalonAccountingPage() {
                         <Receipt className="h-5 w-5" aria-hidden />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-bold text-app-ink">{EXPENSE_CATEGORY_LABEL[e.category]}</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="truncate font-bold text-app-ink">{EXPENSE_CATEGORY_LABEL[e.category]}</span>
+                          {e.receiptUrl && <Paperclip className="h-3.5 w-3.5 shrink-0 text-app-muted" aria-label="رسید دارد" />}
+                        </span>
                         <span className="block truncate text-xs text-app-muted">
                           {shortDate(e.spentAt)}
                           {e.note && (
@@ -585,17 +589,24 @@ function ExpenseSheet({
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const receipt = useReceipt(expense?.receiptUrl ?? null, "salon-expenses", setError);
+
+  function close() {
+    receipt.discard();
+    onClose();
+  }
 
   async function save() {
     if (!amount) return setError("مبلغ هزینه را وارد کنید");
     setBusy("save");
     setError(null);
     try {
-      const data = { category, amountToman: amount, spentAt: dayKeyToInstant(dayKey), note: note.trim() || undefined };
+      const data = { category, amountToman: amount, spentAt: dayKeyToInstant(dayKey), note: note.trim() || undefined, receiptUrl: receipt.url };
       if (expense) await updateExpense(token, expense.id, { ...data, note: note.trim() || null });
       else await createExpense(token, data);
+      receipt.saved();
       onSaved();
-      onClose();
+      close();
     } catch (err) {
       setError(persianApiError(err, "ذخیره هزینه انجام نشد"));
     } finally {
@@ -609,8 +620,9 @@ function ExpenseSheet({
     setBusy("delete");
     try {
       await deleteExpense(token, expense.id);
+      receipt.deleted();
       onSaved();
-      onClose();
+      close();
     } catch (err) {
       setError(persianApiError(err, "حذف هزینه انجام نشد"));
       setBusy(null);
@@ -620,10 +632,10 @@ function ExpenseSheet({
   return (
     <Sheet
       open
-      onClose={() => !busy && onClose()}
+      onClose={() => !busy && !receipt.uploading && close()}
       title={expense ? "ویرایش هزینه" : "هزینه جدید"}
       footer={
-        <Button block busy={busy === "save"} disabled={busy !== null} onClick={save}>
+        <Button block busy={busy === "save"} disabled={busy !== null || receipt.uploading} onClick={save}>
           {expense ? "ذخیره تغییرات" : "ثبت هزینه"}
         </Button>
       }
@@ -657,6 +669,7 @@ function ExpenseSheet({
         <Field label="توضیح (اختیاری)">
           <TextInput value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="مثلاً رنگ مو و اکسیدان" />
         </Field>
+        <ReceiptField receipt={receipt} />
         {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
         {expense && (
           <Button variant="danger" block icon={Trash2} busy={busy === "delete"} disabled={busy !== null} onClick={remove}>
@@ -736,9 +749,9 @@ function buildSalonReport(period: AccountingPeriod, data: SalonSummary, income: 
       },
       {
         title: "هزینه‌ها",
-        columns: ["تاریخ", "دسته", "مبلغ", "توضیح"],
-        rows: expenses.map((e) => [jalaliDate(e.spentAt), EXPENSE_CATEGORY_LABEL[e.category], e.amountToman, e.note ?? ""]),
-        totals: ["جمع", "", t.expensesToman, ""],
+        columns: ["تاریخ", "دسته", "مبلغ", "توضیح", "رسید"],
+        rows: expenses.map((e) => [jalaliDate(e.spentAt), EXPENSE_CATEGORY_LABEL[e.category], e.amountToman, e.note ?? "", e.receiptUrl ? "دارد" : ""]),
+        totals: ["جمع", "", t.expensesToman, "", ""],
       },
     ],
   };

@@ -98,6 +98,8 @@ export interface Expense {
   amountToman: number;
   spentAt: string;
   note: string | null;
+  /** Optional private receipt photo (only the owner can open it). */
+  receiptUrl: string | null;
 }
 
 export interface StylistEarnings {
@@ -194,11 +196,11 @@ export function listExpenses(token: string, p: Period) {
   return salonApiFetch<Expense[]>(`/salons/mine/expenses?${qs({ ...p })}`, { headers: auth(token) });
 }
 
-export function createExpense(token: string, data: { category: ExpenseCategory; amountToman: number; spentAt?: string; note?: string }) {
+export function createExpense(token: string, data: { category: ExpenseCategory; amountToman: number; spentAt?: string; note?: string; receiptUrl?: string | null }) {
   return salonApiFetch<Expense>("/salons/mine/expenses", { method: "POST", headers: auth(token), body: JSON.stringify(data) });
 }
 
-export function updateExpense(token: string, id: string, data: Partial<{ category: ExpenseCategory; amountToman: number; spentAt: string; note: string | null }>) {
+export function updateExpense(token: string, id: string, data: Partial<{ category: ExpenseCategory; amountToman: number; spentAt: string; note: string | null; receiptUrl: string | null }>) {
   return salonApiFetch<Expense>(`/salons/mine/expenses/${id}`, { method: "PATCH", headers: auth(token), body: JSON.stringify(data) });
 }
 

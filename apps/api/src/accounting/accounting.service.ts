@@ -297,6 +297,7 @@ export class AccountingService {
         amountToman: dto.amountToman,
         spentAt: dto.spentAt ? new Date(dto.spentAt) : new Date(),
         note: dto.note?.trim() || null,
+        receiptUrl: dto.receiptUrl || null,
       },
     });
   }
@@ -312,6 +313,7 @@ export class AccountingService {
         amountToman: dto.amountToman,
         spentAt: dto.spentAt ? new Date(dto.spentAt) : undefined,
         note: dto.note === undefined ? undefined : dto.note?.trim() || null,
+        receiptUrl: dto.receiptUrl === undefined ? undefined : dto.receiptUrl || null,
       },
     });
   }

@@ -7,14 +7,13 @@ import { uploadsDir } from "@/lib/privateUploads";
 // apps/api) only stores their URL. A file is deleted only once no row points at it any more, so
 // a stale or duplicate cleanup request can never break a photo that's still in use.
 
-const MANAGED_FOLDERS = ["salons", "stylists", "banners", "expenses"] as const;
-const MANAGED_URL = /^\/uploads\/(salons|stylists|banners|expenses)\/([\w-]+\.(?:jpe?g|png|webp|gif))$/i;
-
+const MANAGED_FOLDERS = ["salons", "stylists", "banners", "expenses", "salon-expenses"] as const;
+const MANAGED_URL = /^\/uploads\/(salons|stylists|banners|expenses|salon-expenses)\/([\w-]+\.(?:jpe?g|png|webp|gif))$/i;
 
 /** URLs from the given list that some salon, stylist, gallery piece, user, the home banner or an expense receipt still uses. */
 async function referencedUrls(urls: string[]): Promise<Set<string>> {
   if (urls.length === 0) return new Set();
-  const [salons, stylists, gallery, users, banners, receipts] = await Promise.all([
+  const [salons, stylists, gallery, users, banners, receipts, salonReceipts] = await Promise.all([
     prisma.salon.findMany({
       where: { OR: [{ logoUrl: { in: urls } }, { coverImageUrl: { in: urls } }] },
       select: { logoUrl: true, coverImageUrl: true },
@@ -27,6 +26,7 @@ async function referencedUrls(urls: string[]): Promise<Set<string>> {
     prisma.user.findMany({ where: { avatarUrl: { in: urls } }, select: { avatarUrl: true } }),
     prisma.homeBanner.findMany({ where: { imageUrl: { in: urls } }, select: { imageUrl: true } }),
     prisma.stylistExpense.findMany({ where: { receiptUrl: { in: urls } }, select: { receiptUrl: true } }),
+    prisma.salonExpense.findMany({ where: { receiptUrl: { in: urls } }, select: { receiptUrl: true } }),
   ]);
   return new Set(
     [
@@ -36,6 +36,7 @@ async function referencedUrls(urls: string[]): Promise<Set<string>> {
       ...users.map((u) => u.avatarUrl),
       ...banners.map((b) => b.imageUrl),
       ...receipts.map((r) => r.receiptUrl),
+      ...salonReceipts.map((r) => r.receiptUrl),
     ].filter((u): u is string => !!u),
   );
 }

@@ -701,6 +701,9 @@ model SalonExpense {
   amountToman Int
   spentAt     DateTime
   note        String?
+  // Optional photo of the receipt/invoice; private, only the salon owner can open it
+  // (uploaded through apps/web to /uploads/salon-expenses/…).
+  receiptUrl  String?
   createdAt   DateTime        @default(now())
 
   @@index([salonId, spentAt])

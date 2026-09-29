@@ -3,12 +3,12 @@ import { auth } from "@/auth";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
-import { isPrivateFolder, uploadsDir } from "@/lib/privateUploads";
+import { PRIVATE_FOLDER_ROLE, isPrivateFolder, uploadsDir } from "@/lib/privateUploads";
 
 const MAX_SIZE = 5 * 1024 * 1024;
 const ALLOWED  = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
 
-const ALLOWED_FOLDERS = ["tickets", "deposits", "salons", "stylists", "banners", "expenses"];
+const ALLOWED_FOLDERS = ["tickets", "deposits", "salons", "stylists", "banners", "expenses", "salon-expenses"];
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const folderParam = searchParams.get("folder") ?? "tickets";
   const folder = ALLOWED_FOLDERS.includes(folderParam) ? folderParam : "tickets";
-  // Expense receipts are only uploaded by stylists, and stored privately (lib/privateUploads.ts).
-  if (isPrivateFolder(folder) && session.user.role !== "STYLIST") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Expense receipts are stored privately (lib/privateUploads.ts), each folder by one role only.
+  if (isPrivateFolder(folder) && session.user.role !== PRIVATE_FOLDER_ROLE[folder as keyof typeof PRIVATE_FOLDER_ROLE]) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
