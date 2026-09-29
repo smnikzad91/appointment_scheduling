@@ -186,6 +186,7 @@ export default function NewBlogPostForm() {
             {coverUploading && <p className="mt-1 text-xs text-gray-400">{t("blogCoverImageUploading")}</p>}
             {coverImage && !coverUploading && (
               <div className="mt-2 relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element -- admin-only preview of an arbitrary-size image that may be on any host (admin-entered URL); next/image needs fixed dimensions and allowed remote hosts, and optimizing it gains nothing here */}
                 <img src={coverImage} alt="" className="h-32 w-auto rounded-xl border border-gray-200 object-cover dark:border-gray-700" />
                 <button type="button" onClick={() => setCoverImage("")}
                   className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white hover:bg-red-600">
@@ -291,6 +292,7 @@ export default function NewBlogPostForm() {
                   {sectionUploading[i] && <p className="mt-1 text-xs text-gray-400">{t("blogSectionImageUploading")}</p>}
                   {section.image && !sectionUploading[i] && (
                     <div className="mt-2 relative inline-block">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- admin-only preview of an arbitrary-size image that may be on any host (admin-entered URL); next/image needs fixed dimensions and allowed remote hosts, and optimizing it gains nothing here */}
                       <img src={section.image} alt="" className="h-28 w-auto rounded-xl border border-gray-200 object-cover dark:border-gray-700" />
                       <button type="button" onClick={() => removeSectionImage(i)}
                         className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white hover:bg-red-600">

@@ -74,6 +74,7 @@ function NameCell({ data, context }: { data: UserRow; context: GridCtx }) {
   return (
     <div className="flex w-full items-center gap-2.5" dir={context.isRTL ? "rtl" : "ltr"}>
       {data.avatar
+        // eslint-disable-next-line @next/next/no-img-element -- admin-only preview of an arbitrary-size image that may be on any host (admin-entered URL); next/image needs fixed dimensions and allowed remote hosts, and optimizing it gains nothing here
         ? <img src={data.avatar} alt={fullName} className="h-9 w-9 rounded-full object-cover shrink-0 border border-gray-100 dark:border-gray-700" />
         : <div className="h-9 w-9 rounded-full bg-brand-100 dark:bg-brand-500/20 shrink-0 flex items-center justify-center text-xs font-bold text-brand-600 dark:text-brand-400">{initials}</div>
       }
