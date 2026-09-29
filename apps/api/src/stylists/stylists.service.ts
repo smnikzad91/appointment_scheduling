@@ -196,7 +196,12 @@ export class StylistsService {
 
     return this.prisma.stylistService.update({
       where: { stylistId_serviceId: { stylistId: stylist.id, serviceId } },
-      data: { overridePriceToman: dto.overridePriceToman, overrideDurationMinutes: dto.overrideDurationMinutes },
+      data: {
+        overridePriceToman: dto.overridePriceToman,
+        overrideDurationMinutes: dto.overrideDurationMinutes,
+        overrideRebookReminderEnabled: dto.overrideRebookReminderEnabled,
+        overrideRebookReminderDays: dto.overrideRebookReminderDays,
+      },
       include: { service: true },
     });
   }

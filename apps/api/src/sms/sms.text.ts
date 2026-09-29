@@ -30,9 +30,9 @@ export const SMS_SEGMENT = 70;
  * Builds the text, shortening the longest of the named (free-text) fields with "…" until it fits
  * one segment. Fixed wording and times/dates are never cut.
  */
-export function fitSms<T extends Record<string, string>>(p: T, trimmable: (keyof T)[], build: (p: T) => string): string {
+export function fitSms<T extends Record<string, string>>(p: T, trimmable: (keyof T)[], build: (p: T) => string, limit = SMS_SEGMENT): string {
   const q = { ...p };
-  while (build(q).length > SMS_SEGMENT) {
+  while (build(q).length > limit) {
     const key = trimmable.reduce((a, b) => (q[b].length > q[a].length ? b : a));
     const v = q[key].replace(/…$/, "");
     if (v.length <= 1) break;
@@ -79,3 +79,18 @@ export const stylistNewBookingText = (p: { day: string; time: string; customer: 
 /** Once, when an online booking is still unconfirmed a couple of hours later. */
 export const stylistConfirmNudgeText = (p: { day: string; time: string; customer: string }) =>
   fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل نوبتا تایید کنید`);
+
+/**
+ * "Time to book again" to the customer. It carries a booking link, which can't fit one segment
+ * next to the names, so this one text is allowed two (≤134 Unicode chars, SMS_TWO_SEGMENTS);
+ * the names are shortened with "…" beyond that, the link never is.
+ */
+export const SMS_TWO_SEGMENTS = 134;
+
+export const rebookText = (p: { customer: string; days: string; service: string; salon: string; link: string }) =>
+  fitSms(
+    p,
+    ["customer", "service", "salon"],
+    (q) => `${q.customer} عزیز، ${q.days} روز از ${q.service} شما در ${q.salon} گذشته؛ وقت نوبت بعدی است:\n${q.link}`,
+    SMS_TWO_SEGMENTS,
+  );

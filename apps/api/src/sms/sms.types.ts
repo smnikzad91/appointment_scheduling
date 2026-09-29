@@ -32,6 +32,13 @@ export type SmsMessage =
       to: string;
       params: { day: string; time: string; customer: string };
       text: string;
+    }
+  | {
+      /** "Time to book again", some days after a completed appointment (RebookReminderService). */
+      kind: "rebook-customer";
+      to: string;
+      params: { customer: string; days: string; service: string; salon: string; link: string };
+      text: string;
     };
 
 export type SmsKind = SmsMessage["kind"];

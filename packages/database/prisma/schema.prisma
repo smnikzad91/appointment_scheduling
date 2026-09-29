@@ -455,17 +455,21 @@ model Stylist {
 }
 
 model Service {
-  id              String           @id @default(cuid())
-  salonId         String
-  salon           Salon            @relation(fields: [salonId], references: [id])
-  categoryId      String?
-  category        ServiceCategory? @relation(fields: [categoryId], references: [id])
-  name            String
-  description     String?
-  durationMinutes Int
-  priceToman      Int
-  active          Boolean          @default(true)
-  createdAt       DateTime         @default(now())
+  id                    String           @id @default(cuid())
+  salonId               String
+  salon                 Salon            @relation(fields: [salonId], references: [id])
+  categoryId            String?
+  category              ServiceCategory? @relation(fields: [categoryId], references: [id])
+  name                  String
+  description           String?
+  durationMinutes       Int
+  priceToman            Int
+  active                Boolean          @default(true)
+  // "Time to book again" SMS to the customer this many days after a completed appointment with
+  // this service (apps/api RebookReminderService). Off unless the salon turns it on.
+  rebookReminderEnabled Boolean          @default(false)
+  rebookReminderDays    Int              @default(30)
+  createdAt             DateTime         @default(now())
 
   stylists     StylistService[]
   appointments AppointmentService[]
@@ -475,14 +479,17 @@ model Service {
 }
 
 model StylistService {
-  stylistId               String
-  stylist                 Stylist @relation(fields: [stylistId], references: [id])
-  serviceId               String
-  service                 Service @relation(fields: [serviceId], references: [id])
-  overridePriceToman      Int?
-  overrideDurationMinutes Int?
+  stylistId                     String
+  stylist                       Stylist  @relation(fields: [stylistId], references: [id])
+  serviceId                     String
+  service                       Service  @relation(fields: [serviceId], references: [id])
+  overridePriceToman            Int?
+  overrideDurationMinutes       Int?
   // This stylist's share for this service (0–100); null = their default commissionPercent.
-  commissionPercent       Int?
+  commissionPercent             Int?
+  // The stylist's own rebook-reminder setting for this service; null = the service's.
+  overrideRebookReminderEnabled Boolean?
+  overrideRebookReminderDays    Int?
 
   @@id([stylistId, serviceId])
   @@map("stylist_services")
@@ -551,6 +558,9 @@ model Appointment {
   newBookingTextedAt       DateTime?
   // An online booking still PENDING after a while gets one reminder SMS to its stylist to confirm it.
   confirmNudgedAt          DateTime?
+  // "Time to book again" SMS after this (COMPLETED) appointment: set once sent or given up.
+  rebookReminderSentAt     DateTime?
+  rebookReminderAttempts   Int               @default(0)
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 

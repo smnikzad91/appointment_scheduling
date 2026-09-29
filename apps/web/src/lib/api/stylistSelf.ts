@@ -10,7 +10,18 @@ export interface SelfStylistService {
   overrideDurationMinutes: number | null;
   /** The owner-set rate for this service; null = the stylist's default. */
   commissionPercent: number | null;
-  service: { id: string; name: string; priceToman: number; durationMinutes: number; active: boolean };
+  /** This stylist's own "book again" SMS setting; null = the salon's (service.rebookReminder…). */
+  overrideRebookReminderEnabled: boolean | null;
+  overrideRebookReminderDays: number | null;
+  service: {
+    id: string;
+    name: string;
+    priceToman: number;
+    durationMinutes: number;
+    active: boolean;
+    rebookReminderEnabled: boolean;
+    rebookReminderDays: number;
+  };
 }
 
 export interface SelfStylist {
@@ -46,7 +57,12 @@ export function updateMyStylistProfile(token: string, data: { bio?: string; avat
 export function updateMyServiceOverride(
   token: string,
   serviceId: string,
-  data: { overridePriceToman: number | null; overrideDurationMinutes: number | null },
+  data: {
+    overridePriceToman: number | null;
+    overrideDurationMinutes: number | null;
+    overrideRebookReminderEnabled?: boolean | null;
+    overrideRebookReminderDays?: number | null;
+  },
 ) {
   return salonApiFetch<SelfStylistService>(`/stylists/me/services/${serviceId}`, {
     method: "PATCH",

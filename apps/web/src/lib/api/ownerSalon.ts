@@ -118,6 +118,9 @@ export interface OwnerService {
   durationMinutes: number;
   priceToman: number;
   active: boolean;
+  /** "Time to book again" SMS to the customer this many days after a completed appointment. */
+  rebookReminderEnabled: boolean;
+  rebookReminderDays: number;
 }
 
 export function listMyServices(token: string) {
@@ -130,6 +133,8 @@ export interface CreateServiceInput {
   categoryId?: string;
   durationMinutes: number;
   priceToman: number;
+  rebookReminderEnabled?: boolean;
+  rebookReminderDays?: number;
 }
 
 export function createService(token: string, data: CreateServiceInput) {

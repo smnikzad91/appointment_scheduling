@@ -97,6 +97,17 @@ export class UpdateStylistServiceOverrideDto {
   @IsInt()
   @IsPositive()
   overrideDurationMinutes?: number | null;
+
+  /** null = follow the service's setting. */
+  @IsOptional()
+  @IsBoolean()
+  overrideRebookReminderEnabled?: boolean | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  overrideRebookReminderDays?: number | null;
 }
 
 export class UpdateOwnStylistDto {

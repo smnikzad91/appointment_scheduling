@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Clock, FolderCog, Plus, Scissors, Trash2 } from "lucide-react";
+import { BellRing, Clock, FolderCog, Plus, Scissors, Trash2 } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyCategories,
@@ -39,9 +39,23 @@ interface ServiceDraft {
   categoryId: string;
   durationMinutes: string;
   priceToman: string;
+  rebookEnabled: boolean;
+  rebookDays: string;
 }
 
-const EMPTY_DRAFT: ServiceDraft = { id: null, name: "", categoryId: "", durationMinutes: "", priceToman: "" };
+/** "Time to book again" SMS defaults for a new service. */
+const REBOOK_DEFAULT_DAYS = 30;
+const REBOOK_MAX_DAYS = 365;
+
+const EMPTY_DRAFT: ServiceDraft = {
+  id: null,
+  name: "",
+  categoryId: "",
+  durationMinutes: "",
+  priceToman: "",
+  rebookEnabled: true,
+  rebookDays: String(REBOOK_DEFAULT_DAYS),
+};
 
 export default function SalonServicesPage() {
   const token = useApiAccessToken();
@@ -83,6 +97,8 @@ export default function SalonServicesPage() {
       categoryId: service.categoryId ?? "",
       durationMinutes: String(service.durationMinutes),
       priceToman: String(service.priceToman),
+      rebookEnabled: service.rebookReminderEnabled,
+      rebookDays: String(service.rebookReminderDays),
     });
   }
 
@@ -94,6 +110,15 @@ export default function SalonServicesPage() {
       setDraftError("نام، مدت و قیمت خدمت را کامل کنید");
       return;
     }
+    const rebookDays = Number(normalizeDigits(draft.rebookDays));
+    if (draft.rebookEnabled && !(rebookDays >= 1 && rebookDays <= REBOOK_MAX_DAYS)) {
+      setDraftError(`فاصله یادآوری باید بین ۱ تا ${toPersianDigits(REBOOK_MAX_DAYS)} روز باشد`);
+      return;
+    }
+    const rebook = {
+      rebookReminderEnabled: draft.rebookEnabled,
+      ...(rebookDays >= 1 && rebookDays <= REBOOK_MAX_DAYS && { rebookReminderDays: rebookDays }),
+    };
     setSaving(true);
     setDraftError(null);
     try {
@@ -103,6 +128,7 @@ export default function SalonServicesPage() {
           categoryId: draft.categoryId || null,
           durationMinutes: duration,
           priceToman: price,
+          ...rebook,
         });
       } else {
         await createService(token, {
@@ -110,6 +136,7 @@ export default function SalonServicesPage() {
           categoryId: draft.categoryId || undefined,
           durationMinutes: duration,
           priceToman: price,
+          ...rebook,
         });
       }
       setDraft(null);
@@ -228,6 +255,12 @@ export default function SalonServicesPage() {
                   <Sep className="mx-0" />
                   <span className="font-semibold text-app-ink/80">{formatToman(service.priceToman)}</span>
                 </p>
+                {service.rebookReminderEnabled && (
+                  <p className="mt-1 flex items-center gap-1.5 text-[12px] text-app-muted">
+                    <BellRing className="h-3.5 w-3.5" aria-hidden />
+                    یادآوری نوبت بعدی: {toPersianDigits(service.rebookReminderDays)} روز بعد
+                  </p>
+                )}
                 {filter === "all" && categoryName(service.categoryId) && (
                   <span className="mt-2 inline-block rounded-full bg-app-card-2 px-2.5 py-0.5 text-[11px] font-semibold text-app-muted">
                     {categoryName(service.categoryId)}
@@ -285,6 +318,35 @@ export default function SalonServicesPage() {
                   placeholder="۳۵۰۰۰۰"
                 />
               </Field>
+            </div>
+            <div className="rounded-2xl border border-app-line bg-app-card p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-app-ink">پیامک یادآوری نوبت بعدی</p>
+                  <p className="mt-0.5 text-xs leading-5 text-app-muted">
+                    چند روز بعد از انجام این خدمت، به مشتری پیامک می‌دهیم که وقت نوبت بعدی است (با لینک رزرو).
+                  </p>
+                </div>
+                <Toggle
+                  checked={draft.rebookEnabled}
+                  onChange={(rebookEnabled) => setDraft({ ...draft, rebookEnabled })}
+                  label="پیامک یادآوری نوبت بعدی"
+                />
+              </div>
+              {draft.rebookEnabled && (
+                <div className="mt-3">
+                <Field label="چند روز بعد؟" hint="هر روز ساعت ۱۲ ظهر ارسال می‌شود و از سهمیه پیامک ماهانه کم می‌شود.">
+                  <TextInput
+                    inputMode="numeric"
+                    dir="ltr"
+                    className="text-end"
+                    value={draft.rebookDays}
+                    onChange={(e) => setDraft({ ...draft, rebookDays: normalizeDigits(e.target.value).replace(/\D/g, "").slice(0, 3) })}
+                    placeholder={toPersianDigits(REBOOK_DEFAULT_DAYS)}
+                  />
+                </Field>
+                </div>
+              )}
             </div>
             {draftError && <p className="text-sm font-medium text-app-danger">{draftError}</p>}
           </div>

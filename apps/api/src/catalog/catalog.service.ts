@@ -27,6 +27,8 @@ export class CatalogService {
         categoryId: dto.categoryId,
         durationMinutes: dto.durationMinutes,
         priceToman: dto.priceToman,
+        rebookReminderEnabled: dto.rebookReminderEnabled,
+        rebookReminderDays: dto.rebookReminderDays,
       },
     });
   }

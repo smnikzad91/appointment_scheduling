@@ -1,4 +1,8 @@
-import { IsBoolean, IsInt, IsOptional, IsPositive, IsString, Min } from "class-validator";
+import { IsBoolean, IsInt, IsOptional, IsPositive, IsString, Max, Min } from "class-validator";
+
+/** Days after a completed appointment for the "time to book again" SMS. */
+export const REBOOK_DAYS_MIN = 1;
+export const REBOOK_DAYS_MAX = 365;
 
 export class CreateServiceDto {
   @IsString()
@@ -19,6 +23,16 @@ export class CreateServiceDto {
   @IsInt()
   @Min(0)
   priceToman!: number;
+
+  @IsOptional()
+  @IsBoolean()
+  rebookReminderEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(REBOOK_DAYS_MIN)
+  @Max(REBOOK_DAYS_MAX)
+  rebookReminderDays?: number;
 }
 
 export class UpdateServiceDto {
@@ -48,4 +62,15 @@ export class UpdateServiceDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  rebookReminderEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(REBOOK_DAYS_MIN)
+  @Max(REBOOK_DAYS_MAX)
+  rebookReminderDays?: number;
 }
+
