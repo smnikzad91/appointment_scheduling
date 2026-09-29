@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Banknote, Download, Wallet } from "lucide-react";
+import Link from "next/link";
+import { Banknote, ChevronLeft, Download, Receipt, Wallet } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
-import { PAYOUT_METHOD_LABEL, getMyEarnings, type StylistEarnings } from "@/lib/api/accounting";
+import { PAYOUT_METHOD_LABEL, STYLIST_EXPENSE_CATEGORY_LABEL, getMyEarnings, type StylistEarnings } from "@/lib/api/accounting";
 import { jalaliMonthPeriod, type AccountingPeriod } from "@/lib/accountingPeriod";
 import { jalaliDate, jalaliMonthSlug, type Report } from "@/lib/accountingExport";
 import ExportSheet from "@/components/app/AccountingReport";
@@ -57,6 +58,7 @@ export default function StylistEarningsPage() {
           <section className="rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
             <p className="text-xs text-white/60">سهم شما در {period.label}</p>
             <p className="mt-1 text-[30px] font-black leading-tight">{formatToman(data.totals.shareToman)}</p>
+            <p className="text-[11px] text-white/55">درآمد ناخالص، پیش از کسر هزینه‌های شما</p>
             {data.totals.tipsToman > 0 && <p className="mt-0.5 text-xs text-white/65">شامل {formatToman(data.totals.tipsToman)} انعام</p>}
             <div className="mt-4 grid grid-cols-3 gap-3 rounded-3xl bg-white/[0.06] p-4">
               <div className="min-w-0">
@@ -65,6 +67,16 @@ export default function StylistEarningsPage() {
               </div>
               <HeroAmount label="مبلغ نوبت‌ها" amount={data.totals.incomeToman} />
               <HeroAmount label="دریافتی" amount={data.totals.paidInPeriodToman} />
+            </div>
+            {/* Net = share − the stylist's own expenses. No minus sign next to a Persian amount: a loss says زیان. */}
+            <div className="mt-3 grid grid-cols-2 gap-3 rounded-3xl bg-white/[0.06] p-4">
+              <HeroAmount label="هزینه‌های شما" amount={data.totals.expensesToman} />
+              <div className="min-w-0">
+                <p className="text-[11px] text-white/55">{data.totals.netIncomeToman < 0 ? "زیان خالص" : "درآمد خالص"}</p>
+                <p className={cx("text-[15px] font-black", data.totals.netIncomeToman < 0 && "text-[#ff9b8a]")}>
+                  {formatToman(Math.abs(data.totals.netIncomeToman))}
+                </p>
+              </div>
             </div>
           </section>
 
@@ -138,6 +150,39 @@ export default function StylistEarningsPage() {
               ))}
             </div>
           )}
+
+          <SectionTitle
+            action={
+              <Link href="/stylist/expenses" className="flex items-center gap-0.5 text-sm font-bold text-app-accent">
+                مدیریت هزینه‌ها
+                <ChevronLeft className="h-4 w-4" aria-hidden />
+              </Link>
+            }
+          >
+            هزینه‌های شما
+          </SectionTitle>
+          {data.expenses.length === 0 ? (
+            <Link href="/stylist/expenses" className="flex items-center gap-3 rounded-2xl bg-app-card-2 p-4 text-sm text-app-muted">
+              <Receipt className="h-5 w-5 shrink-0" aria-hidden />
+              در این ماه هزینه‌ای ثبت نکرده‌اید. خرید مواد و ابزار را ثبت کنید تا درآمد خالص درست باشد.
+            </Link>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {data.expenses.map((e) => (
+                <div key={e.id} className="flex items-center justify-between gap-3 rounded-3xl border border-app-line bg-app-card px-4 py-3 shadow-app">
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-app-ink">{STYLIST_EXPENSE_CATEGORY_LABEL[e.category]}</p>
+                    <p className="truncate text-xs text-app-muted">
+                      {shortDate(e.spentAt)}
+                      <Sep />
+                      {e.description}
+                    </p>
+                  </div>
+                  <p className="shrink-0 font-black text-app-ink">{formatToman(e.amountToman)}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
       <ExportSheet report={report} onClose={() => setExportOpen(false)} />
@@ -149,7 +194,7 @@ function buildEarningsReport(period: AccountingPeriod, data: StylistEarnings): R
   const t = data.totals;
   return {
     title: `گزارش درآمد ${data.stylist.displayName} — ${period.label}`,
-    subtitle: `${toPersianDigits(t.appointmentCount)} نوبت انجام‌شده، ${toPersianDigits(data.payouts.length)} پرداخت از سالن`,
+    subtitle: `${toPersianDigits(t.appointmentCount)} نوبت انجام‌شده، ${toPersianDigits(data.payouts.length)} پرداخت از سالن، ${toPersianDigits(data.expenses.length)} هزینه`,
     fileSlug: `daramad-${jalaliMonthSlug(period.from)}`,
     sections: [
       {
@@ -158,7 +203,9 @@ function buildEarningsReport(period: AccountingPeriod, data: StylistEarnings): R
         rows: [
           ["مبلغ نوبت‌ها (با انعام)", t.incomeToman],
           ["انعام‌ها", t.tipsToman],
-          ["سهم شما (با انعام)", t.shareToman],
+          ["سهم شما (با انعام) — درآمد ناخالص", t.shareToman],
+          ["هزینه‌های شما", t.expensesToman],
+          [t.netIncomeToman < 0 ? "زیان خالص (سهم − هزینه‌ها)" : "درآمد خالص (سهم − هزینه‌ها)", Math.abs(t.netIncomeToman)],
           ["دریافتی از سالن در این ماه", t.paidInPeriodToman],
           [data.balanceToman < 0 ? "پیش‌دریافت (کل)" : "مانده طلب از سالن (کل)", Math.abs(data.balanceToman)],
         ],
@@ -190,6 +237,18 @@ function buildEarningsReport(period: AccountingPeriod, data: StylistEarnings): R
         columns: ["تاریخ", "روش", "مبلغ", "توضیح"],
         rows: data.payouts.map((p) => [jalaliDate(p.paidAt), PAYOUT_METHOD_LABEL[p.method], p.amountToman, p.note ?? ""]),
         totals: ["جمع", "", t.paidInPeriodToman, ""],
+      },
+      {
+        title: "هزینه‌های شما",
+        columns: ["تاریخ", "دسته", "مبلغ", "توضیح", "رسید"],
+        rows: data.expenses.map((e) => [
+          jalaliDate(e.spentAt),
+          STYLIST_EXPENSE_CATEGORY_LABEL[e.category],
+          e.amountToman,
+          e.description,
+          e.receiptUrl ? "دارد" : "",
+        ]),
+        totals: ["جمع", "", t.expensesToman, "", ""],
       },
     ],
   };

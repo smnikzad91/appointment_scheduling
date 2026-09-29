@@ -4,10 +4,30 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
 import { stylistTake } from "./share.util.js";
-import { AdjustChargeDto, CreateExpenseDto, CreatePayoutDto, PayoutQueryDto, PeriodQueryDto, UpdateExpenseDto } from "./dto/accounting.dto.js";
+import {
+  AdjustChargeDto,
+  CreateExpenseDto,
+  CreatePayoutDto,
+  CreateStylistExpenseDto,
+  PayoutQueryDto,
+  PeriodQueryDto,
+  StylistExpenseQueryDto,
+  UpdateExpenseDto,
+  UpdateStylistExpenseDto,
+} from "./dto/accounting.dto.js";
 
 const MAX_PERIOD_DAYS = 400;
 const LIST_LIMIT = 500;
+const EXPENSE_PAGE_SIZE = 20;
+
+const STYLIST_EXPENSE_SELECT = {
+  id: true,
+  category: true,
+  amountToman: true,
+  spentAt: true,
+  description: true,
+  receiptUrl: true,
+} satisfies Prisma.StylistExpenseSelect;
 
 const INCOME_SELECT = {
   id: true,
@@ -313,7 +333,7 @@ export class AccountingService {
     if (!stylist) throw new NotFoundException("Stylist profile not found");
     const { from, to } = this.period(query);
 
-    const [rows, payouts, earned, paid] = await Promise.all([
+    const [rows, payouts, earned, paid, expenses] = await Promise.all([
       this.prisma.appointment.findMany({
         where: { stylistId: stylist.id, status: AppointmentStatus.COMPLETED, startAt: { gte: from, lt: to } },
         orderBy: { startAt: "desc" },
@@ -330,9 +350,17 @@ export class AccountingService {
         _sum: { stylistShareToman: true },
       }),
       this.prisma.stylistPayout.aggregate({ where: { stylistId: stylist.id }, _sum: { amountToman: true } }),
+      this.prisma.stylistExpense.findMany({
+        where: { stylistId: stylist.id, spentAt: { gte: from, lt: to } },
+        orderBy: { spentAt: "desc" },
+        take: LIST_LIMIT,
+        select: STYLIST_EXPENSE_SELECT,
+      }),
     ]);
 
     const items = rows.map(toIncomeItem);
+    const shareToman = items.reduce((sum, i) => sum + i.stylistShareToman, 0);
+    const expensesToman = expenses.reduce((sum, e) => sum + e.amountToman, 0);
     return {
       period: { from, to },
       stylist,
@@ -340,13 +368,88 @@ export class AccountingService {
         appointmentCount: items.length,
         incomeToman: items.reduce((sum, i) => sum + i.chargedToman + i.tipToman, 0),
         tipsToman: items.reduce((sum, i) => sum + i.tipToman, 0),
-        shareToman: items.reduce((sum, i) => sum + i.stylistShareToman, 0),
+        shareToman,
         paidInPeriodToman: payouts.reduce((sum, p) => sum + p.amountToman, 0),
+        expensesToman,
+        // The stylist's own costs come out of what they earned; the salon balance is unaffected.
+        netIncomeToman: shareToman - expensesToman,
       },
       balanceToman: (earned._sum.stylistShareToman ?? 0) - (paid._sum.amountToman ?? 0),
       items,
       payouts,
+      expenses,
     };
+  }
+
+  // ── Stylist: their own expenses ───────────────────────────────────────────
+
+  async listStylistExpenses(userId: string, query: StylistExpenseQueryDto) {
+    const stylist = await this.myStylist(userId);
+    const { from, to } = this.period(query);
+    const where: Prisma.StylistExpenseWhereInput = {
+      stylistId: stylist.id,
+      spentAt: { gte: from, lt: to },
+      ...(query.category && { category: query.category }),
+    };
+    const pageSize = query.pageSize ?? EXPENSE_PAGE_SIZE;
+    const page = query.page ?? 1;
+    const [items, agg] = await Promise.all([
+      this.prisma.stylistExpense.findMany({
+        where,
+        orderBy: [{ spentAt: "desc" }, { createdAt: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: STYLIST_EXPENSE_SELECT,
+      }),
+      this.prisma.stylistExpense.aggregate({ where, _count: { _all: true }, _sum: { amountToman: true } }),
+    ]);
+    return { items, total: agg._count._all, totalToman: agg._sum.amountToman ?? 0, page, pageSize };
+  }
+
+  async createStylistExpense(userId: string, dto: CreateStylistExpenseDto) {
+    const stylist = await this.myStylist(userId);
+    return this.prisma.stylistExpense.create({
+      data: {
+        stylistId: stylist.id,
+        salonId: stylist.salonId,
+        category: dto.category,
+        amountToman: dto.amountToman,
+        spentAt: new Date(dto.spentAt),
+        description: dto.description.trim(),
+        receiptUrl: dto.receiptUrl || null,
+      },
+      select: STYLIST_EXPENSE_SELECT,
+    });
+  }
+
+  async updateStylistExpense(userId: string, expenseId: string, dto: UpdateStylistExpenseDto) {
+    const stylist = await this.myStylist(userId);
+    const expense = await this.prisma.stylistExpense.findFirst({ where: { id: expenseId, stylistId: stylist.id }, select: { id: true } });
+    if (!expense) throw new NotFoundException("Expense not found");
+    return this.prisma.stylistExpense.update({
+      where: { id: expense.id },
+      data: {
+        category: dto.category,
+        amountToman: dto.amountToman,
+        spentAt: dto.spentAt ? new Date(dto.spentAt) : undefined,
+        description: dto.description?.trim(),
+        receiptUrl: dto.receiptUrl === undefined ? undefined : dto.receiptUrl || null,
+      },
+      select: STYLIST_EXPENSE_SELECT,
+    });
+  }
+
+  async removeStylistExpense(userId: string, expenseId: string) {
+    const stylist = await this.myStylist(userId);
+    const { count } = await this.prisma.stylistExpense.deleteMany({ where: { id: expenseId, stylistId: stylist.id } });
+    if (count === 0) throw new NotFoundException("Expense not found");
+    return { ok: true };
+  }
+
+  private async myStylist(userId: string) {
+    const stylist = await this.prisma.stylist.findUnique({ where: { userId }, select: { id: true, salonId: true } });
+    if (!stylist) throw new NotFoundException("Stylist profile not found");
+    return stylist;
   }
 
   private period(query: { from: string; to: string }) {

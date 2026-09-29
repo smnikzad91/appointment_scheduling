@@ -1,5 +1,7 @@
-import { ExpenseCategory, PayoutMethod } from "@appointment-scheduling/database";
-import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
+import { ExpenseCategory, PayoutMethod, StylistExpenseCategory } from "@appointment-scheduling/database";
+import { Type } from "class-transformer";
+import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
+import { IsOptionalImageUrl } from "../../common/image-url.js";
 
 const MAX_AMOUNT = 2_000_000_000; // fits Postgres INTEGER; far above any single salon transaction
 
@@ -107,4 +109,73 @@ export class PayoutQueryDto {
   @IsOptional()
   @IsString()
   stylistId?: string;
+}
+
+// ── Stylist's own expenses ──
+
+export class StylistExpenseQueryDto extends PeriodQueryDto {
+  @IsOptional()
+  @IsEnum(StylistExpenseCategory)
+  category?: StylistExpenseCategory;
+
+  /** 1-based. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
+}
+
+export class CreateStylistExpenseDto {
+  @IsEnum(StylistExpenseCategory)
+  category!: StylistExpenseCategory;
+
+  @IsInt()
+  @Min(1)
+  @Max(MAX_AMOUNT)
+  amountToman!: number;
+
+  @IsDateString()
+  spentAt!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(300)
+  description!: string;
+
+  /** Uploaded receipt photo; null clears it. */
+  @IsOptionalImageUrl()
+  receiptUrl?: string | null;
+}
+
+export class UpdateStylistExpenseDto {
+  @IsOptional()
+  @IsEnum(StylistExpenseCategory)
+  category?: StylistExpenseCategory;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_AMOUNT)
+  amountToman?: number;
+
+  @IsOptional()
+  @IsDateString()
+  spentAt?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(300)
+  description?: string;
+
+  @IsOptionalImageUrl()
+  receiptUrl?: string | null;
 }

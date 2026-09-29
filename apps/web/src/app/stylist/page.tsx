@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
-import { CalendarCheck2, CalendarClock, ChevronLeft, Clock3, Coffee, Hourglass, Wallet } from "lucide-react";
+import { CalendarCheck2, CalendarClock, ChevronLeft, Clock3, Coffee, Hourglass, Receipt, Wallet } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMyStylistProfile, listMyAppointments, updateMyAppointmentStatus, type SelfStylist, type StylistAppointment } from "@/lib/api/stylistSelf";
 import { formatMinutesAsClock, formatToman } from "@/lib/persian";
@@ -137,6 +137,7 @@ export default function StylistOverviewPage() {
       </div>
 
       <LinkCard href="/stylist/earnings" icon={Wallet} title="درآمد من" subtitle="سهم شما از نوبت‌ها، پرداخت‌های سالن و مانده حساب" className="mt-3" />
+      <LinkCard href="/stylist/expenses" icon={Receipt} title="هزینه‌های من" subtitle="مواد مصرفی، ابزار و خریدهای کاری" className="mt-3" />
 
       {pending.length > 0 && (
         <>

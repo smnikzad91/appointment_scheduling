@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Check, Wallet, BookOpen } from "lucide-react";
+import { Check, Wallet, BookOpen, Receipt } from "lucide-react";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import GalleryManager from "@/components/app/GalleryManager";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
@@ -111,6 +111,7 @@ export default function StylistProfilePage() {
 
       <ReviewsLinkCard token={token} scope="stylist" className="mt-6" />
       <LinkCard href="/stylist/earnings" icon={Wallet} title="درآمد من" subtitle="سهم شما از نوبت‌ها، پرداخت‌های سالن و مانده حساب" className="mt-3" />
+      <LinkCard href="/stylist/expenses" icon={Receipt} title="هزینه‌های من" subtitle="مواد مصرفی، ابزار و خریدهای کاری" className="mt-3" />
       <LinkCard href="/tutorials?role=stylist" icon={BookOpen} title="راهنمای استفاده" subtitle="راهنمای تصویری نوبت‌ها، ساعت کاری، درآمد و نمونه کارها" className="mt-3" />
 
       <SectionTitle>نمونه کارهای من</SectionTitle>

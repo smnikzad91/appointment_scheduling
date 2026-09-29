@@ -90,6 +90,16 @@ enum ExpenseCategory {
   OTHER
 }
 
+// A stylist's own work costs (tracked in the stylist panel), for their net income.
+enum StylistExpenseCategory {
+  SUPPLIES // consumable materials
+  PRODUCTS // products bought (for work or resale)
+  TOOLS // tool purchase or maintenance
+  TRAINING
+  TRANSPORT
+  OTHER
+}
+
 enum ErrorSource {
   API // apps/api (NestJS)
   WEB_SERVER // apps/web server side: route handlers, server components, server actions
@@ -351,11 +361,11 @@ model Deposit {
 }
 
 model Salon {
-  id            String      @id @default(cuid())
+  id            String       @id @default(cuid())
   ownerId       String
-  owner         User        @relation("SalonOwner", fields: [ownerId], references: [id])
+  owner         User         @relation("SalonOwner", fields: [ownerId], references: [id])
   name          String
-  slug          String      @unique
+  slug          String       @unique
   description   String?
   // Province (استان) and county (شهرستان) from packages/iran-locations; province is null only on
   // salons created before it existed whose city didn't match the list.
@@ -364,20 +374,20 @@ model Salon {
   address       String
   phone         String
   instagram     String?
-  timezone      String      @default("Asia/Tehran")
+  timezone      String       @default("Asia/Tehran")
   logoUrl       String?
   coverImageUrl String?
-  brandColor    String      @default("#a34a30")
+  brandColor    String       @default("#a34a30")
   latitude      Float?
   longitude     Float?
-  status        SalonStatus @default(PENDING)
+  status        SalonStatus  @default(PENDING)
   // Subscription (apps/api src/subscriptions): no plan = no limits (salons from before plans
   // existed, until the admin assigns one). planExpiresAt null = no end date.
   planId        String?
   plan          PricingPlan? @relation(fields: [planId], references: [id], onDelete: Restrict)
   planExpiresAt DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   stylists          Stylist[]
   smsUsage          SalonSmsUsage[]
@@ -388,6 +398,7 @@ model Salon {
   reviews           Review[]
   payouts           StylistPayout[]
   expenses          SalonExpense[]
+  stylistExpenses   StylistExpense[]
   featured          FeaturedSalon?
   favoritedBy       FavoriteSalon[]
   waitlist          WaitlistEntry[]
@@ -437,6 +448,7 @@ model Stylist {
   payouts       StylistPayout[]
   featured      FeaturedStylist?
   waitlist      WaitlistEntry[]
+  expenses      StylistExpense[]
 
   @@index([salonId])
   @@map("stylists")
@@ -693,6 +705,29 @@ model SalonExpense {
 
   @@index([salonId, spentAt])
   @@map("salon_expenses")
+}
+
+// A stylist's own work costs, logged by the stylist in their panel. Subtracted from their share of
+// completed appointments to give their net income; never touches the salon's books.
+model StylistExpense {
+  id          String                 @id @default(cuid())
+  stylistId   String
+  stylist     Stylist                @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  // The stylist's salon when it was logged (a stylist belongs to one salon).
+  salonId     String
+  salon       Salon                  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  category    StylistExpenseCategory
+  amountToman Int
+  spentAt     DateTime
+  description String
+  // Photo of the receipt/invoice, uploaded through apps/web (/uploads/expenses/…).
+  receiptUrl  String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([stylistId, spentAt])
+  @@index([salonId])
+  @@map("stylist_expenses")
 }
 
 // ── Home page showcase (edited by the platform admin) ─────────────────────
