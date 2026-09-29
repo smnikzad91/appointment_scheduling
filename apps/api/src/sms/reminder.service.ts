@@ -7,6 +7,7 @@ import { SmsService } from "./sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
 import { clock, customerReminderText, jalaliDay, smsParts, stylistConfirmNudgeText, stylistNewBookingText, stylistReminderText } from "./sms.text.js";
 import { maySendNow, parseQuietHours, type QuietWindow } from "./quiet-hours.util.js";
+import { runsBackgroundJobs } from "./job-runner.js";
 
 const TICK_MS = 60_000;
 const LEAD_MINUTES = 60;
@@ -82,7 +83,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
   }
 
   onApplicationBootstrap() {
-    if (this.config.get("SMS_REMINDERS") === "off" || process.env.NODE_ENV === "test") return;
+    if (this.config.get("SMS_REMINDERS") === "off" || process.env.NODE_ENV === "test" || !runsBackgroundJobs()) return;
     this.timer = setInterval(() => void this.tick(), TICK_MS);
     this.timer.unref();
   }

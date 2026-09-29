@@ -59,12 +59,20 @@
      alternate between `apps/api/dist-a|dist-b` (plain `tsc`; `nest build` would wipe `dist/`) and web between
      `apps/web/.next-a|.next-b` (`NEXT_DIST_DIR` → next.config `distDir`); the live names are in
      `apps/api/.dist-live` / `apps/web/.next-live` (gitignored), which ecosystem.config.cjs reads. They're flipped
-     only after both builds and the migration succeed, so a failed deploy leaves the site as it was. pm2 never
+     only after both builds and the migration succeed, so a failed deploy leaves the site as it was. **Zero-downtime
+     reloads:** both apps run in pm2 **cluster mode, 2 instances each** (ecosystem.config.cjs), so `pm2 reload`
+     (what `startOrReload` does) replaces them one at a time — the api signals `process.send("ready")` after
+     `app.listen` (`wait_ready`), the web counts as up once its new worker listens (`listen_timeout`). SMS/background
+     jobs run in api instance 0 only (`NODE_APP_INSTANCE`, `src/sms/job-runner.ts`). apps/web retries server-side
+     GETs to the api once or twice on ECONNREFUSED/ECONNRESET (`salonApiClient.ts`). pm2 never
      applies a changed `script` on reload, so script paths stay fixed and the folder travels as env: the api runs
      `apps/api/start.cjs` (loads `$API_DIST/main.js`), the web gets `NEXT_DIST_DIR`. deploy.sh recreates any
-     process whose running script differs from the config, then `scripts/pm2-check.cjs` verifies (pm2 jlist +
-     /proc environ + HTTP) that both run the live folders and fails the deploy if not. Rollback = write the
-     previous folder name back, `pm2 startOrReload ecosystem.config.cjs --update-env`, `node scripts/pm2-check.cjs`. pm2 apps
+     app pm2 can't reload into the config (a different script, fork instead of cluster mode, a different instance
+     count — the first deploy after the switch to cluster mode does this once, a few seconds' downtime), then `scripts/pm2-check.cjs` verifies (pm2 jlist per
+     instance + /proc environ, else pm2's env copy in cluster mode + HTTP) that both run the live folders and fails the deploy if not. Rollback = write the
+     previous folder name back into `.dist-live`/`.next-live`, `pm2 startOrReload ecosystem.config.cjs --update-env`
+     (a rolling reload, no downtime), `node scripts/pm2-check.cjs`. To leave cluster mode, set `exec_mode`/`instances`
+     back in ecosystem.config.cjs and redeploy (deploy.sh recreates the apps). pm2 apps
      `salon-api-prod` (127.0.0.1:3011) and `salon-web-prod` (127.0.0.1:3010). nginx `/etc/nginx/sites-available/dev-iot.ir`:
      `/backend/*` → api (prefix stripped), everything else → web. HTTPS vhosts on this box listen
      on `127.0.0.1:8444 ssl proxy_protocol` behind a stream SNI router on :443 (shared with xray) —

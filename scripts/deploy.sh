@@ -42,7 +42,7 @@ npm run migrate:deploy -w @appointment-scheduling/database
 echo "$api_next" > apps/api/.dist-live.tmp && mv apps/api/.dist-live.tmp apps/api/.dist-live
 echo "$web_next" > apps/web/.next-live.tmp && mv apps/web/.next-live.tmp apps/web/.next-live
 for app in $(node scripts/pm2-check.cjs --scripts); do
-  echo "deploy: $app runs a different script than ecosystem.config.cjs — recreating it"
+  echo "deploy: pm2 can't reload $app into ecosystem.config.cjs (script, fork/cluster mode or instance count) — recreating it"
   pm2 delete "$app" 2>/dev/null || true
   pm2 start ecosystem.config.cjs --only "$app"
 done

@@ -33,15 +33,31 @@ function live(file, fallback) {
 const apiDist = live("apps/api/.dist-live", "dist");
 const webDist = live("apps/web/.next-live", ".next");
 
+// Zero-downtime reloads: both apps run in pm2 cluster mode with INSTANCES processes sharing the
+// port, and `pm2 reload` (what startOrReload does for a running app) replaces them one at a time,
+// stopping an old one only after its replacement is up. The api signals that itself
+// (process.send("ready") after app.listen, wait_ready); `next start` has no such hook, so for the
+// web pm2 waits for the new worker to start listening (listen_timeout). Background jobs (SMS
+// reminders) run in api instance 0 only (apps/api src/sms/job-runner.ts).
+//
+// Memory: ~4 Node processes. max_memory_restart restarts an instance that grows past it (a rolling
+// restart of just that one), so the worst case stays near 2×500M + 2×900M.
+const INSTANCES = 2;
+
 module.exports = {
   apps: [
     {
       name: "salon-api-prod",
       cwd: "./apps/api",
       script: "start.cjs",
+      exec_mode: "cluster",
+      instances: INSTANCES,
       // start.cjs loads ${API_DIST}/main.js.
       env: { NODE_ENV: "production", PORT: "3011", HOST: "127.0.0.1", API_DIST: apiDist },
-      max_memory_restart: "600M",
+      wait_ready: true,
+      listen_timeout: 30_000, // give up waiting for "ready" after this (the reload then continues)
+      kill_timeout: 8_000, // let in-flight requests finish before SIGKILL
+      max_memory_restart: "500M",
       time: true,
     },
     {
@@ -49,9 +65,13 @@ module.exports = {
       cwd: "./apps/web",
       script: "../../node_modules/next/dist/bin/next",
       args: "start -p 3010 -H 127.0.0.1",
+      exec_mode: "cluster",
+      instances: INSTANCES,
       // next.config reads distDir from NEXT_DIST_DIR.
       env: { NODE_ENV: "production", NEXT_DIST_DIR: webDist },
-      max_memory_restart: "1G",
+      listen_timeout: 30_000,
+      kill_timeout: 8_000,
+      max_memory_restart: "900M",
       time: true,
     },
   ],

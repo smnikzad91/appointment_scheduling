@@ -23,5 +23,8 @@ async function bootstrap() {
   // HOST=127.0.0.1 in production (ecosystem.config.cjs) so only nginx can reach it.
   const port = process.env.PORT ?? 3001;
   await (process.env.HOST ? app.listen(port, process.env.HOST) : app.listen(port));
+  // pm2 (wait_ready in ecosystem.config.cjs) keeps the old instance serving until this arrives,
+  // so a reload never leaves a gap. No-op outside pm2.
+  process.send?.('ready');
 }
 await bootstrap();

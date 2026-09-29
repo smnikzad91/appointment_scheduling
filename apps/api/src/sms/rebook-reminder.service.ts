@@ -7,6 +7,7 @@ import { addDaysToDateKey, instantToSalonWallTime } from "../availability/salon-
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
 import { SmsService } from "./sms.service.js";
 import { faDigits, rebookText, smsParts } from "./sms.text.js";
+import { runsBackgroundJobs } from "./job-runner.js";
 
 /** How often the job looks for due reminders. */
 const TICK_MS = 5 * 60_000;
@@ -85,7 +86,7 @@ export class RebookReminderService implements OnApplicationBootstrap, OnModuleDe
   }
 
   onApplicationBootstrap() {
-    if (this.config.get("SMS_REBOOK_REMINDERS") === "off" || process.env.NODE_ENV === "test") return;
+    if (this.config.get("SMS_REBOOK_REMINDERS") === "off" || process.env.NODE_ENV === "test" || !runsBackgroundJobs()) return;
     this.timer = setInterval(() => void this.run(), TICK_MS);
     this.timer.unref();
   }
