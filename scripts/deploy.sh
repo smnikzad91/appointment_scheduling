@@ -28,9 +28,12 @@ echo "deploy: api ${api_live:-dist} → $api_next, web ${web_live:-.next} → $w
 npm run generate -w @appointment-scheduling/database
 
 # API: plain tsc into the idle folder (nest build would first delete its configured outDir, dist/).
+# --incremental false: tsconfig's incremental cache (tsconfig.build.tsbuildinfo) lives outside the
+# build folders, so after `rm -rf` of a folder it was built into before (a deploy retried after a
+# failed migration) tsc would emit only the files it thinks changed — a build missing most modules.
 rm -rf "apps/api/$api_next"
-(cd apps/api && npx tsc -p tsconfig.build.json --outDir "$api_next")
-test -f "apps/api/$api_next/main.js"
+(cd apps/api && npx tsc -p tsconfig.build.json --outDir "$api_next" --incremental false)
+test -f "apps/api/$api_next/main.js" && test -f "apps/api/$api_next/app.module.js"
 
 # Web: next build writes to NEXT_DIST_DIR (next.config distDir) and cleans only that folder.
 (cd apps/web && NEXT_DIST_DIR="$web_next" npx next build --turbopack)
