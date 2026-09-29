@@ -30,7 +30,8 @@ export function normalizeLatLng(point: { lat: unknown; lng: unknown } | null | u
 /** "35.7000000,51.4000000": latitude first, fixed precision, never exponent notation. */
 const pair = (p: LatLng) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`;
 
-const NESHAN_PACKAGE = "org.rajman.neshan.traffic.tehran";
+// Google Play id of the Neshan app (the ".navigator" suffix is part of it).
+const NESHAN_PACKAGE = "org.rajman.neshan.traffic.tehran.navigator";
 const BALAD_PACKAGE = "ir.balad";
 
 /**
