@@ -224,3 +224,14 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Directions («مسیریابی», salon page)
+- `src/lib/directions.ts` builds the links; `src/components/salon/DirectionsButton.tsx` shows a full-width button
+  that opens a bottom Sheet to pick Neshan, Balad or Google Maps, then navigates with `window.location.assign`.
+- URL formats (taken from links copied off the real sites — don't "fix" them from memory):
+  - Neshan: `https://neshan.org/maps/routing/car/origin/{lat},{lng}/destination/{lat},{lng}` (lat first)
+  - Balad: `https://balad.ir/directions/driving?origin={lng},{lat}&destination={lng},{lat}` (**lng first**)
+  - Google: `https://www.google.com/maps/dir/?api=1&destination={lat},{lng}&travelmode=driving`
+- Neshan/Balad get the browser GPS position as origin (5 s timeout); without it the origin is omitted —
+  whether their sites route correctly with no origin is still unverified.
+- Android-app deep links (intents/package ids) were dropped at the user's request; web URLs only for now.
