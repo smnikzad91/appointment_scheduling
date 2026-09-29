@@ -546,6 +546,9 @@ model Appointment {
   customerReminderAttempts Int               @default(0)
   stylistReminderSentAt    DateTime?
   stylistReminderAttempts  Int               @default(0)
+  // An online booking's "new booking, please confirm" SMS to its stylist: claimed (set) just before
+  // it's sent by ReminderService, outside the salon's quiet hours.
+  newBookingTextedAt       DateTime?
   // An online booking still PENDING after a while gets one reminder SMS to its stylist to confirm it.
   confirmNudgedAt          DateTime?
   createdAt                DateTime          @default(now())

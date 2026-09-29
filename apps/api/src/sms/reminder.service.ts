@@ -5,7 +5,8 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { instantToSalonWallTime } from "../availability/salon-time.util.js";
 import { SmsService } from "./sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { clock, customerReminderText, jalaliDay, stylistConfirmNudgeText, stylistReminderText } from "./sms.text.js";
+import { clock, customerReminderText, jalaliDay, stylistConfirmNudgeText, stylistNewBookingText, stylistReminderText } from "./sms.text.js";
+import { maySendNow, parseQuietHours, type QuietWindow } from "./quiet-hours.util.js";
 
 const TICK_MS = 60_000;
 const LEAD_MINUTES = 60;
@@ -18,7 +19,7 @@ const LATEST_MINUTES = 15;
 const MAX_ATTEMPTS = 3;
 /** How long one instance holds a booking while handling it; a crashed holder frees it after this. */
 const LEASE_MS = 2 * 60_000;
-/** An online booking still PENDING this long after it was made gets one SMS nudging its stylist. */
+/** An online booking still PENDING this long after its stylist was first texted gets one nudge. */
 const NUDGE_AFTER_MINUTES = 120;
 
 type Recipient = "customer" | "stylist";
@@ -41,8 +42,13 @@ const ATTEMPTS = { customer: "customerReminderAttempts", stylist: "stylistRemind
  * ahead get none. Rescheduling resets all of it (AppointmentsService.update) so the new time is
  * reminded. SMS_REMINDERS=off disables it.
  *
- * The same tick nudges stylists once about online bookings still PENDING NUDGE_AFTER_MINUTES after
- * they were made (and not yet started), claimed the same way through confirmNudgedAt.
+ * The same tick texts the stylist of each new online (PENDING) booking to confirm it
+ * (newBookingTextedAt), and nudges them once if it's still PENDING NUDGE_AFTER_MINUTES after that
+ * (confirmNudgedAt). Both wait out the salon's quiet hours (SMS_QUIET_HOURS, default 22:00–08:00
+ * salon time, quiet-hours.util.ts) unless the booking starts before they end; a booking confirmed,
+ * cancelled or started meanwhile no longer matches, so its text is simply dropped. Each is claimed
+ * by a conditional update *before* the allowance is taken and the SMS sent: never sent twice,
+ * never charged twice (a send that fails after the claim is not retried).
  */
 type DueAppointment = {
   id: string;
@@ -64,13 +70,16 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
   private readonly logger = new Logger(ReminderService.name);
   private timer: NodeJS.Timeout | null = null;
   private running = false;
+  private readonly quiet: QuietWindow;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly sms: SmsService,
     private readonly config: ConfigService,
     private readonly subscriptions: SubscriptionsService,
-  ) {}
+  ) {
+    this.quiet = parseQuietHours(this.config.get<string>("SMS_QUIET_HOURS"));
+  }
 
   onApplicationBootstrap() {
     if (this.config.get("SMS_REMINDERS") === "off" || process.env.NODE_ENV === "test") return;
@@ -102,6 +111,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
         },
       });
       for (const a of due) sent += await this.remind(a, now);
+      sent += await this.textNewBookings(now);
       sent += await this.nudgeUnconfirmed(now);
       if (sent) this.logger.log(`sent ${sent} reminder SMS`);
     } catch (error) {
@@ -170,12 +180,38 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
     return sent;
   }
 
+  /** "New booking, please confirm" to the stylist of each online booking not yet texted. */
+  private async textNewBookings(now: Date): Promise<number> {
+    const due = await this.prisma.appointment.findMany({
+      where: { status: AppointmentStatus.PENDING, newBookingTextedAt: null, startAt: { gt: now } },
+      include: {
+        salon: { select: { timezone: true } },
+        stylist: { select: { user: { select: { phone: true } } } },
+        customer: { select: { firstName: true, lastName: true } },
+      },
+    });
+    let sent = 0;
+    for (const a of due) {
+      if (!maySendNow(now, a.salon.timezone, a.startAt, this.quiet)) continue; // after quiet hours
+      const claimed = await this.prisma.appointment.updateMany({ where: { id: a.id, newBookingTextedAt: null }, data: { newBookingTextedAt: now } });
+      if (claimed.count !== 1 || !a.stylist.user.phone) continue;
+      if (!(await this.subscriptions.takeReminderSms(a.salonId, now))) continue;
+      const params = {
+        day: jalaliDay(a.startAt, a.salon.timezone),
+        time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
+        customer: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
+      };
+      if (await this.sms.send({ kind: "new-booking-stylist", to: a.stylist.user.phone, params, text: stylistNewBookingText(params) })) sent++;
+    }
+    return sent;
+  }
+
   private async nudgeUnconfirmed(now: Date): Promise<number> {
     const due = await this.prisma.appointment.findMany({
       where: {
         status: AppointmentStatus.PENDING,
         confirmNudgedAt: null,
-        createdAt: { lte: new Date(now.getTime() - NUDGE_AFTER_MINUTES * 60_000) },
+        newBookingTextedAt: { lte: new Date(now.getTime() - NUDGE_AFTER_MINUTES * 60_000) },
         startAt: { gt: now },
       },
       include: {
@@ -186,6 +222,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
     });
     let sent = 0;
     for (const a of due) {
+      if (!maySendNow(now, a.salon.timezone, a.startAt, this.quiet)) continue; // after quiet hours
       const claimed = await this.prisma.appointment.updateMany({ where: { id: a.id, confirmNudgedAt: null }, data: { confirmNudgedAt: now } });
       if (claimed.count !== 1 || !a.stylist.user.phone) continue;
       if (!(await this.subscriptions.takeReminderSms(a.salonId, now))) continue;

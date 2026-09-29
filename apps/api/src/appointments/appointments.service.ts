@@ -16,7 +16,7 @@ import { NotificationsService, type BookingData } from "../notifications/notific
 import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { clock, customerBookingText, jalaliDay, stylistNewBookingText } from "../sms/sms.text.js";
+import { clock, customerBookingText, jalaliDay } from "../sms/sms.text.js";
 
 type CustomerSmsKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
 
@@ -194,8 +194,8 @@ export class AppointmentsService {
         // Booked by the salon: the customer didn't do it themselves, so text them — unless it's a
         // walk-in recorded after it started.
         if (bySalon && appointment.startAt > new Date()) void this.smsCustomer(appointment.id, "booked-customer");
-        // Booked online: it waits for the stylist, so text them to confirm it.
-        if (!bySalon) void this.smsStylistNewBooking(appointment.id);
+        // Booked online: it waits for the stylist. ReminderService texts them to confirm it
+        // (within a minute, or after the salon's quiet hours — newBookingTextedAt).
         return appointment;
       }
     }
@@ -387,34 +387,6 @@ export class AppointmentsService {
       await this.sms.send({ kind, to: a.customer.phone, params, text: customerBookingText(kind, params) });
     } catch (err) {
       this.logger.warn(`${kind} SMS for ${appointmentId} failed: ${(err as Error).message}`);
-    }
-  }
-
-  /** SMS to the stylist about an online booking waiting for their confirmation. Same allowance
-   * and best-effort rules as smsCustomer. */
-  private async smsStylistNewBooking(appointmentId: string) {
-    try {
-      const a = await this.prisma.appointment.findUnique({
-        where: { id: appointmentId },
-        select: {
-          salonId: true,
-          startAt: true,
-          salon: { select: { timezone: true } },
-          stylist: { select: { user: { select: { phone: true } } } },
-          customer: { select: { firstName: true, lastName: true } },
-        },
-      });
-      const to = a?.stylist.user?.phone;
-      if (!a || !to) return;
-      if (!(await this.subscriptions.takeReminderSms(a.salonId))) return;
-      const params = {
-        day: jalaliDay(a.startAt, a.salon.timezone),
-        time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
-        customer: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
-      };
-      await this.sms.send({ kind: "new-booking-stylist", to, params, text: stylistNewBookingText(params) });
-    } catch (err) {
-      this.logger.warn(`new-booking-stylist SMS for ${appointmentId} failed: ${(err as Error).message}`);
     }
   }
 

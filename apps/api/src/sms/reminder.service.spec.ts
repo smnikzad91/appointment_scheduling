@@ -11,7 +11,9 @@ function appt(overrides: Record<string, unknown> = {}) {
     id: 'a1',
     salonId: 's1',
     startAt: new Date('2026-10-05T10:55:00Z'), // 14:25 Tehran, 55 min ahead
+    status: 'PENDING',
     createdAt: new Date('2026-10-04T08:00:00Z'),
+    newBookingTextedAt: new Date('2026-10-04T08:00:00Z') as Date | null,
     customerReminderSentAt: null as Date | null,
     customerReminderAttempts: 0,
     stylistReminderSentAt: null as Date | null,
@@ -24,11 +26,17 @@ function appt(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function setup(rows: ReturnType<typeof appt>[], claimCount = 1, allowance = Infinity, nudgeRows: ReturnType<typeof appt>[] = []) {
+type Row = ReturnType<typeof appt>;
+
+function setup(rows: Row[], claimCount = 1, allowance = Infinity, nudgeRows: Row[] = [], newRows: Row[] = []) {
+  // Answers each of the tick's three queries with its own rows, filtered by status like the DB.
+  const answer = (where: Record<string, unknown>) => {
+    const list = where.newBookingTextedAt === null ? newRows : where.confirmNudgedAt === null ? nudgeRows : rows;
+    return Promise.resolve(typeof where.status === 'string' ? list.filter((r) => r.status === where.status) : list);
+  };
   const prisma = {
     appointment: {
-      // first query: 1-hour reminders; second: unconfirmed online bookings to nudge
-      findMany: vi.fn().mockResolvedValueOnce(rows).mockResolvedValue(nudgeRows),
+      findMany: vi.fn(({ where }: { where: Record<string, unknown> }) => answer(where)),
       updateMany: vi.fn().mockResolvedValue({ count: claimCount }),
       update: vi.fn().mockResolvedValue({}),
     },
@@ -68,7 +76,7 @@ describe('ReminderService.tick', () => {
   it('also picks up a missed window: anything unreminded starting 15–60 minutes from now', async () => {
     const { service, prisma } = setup([appt({ startAt: new Date('2026-10-05T10:20:00Z') })]); // 20 min ahead
     expect(await service.tick(NOW)).toBe(2);
-    const where = prisma.appointment.findMany.mock.calls[0][0].where;
+    const where = prisma.appointment.findMany.mock.calls[0][0].where as Record<string, unknown>;
     expect(where.reminderSentAt).toBeNull();
     expect(where.startAt).toEqual({ gt: new Date('2026-10-05T10:15:00Z'), lte: new Date('2026-10-05T11:00:00Z') });
   });
@@ -136,15 +144,15 @@ describe('ReminderService.tick', () => {
 });
 
 describe('ReminderService unconfirmed-booking nudge', () => {
-  const pending = () => appt({ id: 'p1', createdAt: new Date('2026-10-05T07:00:00Z'), startAt: new Date('2026-10-06T08:00:00Z') });
+  const pending = () => appt({ id: 'p1', newBookingTextedAt: new Date('2026-10-05T07:00:00Z'), startAt: new Date('2026-10-06T08:00:00Z') });
 
-  it('texts the stylist once about an online booking still pending 2 hours later', async () => {
+  it('texts the stylist once about an online booking still pending 2 hours after they were told', async () => {
     const { service, sms, prisma } = setup([], 1, Infinity, [pending()]);
     expect(await service.tick(NOW)).toBe(1);
 
-    const where = prisma.appointment.findMany.mock.calls[1][0].where;
+    const where = prisma.appointment.findMany.mock.calls[2][0].where;
     expect(where).toMatchObject({ status: 'PENDING', confirmNudgedAt: null, startAt: { gt: NOW } });
-    expect(where.createdAt).toEqual({ lte: new Date('2026-10-05T08:00:00Z') });
+    expect(where.newBookingTextedAt).toEqual({ lte: new Date('2026-10-05T08:00:00Z') });
     expect(prisma.appointment.updateMany).toHaveBeenCalledWith({ where: { id: 'p1', confirmNudgedAt: null }, data: { confirmNudgedAt: NOW } });
 
     const msg = sms.send.mock.calls[0][0];
@@ -159,5 +167,63 @@ describe('ReminderService unconfirmed-booking nudge', () => {
     const noAllowance = setup([], 1, 0, [pending()]);
     expect(await noAllowance.service.tick(NOW)).toBe(0);
     expect(noAllowance.sms.send).not.toHaveBeenCalled();
+  });
+});
+
+describe('ReminderService quiet hours (22:00–08:00 Tehran)', () => {
+  const at = (hhmm: string, day = '2026-10-06') => new Date(`${day}T${hhmm}:00+03:30`);
+  // Booked online at 02:00 for 14:00 the same day.
+  const nightBooking = (over: Record<string, unknown> = {}) =>
+    appt({ id: 'n1', createdAt: at('02:00'), newBookingTextedAt: null, startAt: at('14:00'), ...over });
+
+  it('a booking made at 02:00 texts the stylist at 08:00, not before', async () => {
+    const row = nightBooking();
+    const { service, sms, prisma } = setup([], 1, Infinity, [], [row]);
+    expect(await service.tick(at('02:00'))).toBe(0);
+    expect(await service.tick(at('07:59'))).toBe(0);
+    expect(sms.send).not.toHaveBeenCalled();
+    expect(prisma.appointment.updateMany).not.toHaveBeenCalled(); // nothing claimed at night
+
+    expect(await service.tick(at('08:00'))).toBe(1);
+    expect(sms.send.mock.calls[0][0]).toMatchObject({ kind: 'new-booking-stylist', to: '09120000002', params: { customer: 'نگار رضایی' } });
+    expect(prisma.appointment.updateMany).toHaveBeenCalledWith({ where: { id: 'n1', newBookingTextedAt: null }, data: { newBookingTextedAt: at('08:00') } });
+  });
+
+  it('a booking confirmed at 03:00 gets no text and no nudge at 08:00', async () => {
+    const confirmed = nightBooking({ status: 'CONFIRMED' });
+    const { service, sms } = setup([], 1, Infinity, [confirmed], [confirmed]);
+    expect(await service.tick(at('08:00'))).toBe(0);
+    expect(await service.tick(at('10:30'))).toBe(0);
+    expect(sms.send).not.toHaveBeenCalled();
+  });
+
+  it('texts at night anyway when the booking starts before quiet hours end', async () => {
+    const early = nightBooking({ startAt: at('07:30') });
+    const { service, sms } = setup([], 1, Infinity, [], [early]);
+    expect(await service.tick(at('02:00'))).toBe(1);
+    expect(sms.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds the nudge back overnight too', async () => {
+    const pendingNudge = nightBooking({ newBookingTextedAt: at('20:30', '2026-10-05') });
+    const { service, sms } = setup([], 1, Infinity, [pendingNudge]);
+    expect(await service.tick(at('23:00', '2026-10-05'))).toBe(0);
+    expect(sms.send).not.toHaveBeenCalled();
+    expect(await service.tick(at('08:00'))).toBe(1);
+    expect(sms.send.mock.calls[0][0].kind).toBe('confirm-nudge-stylist');
+  });
+
+  it('never charges or sends a new-booking text twice when another instance claimed it', async () => {
+    const { service, sms, subscriptions } = setup([], 0, Infinity, [], [nightBooking()]);
+    expect(await service.tick(at('09:00'))).toBe(0);
+    expect(subscriptions.takeReminderSms).not.toHaveBeenCalled();
+    expect(sms.send).not.toHaveBeenCalled();
+  });
+
+  it('still sends the 1-hour reminder at night', async () => {
+    const early = appt({ id: 'r1', startAt: at('06:55'), createdAt: at('20:00', '2026-10-05') });
+    const { service, sms } = setup([early]);
+    expect(await service.tick(at('06:00'))).toBe(2);
+    expect(sms.send.mock.calls.map((c) => c[0].kind)).toEqual(['reminder-customer', 'reminder-stylist']);
   });
 });
