@@ -30,7 +30,7 @@ export default function InfoSection({ salon }: { salon: Salon }) {
             </a>
           </div>
 
-          {salon.location && <DirectionsButton location={salon.location} />}
+          {salon.location && <DirectionsButton location={salon.location} salonName={salon.name} address={salon.address} />}
 
           <div className="mt-2 overflow-hidden rounded-xl">
             <table className="w-full text-sm">
