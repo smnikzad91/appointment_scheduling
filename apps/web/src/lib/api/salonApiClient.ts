@@ -19,8 +19,39 @@ export class SalonApiError extends Error {
   }
 }
 
+const RETRY_DELAYS_MS = [300, 600];
+const RETRYABLE_CODES = new Set(["ECONNREFUSED", "ECONNRESET"]);
+
+/** Node's fetch wraps socket errors: TypeError("fetch failed") with the real one as `cause`. */
+function connectionErrorCode(err: unknown): string | undefined {
+  for (let e: unknown = err, depth = 0; e && depth < 4; e = (e as { cause?: unknown }).cause, depth++) {
+    const code = (e as { code?: unknown }).code;
+    if (typeof code === "string") return code;
+  }
+  return undefined;
+}
+
+/**
+ * fetch, retried on the server when the API refused or dropped the connection — a pm2 reload
+ * blip — up to twice (300 ms, 600 ms). Only GET/HEAD, which are safe to repeat; never on an HTTP
+ * error response (that's an answer, not a blip), and never in the browser.
+ */
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const retries = typeof window === "undefined" && (method === "GET" || method === "HEAD") ? RETRY_DELAYS_MS : [];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(url, init);
+    } catch (err) {
+      const code = connectionErrorCode(err);
+      if (attempt >= retries.length || !code || !RETRYABLE_CODES.has(code)) throw err;
+      await new Promise((resolve) => setTimeout(resolve, retries[attempt]));
+    }
+  }
+}
+
 export async function salonApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetchWithRetry(`${API_URL}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
