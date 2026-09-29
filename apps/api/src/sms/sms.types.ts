@@ -18,10 +18,18 @@ export type SmsMessage =
       text: string;
     }
   | {
-      /** The salon or the stylist booked, moved or cancelled the customer's appointment. */
-      kind: "booked-customer" | "rescheduled-customer" | "cancelled-customer";
+      /** The salon or the stylist booked, moved or cancelled the customer's appointment, or the
+       * stylist confirmed the one they booked online. */
+      kind: "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
       to: string;
       params: { day: string; time: string; salon: string; stylist: string };
+      text: string;
+    }
+  | {
+      /** The customer booked online; the stylist is asked to confirm it in their panel. */
+      kind: "new-booking-stylist";
+      to: string;
+      params: { day: string; time: string; customer: string };
       text: string;
     };
 

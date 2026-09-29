@@ -52,7 +52,7 @@ type BookingParams = { day: string; time: string; salon: string; stylist: string
 
 /** Texts for the customer when staff book, move or cancel their appointment. When both names
  * don't fit, the stylist is left out rather than cutting the salon's name short. */
-export const customerBookingText = (kind: "booked-customer" | "rescheduled-customer" | "cancelled-customer", p: BookingParams) => {
+export const customerBookingText = (kind: "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer", p: BookingParams) => {
   const withStylist = (build: (q: BookingParams, by: string) => string) => {
     const text = fitSms(p, ["salon", "stylist"], (q) => build(q, ` با ${q.stylist}`));
     return text.includes(p.salon) ? text : fitSms(p, ["salon"], (q) => build(q, ""));
@@ -62,6 +62,8 @@ export const customerBookingText = (kind: "booked-customer" | "rescheduled-custo
       return withStylist((q, by) => `نوبتا: نوبت ${q.day} ساعت ${q.time} در ${q.salon}${by} ثبت شد`);
     case "rescheduled-customer":
       return withStylist((q, by) => `نوبتا: نوبت شما به ${q.day} ساعت ${q.time} در ${q.salon}${by} منتقل شد`);
+    case "confirmed-customer":
+      return withStylist((q, by) => `نوبتا: نوبت ${q.day} ساعت ${q.time} در ${q.salon}${by} تایید شد`);
     case "cancelled-customer":
       return fitSms(p, ["salon"], (q) => `نوبتا: نوبت ${q.day} ساعت ${q.time} در ${q.salon} لغو شد`);
   }
@@ -69,3 +71,7 @@ export const customerBookingText = (kind: "booked-customer" | "rescheduled-custo
 
 export const stylistReminderText = (p: { time: string; customer: string; services: string }) =>
   fitSms(p, ["customer", "services"], (q) => `یادآوری نوبتا: ساعت ${q.time} نوبت ${q.customer} (${q.services})`);
+
+/** To the stylist when a customer books online: the booking waits for their confirmation. */
+export const stylistNewBookingText = (p: { day: string; time: string; customer: string }) =>
+  fitSms(p, ["customer"], (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتا تایید کنید`);
