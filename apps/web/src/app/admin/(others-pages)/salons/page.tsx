@@ -39,7 +39,8 @@ export default function AdminSalonsPage() {
   const [tab, setTab] = useState<AdminSalon["status"] | "ALL">("PENDING");
   const [salons, setSalons] = useState<AdminSalon[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // A translation key, turned into text at render so it follows an FA/EN switch right away.
+  const [error, setError] = useState<TranslationKey | null>(null);
   const [plans, setPlans] = useState<PricingPlanData[]>([]);
   const [planFor, setPlanFor] = useState<AdminSalon | null>(null);
 
@@ -51,7 +52,7 @@ export default function AdminSalonsPage() {
     if (!token) return;
     listAdminSalons(token, tab === "ALL" ? undefined : tab)
       .then(setSalons)
-      .catch(() => setError(t("slLoadError")));
+      .catch(() => setError("slLoadError"));
   }
 
   useEffect(reload, [token, tab]);
@@ -64,7 +65,7 @@ export default function AdminSalonsPage() {
       await setSalonStatus(token, id, status);
       reload();
     } catch {
-      setError(t("slStatusError"));
+      setError("slStatusError");
     } finally {
       setBusyId(null);
     }
@@ -97,7 +98,7 @@ export default function AdminSalonsPage() {
         ))}
       </div>
 
-      {error && <p className="text-sm text-rose-500">{error}</p>}
+      {error && <p className="text-sm text-rose-500">{t(error)}</p>}
 
       {!salons ? (
         <p className="text-sm text-gray-500">{t("slLoading")}</p>
