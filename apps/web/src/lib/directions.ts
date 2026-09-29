@@ -30,14 +30,12 @@ export function normalizeLatLng(point: { lat: unknown; lng: unknown } | null | u
 /** "35.7000000,51.4000000": latitude first, fixed precision, never exponent notation. */
 const pair = (p: LatLng) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`;
 
-// Google Play id of the Neshan app (the ".navigator" suffix is part of it).
-const NESHAN_PACKAGE = "org.rajman.neshan.traffic.tehran.navigator";
 const BALAD_PACKAGE = "ir.balad";
 
 /**
  * The URL that starts routing to `dest` in `app`. `origin` is the user's position when known;
- * without it each app routes from (or asks for) the phone's current location. On Android, Neshan
- * and Balad get an intent:// link that opens the installed app and falls back to the web page.
+ * without it each app routes from (or asks for) the phone's current location. On Android, Balad
+ * gets an intent:// link that opens the installed app and falls back to the web page.
  */
 export function directionsUrl(app: MapApp, dest: LatLng, opts: { origin?: LatLng | null; android?: boolean } = {}): string {
   const { origin, android } = opts;
@@ -48,9 +46,13 @@ export function directionsUrl(app: MapApp, dest: LatLng, opts: { origin?: LatLng
       return `https://www.google.com/maps/dir/?${q}`;
     }
     case "neshan": {
-      const q = `${origin ? `origin=${pair(origin)}&` : ""}destination=${pair(dest)}`;
-      const web = `https://neshan.org/maps/routing?${q}`;
-      return android ? androidIntent("nshn", `routing?${q}`, NESHAN_PACKAGE, web) : web;
+      // Neshan's own routing URL (copied from neshan.org after starting a route there):
+      //   /maps/routing/car/origin/{lat,lng}/destination/{lat,lng}
+      // The same https link is used on phones: an installed Neshan app that handles neshan.org
+      // links takes it over. Without the user's position the origin segment is left out, so the
+      // site asks for / uses the current location.
+      const from = origin ? `origin/${pair(origin)}/` : "";
+      return `https://neshan.org/maps/routing/car/${from}destination/${pair(dest)}`;
     }
     case "balad": {
       const q = `latitude=${dest.lat.toFixed(7)}&longitude=${dest.lng.toFixed(7)}`;
