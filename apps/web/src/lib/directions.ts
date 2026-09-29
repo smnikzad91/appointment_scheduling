@@ -30,15 +30,14 @@ export function normalizeLatLng(point: { lat: unknown; lng: unknown } | null | u
 /** "35.7000000,51.4000000": latitude first, fixed precision, never exponent notation. */
 const pair = (p: LatLng) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`;
 
-const BALAD_PACKAGE = "ir.balad";
 
 /**
  * The URL that starts routing to `dest` in `app`. `origin` is the user's position when known;
- * without it each app routes from (or asks for) the phone's current location. On Android, Balad
- * gets an intent:// link that opens the installed app and falls back to the web page.
+ * without it each app routes from (or asks for) the phone's current location. The same https links
+ * work on phones; an installed app that handles its site's links takes them over.
  */
-export function directionsUrl(app: MapApp, dest: LatLng, opts: { origin?: LatLng | null; android?: boolean } = {}): string {
-  const { origin, android } = opts;
+export function directionsUrl(app: MapApp, dest: LatLng, opts: { origin?: LatLng | null } = {}): string {
+  const { origin } = opts;
   switch (app) {
     case "google": {
       // No origin on purpose: Google Maps routes from the device's current location.
@@ -55,14 +54,13 @@ export function directionsUrl(app: MapApp, dest: LatLng, opts: { origin?: LatLng
       return `https://neshan.org/maps/routing/car/${from}destination/${pair(dest)}`;
     }
     case "balad": {
-      const q = `latitude=${dest.lat.toFixed(7)}&longitude=${dest.lng.toFixed(7)}`;
-      const web = `https://balad.ir/location?${q}`;
-      return android ? androidIntent("balad", `navigation?${q}`, BALAD_PACKAGE, web) : web;
+      // Balad's own routing URL (copied from balad.ir after starting a route there). NOTE: Balad
+      // writes points as {lng,lat} — longitude first, unlike Google and Neshan:
+      //   /directions/driving?origin={lng,lat}&destination={lng,lat}
+      // Same https link on phones; without the user's position `origin` is left out.
+      const lngLat = (p: LatLng) => `${p.lng.toFixed(7)},${p.lat.toFixed(7)}`;
+      const q = new URLSearchParams({ ...(origin && { origin: lngLat(origin) }), destination: lngLat(dest) });
+      return `https://balad.ir/directions/driving?${q}`;
     }
   }
-}
-
-/** Chrome/Android intent link: opens `pkg` with scheme://path, else goes to `fallback`. */
-function androidIntent(scheme: string, path: string, pkg: string, fallback: string) {
-  return `intent://${path}#Intent;scheme=${scheme};package=${pkg};S.browser_fallback_url=${encodeURIComponent(fallback)};end`;
 }
