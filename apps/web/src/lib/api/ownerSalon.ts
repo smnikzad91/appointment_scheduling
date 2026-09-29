@@ -124,7 +124,8 @@ export interface OwnerService {
 }
 
 export function listMyServices(token: string) {
-  return salonApiFetch<OwnerService[]>("/salons/mine/services", { headers: authHeaders(token) });
+  // Always from the server: the list is re-read right after every edit.
+  return salonApiFetch<OwnerService[]>("/salons/mine/services", { headers: authHeaders(token), cache: "no-store" });
 }
 
 export interface CreateServiceInput {

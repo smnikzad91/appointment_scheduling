@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BellRing, Clock, FolderCog, Plus, Scissors, Trash2 } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
@@ -72,15 +72,31 @@ export default function SalonServicesPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
+  // Services whose on/off switch is being saved (locked until the server answers).
+  const [pendingActive, setPendingActive] = useState<Set<string>>(() => new Set());
+  // Only the newest load may write the list: a reload started before a later change (a switch
+  // tapped while it was in flight) would otherwise put the old state back on screen.
+  const loadSeq = useRef(0);
+
   const reload = useCallback(() => {
     if (!token) return;
+    const seq = ++loadSeq.current;
     Promise.all([listMyCategories(token), listMyServices(token)])
       .then(([c, s]) => {
+        if (seq !== loadSeq.current) return;
         setCategories(c);
         setServices(s);
       })
-      .catch(() => setError("خطا در دریافت اطلاعات"));
+      .catch(() => {
+        if (seq === loadSeq.current) setError("خطا در دریافت اطلاعات");
+      });
   }, [token]);
+
+  /** Put the server's copy of a saved service in the list (and drop any older load still in flight). */
+  function applySaved(saved: OwnerService) {
+    loadSeq.current++;
+    setServices((list) => list?.map((s) => (s.id === saved.id ? saved : s)) ?? list);
+  }
 
   useEffect(reload, [reload]);
 
@@ -123,13 +139,14 @@ export default function SalonServicesPage() {
     setDraftError(null);
     try {
       if (draft.id) {
-        await updateService(token, draft.id, {
+        const saved = await updateService(token, draft.id, {
           name: draft.name.trim(),
           categoryId: draft.categoryId || null,
           durationMinutes: duration,
           priceToman: price,
           ...rebook,
         });
+        applySaved(saved);
       } else {
         await createService(token, {
           name: draft.name.trim(),
@@ -149,15 +166,24 @@ export default function SalonServicesPage() {
   }
 
   async function handleToggleActive(service: OwnerService) {
-    if (!token) return;
+    if (!token || pendingActive.has(service.id)) return;
+    const active = !service.active;
     setError(null);
-    // Optimistic — the switch should feel instant.
-    setServices((list) => list?.map((s) => (s.id === service.id ? { ...s, active: !s.active } : s)) ?? list);
+    setPendingActive((ids) => new Set(ids).add(service.id));
+    // Optimistic — the switch should feel instant; the server's answer then settles it.
+    loadSeq.current++;
+    setServices((list) => list?.map((s) => (s.id === service.id ? { ...s, active } : s)) ?? list);
     try {
-      await updateService(token, service.id, { active: !service.active });
+      applySaved(await updateService(token, service.id, { active }));
     } catch {
       setError("تغییر وضعیت خدمت انجام نشد");
       reload();
+    } finally {
+      setPendingActive((ids) => {
+        const next = new Set(ids);
+        next.delete(service.id);
+        return next;
+      });
     }
   }
 
@@ -267,7 +293,12 @@ export default function SalonServicesPage() {
                   </span>
                 )}
               </button>
-              <Toggle checked={service.active} onChange={() => handleToggleActive(service)} label={`فعال بودن ${service.name}`} />
+              <Toggle
+                checked={service.active}
+                disabled={pendingActive.has(service.id)}
+                onChange={() => handleToggleActive(service)}
+                label={`فعال بودن ${service.name}`}
+              />
             </div>
           ))}
         </div>
