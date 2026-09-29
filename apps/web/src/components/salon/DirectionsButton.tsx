@@ -57,7 +57,7 @@ export default function DirectionsButton({ location }: { location: GeoLocation }
     setOpen(false);
     // Same tab: intent:// links must be navigated to, and a new tab opened after the GPS wait
     // would be blocked as a popup. On a phone the map app opens on top anyway.
-    window.location.href = url;
+    window.location.assign(url);
   }
 
   return (
