@@ -82,12 +82,10 @@
    - Uptime alerts (off until enabled): `scripts/uptime-monitor.cjs`, run by cron every minute, checks
      `127.0.0.1:3011/health` (apps/api `HealthController`: `SELECT 1`, 200 or 503) and `127.0.0.1:3010/`
      (apps/web also has `/api/health`). After 3 consecutive failures of either it sends one alert, and one
-     "recovered" message when it answers again (counters in the gitignored `.uptime-state.json`; an alert that
+     "recovered" message when it answers again, **by SMS only** (counters in the gitignored `.uptime-state.json`; an alert that
      couldn't be delivered is retried next minute). Enable:
-     1. In `apps/api/.env`: `UPTIME_ALERTS=on` plus `UPTIME_TELEGRAM_CHAT=<chat id>` (a private chat/group with
-        the bot — not `TELEGRAM_CHANNEL`, that's the public news channel; token and SOCKS proxy come from
-        apps/web's `TELEGRAM_BOT_TOKEN`/`TELEGRAM_PROXY`) and/or `UPTIME_ALERT_PHONE=09…` (SMS via notifycloud,
-        the same `SMS_API_KEY`).
+     1. In `apps/api/.env`: `UPTIME_ALERTS=on` and `UPTIME_ALERT_PHONE=09…` (sent via notifycloud with the
+        same `SMS_API_KEY`).
      2. `crontab -e`: `* * * * * cd /root/projects/appointment_scheduling && node scripts/uptime-monitor.cjs >> /var/log/nobta-uptime.log 2>&1`
      3. Test: `pm2 stop salon-api-prod`, wait 3–4 minutes for the alert, `pm2 start salon-api-prod`, wait for
         "recovered". Logic tests: `node --test scripts/uptime-monitor.test.cjs`.

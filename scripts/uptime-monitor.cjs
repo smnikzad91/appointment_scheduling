@@ -7,15 +7,11 @@
 // the target answers again it sends one "recovered" message. Counters live in .uptime-state.json
 // (gitignored). If an alert can't be delivered it's retried on the next run, never repeated after.
 //
-// OFF unless UPTIME_ALERTS=on. Settings (apps/api/.env; Telegram token/proxy are read from
-// apps/web/.env.production / apps/web/.env, where the CMS already has them):
+// Alerts go by SMS only. OFF unless UPTIME_ALERTS=on. Settings, in apps/api/.env:
 //   UPTIME_ALERTS=on
-//   UPTIME_TELEGRAM_CHAT=<chat id of a private chat/group with the bot>   (not TELEGRAM_CHANNEL: that's public)
-//   UPTIME_ALERT_PHONE=09xxxxxxxxx     SMS through notifycloud (SMS_API_KEY, SMS_API_URL in apps/api/.env)
-// At least one of the two channels must be set.
+//   UPTIME_ALERT_PHONE=09xxxxxxxxx     sent through notifycloud (SMS_API_KEY, SMS_API_URL, same file)
 const { readFileSync, writeFileSync, renameSync } = require("fs");
 const { join } = require("path");
-const https = require("https");
 
 const ROOT = join(__dirname, "..");
 const STATE_FILE = join(ROOT, ".uptime-state.json");
@@ -60,41 +56,13 @@ async function probe(url) {
 }
 
 function loadEnv() {
-  for (const f of ["apps/api/.env", "apps/web/.env.production", "apps/web/.env"]) {
+  for (const f of ["apps/api/.env"]) {
     try {
       process.loadEnvFile(join(ROOT, f)); // never overrides a value already set
     } catch {
       // file not there
     }
   }
-}
-
-function telegram(text) {
-  const { TELEGRAM_BOT_TOKEN: token, UPTIME_TELEGRAM_CHAT: chat, TELEGRAM_PROXY: proxy } = process.env;
-  if (!token || !chat) return Promise.resolve(false);
-  const { SocksProxyAgent } = require("socks-proxy-agent");
-  const agent = proxy ? new SocksProxyAgent(proxy) : undefined;
-  const payload = JSON.stringify({ chat_id: chat, text });
-  return new Promise((resolve) => {
-    const req = https.request(
-      `https://api.telegram.org/bot${token}/sendMessage`,
-      { agent, method: "POST", timeout: TIMEOUT_MS, headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } },
-      (res) => {
-        let raw = "";
-        res.on("data", (d) => (raw += d));
-        res.on("end", () => {
-          try {
-            resolve(JSON.parse(raw).ok === true);
-          } catch {
-            resolve(false);
-          }
-        });
-      },
-    );
-    req.on("timeout", () => req.destroy());
-    req.on("error", () => resolve(false));
-    req.end(payload);
-  });
 }
 
 async function sms(text) {
@@ -116,8 +84,8 @@ async function sms(text) {
 async function main() {
   loadEnv();
   if (process.env.UPTIME_ALERTS !== "on") return; // off until configured
-  if (!process.env.UPTIME_TELEGRAM_CHAT && !process.env.UPTIME_ALERT_PHONE) {
-    console.error(`${new Date().toISOString()} uptime: UPTIME_ALERTS=on but neither UPTIME_TELEGRAM_CHAT nor UPTIME_ALERT_PHONE is set`);
+  if (!process.env.UPTIME_ALERT_PHONE || !process.env.SMS_API_KEY) {
+    console.error(`${new Date().toISOString()} uptime: UPTIME_ALERTS=on but UPTIME_ALERT_PHONE or SMS_API_KEY is not set (apps/api/.env)`);
     return;
   }
 
@@ -132,9 +100,9 @@ async function main() {
   const { next, messages } = decide(state, results);
 
   for (const m of messages) {
-    const [tg, sm] = await Promise.all([telegram(m.text), sms(m.text)]);
-    console.log(`${new Date().toISOString()} uptime: ${m.kind} ${m.id} — telegram ${tg ? "sent" : "no"}, sms ${sm ? "sent" : "no"}`);
-    if (!tg && !sm) {
+    const sent = await sms(m.text);
+    console.log(`${new Date().toISOString()} uptime: ${m.kind} ${m.id} — sms ${sent ? "sent" : "NOT sent"}`);
+    if (!sent) {
       // Undelivered: keep the old flag so it's tried again next minute (still only once delivered).
       next[m.id] = { ...next[m.id], alerted: state[m.id]?.alerted ?? false };
     }
