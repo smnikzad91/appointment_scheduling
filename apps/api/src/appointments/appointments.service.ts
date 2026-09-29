@@ -334,7 +334,14 @@ export class AppointmentsService {
           startAt,
           endAt,
           // a new time gets its own "1 hour before" SMS
-          ...(startAt.getTime() !== appointment.startAt.getTime() && { reminderSentAt: null }),
+          ...(startAt.getTime() !== appointment.startAt.getTime() && {
+            reminderSentAt: null,
+            reminderLeaseUntil: null,
+            customerReminderSentAt: null,
+            customerReminderAttempts: 0,
+            stylistReminderSentAt: null,
+            stylistReminderAttempts: 0,
+          }),
           priceToman: pricing.reduce((sum, p) => sum + p.priceToman, 0),
           ...(dto.notes !== undefined && { notes: dto.notes?.trim() || null }),
         },

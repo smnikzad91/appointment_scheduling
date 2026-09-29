@@ -536,7 +536,16 @@ model Appointment {
   stylistShareToman        Int?
   completedAt              DateTime?
   // When the "1 hour before" SMS went out (customer + stylist); cleared when the time changes.
+  // "1 hour before" SMS (apps/api ReminderService): set once both the customer's and the stylist's
+  // reminder are done (sent, or given up after too many failed tries). Each is tracked on its own so
+  // a failed send is retried without re-sending the other; reminderLeaseUntil is a short claim so
+  // several API instances never handle one booking at once. Rescheduling resets all of these.
   reminderSentAt           DateTime?
+  reminderLeaseUntil       DateTime?
+  customerReminderSentAt   DateTime?
+  customerReminderAttempts Int               @default(0)
+  stylistReminderSentAt    DateTime?
+  stylistReminderAttempts  Int               @default(0)
   // An online booking still PENDING after a while gets one reminder SMS to its stylist to confirm it.
   confirmNudgedAt          DateTime?
   createdAt                DateTime          @default(now())
