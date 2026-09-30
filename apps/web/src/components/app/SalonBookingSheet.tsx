@@ -13,6 +13,7 @@ import {
 import { getMyStylistProfile } from "@/lib/api/stylistSelf";
 import { salonApiFetch } from "@/lib/api/salonApiClient";
 import { persianApiError } from "@/lib/api/errorMessages";
+import { toastError } from "@/lib/toastError";
 import { formatMinutesAsClock, formatToman, isValidIranianMobile, normalizeDigits, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { dateKeyToDate, toJalali } from "@/lib/jalali";
@@ -106,7 +107,6 @@ export default function SalonBookingSheet({
   const [place, setPlace] = useState<ServiceLocation | "">(editing?.serviceLocation ?? "");
   const [visitAddress, setVisitAddress] = useState(editing?.visitAddress ?? "");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // The page remounts this sheet (new `key`) each time it opens, so the form starts empty; load
   // the salon's current stylists and services once it's shown.
@@ -117,7 +117,7 @@ export default function SalonBookingSheet({
         setData(loaded);
         setStylistId((id) => (loaded.stylists.some((s) => s.id === id) ? id : (loaded.stylists[0]?.id ?? "")));
       })
-      .catch(() => setError("دریافت اطلاعات سالن انجام نشد"));
+      .catch(() => toastError("دریافت اطلاعات سالن انجام نشد"));
   }, [open, token, asStylist]);
 
   // An edited booking or a week-view tap can start on a day further along the strip: show it.
@@ -207,12 +207,11 @@ export default function SalonBookingSheet({
 
   async function saveEdit(a: AppAppointment) {
     if (!data) return;
-    if (servicesTouched && chosenIds.length === 0) return setError("دست‌کم یک خدمت انتخاب کنید");
-    if (!firstName.trim()) return setError("نام مشتری را وارد کنید");
-    if (place === "CLIENT_HOME" && visitAddress.trim().length < 5) return setError("نشانی مشتری را برای خدمات در منزل وارد کنید");
+    if (servicesTouched && chosenIds.length === 0) return toastError("دست‌کم یک خدمت انتخاب کنید");
+    if (!firstName.trim()) return toastError("نام مشتری را وارد کنید");
+    if (place === "CLIENT_HOME" && visitAddress.trim().length < 5) return toastError("نشانی مشتری را برای خدمات در منزل وارد کنید");
     const startAt = salonWallTimeToInstant(dateKey, minute, data.salon.timezone).toISOString();
     setBusy(true);
-    setError(null);
     try {
       await updateAppointmentDetails(token, a.id, {
         ...(servicesTouched && { serviceIds: chosenIds }),
@@ -226,7 +225,7 @@ export default function SalonBookingSheet({
       onCreated();
       onClose();
     } catch (err) {
-      setError(persianApiError(err, "ذخیره تغییرات نوبت انجام نشد"));
+      toastError(persianApiError(err, "ذخیره تغییرات نوبت انجام نشد"));
     } finally {
       setBusy(false);
     }
@@ -235,13 +234,12 @@ export default function SalonBookingSheet({
   async function submit() {
     if (!data) return;
     if (editing) return saveEdit(editing);
-    if (!isValidIranianMobile(normalizedPhone)) return setError("شماره موبایل مشتری باید با ۰۹ شروع شده و ۱۱ رقم باشد");
-    if (!known && !firstName.trim()) return setError("نام مشتری را وارد کنید");
-    if (!stylistId) return setError(asStylist ? "حساب آرایشگری شما غیرفعال است" : "آرایشگر را انتخاب کنید");
-    if (chosenIds.length === 0) return setError("دست‌کم یک خدمت انتخاب کنید");
-    if (place === "CLIENT_HOME" && visitAddress.trim().length < 5) return setError("نشانی مشتری را برای خدمات در منزل وارد کنید");
+    if (!isValidIranianMobile(normalizedPhone)) return toastError("شماره موبایل مشتری باید با ۰۹ شروع شده و ۱۱ رقم باشد");
+    if (!known && !firstName.trim()) return toastError("نام مشتری را وارد کنید");
+    if (!stylistId) return toastError(asStylist ? "حساب آرایشگری شما غیرفعال است" : "آرایشگر را انتخاب کنید");
+    if (chosenIds.length === 0) return toastError("دست‌کم یک خدمت انتخاب کنید");
+    if (place === "CLIENT_HOME" && visitAddress.trim().length < 5) return toastError("نشانی مشتری را برای خدمات در منزل وارد کنید");
     setBusy(true);
-    setError(null);
     try {
       await createSalonBooking(token, {
         customerPhone: normalizedPhone,
@@ -257,7 +255,7 @@ export default function SalonBookingSheet({
       onCreated();
       onClose();
     } catch (err) {
-      setError(persianApiError(err, "ثبت نوبت انجام نشد"));
+      toastError(persianApiError(err, "ثبت نوبت انجام نشد"));
     } finally {
       setBusy(false);
     }
@@ -485,7 +483,6 @@ export default function SalonBookingSheet({
           <TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثلاً رنگ مورد نظر مشتری" />
         </Field>
 
-        {error && <p className="rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{error}</p>}
       </div>
     </Sheet>
   );
