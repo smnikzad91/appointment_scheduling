@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import { SubscriptionCard, useMySubscription } from "@/components/app/Subscription";
-import { Check, ChevronLeft, Images, Calculator, BookOpen } from "lucide-react";
+import { Check, ChevronLeft, Images, Calculator, BookOpen, QrCode } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput, SALON_UPDATED_EVENT } from "@/lib/api/ownerSalon";
 import { toPersianDigits } from "@/lib/persian";
@@ -137,6 +137,7 @@ export default function SalonSettingsPage() {
         <ChevronLeft className="h-4 w-4 text-app-muted" aria-hidden />
       </Link>
       <ReviewsLinkCard token={token} scope="salon" className="mt-3" />
+      <LinkCard href="/salon/share" icon={QrCode} title="کیت معرفی" subtitle="لینک مستقیم رزرو، کد QR و پوستر برای استوری و چاپ" className="mt-3" />
       <LinkCard
         href="/salon/accounting"
         icon={Calculator}

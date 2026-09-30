@@ -175,7 +175,7 @@ export class StylistsService {
       include: {
         workingHours: true,
         services: { include: { service: true } },
-        salon: { select: { slug: true, timezone: true, status: true } },
+        salon: { select: { slug: true, timezone: true, status: true, name: true, city: true, province: true, brandColor: true } },
       },
     });
     if (!stylist) throw new NotFoundException("No stylist profile for this account");

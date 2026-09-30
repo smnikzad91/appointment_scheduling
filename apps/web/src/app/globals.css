@@ -535,6 +535,34 @@
 #print-report {
   display: none;
 }
+/* Share kit poster: printed alone, filling an A5 page (a named page, so it doesn't change the
+   accounting report's A4 margins). */
+#print-poster {
+  display: none;
+}
+@page poster {
+  size: A5;
+  margin: 0;
+}
+@media print {
+  body:has(> #print-poster) > :not(#print-poster) {
+    display: none !important;
+  }
+  body:has(> #print-poster) {
+    background: #fff !important;
+  }
+  #print-poster {
+    display: block;
+    page: poster;
+  }
+  #print-poster img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 100vh;
+    object-fit: contain;
+  }
+}
 @media print {
   @page {
     size: A4;

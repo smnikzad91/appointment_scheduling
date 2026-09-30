@@ -31,6 +31,8 @@ export interface OwnerSalon {
   serviceArea: string | null;
   /** IN_SALON: the salon they work in. */
   hostSalonName: string | null;
+  /** Short link nobatet.app/book/@<handle>; null = the link uses `slug`. */
+  handle: string | null;
 }
 
 // --- subscription (plan + limits; plans are edited at /admin/pricing) ---
@@ -76,6 +78,14 @@ export interface UpdateSalonInput {
   serviceLocations?: ServiceLocation[];
   serviceArea?: string | null;
   hostSalonName?: string | null;
+}
+
+export function setMySalonHandle(token: string, handle: string) {
+  return salonApiFetch<{ handle: string; slug: string }>("/salons/mine/handle", {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ handle }),
+  });
 }
 
 export function updateMySalon(token: string, data: UpdateSalonInput) {

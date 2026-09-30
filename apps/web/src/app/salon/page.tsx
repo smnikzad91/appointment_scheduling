@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
-import { Calculator, CalendarCheck2, CalendarClock, ExternalLink, Hourglass, Share2, Sparkles } from "lucide-react";
+import { Calculator, CalendarCheck2, CalendarClock, ExternalLink, Hourglass, QrCode, Share2, Sparkles } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, listMySalonAppointments, listMyStylists, updateAppointmentStatus, type OwnerSalon, type OwnerAppointment, type OwnerStylist } from "@/lib/api/ownerSalon";
 import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
 import { isIndependent } from "@/lib/independent";
 import { SubscriptionNotice, useMySubscription } from "@/components/app/Subscription";
 import { formatToman } from "@/lib/persian";
+import { SITE_URL } from "@/lib/site";
 import { toSalonWallTime } from "@/lib/salonTime";
 import SalonBookingSheet from "@/components/app/SalonBookingSheet";
 import { AppointmentCard, AppointmentSheet, TodayTimeline, useAppointmentActions } from "@/components/app/appointments";
@@ -71,7 +72,8 @@ export default function SalonOverviewPage() {
   const needsConfirmation = upcoming.filter((a) => a.status === "PENDING").sort((a, b) => a.startAt.localeCompare(b.startAt));
   const todayRevenue = today.filter((a) => a.status !== "NO_SHOW").reduce((sum, a) => sum + a.priceToman, 0);
 
-  const bookingUrl = typeof window !== "undefined" ? `${window.location.origin}/s/${salon.slug}` : `/s/${salon.slug}`;
+  // The share kit's short link (nobatet.app/book/@handle; the slug until a handle is chosen).
+  const bookingUrl = `${SITE_URL}/book/@${salon.handle ?? salon.slug}`;
   async function shareBookingLink() {
     try {
       if (navigator.share) {
@@ -158,6 +160,13 @@ export default function SalonOverviewPage() {
         icon={Calculator}
         title="حسابداری"
         subtitle={independent ? "درآمد، هزینه‌ها و سود خالص ماه" : "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها"}
+        className="mt-3"
+      />
+      <LinkCard
+        href="/salon/share"
+        icon={QrCode}
+        title="کیت معرفی"
+        subtitle="لینک مستقیم رزرو، کد QR و پوستر برای استوری و چاپ"
         className="mt-3"
       />
       {/* An independent stylist's own 0% is by design: all the money is theirs. */}

@@ -34,7 +34,8 @@ function bookingPrefill(salon: Salon, sp: Awaited<PageProps["searchParams"]>): B
   const offersAll = stylist && serviceIds.every((id) => stylist.services.some((x) => x.serviceId === id));
   const today = toSalonWallTime(new Date(), salon.timezone).dateKey;
   const dateKey = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) && sp.date >= today && sp.date <= addDaysToDateKey(today, 13) ? sp.date : null;
-  return { serviceIds, stylistId: serviceIds.length && offersAll ? stylist.id : null, dateKey };
+  // A stylist's own link (/book/@handle) comes with no services: preselect them for whatever's picked.
+  return { serviceIds, stylistId: stylist && (serviceIds.length === 0 || offersAll) ? stylist.id : null, dateKey };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

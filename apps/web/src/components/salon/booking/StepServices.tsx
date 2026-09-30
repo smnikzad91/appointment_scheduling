@@ -7,8 +7,11 @@ import { getTotalDurationMinutes } from "@/lib/api/slots";
 import Sep from "@/components/common/Sep";
 
 export default function StepServices() {
-  const { salon, state, toggleService, goNext } = useBooking();
-  const activeServices = salon.services.filter((s) => s.active);
+  const { salon, state, toggleService, updateState, goNext } = useBooking();
+  // Opened from a stylist's own link (/book/@handle): only what that stylist does, until cleared.
+  const chosenStylist = salon.kind !== "INDEPENDENT" && state.stylistId ? salon.stylists.find((s) => s.id === state.stylistId) : undefined;
+  const offered = chosenStylist ? new Set(chosenStylist.services.map((s) => s.serviceId)) : null;
+  const activeServices = salon.services.filter((s) => s.active && (!offered || offered.has(s.id)));
 
   const selected = activeServices.filter((s) => state.serviceIds.includes(s.id));
   const totalPrice = selected.reduce((sum, s) => sum + s.priceToman, 0);
@@ -16,6 +19,21 @@ export default function StepServices() {
 
   return (
     <div className="flex flex-col gap-4">
+      {chosenStylist && (
+        <p className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2 text-xs text-g-muted">
+          <span>
+            خدمات <span className="font-bold text-g-ink">{chosenStylist.displayName}</span>
+          </span>
+          <button
+            type="button"
+            className="font-bold"
+            style={{ color: "var(--salon-brand-ink)" }}
+            onClick={() => updateState({ stylistId: null, serviceIds: [] })}
+          >
+            همه خدمات سالن
+          </button>
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         {salon.serviceCategories.map((category) => {
           const services = activeServices.filter((s) => s.categoryId === category.id);

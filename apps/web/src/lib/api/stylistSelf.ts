@@ -37,7 +37,18 @@ export interface SelfStylist {
   commissionPercent: number;
   workingHours: { dayOfWeek: number; startMinute: number; endMinute: number }[];
   services: SelfStylistService[];
-  salon: { slug: string; timezone: string; status: string };
+  salon: { slug: string; timezone: string; status: string; name: string; city: string; province: string | null; brandColor: string };
+  /** Short link nobatet.app/book/@<handle>; see getMyStylistHandle (which assigns one if missing). */
+  handle?: string | null;
+}
+
+/** The stylist's short-link handle; a generated one is assigned the first time. */
+export function getMyStylistHandle(token: string) {
+  return salonApiFetch<{ handle: string }>("/stylists/me/handle", { headers: authHeaders(token) });
+}
+
+export function setMyStylistHandle(token: string, handle: string) {
+  return salonApiFetch<{ handle: string }>("/stylists/me/handle", { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ handle }) });
 }
 
 /** Dispatched on window after the stylist edits their profile, so the app bar refreshes. */

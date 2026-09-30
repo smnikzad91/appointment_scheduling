@@ -385,6 +385,9 @@ model Salon {
   owner            User              @relation("SalonOwner", fields: [ownerId], references: [id])
   name             String
   slug             String            @unique
+  /// Chosen short link: nobatet.app/book/@<handle> (lowercase a-z 0-9 . _, unique across salons AND
+  /// stylists — checked in apps/api share-handle.util). Null = the link uses `slug`.
+  handle           String?           @unique
   description      String?
   // Province (استان) and county (شهرستان) from packages/iran-locations; province is null only on
   // salons created before it existed whose city didn't match the list.
@@ -456,6 +459,9 @@ model Stylist {
   salonId           String
   salon             Salon    @relation(fields: [salonId], references: [id])
   displayName       String
+  /// Short link nobatet.app/book/@<handle> to book with this stylist (same rules as Salon.handle);
+  /// given a generated one the first time they open their share kit.
+  handle            String?  @unique
   bio               String?
   avatarUrl         String?
   coverImageUrl     String?
