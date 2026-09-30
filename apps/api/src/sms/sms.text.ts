@@ -57,7 +57,7 @@ type CustomerBookingKind = "booked-customer" | "rescheduled-customer" | "cancell
  */
 export const independentBookingText = (kind: CustomerBookingKind, p: { day: string; time: string; name: string }) => {
   const verb = { "booked-customer": "ثبت شد", "confirmed-customer": "تایید شد", "cancelled-customer": "لغو شد", "rescheduled-customer": "منتقل شد" }[kind];
-  const lead = kind === "rescheduled-customer" ? "نوبتت: نوبت شما به " : "نوبتت: ";
+  const lead = kind === "rescheduled-customer" ? "نوبتت: به " : "نوبتت: ";
   return fitSms(p, ["name"], (q) => `${lead}${q.day} ساعت ${q.time} با ${q.name} ${verb}`);
 };
 
@@ -70,13 +70,13 @@ export const customerBookingText = (kind: CustomerBookingKind, p: BookingParams)
   };
   switch (kind) {
     case "booked-customer":
-      return withStylist((q, by) => `نوبتت: نوبت ${q.day} ساعت ${q.time} در ${q.salon}${by} ثبت شد`);
+      return withStylist((q, by) => `نوبتت: ${q.day} ساعت ${q.time} در ${q.salon}${by} ثبت شد`);
     case "rescheduled-customer":
-      return withStylist((q, by) => `نوبتت: نوبت شما به ${q.day} ساعت ${q.time} در ${q.salon}${by} منتقل شد`);
+      return withStylist((q, by) => `نوبتت: به ${q.day} ساعت ${q.time} در ${q.salon}${by} منتقل شد`);
     case "confirmed-customer":
-      return withStylist((q, by) => `نوبتت: نوبت ${q.day} ساعت ${q.time} در ${q.salon}${by} تایید شد`);
+      return withStylist((q, by) => `نوبتت: ${q.day} ساعت ${q.time} در ${q.salon}${by} تایید شد`);
     case "cancelled-customer":
-      return fitSms(p, ["salon"], (q) => `نوبتت: نوبت ${q.day} ساعت ${q.time} در ${q.salon} لغو شد`);
+      return fitSms(p, ["salon"], (q) => `نوبتت: ${q.day} ساعت ${q.time} در ${q.salon} لغو شد`);
   }
 };
 

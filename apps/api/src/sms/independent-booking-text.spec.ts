@@ -7,7 +7,7 @@ describe('independentBookingText', () => {
     expect(independentBookingText('booked-customer', p)).toBe('نوبتت: سه‌شنبه ۷ مهر ساعت ۱۶:۳۰ با سارا ایلکا ثبت شد');
     expect(independentBookingText('confirmed-customer', p)).toBe('نوبتت: سه‌شنبه ۷ مهر ساعت ۱۶:۳۰ با سارا ایلکا تایید شد');
     expect(independentBookingText('cancelled-customer', p)).toBe('نوبتت: سه‌شنبه ۷ مهر ساعت ۱۶:۳۰ با سارا ایلکا لغو شد');
-    expect(independentBookingText('rescheduled-customer', p)).toBe('نوبتت: نوبت شما به سه‌شنبه ۷ مهر ساعت ۱۶:۳۰ با سارا ایلکا منتقل شد');
+    expect(independentBookingText('rescheduled-customer', p)).toBe('نوبتت: به سه‌شنبه ۷ مهر ساعت ۱۶:۳۰ با سارا ایلکا منتقل شد');
   });
 
   it('shortens a long name rather than the date or time', () => {
@@ -19,7 +19,7 @@ describe('independentBookingText', () => {
 
   it("leaves the salons' wording alone", () => {
     expect(customerBookingText('booked-customer', { day: p.day, time: p.time, salon: 'رز', stylist: 'مریم' })).toBe(
-      'نوبتت: نوبت سه‌شنبه ۷ مهر ساعت ۱۶:۳۰ در رز با مریم ثبت شد',
+      'نوبتت: سه‌شنبه ۷ مهر ساعت ۱۶:۳۰ در رز با مریم ثبت شد',
     );
   });
 });
