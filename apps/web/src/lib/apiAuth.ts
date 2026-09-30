@@ -1,6 +1,6 @@
 import { apiFetch } from "./apiClient";
 
-export type ApiRole = "PLATFORM_ADMIN" | "SALON_OWNER" | "STYLIST" | "CUSTOMER";
+export type ApiRole = "PLATFORM_ADMIN" | "SALON_OWNER" | "STYLIST" | "CUSTOMER" | "INDEPENDENT_STYLIST";
 
 export interface ApiAuthUser {
   id: string;
@@ -60,6 +60,10 @@ export function apiRegisterSalonOwner(input: {
   longitude: number;
   salonPhone?: string;
   planId?: string;
+  /** An independent stylist's own business (salonName = their business/display name). */
+  kind?: "SALON" | "INDEPENDENT";
+  serviceLocations?: string[];
+  serviceArea?: string;
 }) {
   return apiFetch<ApiAuthResponse>("/auth/register-salon-owner", {
     method: "POST",

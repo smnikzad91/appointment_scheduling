@@ -12,6 +12,8 @@ export interface AdminSalon {
   address: string;
   phone: string;
   status: "PENDING" | "ACTIVE" | "SUSPENDED";
+  /** INDEPENDENT = an independent stylist's own business. */
+  kind?: "SALON" | "INDEPENDENT";
   createdAt: string;
   owner: { id: string; firstName: string; lastName: string; phone: string | null };
   plan: { id: string; name: string } | null;

@@ -22,7 +22,7 @@ const STEP_TITLES: Record<(typeof BOOKING_STEPS)[number], string> = {
 };
 
 export default function BookingSheet() {
-  const { isOpen, close, step, goBack, canGoBack } = useBooking();
+  const { isOpen, close, step, steps, goBack, canGoBack } = useBooking();
 
   // The page (and its map) must not scroll behind the open sheet.
   useEffect(() => {
@@ -36,8 +36,8 @@ export default function BookingSheet() {
 
   if (!isOpen) return null;
 
-  const stepIndex = BOOKING_STEPS.indexOf(step);
-  const progressPercent = ((stepIndex + 1) / BOOKING_STEPS.length) * 100;
+  const stepIndex = steps.indexOf(step);
+  const progressPercent = ((stepIndex + 1) / steps.length) * 100;
 
   return (
     <div className="fixed inset-0 z-[100000] flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label="رزرو نوبت">

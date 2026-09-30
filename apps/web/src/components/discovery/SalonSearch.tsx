@@ -1,5 +1,6 @@
 "use client";
 
+import type { SalonKind } from "@/lib/independent";
 import { useEffect, useMemo, useState } from "react";
 import { List, LoaderCircle, LocateFixed, Map as MapIcon, Navigation, Search, SearchX, Star, X } from "lucide-react";
 import { searchSalons, type SalonCard, type SalonSearchParams } from "@/lib/api/discovery";
@@ -20,6 +21,7 @@ const SELECT_CLASS =
   "h-12 w-full appearance-none rounded-2xl border border-app-line bg-app-card px-4 text-app-ink outline-none transition focus:border-app-accent focus:ring-4 focus:ring-app-accent/15 disabled:opacity-50";
 
 export interface SalonSearchInitial {
+  kind?: SalonKind;
   province?: string;
   city?: string;
   q?: string;
@@ -30,6 +32,7 @@ type LocateState = "idle" | "locating" | "denied" | "unavailable";
 
 export default function SalonSearch({ initial = {} }: { initial?: SalonSearchInitial }) {
   const [place, setPlace] = useState({ province: initial.province ?? "", city: initial.city ?? "" });
+  const [kind, setKind] = useState<SalonKind | "">(initial.kind ?? "");
   const [qInput, setQInput] = useState(initial.q ?? "");
   const [q, setQ] = useState(initial.q ?? "");
   const [near, setNear] = useState<Near | null>(null);
@@ -50,13 +53,14 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
 
   const params = useMemo<SalonSearchParams>(
     () => ({
+      kind: kind || undefined,
       province: place.province || undefined,
       city: place.city || undefined,
       q: q || undefined,
       ...(near && { lat: near.lat, lng: near.lng, sort, ...(radiusKm > 0 && { radiusKm }) }),
       limit: PAGE,
     }),
-    [place, q, near, sort, radiusKm],
+    [kind, place, q, near, sort, radiusKm],
   );
   const key = JSON.stringify(params) + retry;
 
@@ -73,12 +77,13 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
   // Keep the filters in the address bar (without reloading).
   useEffect(() => {
     const url = new URL(window.location.href);
-    for (const [k, v] of [["province", place.province], ["city", place.city], ["q", q]] as const) {
+    const type = kind === "INDEPENDENT" ? "independent" : kind === "SALON" ? "salon" : "";
+    for (const [k, v] of [["type", type], ["province", place.province], ["city", place.city], ["q", q]] as const) {
       if (v) url.searchParams.set(k, v);
       else url.searchParams.delete(k);
     }
     window.history.replaceState(window.history.state, "", url);
-  }, [place, q]);
+  }, [kind, place, q]);
 
   const loading = results?.key !== key && error?.key !== key;
   const failed = error?.key === key;
@@ -136,6 +141,21 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
           </button>
         )}
       </label>
+
+      {/* Salons, independent stylists, or both */}
+      <div role="radiogroup" aria-label="نوع" className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+        {(
+          [
+            ["", "همه"],
+            ["SALON", "سالن‌ها"],
+            ["INDEPENDENT", "آرایشگران مستقل"],
+          ] as const
+        ).map(([v, label]) => (
+          <button key={v || "all"} type="button" role="radio" aria-checked={kind === v} onClick={() => setKind(v)} className={chip(kind === v)}>
+            {label}
+          </button>
+        ))}
+      </div>
 
       <div className="mt-3">
         <ProvinceCitySelect

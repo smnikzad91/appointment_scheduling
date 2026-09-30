@@ -46,6 +46,12 @@ export default function Hero() {
               پیدا کردن سالن و رزرو نوبت
             </Link>
           </div>
+          <p className="g-rise mt-4 text-sm text-g-muted" style={rise(3)}>
+            آرایشگر مستقل هستید و سالن ندارید؟{" "}
+            <Link href="/signup-salon?type=independent" className="font-bold text-g-accent underline-offset-4 hover:underline">
+              ثبت‌نام آرایشگر مستقل
+            </Link>
+          </p>
 
           <ul className="g-rise mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-g-muted md:justify-start" style={rise(4)}>
             {CHECKS.map((item) => (

@@ -5,6 +5,7 @@ import type { Session } from "next-auth";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { uploadsDir } from "@/lib/privateUploads";
+import { usesSalonPanel } from "@/lib/roles";
 
 // An expense receipt (/uploads/<folder>/<file>, rewritten here by next.config). Only the owner of
 // the expense that points at it gets the file: a stylist's receipt ("expenses") only that
@@ -26,7 +27,7 @@ const OWNS: Record<string, (user: Session["user"], url: string) => Promise<boole
     user.role === "STYLIST" &&
     !!(await prisma.stylistExpense.findFirst({ where: { receiptUrl: url, stylist: { userId: user.id } }, select: { id: true } })),
   "salon-expenses": async (user, url) =>
-    user.role === "SALON_OWNER" &&
+    usesSalonPanel(user.role) &&
     !!(await prisma.salonExpense.findFirst({ where: { receiptUrl: url, salon: { ownerId: user.id } }, select: { id: true } })),
 };
 

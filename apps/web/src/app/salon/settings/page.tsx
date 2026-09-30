@@ -13,7 +13,8 @@ import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoa
 import ProvinceCitySelect from "@/components/common/ProvinceCitySelect";
 import { placeCenter } from "@appointment-scheduling/iran-locations";
 import { persianApiError } from "@/lib/api/errorMessages";
-import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, cx, LinkCard } from "@/components/app/ui";
+import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, Toggle, cx, LinkCard } from "@/components/app/ui";
+import { SERVICE_LOCATIONS, SERVICE_LOCATION_HINT, SERVICE_LOCATION_LABEL, isIndependent } from "@/lib/independent";
 import Sep from "@/components/common/Sep";
 
 // Curated brand colors that read well on the public salon page; the last swatch opens a picker.
@@ -51,6 +52,7 @@ export default function SalonSettingsPage() {
           brandColor: s.brandColor,
           latitude: s.latitude ?? undefined,
           longitude: s.longitude ?? undefined,
+          ...(isIndependent(s) && { serviceLocations: s.serviceLocations, serviceArea: s.serviceArea ?? "" }),
         });
       })
       .catch(() => setLoadError("خطا در دریافت اطلاعات سالن"));
@@ -67,6 +69,7 @@ export default function SalonSettingsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
+    if (form.serviceLocations && form.serviceLocations.length === 0) return setError("دست‌کم یک محل ارائه خدمات را انتخاب کنید");
     setSaving(true);
     setError(null);
     try {
@@ -97,11 +100,16 @@ export default function SalonSettingsPage() {
   if (!salon) return <ListSkeleton rows={5} />;
 
   const brand = form.brandColor ?? salon.brandColor;
+  const independent = isIndependent(salon);
+  const locations = form.serviceLocations ?? [];
   const isCustomColor = !BRAND_SWATCHES.includes(brand.toLowerCase());
 
   return (
     <form onSubmit={handleSubmit}>
-      <PageHeader title="تنظیمات سالن" subtitle="این اطلاعات در صفحه رزرو سالن به مشتری‌ها نشان داده می‌شود." />
+      <PageHeader
+        title={independent ? "تنظیمات کسب‌وکار" : "تنظیمات سالن"}
+        subtitle={independent ? "این اطلاعات در صفحه رزرو شما به مشتری‌ها نشان داده می‌شود." : "این اطلاعات در صفحه رزرو سالن به مشتری‌ها نشان داده می‌شود."}
+      />
 
       {/* Cover + logo, laid out like the public page */}
       <ProfilePhotos
@@ -128,7 +136,13 @@ export default function SalonSettingsPage() {
         <ChevronLeft className="h-4 w-4 text-app-muted" aria-hidden />
       </Link>
       <ReviewsLinkCard token={token} scope="salon" className="mt-3" />
-      <LinkCard href="/salon/accounting" icon={Calculator} title="حسابداری" subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها" className="mt-3" />
+      <LinkCard
+        href="/salon/accounting"
+        icon={Calculator}
+        title="حسابداری"
+        subtitle={independent ? "درآمد، هزینه‌ها و سود خالص ماه" : "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها"}
+        className="mt-3"
+      />
       <LinkCard href="/tutorials?role=owner" icon={BookOpen} title="راهنمای استفاده" subtitle="راهنمای تصویری قدم‌به‌قدم همه بخش‌های پنل سالن" className="mt-3" />
 
       {subscription && (
@@ -138,13 +152,18 @@ export default function SalonSettingsPage() {
         </div>
       )}
 
-      <SectionTitle>اطلاعات سالن</SectionTitle>
+      <SectionTitle>{independent ? "اطلاعات کسب‌وکار" : "اطلاعات سالن"}</SectionTitle>
       <Card className="flex flex-col gap-4 p-4">
-        <Field label="نام سالن">
+        <Field label={independent ? "نام کاری" : "نام سالن"}>
           <TextInput value={form.name ?? ""} onChange={(e) => update({ name: e.target.value })} />
         </Field>
-        <Field label="درباره سالن">
-          <TextArea rows={3} value={form.description ?? ""} onChange={(e) => update({ description: e.target.value })} placeholder="چند خط درباره سالن، تخصص‌ها و فضای آن" />
+        <Field label={independent ? "درباره شما" : "درباره سالن"}>
+          <TextArea
+            rows={3}
+            value={form.description ?? ""}
+            onChange={(e) => update({ description: e.target.value })}
+            placeholder={independent ? "چند خط درباره خودتان، تخصص‌ها و سابقه کار" : "چند خط درباره سالن، تخصص‌ها و فضای آن"}
+          />
         </Field>
         <ProvinceCitySelect
           value={{ province: form.province ?? "", city: form.city ?? "" }}
@@ -160,7 +179,10 @@ export default function SalonSettingsPage() {
         <Field label="تلفن">
           <TextInput type="tel" inputMode="tel" dir="ltr" className="text-end" value={form.phone ?? ""} onChange={(e) => update({ phone: e.target.value })} />
         </Field>
-        <Field label="آدرس دقیق" hint="خیابان، کوچه، پلاک، طبقه">
+        <Field
+          label={independent ? "آدرس محل کار" : "آدرس دقیق"}
+          hint={independent && !locations.includes("STUDIO") ? "فقط مشتری‌ای که نوبت گرفته آن را می‌بیند" : "خیابان، کوچه، پلاک، طبقه"}
+        >
           <TextArea rows={2} value={form.address ?? ""} onChange={(e) => update({ address: e.target.value })} />
         </Field>
         <Field label="اینستاگرام">
@@ -170,6 +192,34 @@ export default function SalonSettingsPage() {
           </div>
         </Field>
       </Card>
+
+      {independent && (
+        <>
+          <SectionTitle>محل ارائه خدمات</SectionTitle>
+          <Card className="flex flex-col divide-y divide-app-line p-0">
+            {SERVICE_LOCATIONS.map((loc) => (
+              <div key={loc} className="flex items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-app-ink">{SERVICE_LOCATION_LABEL[loc]}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-app-muted">{SERVICE_LOCATION_HINT[loc]}</p>
+                </div>
+                <Toggle
+                  checked={locations.includes(loc)}
+                  onChange={(on) => update({ serviceLocations: on ? [...locations, loc] : locations.filter((l) => l !== loc) })}
+                  label={SERVICE_LOCATION_LABEL[loc]}
+                />
+              </div>
+            ))}
+            {locations.includes("CLIENT_HOME") && (
+              <div className="p-4">
+                <Field label="محدوده خدمات در منزل" hint="مثلاً کل قائم‌شهر و ساری">
+                  <TextInput maxLength={200} value={form.serviceArea ?? ""} onChange={(e) => update({ serviceArea: e.target.value })} />
+                </Field>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
 
       <SectionTitle>موقعیت روی نقشه</SectionTitle>
       <Card className="overflow-hidden p-0">

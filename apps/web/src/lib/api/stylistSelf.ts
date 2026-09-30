@@ -1,4 +1,5 @@
 import { salonApiFetch } from "./salonApiClient";
+import type { ServiceLocation } from "@/lib/independent";
 
 function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` };
@@ -122,6 +123,9 @@ export interface StylistAppointment {
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   priceToman: number;
   notes: string | null;
+  /** Independent stylists: where it happens (null = not specified / a salon) and a home visit's address. */
+  serviceLocation?: ServiceLocation | null;
+  visitAddress?: string | null;
   /** Frozen once COMPLETED: the stylist's commission plus any tip. */
   stylistShareToman: number | null;
   services: { serviceId: string; priceToman: number; service: { name: string } }[];

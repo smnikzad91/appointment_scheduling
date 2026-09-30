@@ -28,7 +28,7 @@ async function goToPanel(router: ReturnType<typeof useRouter>) {
   const back = new URLSearchParams(window.location.search).get("callbackUrl");
   const safeBack = back && /^\/(?![\/\\])/.test(back) ? back : null; // "/x", never "//x" or "/\\x"
   router.push(
-    role === "PLATFORM_ADMIN" ? "/admin" : role === "SALON_OWNER" ? "/salon" : role === "STYLIST" ? "/stylist" : safeBack ?? "/dashboard",
+    role === "PLATFORM_ADMIN" ? "/admin" : role === "SALON_OWNER" || role === "INDEPENDENT_STYLIST" ? "/salon" : role === "STYLIST" ? "/stylist" : safeBack ?? "/dashboard",
   );
   router.refresh();
 }

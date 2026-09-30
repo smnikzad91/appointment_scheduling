@@ -13,6 +13,7 @@ import { FloatingInput, FloatingTextArea, FormError, PasswordInput, PasswordStre
 import GradientButton from "@/components/guest/GradientButton";
 import { rise } from "@/components/guest/motion";
 import { planFeatureLines, planPriceLabel, type PricingPlanData } from "@/lib/pricing";
+import { SERVICE_LOCATIONS, SERVICE_LOCATION_HINT, SERVICE_LOCATION_LABEL, type SalonKind, type ServiceLocation } from "@/lib/independent";
 
 export type SignUpPlan = Pick<PricingPlanData, "id" | "name" | "monthlyPriceToman" | "maxStylists" | "smsPerMonth" | "features" | "recommended">;
 
@@ -20,12 +21,19 @@ export default function SignUpSalonForm({
   plans,
   initialPlanId,
   trialDays,
+  initialKind = "SALON",
 }: {
   plans: SignUpPlan[];
   initialPlanId: string | null;
   trialDays: number;
+  /** "INDEPENDENT" when opened as ?type=independent (an independent stylist's own business). */
+  initialKind?: SalonKind;
 }) {
   const router = useRouter();
+  const [kind, setKind] = useState<SalonKind>(initialKind);
+  const independent = kind === "INDEPENDENT";
+  const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([]);
+  const [serviceArea, setServiceArea] = useState("");
   const [planId, setPlanId] = useState(initialPlanId);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -48,12 +56,20 @@ export default function SignUpSalonForm({
       setError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد (مثال: ۰۹۱۱۹۱۰۰۹۹۱)");
       return;
     }
+    if (independent && serviceLocations.length === 0) {
+      setError("مشخص کنید کجا خدمات می‌دهید");
+      return;
+    }
     if (!place.province || !place.city) {
-      setError("استان و شهر سالن را انتخاب کنید");
+      setError(independent ? "استان و شهر محل کارتان را انتخاب کنید" : "استان و شهر سالن را انتخاب کنید");
       return;
     }
     if (!pin) {
-      setError("محل سالن را روی نقشه مشخص کنید تا مشتری‌ها بتوانند آن را پیدا کنند");
+      setError(
+        independent
+          ? "محل کارتان را روی نقشه مشخص کنید تا مشتری‌های نزدیک شما را پیدا کنند"
+          : "محل سالن را روی نقشه مشخص کنید تا مشتری‌ها بتوانند آن را پیدا کنند",
+      );
       return;
     }
 
@@ -74,6 +90,7 @@ export default function SignUpSalonForm({
         latitude: pin.lat,
         longitude: pin.lng,
         planId: planId ?? undefined,
+        ...(independent && { kind, serviceLocations, serviceArea: serviceArea.trim() || undefined }),
       }),
     });
 
@@ -105,8 +122,12 @@ export default function SignUpSalonForm({
   return (
     <AuthCard
       wide
-      title="سالن‌تان را آنلاین کنید"
-      subtitle="ثبت رایگان؛ چند دقیقه دیگر لینک رزرو اختصاصی سالن آماده است."
+      title={independent ? "کسب‌وکارتان را آنلاین کنید" : "سالن‌تان را آنلاین کنید"}
+      subtitle={
+        independent
+          ? "برای آرایشگرهای مستقل: خدمات، ساعات کاری، نوبت‌ها و درآمد خودتان، بدون سالن."
+          : "ثبت رایگان؛ چند دقیقه دیگر لینک رزرو اختصاصی سالن آماده است."
+      }
       footer={
         <>
           قبلاً ثبت‌نام کرده‌اید؟ <AuthLink href="/signin">وارد شوید</AuthLink>
@@ -115,6 +136,29 @@ export default function SignUpSalonForm({
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <FormError>{error}</FormError>
+
+        <div role="radiogroup" aria-label="نوع کسب‌وکار" className="g-rise grid grid-cols-2 gap-2.5" style={rise(2.5)}>
+          {(
+            [
+              ["SALON", "صاحب سالن هستم", "سالن با یک یا چند آرایشگر"],
+              ["INDEPENDENT", "آرایشگر مستقل هستم", "بدون سالن؛ استودیو، منزل یا خدمات در منزل"],
+            ] as const
+          ).map(([value, title, hint]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={kind === value}
+              onClick={() => setKind(value)}
+              className={`flex flex-col gap-1 rounded-2xl border p-3.5 text-start transition ${
+                kind === value ? "border-g-accent bg-g-accent/10" : "border-g-line-strong hover:border-g-accent/50"
+              }`}
+            >
+              <span className="font-bold text-g-ink">{title}</span>
+              <span className="text-xs leading-5 text-g-muted">{hint}</span>
+            </button>
+          ))}
+        </div>
 
         <StepTitle n="۱" i={3}>اطلاعات شما</StepTitle>
         <div className="g-rise grid grid-cols-2 gap-3" style={rise(3.5)}>
@@ -139,16 +183,62 @@ export default function SignUpSalonForm({
           <PasswordStrength password={password} />
         </div>
 
-        <StepTitle n="۲" i={5}>سالن</StepTitle>
-        <FloatingInput className="g-rise" style={rise(5.5)} label="نام سالن" hint="مثلاً سالن زیبایی رزا" required value={salonName} onChange={(e) => setSalonName(e.target.value)} />
+        <StepTitle n="۲" i={5}>{independent ? "کسب‌وکار شما" : "سالن"}</StepTitle>
+        <FloatingInput
+          className="g-rise"
+          style={rise(5.5)}
+          label={independent ? "نام کاری" : "نام سالن"}
+          hint={independent ? "نامی که مشتری‌ها می‌بینند، مثلاً رزا میکاپ" : "مثلاً سالن زیبایی رزا"}
+          required
+          value={salonName}
+          onChange={(e) => setSalonName(e.target.value)}
+        />
+        {independent && (
+          <div className="g-rise flex flex-col gap-2" style={rise(5.75)}>
+            <p className="px-1 text-[13px] text-g-muted">
+              کجا خدمات می‌دهید؟<span className="text-g-danger"> *</span>
+            </p>
+            {SERVICE_LOCATIONS.map((loc) => {
+              const on = serviceLocations.includes(loc);
+              return (
+                <button
+                  key={loc}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  onClick={() => setServiceLocations((list) => (on ? list.filter((l) => l !== loc) : [...list, loc]))}
+                  className={`flex flex-col gap-0.5 rounded-2xl border px-3.5 py-3 text-start transition ${
+                    on ? "border-g-accent bg-g-accent/10" : "border-g-line-strong hover:border-g-accent/50"
+                  }`}
+                >
+                  <span className="text-sm font-bold text-g-ink">{SERVICE_LOCATION_LABEL[loc]}</span>
+                  <span className="text-xs leading-5 text-g-muted">{SERVICE_LOCATION_HINT[loc]}</span>
+                </button>
+              );
+            })}
+            {serviceLocations.includes("CLIENT_HOME") && (
+              <FloatingInput
+                label="محدوده خدمات در منزل"
+                hint="مثلاً کل قائم‌شهر و ساری"
+                maxLength={200}
+                value={serviceArea}
+                onChange={(e) => setServiceArea(e.target.value)}
+              />
+            )}
+          </div>
+        )}
         <div className="g-rise" style={rise(6)}>
           <ProvinceCitySelect value={place} onChange={setPlace} required selectClassName="g-select" labelClassName="px-1 text-[13px] text-g-muted" />
         </div>
         <FloatingTextArea
           className="g-rise"
           style={rise(6.5)}
-          label="آدرس دقیق"
-          hint="خیابان، کوچه، پلاک، طبقه"
+          label={independent ? "آدرس محل کار" : "آدرس دقیق"}
+          hint={
+            independent && !serviceLocations.includes("STUDIO")
+              ? "فقط مشتری‌ای که نوبت گرفته آن را می‌بیند"
+              : "خیابان، کوچه، پلاک، طبقه"
+          }
           rows={2}
           required
           minLength={5}
@@ -159,8 +249,12 @@ export default function SignUpSalonForm({
 
         <div className="g-rise" style={rise(7)}>
           <p className="mb-1.5 px-1 text-[13px] text-g-muted">
-            محل سالن روی نقشه<span className="text-g-danger"> *</span>
+            {independent ? "محل کار روی نقشه" : "محل سالن روی نقشه"}
+            <span className="text-g-danger"> *</span>
           </p>
+          {independent && !serviceLocations.includes("STUDIO") && (
+            <p className="mb-1.5 px-1 text-xs leading-5 text-g-faint">فقط حدود محله (نه نقطه دقیق) در جست‌وجو نشان داده می‌شود.</p>
+          )}
           <div className="h-60 overflow-hidden rounded-2xl border border-g-line-strong">
             <LocationPickerLoader value={pin} onChange={setPin} center={center} />
           </div>
@@ -193,7 +287,7 @@ export default function SignUpSalonForm({
         )}
 
         <GradientButton type="submit" loading={loading} loadingLabel="در حال ثبت‌نام…" className="g-rise mt-2" style={rise(8)}>
-          ثبت‌نام و ساخت سالن
+          {independent ? "ثبت‌نام آرایشگر مستقل" : "ثبت‌نام و ساخت سالن"}
         </GradientButton>
       </form>
     </AuthCard>

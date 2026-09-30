@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { averageRating, weightedRating, type RatingStats } from "../showcase/rating.util.js";
 import { EARTH_RADIUS_KM, boundingBox } from "./geo.util.js";
 import { SearchSalonsDto } from "./dto/search-salons.dto.js";
+import { publicLocation } from "./public-location.util.js";
 
 /** Candidates considered per search before sorting/paging — plenty for a province or a radius. */
 const MAX_CANDIDATES = 500;
@@ -22,6 +23,9 @@ const CARD_SELECT = {
   coverImageUrl: true,
   latitude: true,
   longitude: true,
+  kind: true,
+  serviceLocations: true,
+  serviceArea: true,
   services: { where: { active: true }, orderBy: { priceToman: "asc" }, select: { name: true, priceToman: true } },
 } satisfies Prisma.SalonSelect;
 
@@ -82,10 +86,14 @@ export class SalonSearchService {
       where.push(Prisma.sql`s."province" = ${province.name}`);
     }
     if (dto.city) where.push(Prisma.sql`s."city" = ${normalizePlaceName(dto.city)}`);
+    if (dto.kind) where.push(Prisma.sql`s."kind" = ${dto.kind}::"SalonKind"`);
     const q = dto.q ? normalizePlaceName(dto.q) : "";
     if (q) {
       const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
-      where.push(Prisma.sql`(s."name" ILIKE ${like} OR s."address" ILIKE ${like} OR EXISTS (
+      // A private (home) address is never searchable.
+      where.push(Prisma.sql`(s."name" ILIKE ${like}
+        OR (s."address" ILIKE ${like} AND (s."kind" = 'SALON' OR 'STUDIO' = ANY(s."serviceLocations")))
+        OR EXISTS (
         SELECT 1 FROM "services" sv WHERE sv."salonId" = s."id" AND sv."active" AND sv."name" ILIKE ${like}))`);
     }
 
@@ -136,15 +144,20 @@ export class SalonSearchService {
   }
 }
 
-export function toSalonCard(s: SalonCardRow, stats: RatingStats | undefined, km: number | null) {
+export function toSalonCard(row: SalonCardRow, stats: RatingStats | undefined, km: number | null) {
   const st = stats ?? { ratingSum: 0, ratingCount: 0 };
+  const s = publicLocation(row);
   return {
     id: s.id,
     name: s.name,
     slug: s.slug,
+    kind: s.kind,
+    serviceLocations: s.serviceLocations,
+    serviceArea: s.serviceArea,
     province: s.province,
     city: s.city,
     address: s.address,
+    approximateLocation: s.approximateLocation,
     logoUrl: s.logoUrl,
     coverImageUrl: s.coverImageUrl,
     latitude: s.latitude,
@@ -152,7 +165,8 @@ export function toSalonCard(s: SalonCardRow, stats: RatingStats | undefined, km:
     rating: averageRating(st),
     ratingCount: st.ratingCount,
     /** One decimal; null unless the search was near a point. */
-    distanceKm: km == null ? null : Math.round(km * 10) / 10,
+    // A private address is only placed to the nearest km (a precise distance would reveal it).
+    distanceKm: km == null ? null : s.approximateLocation ? Math.max(1, Math.round(km)) : Math.round(km * 10) / 10,
     services: s.services.slice(0, SERVICE_PREVIEW).map((x) => x.name),
     serviceCount: s.services.length,
     minPriceToman: s.services[0]?.priceToman ?? null,

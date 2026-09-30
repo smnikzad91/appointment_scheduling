@@ -9,7 +9,7 @@ import { rise } from "@/components/guest/motion";
 import GuestTabBar from "@/components/guest/GuestTabBar";
 
 interface PageProps {
-  searchParams: Promise<{ province?: string; city?: string; q?: string }>;
+  searchParams: Promise<{ province?: string; city?: string; q?: string; type?: string }>;
 }
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
@@ -47,7 +47,14 @@ export default async function SalonsPage({ searchParams }: PageProps) {
           بر اساس شهر، خدمت یا نزدیک‌ترین سالن به شما — و همین‌جا نوبت بگیرید.
         </p>
         <div className="g-rise" style={rise(2)}>
-          <SalonSearch initial={{ province, city, q: sp.q?.slice(0, 60) }} />
+          <SalonSearch
+            initial={{
+              province,
+              city,
+              q: sp.q?.slice(0, 60),
+              kind: sp.type === "independent" ? "INDEPENDENT" : sp.type === "salon" ? "SALON" : undefined,
+            }}
+          />
         </div>
       </main>
       <GuestTabBar />

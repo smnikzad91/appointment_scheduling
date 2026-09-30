@@ -91,6 +91,7 @@ const ROLE_LABEL: Record<UserRole, TranslationKey> = {
   salon_owner:    "roleSalonOwner",
   stylist:        "roleStylist",
   customer:       "roleCustomer",
+  independent_stylist: "roleIndependentStylist",
 };
 
 const ROLE_BADGE: Record<UserRole, string> = {
@@ -98,6 +99,7 @@ const ROLE_BADGE: Record<UserRole, string> = {
   salon_owner:    "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   stylist:        "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
   customer:       "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  independent_stylist: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
 };
 
 // Only these two can be switched from here; see /api/admin/users/[id].
@@ -287,6 +289,7 @@ export default function AdminUsersList() {
         salon_owner:    t(ROLE_LABEL.salon_owner),
         stylist:        t(ROLE_LABEL.stylist),
         customer:       t(ROLE_LABEL.customer),
+        independent_stylist: t(ROLE_LABEL.independent_stylist),
       },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps

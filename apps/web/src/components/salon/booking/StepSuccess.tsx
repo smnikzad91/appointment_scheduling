@@ -32,7 +32,7 @@ export default function StepSuccess() {
     const ics = buildIcsFile({
       title: `نوبت ${salon.name}`,
       description: services.map((s) => s.name).join("، "),
-      location: salon.address,
+      location: salon.address ?? undefined,
       start,
       durationMinutes: result!.endMinute - result!.startMinute,
     });

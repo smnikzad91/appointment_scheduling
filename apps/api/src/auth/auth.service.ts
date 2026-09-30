@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   HttpException,
@@ -11,7 +12,7 @@ import {
 import { randomInt } from "node:crypto";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
-import { Role, SalonStatus, User } from "@appointment-scheduling/database";
+import { Role, SalonKind, SalonStatus, User } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { generateUniqueSlug } from "../salons/slugify.util.js";
 import { RegisterDto } from "./dto/register.dto.js";
@@ -87,6 +88,9 @@ export class AuthService {
     assertIranCoordinates(dto.latitude, dto.longitude);
     await this.assertIdentifierAvailable(dto.phone, dto.email);
 
+    const independent = dto.kind === SalonKind.INDEPENDENT;
+    if (independent && !dto.serviceLocations?.length) throw new BadRequestException("Choose where you work");
+
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const slug = await generateUniqueSlug(this.prisma, dto.salonName);
     const subscription = await this.subscriptions.initialFor(dto.planId);
@@ -99,12 +103,12 @@ export class AuthService {
           passwordHash,
           firstName: dto.firstName,
           lastName: dto.lastName,
-          role: Role.SALON_OWNER,
+          role: independent ? Role.INDEPENDENT_STYLIST : Role.SALON_OWNER,
           avatarUrl: randomDefaultAvatar(),
         },
       });
 
-      await tx.salon.create({
+      const salon = await tx.salon.create({
         data: {
           ownerId: owner.id,
           name: dto.salonName,
@@ -118,8 +122,26 @@ export class AuthService {
           // New salons need platform-admin approval before they're publicly visible.
           status: SalonStatus.PENDING,
           ...subscription,
+          ...(independent && {
+            kind: SalonKind.INDEPENDENT,
+            serviceLocations: dto.serviceLocations,
+            serviceArea: dto.serviceArea ?? null,
+          }),
         },
       });
+
+      // An independent stylist is their business's only stylist. Commission 0%: with no salon to
+      // share with, the whole amount is their own income (see accounting).
+      if (independent) {
+        await tx.stylist.create({
+          data: {
+            userId: owner.id,
+            salonId: salon.id,
+            displayName: `${dto.firstName} ${dto.lastName}`.trim(),
+            commissionPercent: 0,
+          },
+        });
+      }
 
       return owner;
     });

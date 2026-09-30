@@ -19,19 +19,21 @@ function minutesToTime(minutes: number): string {
 export default function SalonJsonLd({ salon, url }: { salon: Salon; url: string }) {
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "BeautySalon",
+    // An independent stylist is a person offering beauty services, not a salon premises.
+    "@type": salon.kind === "INDEPENDENT" ? "HealthAndBeautyBusiness" : "BeautySalon",
     name: salon.name,
     description: salon.description ?? undefined,
     image: salon.coverImageUrl,
     telephone: salon.phone,
     address: {
       "@type": "PostalAddress",
-      streetAddress: salon.address,
+      ...(salon.address && { streetAddress: salon.address }),
       addressLocality: salon.city,
       ...(salon.province && { addressRegion: salon.province }),
       addressCountry: "IR",
     },
-    geo: salon.location
+    // A rounded (private) position is left out: it's an area, not where the business is.
+    geo: salon.location && !salon.approximateLocation
       ? {
           "@type": "GeoCoordinates",
           latitude: salon.location.lat,

@@ -18,26 +18,34 @@ import { useEffect, useState } from "react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { SALON_UPDATED_EVENT, getMySalon } from "@/lib/api/ownerSalon";
 import { STYLIST_UPDATED_EVENT, getMyStylistProfile } from "@/lib/api/stylistSelf";
+import { isIndependent } from "@/lib/independent";
 import AppShell, { type ShellIdentity } from "./AppShell";
 import NotificationBell from "./NotificationBell";
 
 // One wrapper per panel so server layouts can render the shell without passing icon components
 // (functions) across the server/client boundary.
 
-/** The owner's app bar shows the salon (logo + name) rather than the owner's personal account. */
-function useSalonIdentity(token: string | null): ShellIdentity | null {
+/**
+ * The owner's app bar shows the salon (logo + name) rather than the owner's personal account.
+ * Also tells an independent stylist's business apart, whose panel has no stylists tab.
+ */
+function useSalonIdentity(token: string | null): { identity: ShellIdentity | null; independent: boolean } {
   const [identity, setIdentity] = useState<ShellIdentity | null>(null);
+  const [independent, setIndependent] = useState(false);
   useEffect(() => {
     if (!token) return;
     const load = () =>
       getMySalon(token)
-        .then((s) => setIdentity({ name: s.name, src: s.logoUrl, shape: "square" }))
+        .then((s) => {
+          setIdentity({ name: s.name, src: s.logoUrl, shape: "square" });
+          setIndependent(isIndependent(s));
+        })
         .catch(() => {}); // keep the account avatar if this fails
     load();
     window.addEventListener(SALON_UPDATED_EVENT, load);
     return () => window.removeEventListener(SALON_UPDATED_EVENT, load);
   }, [token]);
-  return identity;
+  return { identity, independent };
 }
 
 /**
@@ -67,17 +75,20 @@ function useStylistIdentity(token: string | null): ShellIdentity | null {
 
 export function SalonShell({ children }: { children: React.ReactNode }) {
   const token = useApiAccessToken();
-  const identity = useSalonIdentity(token);
+  const { identity, independent } = useSalonIdentity(token);
   return (
     <AppShell
-      panelName="پنل سالن"
+      panelName={independent ? "پنل آرایشگر مستقل" : "پنل سالن"}
       identity={identity}
       actions={<NotificationBell token={token} scope="salon" />}
       tabs={[
         { href: "/salon", label: "خانه", icon: Home, exact: true },
         { href: "/salon/appointments", label: "نوبت‌ها", icon: CalendarClock },
         { href: "/salon/services", label: "خدمات", icon: Scissors },
-        { href: "/salon/stylists", label: "آرایشگرها", icon: Users },
+        // An independent stylist works alone: their own hours instead of a stylists list.
+        independent
+          ? { href: "/salon/schedule", label: "ساعات کاری", icon: Clock3 }
+          : { href: "/salon/stylists", label: "آرایشگرها", icon: Users },
         { href: "/salon/settings", label: "تنظیمات", icon: Settings },
       ]}
       accountLinks={[{ href: "/tutorials?role=owner", label: "راهنمای استفاده", icon: BookOpen }]}

@@ -7,9 +7,10 @@ export const metadata: Metadata = {
   description: "سالن زیبایی خود را رایگان در نوبتت ثبت کنید و نوبت‌دهی آنلاین را همین امروز شروع کنید.",
 };
 
-// ?plan=<id> comes from a plan's button in the landing page's pricing section.
-export default async function SignUpSalon({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
-  const [{ plan }, plans, settings] = await Promise.all([
+// ?plan=<id> comes from a plan's button in the landing page's pricing section;
+// ?type=independent opens it for an independent stylist (their own business, no salon).
+export default async function SignUpSalon({ searchParams }: { searchParams: Promise<{ plan?: string; type?: string }> }) {
+  const [{ plan, type }, plans, settings] = await Promise.all([
     searchParams,
     prisma.pricingPlan.findMany({
       where: { active: true },
@@ -20,5 +21,12 @@ export default async function SignUpSalon({ searchParams }: { searchParams: Prom
   ]);
   const initial = plans.find((p) => p.id === plan) ?? plans.find((p) => p.recommended) ?? plans[0] ?? null;
 
-  return <SignUpSalonForm plans={plans} initialPlanId={initial?.id ?? null} trialDays={settings?.trialDays ?? 0} />;
+  return (
+    <SignUpSalonForm
+      plans={plans}
+      initialPlanId={initial?.id ?? null}
+      trialDays={settings?.trialDays ?? 0}
+      initialKind={type === "independent" ? "INDEPENDENT" : "SALON"}
+    />
+  );
 }

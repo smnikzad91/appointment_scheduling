@@ -1,3 +1,5 @@
+import type { SalonKind, ServiceLocation } from "@/lib/independent";
+
 export type WeekDay = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Sunday .. 6 = Saturday (matches packages/database's WorkingHour.dayOfWeek)
 
 export interface WorkingHours {
@@ -77,8 +79,15 @@ export interface Salon {
   timezone: string; // IANA, e.g. "Asia/Tehran" — slots and working hours are wall-clock time here
   province: string | null; // استان; null on salons created before provinces were recorded
   city: string;
-  address: string;
+  /** null for an independent stylist who works from home / only visits: private until booked. */
+  address: string | null;
   location: GeoLocation | null; // null until the owner sets coordinates
+  /** true = `location` is rounded to ~1 km (a private address): show an area, never a pin/directions. */
+  approximateLocation: boolean;
+  /** INDEPENDENT = an independent stylist's own business (they're its only stylist). */
+  kind: SalonKind;
+  serviceLocations: ServiceLocation[];
+  serviceArea: string | null;
   phone: string;
   instagram?: string | null;
   workingHours: WorkingHours[]; // derived: union across active stylists per weekday

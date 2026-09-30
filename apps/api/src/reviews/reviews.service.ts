@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { NotificationType, Prisma, ReviewStatus, ReviewTarget } from "@appointment-scheduling/database";
+import { NotificationType, Prisma, ReviewStatus, ReviewTarget, SalonKind } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
@@ -40,7 +40,10 @@ export class ReviewsService {
   // ── Customer ─────────────────────────────────────────────────────────────
 
   async create(customerId: string, appointmentId: string, dto: CreateReviewDto) {
-    const appointment = await this.prisma.appointment.findUnique({ where: { id: appointmentId } });
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { salon: { select: { kind: true } } },
+    });
     if (!appointment) throw new NotFoundException("Appointment not found");
     if (appointment.customerId !== customerId) throw new ForbiddenException("Not your appointment");
     if (appointment.status !== "COMPLETED") {
@@ -52,6 +55,10 @@ export class ReviewsService {
     if (rating === null && comment === null) throw new BadRequestException("A review needs a rating or a comment");
 
     const target = dto.target ?? ReviewTarget.SALON;
+    // An independent stylist is their own business: one review of them, stored as the business's.
+    if (target === ReviewTarget.STYLIST && appointment.salon?.kind === SalonKind.INDEPENDENT) {
+      throw new BadRequestException("Review an independent stylist once, as their business");
+    }
     let review;
     try {
       review = await this.prisma.review.create({

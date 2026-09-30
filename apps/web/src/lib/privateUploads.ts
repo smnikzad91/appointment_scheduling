@@ -8,10 +8,10 @@ import { join } from "path";
 
 export const PRIVATE_FOLDERS = ["expenses", "salon-expenses"] as const;
 
-/** The only role that may upload to each private folder. */
-export const PRIVATE_FOLDER_ROLE: Record<(typeof PRIVATE_FOLDERS)[number], string> = {
-  expenses: "STYLIST",
-  "salon-expenses": "SALON_OWNER",
+/** The roles that may upload to each private folder (an independent stylist keeps the books as the business). */
+export const PRIVATE_FOLDER_ROLES: Record<(typeof PRIVATE_FOLDERS)[number], readonly string[]> = {
+  expenses: ["STYLIST"],
+  "salon-expenses": ["SALON_OWNER", "INDEPENDENT_STYLIST"],
 };
 
 export function isPrivateFolder(folder: string): boolean {

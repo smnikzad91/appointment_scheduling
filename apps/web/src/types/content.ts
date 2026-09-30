@@ -19,7 +19,7 @@ export type TicketReplySender = "user" | "admin";
 export type DepositStatus = "pending" | "approved" | "rejected";
 
 /** User.role on the admin users API — Postgres's Role enum, lowercased. */
-export type UserRole = "platform_admin" | "salon_owner" | "stylist" | "customer";
+export type UserRole = "platform_admin" | "salon_owner" | "stylist" | "customer" | "independent_stylist";
 
 export type ErrorSource = "api" | "web_server" | "web_client";
 

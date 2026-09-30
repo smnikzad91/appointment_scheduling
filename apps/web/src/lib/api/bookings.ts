@@ -1,4 +1,5 @@
 import type { Booking, Salon } from "@/types/salon";
+import type { ServiceLocation } from "@/lib/independent";
 import { salonApiFetch } from "./salonApiClient";
 import { salonWallTimeToInstant } from "@/lib/salonTime";
 
@@ -29,6 +30,9 @@ export interface CreateBookingInput {
   dateKey: string;
   startMinute: number;
   accessToken: string;
+  /** Independent stylists only. */
+  serviceLocation?: ServiceLocation | null;
+  visitAddress?: string;
 }
 
 interface RawAppointment {
@@ -43,7 +47,7 @@ interface RawAppointment {
 }
 
 export async function createBooking(input: CreateBookingInput): Promise<Booking> {
-  const { salon, serviceIds, stylistId, dateKey, startMinute, accessToken } = input;
+  const { salon, serviceIds, stylistId, dateKey, startMinute, accessToken, serviceLocation, visitAddress } = input;
 
   const startAt = salonWallTimeToInstant(dateKey, startMinute, salon.timezone);
 
@@ -55,6 +59,8 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
       stylistId: stylistId ?? undefined,
       serviceIds,
       startAt: startAt.toISOString(),
+      ...(serviceLocation && { serviceLocation }),
+      ...(serviceLocation === "CLIENT_HOME" && visitAddress && { visitAddress }),
     }),
   });
 

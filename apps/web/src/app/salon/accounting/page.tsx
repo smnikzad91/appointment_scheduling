@@ -29,6 +29,8 @@ import { jalaliMonthPeriod, type AccountingPeriod } from "@/lib/accountingPeriod
 import { jalaliDate, jalaliMonthSlug, type Report } from "@/lib/accountingExport";
 import ExportSheet from "@/components/app/AccountingReport";
 import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
+import { getMySalon } from "@/lib/api/ownerSalon";
+import { isIndependent } from "@/lib/independent";
 import { formatToman, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, toSalonWallTime } from "@/lib/salonTime";
 import MoneyInput from "@/components/app/MoneyInput";
@@ -47,6 +49,18 @@ export default function SalonAccountingPage() {
   const [offset, setOffset] = useState(0);
   const period = useMemo(() => jalaliMonthPeriod(offset), [offset]);
   const [tab, setTab] = useState<Tab>("stylists");
+  // An independent stylist is the business: no stylists tab, shares or balances — income, costs, net.
+  const [independent, setIndependent] = useState(false);
+  useEffect(() => {
+    if (!token) return;
+    getMySalon(token)
+      .then((s) => {
+        if (!isIndependent(s)) return;
+        setIndependent(true);
+        setTab((t) => (t === "stylists" ? "income" : t));
+      })
+      .catch(() => {});
+  }, [token]);
 
   const [summary, setSummary] = useState<{ key: string; data: SalonSummary } | null>(null);
   const [income, setIncome] = useState<{ key: string; items: IncomeItem[] } | null>(null);
@@ -99,7 +113,7 @@ export default function SalonAccountingPage() {
     <>
       <PageHeader
         title="حسابداری"
-        subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌های سالن"
+        subtitle={independent ? "درآمد، هزینه‌ها و سود خالص شما" : "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌های سالن"}
         action={data && <IconButton icon={Download} label="خروجی اکسل یا PDF" tone="plain" onClick={() => setExportOpen(true)} />}
       />
       <PeriodSwitcher period={period} onChange={setOffset} />
@@ -111,18 +125,25 @@ export default function SalonAccountingPage() {
           <section className="rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
             {/* No minus sign: next to Persian digits in RTL it drifts to the wrong side and is easy to miss. */}
             <p className="text-xs text-white/60">
-              {data.totals.netProfitToman < 0 ? "زیان خالص سالن" : "سود خالص سالن"} در {period.label}
+              {data.totals.netProfitToman < 0 ? "زیان خالص" : "سود خالص"}
+              {!independent && " سالن"} در {period.label}
             </p>
             <p className={cx("mt-1 text-[30px] font-black leading-tight", data.totals.netProfitToman < 0 && "text-[#ff9b8a]")}>
               {formatToman(Math.abs(data.totals.netProfitToman))}
             </p>
             {data.totals.netProfitToman < 0 && (
-              <p className="mt-1 text-xs text-[#ff9b8a]">هزینه‌های این ماه از سهم سالن بیشتر بوده است.</p>
+              <p className="mt-1 text-xs text-[#ff9b8a]">
+                {independent ? "هزینه‌های این ماه از درآمد بیشتر بوده است." : "هزینه‌های این ماه از سهم سالن بیشتر بوده است."}
+              </p>
             )}
             <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-3xl bg-white/[0.06] p-4">
               <HeroAmount label="درآمد کل" amount={data.totals.incomeToman} />
-              <HeroAmount label="سهم آرایشگرها" amount={data.totals.stylistShareToman} />
-              <HeroAmount label="سهم سالن" amount={data.totals.salonShareToman} />
+              {!independent && (
+                <>
+                  <HeroAmount label="سهم آرایشگرها" amount={data.totals.stylistShareToman} />
+                  <HeroAmount label="سهم سالن" amount={data.totals.salonShareToman} />
+                </>
+              )}
               <HeroAmount label="هزینه‌ها" amount={data.totals.expensesToman} />
             </div>
             <p className="mt-3 flex flex-wrap items-center text-xs text-white/65">
@@ -134,8 +155,12 @@ export default function SalonAccountingPage() {
                   انعام‌ها: {formatToman(data.totals.tipsToman)}
                 </>
               )}
-              <Sep />
-              طلب آرایشگرها: {formatToman(data.totals.owedToStylistsToman)}
+              {!independent && (
+                <>
+                  <Sep />
+                  طلب آرایشگرها: {formatToman(data.totals.owedToStylistsToman)}
+                </>
+              )}
             </p>
           </section>
 
@@ -144,7 +169,7 @@ export default function SalonAccountingPage() {
               value={tab}
               onChange={setTab}
               options={[
-                { value: "stylists", label: "آرایشگرها" },
+                ...(independent ? [] : [{ value: "stylists" as const, label: "آرایشگرها" }]),
                 { value: "income", label: "درآمدها", count: income?.items.length },
                 { value: "expenses", label: "هزینه‌ها", count: expenses?.items.length },
                 { value: "services", label: "خدمات" },
@@ -152,7 +177,7 @@ export default function SalonAccountingPage() {
             />
           </div>
 
-          {tab === "stylists" &&
+          {tab === "stylists" && !independent &&
             (data.stylists.length === 0 ? (
               <EmptyState icon={Users} title="هنوز آرایشگری ندارید" hint="از تب آرایشگرها، آرایشگر اضافه کنید و سهم او را تعیین کنید." />
             ) : (

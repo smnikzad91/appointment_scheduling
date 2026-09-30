@@ -1,5 +1,6 @@
 "use client";
 
+import { SERVICE_LOCATION_LABEL } from "@/lib/independent";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarPlus, CalendarX2, RotateCcw, Star, Trash2 } from "lucide-react";
@@ -39,8 +40,18 @@ const REVIEW_STATUS: Record<BookingReview["status"], { label: string; className:
   REJECTED: { label: "منتشر نشد", className: "bg-app-muted/12 text-app-muted" },
 };
 
+/** An independent stylist is their own business: one review of them (the business's), not two. */
 function missingTargets(b: CustomerBooking) {
-  return REVIEW_TARGETS.filter((t) => !b.reviews.some((r) => r.target === t));
+  const targets: ReviewTarget[] = b.salon.kind === "INDEPENDENT" ? ["SALON"] : REVIEW_TARGETS;
+  return targets.filter((t) => !b.reviews.some((r) => r.target === t));
+}
+
+/** Where an independent stylist's booking happens, with the address the customer needs. */
+function bookingPlace(b: CustomerBooking): string | null {
+  if (b.salon.kind !== "INDEPENDENT" || !b.serviceLocation) return null;
+  const label = SERVICE_LOCATION_LABEL[b.serviceLocation];
+  const address = b.serviceLocation === "CLIENT_HOME" ? b.visitAddress : b.salon.address;
+  return address ? `${label}: ${address}` : label;
 }
 
 /**
@@ -241,8 +252,15 @@ export default function CustomerBookings({
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-black text-app-ink">{b.salon.name}</p>
                     <p className="mt-0.5 truncate text-[13px] text-app-muted">
-                      {b.services.map((s) => s.service.name).join("، ")}<Sep />{b.stylist.displayName}
+                      {b.services.map((s) => s.service.name).join("، ")}
+                      {b.salon.kind !== "INDEPENDENT" && (
+                        <>
+                          <Sep />
+                          {b.stylist.displayName}
+                        </>
+                      )}
                     </p>
+                    {bookingPlace(b) && <p className="mt-0.5 text-[12px] leading-5 text-app-muted">{bookingPlace(b)}</p>}
                   </div>
                   <StatusChip status={b.status} />
                 </div>
@@ -344,7 +362,9 @@ export default function CustomerBookings({
               const draft = drafts[target];
               return (
                 <section key={target} className="rounded-3xl border border-app-line bg-app-card p-4">
-                  <p className="text-xs font-bold text-app-muted">{target === "SALON" ? "سالن" : "آرایشگر"}</p>
+                  <p className="text-xs font-bold text-app-muted">
+                    {target === "STYLIST" || reviewTarget.salon.kind === "INDEPENDENT" ? "آرایشگر" : "سالن"}
+                  </p>
                   <p className="mb-3 font-black text-app-ink">{name}</p>
                   <StarRatingInput
                     value={draft.rating}

@@ -1,4 +1,5 @@
 import { salonApiFetch } from "./salonApiClient";
+import type { SalonKind, ServiceLocation } from "@/lib/independent";
 
 function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` };
@@ -23,6 +24,11 @@ export interface OwnerSalon {
   longitude: number | null;
   status: "PENDING" | "ACTIVE" | "SUSPENDED";
   timezone: string;
+  /** INDEPENDENT = an independent stylist's own business (they're its only stylist). */
+  kind: SalonKind;
+  /** INDEPENDENT only: where they work, and the areas home visits cover. */
+  serviceLocations: ServiceLocation[];
+  serviceArea: string | null;
 }
 
 // --- subscription (plan + limits; plans are edited at /admin/pricing) ---
@@ -64,6 +70,9 @@ export interface UpdateSalonInput {
   brandColor?: string;
   latitude?: number;
   longitude?: number;
+  /** Independent stylists only. */
+  serviceLocations?: ServiceLocation[];
+  serviceArea?: string | null;
 }
 
 export function updateMySalon(token: string, data: UpdateSalonInput) {

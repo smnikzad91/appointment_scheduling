@@ -7,6 +7,7 @@ import { Calculator, CalendarCheck2, CalendarClock, ExternalLink, Hourglass, Sha
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, listMySalonAppointments, listMyStylists, updateAppointmentStatus, type OwnerSalon, type OwnerAppointment, type OwnerStylist } from "@/lib/api/ownerSalon";
 import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
+import { isIndependent } from "@/lib/independent";
 import { SubscriptionNotice, useMySubscription } from "@/components/app/Subscription";
 import { formatToman } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
@@ -61,6 +62,7 @@ export default function SalonOverviewPage() {
     );
   }
 
+  const independent = isIndependent(salon);
   const now = new Date();
   const todayKey = toSalonWallTime(now).dateKey;
   const live = appointments.filter((a) => a.status !== "CANCELLED");
@@ -149,8 +151,15 @@ export default function SalonOverviewPage() {
         <StatTile icon={CalendarClock} label="نوبت‌های آینده" value={upcoming.length} />
       </div>
 
-      <LinkCard href="/salon/accounting" icon={Calculator} title="حسابداری" subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها" className="mt-3" />
-      <ZeroCommissionNotice stylists={stylists} className="mt-3" />
+      <LinkCard
+        href="/salon/accounting"
+        icon={Calculator}
+        title="حسابداری"
+        subtitle={independent ? "درآمد، هزینه‌ها و سود خالص ماه" : "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها"}
+        className="mt-3"
+      />
+      {/* An independent stylist's own 0% is by design: all the money is theirs. */}
+      {!independent && <ZeroCommissionNotice stylists={stylists} className="mt-3" />}
       <SubscriptionNotice sub={subscription} className="mt-3" />
 
       {needsConfirmation.length > 0 && (
@@ -168,7 +177,7 @@ export default function SalonOverviewPage() {
           </SectionTitle>
           <div className="flex flex-col gap-2.5">
             {needsConfirmation.slice(0, 3).map((a, i) => (
-              <AppointmentCard key={a.id} appointment={a} showStylist onOpen={actions.open} index={i} />
+              <AppointmentCard key={a.id} appointment={a} showStylist={!independent} onOpen={actions.open} index={i} />
             ))}
           </div>
         </>
@@ -178,12 +187,12 @@ export default function SalonOverviewPage() {
       {today.length === 0 ? (
         <EmptyState icon={Sparkles} title="امروز نوبتی ثبت نشده" hint="لینک رزرو سالن را برای مشتری‌ها بفرستید تا خودشان آنلاین نوبت بگیرند." />
       ) : (
-        <TodayTimeline appointments={today} showStylist onOpen={actions.open} />
+        <TodayTimeline appointments={today} showStylist={!independent} onOpen={actions.open} />
       )}
 
       <AppointmentSheet
         appointment={actions.selected}
-        showStylist
+        showStylist={!independent}
         onClose={actions.close}
         onSetStatus={actions.setStatus}
         onEdit={actions.edit}

@@ -1,4 +1,5 @@
 import { cache } from "react";
+import type { SalonKind, ServiceLocation } from "@/lib/independent";
 import type { GalleryImage, Salon, Stylist, WorkingHours, Review, WeekDay } from "@/types/salon";
 import { salonApiFetch, SalonApiError } from "./salonApiClient";
 
@@ -41,7 +42,11 @@ interface RawSalon {
   description: string | null;
   province: string | null;
   city: string;
-  address: string;
+  address: string | null;
+  approximateLocation?: boolean;
+  kind?: SalonKind;
+  serviceLocations?: ServiceLocation[];
+  serviceArea?: string | null;
   phone: string;
   instagram: string | null;
   logoUrl: string | null;
@@ -194,6 +199,10 @@ export const getSalonBySlug = cache(async (slug: string): Promise<Salon | null> 
     city: raw.city,
     address: raw.address,
     location: raw.latitude !== null && raw.longitude !== null ? { lat: raw.latitude, lng: raw.longitude } : null,
+    approximateLocation: raw.approximateLocation ?? false,
+    kind: raw.kind ?? "SALON",
+    serviceLocations: raw.serviceLocations ?? [],
+    serviceArea: raw.serviceArea ?? null,
     phone: raw.phone,
     instagram: raw.instagram,
     workingHours: deriveSalonWorkingHours(raw.stylists),

@@ -2,7 +2,7 @@ import { bookingCustomerFullName, withBookingCustomerName } from "./booking-cust
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
-import { AppointmentStatus, NotificationType, Role } from "@appointment-scheduling/database";
+import { AppointmentStatus, NotificationType, Role, SalonKind, ServiceLocation } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { JwtPayload } from "../auth/auth.service.js";
 import { findEligibleStylists } from "../salons/eligible-stylists.util.js";
@@ -65,6 +65,27 @@ export class AppointmentsService {
     return this.book(customerId, { ...dto, stylistId, salonId: booker.salonId }, booker.timezone, true, user.sub);
   }
 
+  /**
+   * Where an independent stylist's booking happens: one of the places they work (the only one by
+   * default); a home visit needs the customer's address. Salons have no choice — always null.
+   * Online, the customer must pick when there are several; the stylist booking it may leave it open.
+   */
+  private async bookingPlace(dto: CreateAppointmentDto, bySalon: boolean) {
+    const salon = await this.prisma.salon.findUnique({ where: { id: dto.salonId }, select: { kind: true, serviceLocations: true } });
+    if (!salon || salon.kind !== SalonKind.INDEPENDENT) return { serviceLocation: null, visitAddress: null };
+    const offered = salon.serviceLocations;
+    const serviceLocation = dto.serviceLocation ?? (offered.length === 1 ? offered[0] : undefined);
+    if (!serviceLocation) {
+      if (bySalon) return { serviceLocation: null, visitAddress: null };
+      throw new BadRequestException("Choose where the appointment takes place");
+    }
+    if (!offered.includes(serviceLocation)) throw new BadRequestException("This stylist doesn't work at that place");
+    if (serviceLocation !== ServiceLocation.CLIENT_HOME) return { serviceLocation, visitAddress: null };
+    const visitAddress = dto.visitAddress?.trim();
+    if (!visitAddress || visitAddress.length < 5) throw new BadRequestException("Enter the address for the home visit");
+    return { serviceLocation, visitAddress };
+  }
+
   /** A customer who has booked at this salon before, looked up by phone (to prefill the name). */
   async lookupSalonCustomer(user: JwtPayload, phone: string) {
     const { salonId } = await this.salonBooker(user);
@@ -115,6 +136,7 @@ export class AppointmentsService {
   }
 
   private async book(customerId: string, dto: CreateAppointmentDto, timeZone: string, bySalon: boolean, actorUserId: string) {
+    const place = await this.bookingPlace(dto, bySalon);
 
     const services = await this.prisma.service.findMany({
       where: { id: { in: dto.serviceIds }, salonId: dto.salonId, active: true },
@@ -175,6 +197,7 @@ export class AppointmentsService {
             endAt,
             priceToman: pricing.reduce((sum, p) => sum + p.priceToman, 0),
             notes: dto.notes,
+            ...place,
             ...(bySalon && { status: AppointmentStatus.CONFIRMED }),
             services: {
               create: pricing.map((p) => ({
@@ -503,7 +526,8 @@ export class AppointmentsService {
       return;
     }
 
-    if (user.role === Role.SALON_OWNER) {
+    // An independent stylist owns their business, so the owner's check covers them.
+    if (user.role === Role.SALON_OWNER || user.role === Role.INDEPENDENT_STYLIST) {
       const salon = await this.prisma.salon.findUnique({ where: { id: appointment.salonId } });
       if (!salon || salon.ownerId !== user.sub) {
         throw new ForbiddenException("Not your salon");

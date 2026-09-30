@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
-import { Role } from "@appointment-scheduling/database";
+import { Role, SalonKind } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { assertOwnsSalon } from "../salons/salon-ownership.util.js";
@@ -38,6 +38,7 @@ export class StylistsService {
 
   async invite(userId: string, dto: InviteStylistDto) {
     const salon = await this.salonsService.findMine(userId);
+    if (salon.kind === SalonKind.INDEPENDENT) throw new ForbiddenException("An independent stylist works alone and can't add stylists");
     await this.subscriptions.assertCanAddStylist(salon.id);
 
     const existingUser = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
@@ -100,11 +101,18 @@ export class StylistsService {
    */
   async regenerateSetupLink(userId: string, stylistId: string) {
     const stylist = await this.findOwned(userId, stylistId);
+    // An independent stylist's profile is their own account, which already has a password.
+    if (stylist.userId === userId) throw new ForbiddenException("This is your own account");
     return this.prisma.$transaction((tx) => issueSetupToken(tx, stylist.userId));
   }
 
   async update(userId: string, stylistId: string, dto: UpdateStylistDto) {
     const stylist = await this.findOwned(userId, stylistId);
+    // An independent stylist is their business's only stylist: never switched off, and with no
+    // salon to share the money with, their commission stays 0% (the whole amount is their income).
+    if (stylist.userId === userId && (dto.active === false || (dto.commissionPercent !== undefined && dto.commissionPercent !== 0))) {
+      throw new ForbiddenException("Your own stylist profile can't be deactivated or given a commission");
+    }
     // Re-activating a stylist takes a seat on the plan like adding one.
     if (dto.active === true && !stylist.active) await this.subscriptions.assertCanAddStylist(stylist.salonId);
     const [updated] = await this.prisma.$transaction([

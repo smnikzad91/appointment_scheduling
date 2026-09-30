@@ -1,6 +1,6 @@
 import { bookingCustomerFullName } from "../appointments/booking-customer-name.util.js";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { AppointmentStatus, NotificationType, Prisma } from "@appointment-scheduling/database";
+import { AppointmentStatus, NotificationType, Prisma, SalonKind } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
@@ -226,7 +226,13 @@ export class AccountingService {
     const tipToman = dto.tipToman === undefined ? appointment.tipToman : dto.tipToman || null;
     const updated = await this.prisma.appointment.update({
       where: { id: appointment.id },
-      data: { chargedToman: dto.chargedToman, tipToman, stylistShareToman: stylistTake(dto.chargedToman, percent, tipToman) },
+      data: {
+        chargedToman: dto.chargedToman,
+        tipToman,
+        // An independent stylist is the business: the whole amount, tip included, is its income,
+        // with no share set aside for a stylist (and so no balance to pay out).
+        stylistShareToman: salon.kind === SalonKind.INDEPENDENT ? 0 : stylistTake(dto.chargedToman, percent, tipToman),
+      },
       select: INCOME_SELECT,
     });
     return toIncomeItem(updated);

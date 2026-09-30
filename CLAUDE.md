@@ -34,6 +34,9 @@
    - Package manager: npm workspaces (root `package.json`) + Turborepo (`turbo.json`).
      pnpm was considered but skipped — this machine can't symlink into `/usr/bin` without
      root, so npm workspaces (matching apps/web's existing lockfile) was simpler.
+   - Independent (freelance) stylists: role `INDEPENDENT_STYLIST`, stored as a one-person business —
+     a `Salon` with `kind = INDEPENDENT` that they own and are the only `Stylist` of (salonId stays
+     required everywhere). Details in apps/web/CLAUDE.md «Independent stylists».
    - Auth architecture: apps/api issues JWTs for both Android apps and the web app.
      apps/web keeps NextAuth, but its credentials providers call apps/api's /auth/login
      (password) or /auth/otp/verify (SMS code)

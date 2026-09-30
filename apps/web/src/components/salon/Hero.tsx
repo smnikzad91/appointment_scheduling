@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Star, Phone, CalendarCheck } from "lucide-react";
+import { Star, Phone, CalendarCheck, UserRound } from "lucide-react";
+import { INDEPENDENT_BADGE } from "@/lib/independent";
 import type { Salon } from "@/types/salon";
 import { toPersianDigits } from "@/lib/persian";
 import { SocialIcon } from "@/components/common/SocialIcon";
@@ -55,6 +56,15 @@ export default function Hero({ salon }: { salon: Salon }) {
                 <span className="font-normal text-g-muted">
                   ({toPersianDigits(salon.ratingCount)} امتیاز)
                 </span>
+              </span>
+            )}
+            {salon.kind === "INDEPENDENT" && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold"
+                style={{ color: "var(--salon-brand-ink)", backgroundColor: "color-mix(in srgb, var(--salon-brand) 18%, transparent)" }}
+              >
+                <UserRound className="h-3.5 w-3.5" aria-hidden />
+                {INDEPENDENT_BADGE}
               </span>
             )}
             <OpenStatusBadge workingHours={salon.workingHours} timeZone={salon.timezone} />

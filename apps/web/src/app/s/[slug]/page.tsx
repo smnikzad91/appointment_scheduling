@@ -41,7 +41,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const salon = await getSalonBySlug(slug);
   if (!salon) return {};
-  const description = salon.description || `${salon.name}، سالن زیبایی در ${salon.city} — مشاهده خدمات، آرایشگرها و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`;
+  const description =
+    salon.description ||
+    (salon.kind === "INDEPENDENT"
+      ? `${salon.name}، آرایشگر مستقل در ${salon.city} — مشاهده خدمات و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`
+      : `${salon.name}، سالن زیبایی در ${salon.city} — مشاهده خدمات، آرایشگرها و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`);
 
   return {
     title: salon.name,
@@ -74,7 +78,8 @@ export default async function SalonPage({ params, searchParams }: PageProps) {
           <Hero salon={salon} />
           <div className="divide-y divide-g-line">
             <ServiceCategoryGroup salon={salon} />
-            <StylistList salon={salon} />
+            {/* An independent stylist is the whole business: no list of one. */}
+            {salon.kind !== "INDEPENDENT" && <StylistList salon={salon} />}
             <Gallery images={salon.gallery} />
             <Reviews salon={salon} />
             <InfoSection salon={salon} />

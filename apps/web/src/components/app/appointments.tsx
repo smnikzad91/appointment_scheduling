@@ -1,5 +1,6 @@
 "use client";
 
+import { SERVICE_LOCATION_LABEL } from "@/lib/independent";
 import { useCallback, useEffect, useState } from "react";
 import { Check, CheckCheck, Pencil, Phone, UserX, X, type LucideIcon } from "lucide-react";
 import type { StylistAppointment } from "@/lib/api/stylistSelf";
@@ -201,6 +202,8 @@ export function AppointmentSheet({
         {showStylist && a.stylist && <Row label="آرایشگر" value={a.stylist.displayName} />}
         <Row label="مدت" value={`${toPersianDigits(duration)} دقیقه`} />
         <Row label="مبلغ" value={formatToman(a.priceToman)} />
+        {a.serviceLocation && <Row label="محل" value={SERVICE_LOCATION_LABEL[a.serviceLocation]} />}
+        {a.visitAddress && <Row label="نشانی مشتری" value={a.visitAddress} />}
         {a.notes && <Row label="یادداشت" value={a.notes} />}
       </Card>
 

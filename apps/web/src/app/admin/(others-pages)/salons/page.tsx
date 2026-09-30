@@ -114,6 +114,11 @@ export default function AdminSalonsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-bold text-gray-900 dark:text-white">{salon.name}</p>
+                    {salon.kind === "INDEPENDENT" && (
+                      <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+                        {t("slIndependent")}
+                      </span>
+                    )}
                     <span className={`rounded-full px-2.5 py-0.5 text-xs ${STATUS_COLOR[salon.status]}`}>
                       {t(STATUS_LABEL[salon.status])}
                     </span>
