@@ -104,13 +104,14 @@ describe('StylistsService for an independent stylist', () => {
 });
 
 describe('stylistNewBookingText home-visit hint', () => {
-  it('says "at the customer\'s home" when it fits, and never goes past one segment', async () => {
+  it('marks a home visit and always fits one segment', async () => {
     const { stylistNewBookingText, SMS_SEGMENT } = await import('../sms/sms.text.js');
     const short = stylistNewBookingText({ day: 'شنبه ۵ مهر', time: '۱۰:۰۰', customer: 'سارا', homeVisit: true });
-    expect(short).toContain('در منزل مشتری');
+    expect(short).toContain('نوبت در منزل سارا');
     expect(short.length).toBeLessThanOrEqual(SMS_SEGMENT);
     const long = stylistNewBookingText({ day: 'پنجشنبه ۲۲ اردیبهشت', time: '۱۴:۳۰', customer: 'سارا احمدی نژاد', homeVisit: true });
     expect(long.length).toBeLessThanOrEqual(SMS_SEGMENT);
+    expect(long).toContain('نوبت در منزل');
   });
 });
 
