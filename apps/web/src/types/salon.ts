@@ -88,6 +88,8 @@ export interface Salon {
   kind: SalonKind;
   serviceLocations: ServiceLocation[];
   serviceArea: string | null;
+  /** IN_SALON: the salon an independent stylist works in. */
+  hostSalonName: string | null;
   phone: string;
   instagram?: string | null;
   workingHours: WorkingHours[]; // derived: union across active stylists per weekday

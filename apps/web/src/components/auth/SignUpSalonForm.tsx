@@ -34,6 +34,7 @@ export default function SignUpSalonForm({
   const independent = kind === "INDEPENDENT";
   const [serviceLocations, setServiceLocations] = useState<ServiceLocation[]>([]);
   const [serviceArea, setServiceArea] = useState("");
+  const [hostSalonName, setHostSalonName] = useState("");
   const [planId, setPlanId] = useState(initialPlanId);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -90,7 +91,12 @@ export default function SignUpSalonForm({
         latitude: pin.lat,
         longitude: pin.lng,
         planId: planId ?? undefined,
-        ...(independent && { kind, serviceLocations, serviceArea: serviceArea.trim() || undefined }),
+        ...(independent && {
+          kind,
+          serviceLocations,
+          serviceArea: serviceArea.trim() || undefined,
+          hostSalonName: (serviceLocations.includes("IN_SALON") && hostSalonName.trim()) || undefined,
+        }),
       }),
     });
 
@@ -125,7 +131,7 @@ export default function SignUpSalonForm({
       title={independent ? "کسب‌وکارتان را آنلاین کنید" : "سالن‌تان را آنلاین کنید"}
       subtitle={
         independent
-          ? "برای آرایشگرهای مستقل: خدمات، ساعات کاری، نوبت‌ها و درآمد خودتان، بدون سالن."
+          ? "برای آرایشگرهای مستقل: با نام خودتان نوبت بگیرید؛ خدمات، ساعات کاری، نوبت‌ها و درآمد خودتان."
           : "ثبت رایگان؛ چند دقیقه دیگر لینک رزرو اختصاصی سالن آماده است."
       }
       footer={
@@ -141,7 +147,7 @@ export default function SignUpSalonForm({
           {(
             [
               ["SALON", "صاحب سالن هستم", "سالن با یک یا چند آرایشگر"],
-              ["INDEPENDENT", "آرایشگر مستقل هستم", "بدون سالن؛ استودیو، منزل یا خدمات در منزل"],
+              ["INDEPENDENT", "آرایشگر مستقل هستم", "با نام خودم؛ در سالنی دیگر، استودیو یا خدمات در منزل"],
             ] as const
           ).map(([value, title, hint]) => (
             <button
@@ -216,6 +222,15 @@ export default function SignUpSalonForm({
                 </button>
               );
             })}
+            {serviceLocations.includes("IN_SALON") && (
+              <FloatingInput
+                label="نام سالنی که در آن کار می‌کنید"
+                hint="اختیاری؛ مثلاً سالن زیبایی رز"
+                maxLength={100}
+                value={hostSalonName}
+                onChange={(e) => setHostSalonName(e.target.value)}
+              />
+            )}
             {serviceLocations.includes("CLIENT_HOME") && (
               <FloatingInput
                 label="محدوده خدمات در منزل"
@@ -233,9 +248,9 @@ export default function SignUpSalonForm({
         <FloatingTextArea
           className="g-rise"
           style={rise(6.5)}
-          label={independent ? "آدرس محل کار" : "آدرس دقیق"}
+          label={independent ? (serviceLocations.includes("IN_SALON") ? "آدرس سالن محل کار" : "آدرس محل کار") : "آدرس دقیق"}
           hint={
-            independent && !serviceLocations.includes("STUDIO")
+            independent && !serviceLocations.some((l) => l === "IN_SALON" || l === "STUDIO")
               ? "فقط مشتری‌ای که نوبت گرفته آن را می‌بیند"
               : "خیابان، کوچه، پلاک، طبقه"
           }
@@ -252,7 +267,7 @@ export default function SignUpSalonForm({
             {independent ? "محل کار روی نقشه" : "محل سالن روی نقشه"}
             <span className="text-g-danger"> *</span>
           </p>
-          {independent && !serviceLocations.includes("STUDIO") && (
+          {independent && !serviceLocations.some((l) => l === "IN_SALON" || l === "STUDIO") && (
             <p className="mb-1.5 px-1 text-xs leading-5 text-g-faint">فقط حدود محله (نه نقطه دقیق) در جست‌وجو نشان داده می‌شود.</p>
           )}
           <div className="h-60 overflow-hidden rounded-2xl border border-g-line-strong">

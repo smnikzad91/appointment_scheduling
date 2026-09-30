@@ -1,6 +1,6 @@
 "use client";
 
-import { SERVICE_LOCATION_LABEL } from "@/lib/independent";
+import { placeLabel } from "@/lib/independent";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarPlus, CalendarX2, RotateCcw, Star, Trash2 } from "lucide-react";
@@ -49,7 +49,7 @@ function missingTargets(b: CustomerBooking) {
 /** Where an independent stylist's booking happens, with the address the customer needs. */
 function bookingPlace(b: CustomerBooking): string | null {
   if (b.salon.kind !== "INDEPENDENT" || !b.serviceLocation) return null;
-  const label = SERVICE_LOCATION_LABEL[b.serviceLocation];
+  const label = placeLabel(b.serviceLocation, b.salon.hostSalonName);
   const address = b.serviceLocation === "CLIENT_HOME" ? b.visitAddress : b.salon.address;
   return address ? `${label}: ${address}` : label;
 }

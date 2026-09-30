@@ -24,6 +24,7 @@ enum SalonKind {
 
 /// Where an independent stylist works (several allowed).
 enum ServiceLocation {
+  IN_SALON // the usual case: a chair/room in someone else's salon, under their own name — public address
   STUDIO // their own/private studio — the address and pin are public
   HOME // at the stylist's home — only an approximate area is public
   CLIENT_HOME // home visits at the customer's place
@@ -403,6 +404,8 @@ model Salon {
   // INDEPENDENT only: where they work, and (home visits) the areas they cover.
   serviceLocations ServiceLocation[] @default([])
   serviceArea      String?
+  // INDEPENDENT + IN_SALON: the salon they work in (free text, shown on their page).
+  hostSalonName    String?
   // Subscription (apps/api src/subscriptions): no plan = no limits (salons from before plans
   // existed, until the admin assigns one). planExpiresAt null = no end date.
   planId           String?

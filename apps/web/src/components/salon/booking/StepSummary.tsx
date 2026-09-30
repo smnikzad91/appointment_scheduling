@@ -6,7 +6,7 @@ import { formatToman, formatMinutesAsClock, toPersianDigits } from "@/lib/persia
 import { formatJalaliFull, dateKeyToDate } from "@/lib/jalali";
 import { createBooking } from "@/lib/api/bookings";
 import { persianApiError } from "@/lib/api/errorMessages";
-import { SERVICE_LOCATION_LABEL } from "@/lib/independent";
+import { placeLabel } from "@/lib/independent";
 
 export default function StepSummary() {
   const { salon, state, updateState, setResult, goNext } = useBooking();
@@ -81,7 +81,7 @@ export default function StepSummary() {
         {places.length === 1 && (
           <div className="flex justify-between border-t border-g-line pt-3">
             <span className="text-xs text-g-muted">محل</span>
-            <span>{SERVICE_LOCATION_LABEL[places[0]]}</span>
+            <span>{placeLabel(places[0], salon.hostSalonName)}</span>
           </div>
         )}
 
@@ -121,7 +121,7 @@ export default function StepSummary() {
                   className={`rounded-full border px-3.5 py-2 text-sm transition ${on ? "font-bold text-white" : "border-g-line text-g-ink"}`}
                   style={on ? { backgroundColor: "var(--salon-brand)", borderColor: "var(--salon-brand)" } : undefined}
                 >
-                  {SERVICE_LOCATION_LABEL[loc]}
+                  {placeLabel(loc, salon.hostSalonName)}
                 </button>
               );
             })}

@@ -52,7 +52,7 @@ export default function SalonSettingsPage() {
           brandColor: s.brandColor,
           latitude: s.latitude ?? undefined,
           longitude: s.longitude ?? undefined,
-          ...(isIndependent(s) && { serviceLocations: s.serviceLocations, serviceArea: s.serviceArea ?? "" }),
+          ...(isIndependent(s) && { serviceLocations: s.serviceLocations, serviceArea: s.serviceArea ?? "", hostSalonName: s.hostSalonName ?? "" }),
         });
       })
       .catch(() => setLoadError("خطا در دریافت اطلاعات سالن"));
@@ -188,7 +188,7 @@ export default function SalonSettingsPage() {
         </Field>
         <Field
           label={independent ? "آدرس محل کار" : "آدرس دقیق"}
-          hint={independent && !locations.includes("STUDIO") ? "فقط مشتری‌ای که نوبت گرفته آن را می‌بیند" : "خیابان، کوچه، پلاک، طبقه"}
+          hint={independent && !locations.some((l) => l === "IN_SALON" || l === "STUDIO") ? "فقط مشتری‌ای که نوبت گرفته آن را می‌بیند" : "خیابان، کوچه، پلاک، طبقه"}
         >
           <TextArea rows={2} value={form.address ?? ""} onChange={(e) => update({ address: e.target.value })} />
         </Field>
@@ -217,6 +217,13 @@ export default function SalonSettingsPage() {
                 />
               </div>
             ))}
+            {locations.includes("IN_SALON") && (
+              <div className="p-4">
+                <Field label="نام سالنی که در آن کار می‌کنید" hint="اختیاری؛ در صفحه رزرو شما نشان داده می‌شود">
+                  <TextInput maxLength={100} value={form.hostSalonName ?? ""} onChange={(e) => update({ hostSalonName: e.target.value })} />
+                </Field>
+              </div>
+            )}
             {locations.includes("CLIENT_HOME") && (
               <div className="p-4">
                 <Field label="محدوده خدمات در منزل" hint="مثلاً کل قائم‌شهر و ساری">

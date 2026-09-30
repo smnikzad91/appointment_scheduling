@@ -17,7 +17,7 @@ import { formatMinutesAsClock, formatToman, isValidIranianMobile, normalizeDigit
 import { addDaysToDateKey, salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { dateKeyToDate, toJalali } from "@/lib/jalali";
 import Sep from "@/components/common/Sep";
-import { SERVICE_LOCATION_LABEL, type SalonKind, type ServiceLocation } from "@/lib/independent";
+import { PLACE_LABEL, type SalonKind, type ServiceLocation } from "@/lib/independent";
 import Sheet from "./Sheet";
 import TimePicker from "./TimePicker";
 import type { AppAppointment } from "./appointments";
@@ -469,7 +469,7 @@ export default function SalonBookingSheet({
                     place === loc ? "bg-app-accent text-app-accent-ink" : "border border-app-line bg-app-card text-app-muted",
                   )}
                 >
-                  {SERVICE_LOCATION_LABEL[loc]}
+                  {PLACE_LABEL[loc]}
                 </button>
               ))}
             </div>

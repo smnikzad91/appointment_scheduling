@@ -41,9 +41,9 @@ export class SalonsService {
 
   async updateMine(userId: string, dto: UpdateSalonDto) {
     const salon = await this.findMine(userId);
-    const { province, city, serviceLocations, serviceArea, ...rest } = dto;
+    const { province, city, serviceLocations, serviceArea, hostSalonName, ...rest } = dto;
     // Where they work is an independent stylist's setting; a salon is always at its address.
-    const workplace = salon.kind === SalonKind.INDEPENDENT ? { serviceLocations, serviceArea } : {};
+    const workplace = salon.kind === SalonKind.INDEPENDENT ? { serviceLocations, serviceArea, hostSalonName } : {};
     const location =
       province !== undefined || city !== undefined ? resolveProvinceCity(province ?? salon.province ?? "", city ?? salon.city) : {};
     assertIranCoordinates(dto.latitude, dto.longitude);

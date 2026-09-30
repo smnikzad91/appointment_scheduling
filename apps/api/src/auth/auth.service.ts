@@ -126,6 +126,7 @@ export class AuthService {
             kind: SalonKind.INDEPENDENT,
             serviceLocations: dto.serviceLocations,
             serviceArea: dto.serviceArea ?? null,
+            hostSalonName: dto.hostSalonName ?? null,
           }),
         },
       });

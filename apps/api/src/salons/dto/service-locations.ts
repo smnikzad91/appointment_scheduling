@@ -3,15 +3,25 @@ import { ServiceLocation } from "@appointment-scheduling/database";
 import { Transform } from "class-transformer";
 import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsEnum, IsOptional, IsString, MaxLength, ValidateIf } from "class-validator";
 
-/** Where an independent stylist works: one or more of STUDIO / HOME / CLIENT_HOME. */
+/** Where an independent stylist works: one or more of IN_SALON / STUDIO / HOME / CLIENT_HOME. */
 export function IsServiceLocations() {
   return applyDecorators(
     IsOptional(),
     IsArray(),
     ArrayMinSize(1),
-    ArrayMaxSize(3),
+    ArrayMaxSize(4),
     ArrayUnique(),
     IsEnum(ServiceLocation, { each: true }),
+  );
+}
+
+/** The salon an independent stylist works in (IN_SALON), free text; blank or null clears it. */
+export function IsHostSalonName() {
+  return applyDecorators(
+    Transform(({ value }) => (typeof value === "string" ? value.trim() || null : value)),
+    ValidateIf((_, v) => v !== null && v !== undefined),
+    IsString(),
+    MaxLength(100),
   );
 }
 

@@ -8,8 +8,10 @@ const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 
 export async function POST(req: NextRequest) {
   try {
-    const { firstName, lastName, email, phone, password, salonName, province, city, address, latitude, longitude, planId, kind, serviceLocations, serviceArea } =
-      await req.json();
+    const {
+      firstName, lastName, email, phone, password, salonName, province, city, address, latitude, longitude, planId,
+      kind, serviceLocations, serviceArea, hostSalonName,
+    } = await req.json();
     // kind INDEPENDENT = an independent stylist signing up their own business (apps/api validates the rest).
     const independent = kind === "INDEPENDENT";
 
@@ -39,6 +41,7 @@ export async function POST(req: NextRequest) {
         kind: "INDEPENDENT" as const,
         serviceLocations: Array.isArray(serviceLocations) ? serviceLocations : [],
         serviceArea: typeof serviceArea === "string" ? serviceArea : undefined,
+        hostSalonName: typeof hostSalonName === "string" ? hostSalonName : undefined,
       }),
     });
 

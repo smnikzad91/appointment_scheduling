@@ -9,12 +9,16 @@ type Locatable = {
 };
 
 /**
- * An independent stylist who works from home or only visits customers has a private address:
+ * An independent stylist who works only from home or only visits customers has a private address:
  * the public never gets it, and the map pin is rounded to ~1 km (2 decimals). A salon, or an
- * independent stylist with a studio, shows both as given.
+ * independent stylist working in a salon (the usual case) or a studio, shows both as given.
  */
 export function hasPrivateAddress(s: Pick<Locatable, "kind" | "serviceLocations">): boolean {
-  return s.kind === SalonKind.INDEPENDENT && !s.serviceLocations.includes(ServiceLocation.STUDIO);
+  return (
+    s.kind === SalonKind.INDEPENDENT &&
+    !s.serviceLocations.includes(ServiceLocation.IN_SALON) &&
+    !s.serviceLocations.includes(ServiceLocation.STUDIO)
+  );
 }
 
 const roughly = (n: number | null) => (n == null ? null : Math.round(n * 100) / 100);

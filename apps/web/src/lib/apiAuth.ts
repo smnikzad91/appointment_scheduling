@@ -64,6 +64,7 @@ export function apiRegisterSalonOwner(input: {
   kind?: "SALON" | "INDEPENDENT";
   serviceLocations?: string[];
   serviceArea?: string;
+  hostSalonName?: string;
 }) {
   return apiFetch<ApiAuthResponse>("/auth/register-salon-owner", {
     method: "POST",

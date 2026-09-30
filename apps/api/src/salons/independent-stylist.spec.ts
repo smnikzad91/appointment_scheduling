@@ -34,6 +34,12 @@ describe('publicLocation', () => {
     expect(publicLocation(studio)).toMatchObject({ ...base, approximateLocation: false });
   });
 
+  it('shows the address of the salon an independent stylist works in (the usual case)', () => {
+    const inSalon = { ...base, kind: SalonKind.INDEPENDENT, serviceLocations: [ServiceLocation.IN_SALON, ServiceLocation.CLIENT_HOME] };
+    expect(hasPrivateAddress(inSalon)).toBe(false);
+    expect(publicLocation(inSalon)).toMatchObject({ ...base, approximateLocation: false });
+  });
+
   it('hides a home address and rounds the pin to ~1 km', () => {
     const home = { ...base, kind: SalonKind.INDEPENDENT, serviceLocations: [ServiceLocation.HOME, ServiceLocation.CLIENT_HOME] };
     expect(hasPrivateAddress(home)).toBe(true);

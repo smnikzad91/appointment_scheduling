@@ -15,6 +15,7 @@ export interface SalonCard {
   /** INDEPENDENT = an independent stylist; their pin may be rounded (approximateLocation). */
   kind?: SalonKind;
   serviceLocations?: ServiceLocation[];
+  hostSalonName?: string | null;
   approximateLocation?: boolean;
   logoUrl: string | null;
   coverImageUrl: string | null;

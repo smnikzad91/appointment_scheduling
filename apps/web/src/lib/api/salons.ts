@@ -47,6 +47,7 @@ interface RawSalon {
   kind?: SalonKind;
   serviceLocations?: ServiceLocation[];
   serviceArea?: string | null;
+  hostSalonName?: string | null;
   phone: string;
   instagram: string | null;
   logoUrl: string | null;
@@ -203,6 +204,7 @@ export const getSalonBySlug = cache(async (slug: string): Promise<Salon | null> 
     kind: raw.kind ?? "SALON",
     serviceLocations: raw.serviceLocations ?? [],
     serviceArea: raw.serviceArea ?? null,
+    hostSalonName: raw.hostSalonName ?? null,
     phone: raw.phone,
     instagram: raw.instagram,
     workingHours: deriveSalonWorkingHours(raw.stylists),

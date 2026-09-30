@@ -29,6 +29,8 @@ export interface OwnerSalon {
   /** INDEPENDENT only: where they work, and the areas home visits cover. */
   serviceLocations: ServiceLocation[];
   serviceArea: string | null;
+  /** IN_SALON: the salon they work in. */
+  hostSalonName: string | null;
 }
 
 // --- subscription (plan + limits; plans are edited at /admin/pricing) ---
@@ -73,6 +75,7 @@ export interface UpdateSalonInput {
   /** Independent stylists only. */
   serviceLocations?: ServiceLocation[];
   serviceArea?: string | null;
+  hostSalonName?: string | null;
 }
 
 export function updateMySalon(token: string, data: UpdateSalonInput) {

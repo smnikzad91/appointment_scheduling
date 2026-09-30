@@ -1,6 +1,6 @@
 import { IsIn, IsLatitude, IsLongitude, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 import type { SalonKind, ServiceLocation } from "@appointment-scheduling/database";
-import { IsServiceArea, IsServiceLocations } from "../../salons/dto/service-locations.js";
+import { IsHostSalonName, IsServiceArea, IsServiceLocations } from "../../salons/dto/service-locations.js";
 
 export class RegisterSalonOwnerDto {
   // Owner account
@@ -33,6 +33,10 @@ export class RegisterSalonOwnerDto {
   /** INDEPENDENT: areas covered by home visits. */
   @IsServiceArea()
   serviceArea?: string | null;
+
+  /** INDEPENDENT working in a salon (IN_SALON): that salon's name. */
+  @IsHostSalonName()
+  hostSalonName?: string | null;
 
   // Salon (for an independent stylist: their business / display name)
   @IsString()

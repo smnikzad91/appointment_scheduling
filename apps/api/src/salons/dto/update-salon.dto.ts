@@ -1,6 +1,6 @@
 import { IsOptionalImageUrl } from "../../common/image-url.js";
 import type { ServiceLocation } from "@appointment-scheduling/database";
-import { IsServiceArea, IsServiceLocations } from "./service-locations.js";
+import { IsHostSalonName, IsServiceArea, IsServiceLocations } from "./service-locations.js";
 import { IsHexColor, IsLatitude, IsLongitude, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
 export class UpdateSalonDto {
@@ -59,4 +59,7 @@ export class UpdateSalonDto {
 
   @IsServiceArea()
   serviceArea?: string | null;
+
+  @IsHostSalonName()
+  hostSalonName?: string | null;
 }

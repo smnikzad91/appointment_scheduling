@@ -26,6 +26,7 @@ const CARD_SELECT = {
   kind: true,
   serviceLocations: true,
   serviceArea: true,
+  hostSalonName: true,
   services: { where: { active: true }, orderBy: { priceToman: "asc" }, select: { name: true, priceToman: true } },
 } satisfies Prisma.SalonSelect;
 
@@ -92,7 +93,8 @@ export class SalonSearchService {
       const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
       // A private (home) address is never searchable.
       where.push(Prisma.sql`(s."name" ILIKE ${like}
-        OR (s."address" ILIKE ${like} AND (s."kind" = 'SALON' OR 'STUDIO' = ANY(s."serviceLocations")))
+        OR (s."address" ILIKE ${like} AND (s."kind" = 'SALON' OR s."serviceLocations" && ARRAY['IN_SALON', 'STUDIO']::"ServiceLocation"[]))
+        OR s."hostSalonName" ILIKE ${like}
         OR EXISTS (
         SELECT 1 FROM "services" sv WHERE sv."salonId" = s."id" AND sv."active" AND sv."name" ILIKE ${like}))`);
     }
@@ -154,6 +156,7 @@ export function toSalonCard(row: SalonCardRow, stats: RatingStats | undefined, k
     kind: s.kind,
     serviceLocations: s.serviceLocations,
     serviceArea: s.serviceArea,
+    hostSalonName: s.hostSalonName,
     province: s.province,
     city: s.city,
     address: s.address,

@@ -5,7 +5,8 @@
 CREATE TYPE "SalonKind" AS ENUM ('SALON', 'INDEPENDENT');
 
 -- CreateEnum
-CREATE TYPE "ServiceLocation" AS ENUM ('STUDIO', 'HOME', 'CLIENT_HOME');
+-- IN_SALON (the usual case): a chair/room in someone else's salon, under their own name.
+CREATE TYPE "ServiceLocation" AS ENUM ('IN_SALON', 'STUDIO', 'HOME', 'CLIENT_HOME');
 
 -- AlterEnum (the new value isn't used in this migration, so no separate transaction is needed)
 ALTER TYPE "Role" ADD VALUE 'INDEPENDENT_STYLIST';
@@ -13,6 +14,7 @@ ALTER TYPE "Role" ADD VALUE 'INDEPENDENT_STYLIST';
 -- AlterTable
 ALTER TABLE "salons" ADD COLUMN     "kind" "SalonKind" NOT NULL DEFAULT 'SALON',
 ADD COLUMN     "serviceArea" TEXT,
+ADD COLUMN     "hostSalonName" TEXT,
 ADD COLUMN     "serviceLocations" "ServiceLocation"[] DEFAULT ARRAY[]::"ServiceLocation"[];
 
 -- Search filters by kind among active salons.

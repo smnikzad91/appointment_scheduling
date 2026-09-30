@@ -5,7 +5,7 @@ import { PERSIAN_WEEKDAY_NAMES, WEEK_ORDER_SATURDAY_FIRST } from "@/lib/jalali";
 import { toSalonWallTime } from "@/lib/salonTime";
 import DirectionsButton from "./DirectionsButton";
 import SalonMapLoader from "./SalonMapLoader";
-import { SERVICE_LOCATION_LABEL } from "@/lib/independent";
+import { placeLabel } from "@/lib/independent";
 
 export default function InfoSection({ salon }: { salon: Salon }) {
   const today = toSalonWallTime(new Date(), salon.timezone).dayOfWeek;
@@ -33,7 +33,7 @@ export default function InfoSection({ salon }: { salon: Salon }) {
               <div className="flex flex-wrap gap-1.5">
                 {salon.serviceLocations.map((loc) => (
                   <span key={loc} className="rounded-full border border-g-line-strong px-2.5 py-1 text-xs font-semibold text-g-ink">
-                    {SERVICE_LOCATION_LABEL[loc]}
+                    {placeLabel(loc, salon.hostSalonName)}
                   </span>
                 ))}
               </div>

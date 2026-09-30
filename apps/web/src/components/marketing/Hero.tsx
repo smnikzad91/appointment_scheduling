@@ -47,7 +47,7 @@ export default function Hero() {
             </Link>
           </div>
           <p className="g-rise mt-4 text-sm text-g-muted" style={rise(3)}>
-            آرایشگر مستقل هستید و سالن ندارید؟{" "}
+            آرایشگر مستقل هستید و با نام خودتان کار می‌کنید؟{" "}
             <Link href="/signup-salon?type=independent" className="font-bold text-g-accent underline-offset-4 hover:underline">
               ثبت‌نام آرایشگر مستقل
             </Link>
