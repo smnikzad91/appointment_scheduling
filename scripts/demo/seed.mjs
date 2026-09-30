@@ -1,6 +1,7 @@
 // Demo data: 5 salons with stylists, services, bookings, approved reviews, gallery and the home-page
-// showcase — so every panel has something to show. Everything is tagged so it can be removed:
-//   slug "demo-…", phones "0990000…", names end in «(نمونه)».
+// showcase, plus one independent stylist (demo-roya, 09900009000: works in «سالن زیبایی رز» under
+// her own name and visits homes) — so every panel has something to show. Everything is tagged so it
+// can be removed: slug "demo-…", phones "0990000…", names end in «(نمونه)».
 //
 //   node scripts/demo/seed.mjs            # (re)create — removes old demo data first
 //   node scripts/demo/seed.mjs --remove   # delete all demo data
@@ -83,6 +84,7 @@ async function remove() {
     db.galleryImage.deleteMany({ where: { salonId: { in: salonIds } } }),
     db.stylistPayout.deleteMany({ where: { salonId: { in: salonIds } } }),
     db.salonExpense.deleteMany({ where: { salonId: { in: salonIds } } }),
+    db.stylistExpense.deleteMany({ where: { salonId: { in: salonIds } } }),
     db.workingHour.deleteMany({ where: { stylistId: { in: stylistIds } } }),
     db.timeOff.deleteMany({ where: { stylistId: { in: stylistIds } } }),
     db.stylistService.deleteMany({ where: { stylistId: { in: stylistIds } } }),
@@ -192,6 +194,20 @@ async function create() {
     }
   }
 
+  // A stylist's own work costs (stylist panel «هزینه‌های من»), this month.
+  const expenseDay = (d) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - d, 12);
+  for (const [category, amountToman, d, description] of [
+    ["SUPPLIES", 850_000, 2, "رنگ مو و اکسیدان"],
+    ["TOOLS", 1_400_000, 6, "سشوار حرفه‌ای"],
+    ["TRANSPORT", 180_000, 9, "رفت‌وآمد برای خرید مواد"],
+  ]) {
+    await db.stylistExpense.create({
+      data: { stylistId: allStylists[0].id, salonId: allStylists[0].salonId, category, amountToman, spentAt: expenseDay(d), description },
+    });
+  }
+
+  await createIndependent(passwordHash, customers, createdSalons[0], now);
+
   // A couple of favourites for the first customer, so /dashboard shows them.
   await db.favoriteSalon.createMany({ data: createdSalons.slice(0, 2).map((s) => ({ userId: customers[0].id, salonId: s.id })) });
 
@@ -221,6 +237,92 @@ async function create() {
   ]);
   console.log(`created ${counts[0]} salons, ${counts[1]} stylists, ${customers.length} customers, ${counts[2]} appointments, ${counts[3]} reviews`);
   console.log(`logins (password demo1234): customer ${customers[0].phone}; owner/stylist phones from ${PHONE(CUSTOMERS.length + 1)} upward`);
+}
+
+/**
+ * An independent stylist: her own business (Salon kind INDEPENDENT, she's its only stylist, 0%
+ * commission) working in «سالن زیبایی رز» under her own name, plus home visits.
+ */
+async function createIndependent(passwordHash, customers, hostSalon, now) {
+  const user = await db.user.create({
+    data: { phone: PHONE(9000), passwordHash, firstName: "رویا", lastName: `کاظمی ${TAG}`, role: "INDEPENDENT_STYLIST" },
+  });
+  const salon = await db.salon.create({
+    data: {
+      ownerId: user.id, kind: "INDEPENDENT", name: `رویا میکاپ ${TAG}`, slug: "demo-roya",
+      description: "میکاپ و شینیون عروس با نام خودم؛ در سالن زیبایی رز یا در منزل شما.",
+      province: hostSalon.province, city: hostSalon.city, address: hostSalon.address, phone: PHONE(9000),
+      instagram: "demo.roya.makeup", logoUrl: IMG("salon2-stylist0-avatar.jpg"), coverImageUrl: IMG("salon2-cover.jpg"),
+      latitude: hostSalon.latitude, longitude: hostSalon.longitude, status: "ACTIVE",
+      serviceLocations: ["IN_SALON", "CLIENT_HOME"], hostSalonName: "سالن زیبایی رز", serviceArea: "شمال و مرکز تهران",
+    },
+  });
+  const stylist = await db.stylist.create({
+    data: { userId: user.id, salonId: salon.id, displayName: "رویا کاظمی", bio: "میکاپ و شینیون عروس با ۹ سال سابقه.", commissionPercent: 0 },
+  });
+  await db.workingHour.createMany({ data: [6, 0, 1, 2, 3].map((d) => ({ stylistId: stylist.id, dayOfWeek: d, startMinute: 660, endMinute: 1260 })) });
+  const cat = await db.serviceCategory.create({ data: { salonId: salon.id, name: "میکاپ و شینیون", order: 0 } });
+  const services = [];
+  for (const [name, minutes, priceToman] of [["میکاپ", 60, 1_200_000], ["شینیون", 90, 1_500_000], ["میکاپ و شینیون عروس", 240, 6_500_000], ["اصلاح ابرو", 20, 150_000]]) {
+    services.push(await db.service.create({ data: { salonId: salon.id, categoryId: cat.id, name, durationMinutes: minutes, priceToman } }));
+  }
+  await db.stylistService.createMany({ data: services.map((s) => ({ stylistId: stylist.id, serviceId: s.id })) });
+  for (let g = 0; g < 4; g++) {
+    await db.galleryImage.create({ data: { salonId: salon.id, stylistId: stylist.id, url: IMG(`salon2-gallery${g}.jpg`), caption: pick(CAPTIONS),
+      createdAt: new Date(now - (g + 1) * 4 * 864e5) } });
+  }
+  const at = (days, hour) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + days);
+    if (d.getDay() === 4 || d.getDay() === 5) d.setDate(d.getDate() + (days < 0 ? -2 : 2)); // her days off
+    d.setHours(hour, 0, 0, 0);
+    return d;
+  };
+  const visits = [
+    // [days from now, hour, service, status, place, visit address]
+    // completed ones within the last week, so this month's books show income
+    [-1, 12, 1, "COMPLETED", "IN_SALON", null],
+    [-2, 16, 0, "COMPLETED", "CLIENT_HOME", "تهران، شهرک غرب، خیابان فرحزادی، کوچه یاس، پلاک ۴"],
+    [-3, 11, 2, "COMPLETED", "IN_SALON", null],
+    [-5, 17, 0, "COMPLETED", "IN_SALON", null],
+    [2, 12, 1, "CONFIRMED", "IN_SALON", null],
+    [3, 15, 2, "CONFIRMED", "CLIENT_HOME", "تهران، سعادت‌آباد، خیابان سرو غربی، برج نگین، طبقه ۶"],
+    [4, 18, 3, "PENDING", "IN_SALON", null],
+  ];
+  // A fully booked day (a bride's whole day), so the booking sheet offers the waitlist.
+  const busyDay = at(8, 11);
+  await db.appointment.create({
+    data: {
+      salonId: salon.id, stylistId: stylist.id, customerId: customers[5].id, startAt: busyDay, endAt: new Date(+busyDay + 10 * 36e5),
+      priceToman: 12_000_000, status: "CONFIRMED", serviceLocation: "CLIENT_HOME", visitAddress: "تهران، زعفرانیه، خیابان آصف، پلاک ۲۰",
+      notes: "عروس و همراهان — کل روز",
+      services: { create: { serviceId: services[2].id, priceToman: 12_000_000, durationMinutes: 600 } },
+    },
+  });
+  for (const [v, [days, hour, s, status, place, visitAddress]] of visits.entries()) {
+    const svc = services[s];
+    const startAt = at(days, hour);
+    const endAt = new Date(+startAt + svc.durationMinutes * 6e4);
+    const done = status === "COMPLETED";
+    const appt = await db.appointment.create({
+      data: {
+        salonId: salon.id, stylistId: stylist.id, customerId: customers[v % customers.length].id, startAt, endAt, priceToman: svc.priceToman, status,
+        serviceLocation: place, visitAddress,
+        ...(done && { completedAt: endAt, chargedToman: svc.priceToman, stylistCommissionPercent: 0, stylistShareToman: 0, tipToman: v === 2 ? 300_000 : null }),
+        services: { create: { serviceId: svc.id, priceToman: svc.priceToman, durationMinutes: svc.durationMinutes } },
+      },
+    });
+    if (!done) continue;
+    // One review per booking (the business's): the latest waits for her approval.
+    const pending = v === 3;
+    const createdAt = new Date(+endAt + 36e5 * 5);
+    await db.review.create({ data: { appointmentId: appt.id, salonId: salon.id, target: "SALON", rating: 5, comment: pick(COMMENTS[5]),
+      status: pending ? "PENDING" : "APPROVED", moderatedAt: pending ? null : createdAt, createdAt } });
+  }
+  for (const [category, amountToman, d, note] of [["SUPPLIES", 1_100_000, 3, "لوازم آرایش"], ["RENT", 2_500_000, 1, "اجاره صندلی در سالن رز"]]) {
+    await db.salonExpense.create({ data: { salonId: salon.id, category, amountToman, spentAt: new Date(now.getFullYear(), now.getMonth(), now.getDate() - d, 12), note } });
+  }
+  console.log(`independent stylist: ${user.phone} (demo-roya)`);
 }
 
 try {

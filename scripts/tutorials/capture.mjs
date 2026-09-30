@@ -3,7 +3,7 @@
 //
 //   node scripts/demo/seed.mjs            # demo salons, stylists, customers (password demo1234)
 //   python3 scripts/demo/make-images.py   # demo photos (optional, but screenshots look broken without)
-//   (apps/api on :3001, apps/web on :3000)
+//   (apps/api on :3001, apps/web on :3000 — or TUTORIAL_API_URL / TUTORIAL_BASE_URL)
 //   node scripts/tutorials/capture.mjs [shot-id-prefix]
 //
 // Writes apps/web/public/tutorials/<id>.webp and apps/web/src/content/tutorialShots.json
@@ -21,6 +21,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const OUT_DIR = path.join(ROOT, "apps/web/public/tutorials");
 const MAP_FILE = path.join(ROOT, "apps/web/src/content/tutorialShots.json");
 const BASE = process.env.TUTORIAL_BASE_URL ?? "http://localhost:3000";
+const API = process.env.TUTORIAL_API_URL ?? "http://localhost:3001";
 const ONLY = process.argv[2] ?? "";
 const VIEWPORT = { width: 390, height: 844 };
 const SCALE = 2;
@@ -29,6 +30,8 @@ const ACCOUNTS = {
   owner: { phone: "09900000009", home: /\/salon/ },
   stylist: { phone: "09900000010", home: /\/stylist/ },
   customer: { phone: "09900000001", home: /\/dashboard/ },
+  // The seed's independent stylist (demo-roya): works in «سالن زیبایی رز» under her own name.
+  independent: { phone: "09900009000", home: /\/salon/ },
 };
 
 mkdirSync(OUT_DIR, { recursive: true });
@@ -477,5 +480,112 @@ await shot("stylist-reviews-1", "stylist", async (p) => {
   await p.getByRole("tab", { name: "منتشرشده" }).click();
   await settle(p, 900);
 }, (p) => [p.getByRole("tab", { name: "منتشرشده" }), p.getByRole("button", { name: "پنهان کردن" }).first()]);
+
+// ─────────────────────────────── Stylist expenses ───────────────────────────────
+
+await shot("stylist-expenses-1", "stylist", go("/stylist/expenses"), (p) => [
+  p.getByRole("button", { name: "افزودن هزینه" }),
+  p.getByRole("button", { name: "ماه قبل" }).locator(".."),
+  p.getByRole("tablist").first(),
+]);
+await shot("stylist-expenses-2", "stylist", async (p) => {
+  await p.getByRole("button", { name: "افزودن هزینه" }).click();
+  await settle(p, 1000);
+  const s = inSheet(p);
+  await s.getByRole("button", { name: "ابزار و تعمیرات" }).or(s.getByRole("button", { name: /ابزار/ })).first().click();
+  await s.locator("input").first().fill("650000");
+  await s.getByPlaceholder(/رنگ مو و اکسیدان/).fill("قیچی کوتاهی حرفه‌ای");
+}, (p) => [inSheet(p).getByText("دسته", { exact: true }).locator(".."), inSheet(p).locator("input").first(), inSheet(p).getByText("افزودن عکس رسید")]);
+await shot("stylist-expenses-3", "stylist", async (p) => {
+  await p.keyboard.press("Escape");
+  await settle(p);
+}, (p) => [p.getByText(/^جمع هزینه‌ها/), p.locator("main button").filter({ hasText: "رنگ مو و اکسیدان" }).first()]);
+// «زیان خالص» when the month's costs exceed the share — frame the costs + net row either way.
+await shot("stylist-expenses-4", "stylist", go("/stylist/earnings"), (p) => [p.getByText(/^(درآمد|زیان) خالص$/).first().locator("../..")]);
+
+// ─────────────────────────────── Waitlist ───────────────────────────────
+// demo-roya has one fully booked day (the seed's bride): step through the days until the
+// "tell me when a time opens up" button shows.
+
+await shot("customer-waitlist-1", "customer", async (p) => {
+  const salon = await (await fetch(`${API}/salons/demo-roya`)).json();
+  const bridal = salon.services.find((sv) => sv.name.includes("عروس"));
+  await go(`/s/demo-roya?book=1&services=${bridal.id}`)(p);
+  const days = p.getByRole("listbox", { name: "انتخاب روز" }).getByRole("option").or(p.getByRole("listbox", { name: "انتخاب روز" }).locator("button"));
+  const n = await days.count();
+  for (let i = 0; i < n; i++) {
+    await days.nth(i).click();
+    await settle(p, 900);
+    if (await p.getByRole("button", { name: /اگر وقتی خالی شد خبرم کن/ }).isVisible()) break;
+  }
+}, (p) => [p.getByRole("button", { name: /اگر وقتی خالی شد خبرم کن/ })]);
+
+// ─────────────────────────────── Independent stylists ───────────────────────────────
+
+await shot("indie-register-1", "guest", go("/signup-salon?type=independent"), (p) => [
+  p.getByRole("radio", { name: /آرایشگر مستقل هستم/ }),
+  p.getByLabel("نام", { exact: true }),
+  p.getByLabel("شماره موبایل"),
+]);
+await shot("indie-register-2", "guest", async (p) => {
+  await p.getByLabel("نام کاری").fill("رزا میکاپ");
+  await p.getByRole("checkbox", { name: /در یک سالن، با نام خودم/ }).click();
+  await p.getByRole("checkbox", { name: /خدمات در منزل مشتری/ }).click();
+  await settle(p, 500);
+  await p.getByLabel("نام سالنی که در آن کار می‌کنید").fill("سالن زیبایی رز");
+  await scrollTo(p.getByRole("checkbox", { name: /در یک سالن، با نام خودم/ }));
+}, (p) => [p.getByLabel("نام کاری"), p.getByRole("checkbox", { name: /در یک سالن، با نام خودم/ }), p.getByLabel("نام سالنی که در آن کار می‌کنید")]);
+await shot("indie-register-3", "guest", async (p) => {
+  await scrollTo(p.getByText("محل کار روی نقشه"));
+}, (p) => [p.getByLabel(/آدرس سالن محل کار|آدرس محل کار/), p.locator(".leaflet-container")]);
+
+await shot("indie-home-1", "independent", go("/salon"), (p) => [p.getByRole("navigation").last(), p.getByRole("link", { name: /صفحه رزرو/ }).first()]);
+await shot("indie-services-1", "independent", go("/salon/services"), (p) => [p.getByRole("button", { name: "افزودن خدمت" }), p.getByText(/پیامک یادآوری:/).first()]);
+await shot("indie-schedule-1", "independent", go("/salon/schedule"), (p) => [p.getByRole("switch").first(), p.locator('button[aria-haspopup="dialog"]').first(), p.locator('button[aria-haspopup="dialog"]').nth(1)]);
+await shot("indie-settings-1", "independent", async (p) => {
+  await go("/salon/settings")(p);
+  await scrollTo(p.getByRole("switch", { name: "استودیو شخصی" }));
+}, (p) => [p.getByRole("switch", { name: "در یک سالن، با نام خودم" }), p.getByText("نام سالنی که در آن کار می‌کنید").locator("..")]);
+
+await shot("indie-appointments-1", "independent", go("/salon/appointments"), (p) => [
+  p.getByRole("button", { name: "ثبت نوبت برای مشتری" }),
+  p.locator("main button").filter({ hasText: "(نمونه)" }).first(),
+]);
+await shot("indie-appointments-2", "independent", async (p) => {
+  await p.locator("main button").filter({ hasText: "شینیون عروس" }).first().click();
+  await settle(p, 1000);
+}, (p) => [inSheet(p).getByText("محل", { exact: true }).locator(".."), inSheet(p).getByText("نشانی مشتری", { exact: true }).locator("..")]);
+await shot("indie-book-1", "independent", async (p) => {
+  await go("/salon/appointments")(p);
+  await p.getByRole("button", { name: "ثبت نوبت برای مشتری" }).click();
+  await settle(p, 1500);
+  const s = inSheet(p);
+  await s.locator('input[type="tel"], input[inputmode="tel"]').first().fill("09121112233");
+  await s.getByRole("button", { name: "در منزل مشتری", exact: true }).first().click();
+  await settle(p, 500);
+  await s.getByPlaceholder(/شهر، خیابان/).fill("تهران، پونک، خیابان عدل، پلاک ۸");
+  await scrollTo(s.getByText("محل انجام نوبت"));
+}, (p) => [inSheet(p).getByText("محل انجام نوبت").locator(".."), inSheet(p).getByPlaceholder(/شهر، خیابان/)]);
+
+await shot("indie-accounting-1", "independent", async (p) => {
+  await p.keyboard.press("Escape");
+  await go("/salon/accounting")(p);
+}, (p) => [p.getByText(/^(سود|زیان) خالص/).first().locator(".."), p.getByRole("tablist").first()]);
+await shot("indie-accounting-2", "independent", async (p) => {
+  await p.getByRole("tab", { name: /هزینه‌ها/ }).click();
+  await settle(p, 1000);
+}, (p) => [p.getByRole("tab", { name: /هزینه‌ها/ }), p.locator("main button").filter({ hasText: "اجاره صندلی" }).first()]);
+
+await shot("indie-page-1", "guest", go("/s/demo-roya"), (p) => [p.getByText("آرایشگر مستقل", { exact: true }).first(), p.getByRole("button", { name: /رزرو نوبت/ }).last()]);
+await shot("indie-page-2", "guest", async (p) => {
+  await go("/s/demo-roya")(p);
+  await scrollTo(p.getByText("اطلاعات و ساعات کاری"));
+}, (p) => [p.getByText("در سالن زیبایی رز", { exact: true }).first(), p.getByText(/محدوده خدمات در منزل/).first()]);
+await shot("indie-search-1", "guest", async (p) => {
+  await go("/salons")(p);
+  await p.getByRole("radio", { name: "آرایشگران مستقل" }).click();
+  await settle(p, 1500);
+}, (p) => [p.getByRole("radio", { name: "آرایشگران مستقل" }), p.locator("main a").filter({ hasText: "رویا میکاپ" }).first()]);
+await shot("indie-reviews-1", "independent", go("/salon/reviews"), (p) => [p.getByRole("button", { name: "تایید و نمایش" }).first()]);
 
 await browser.close();

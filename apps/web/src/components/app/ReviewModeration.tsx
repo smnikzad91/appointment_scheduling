@@ -20,7 +20,16 @@ const EMPTY: Record<ReviewStatus, { title: string; hint: string }> = {
  * Approve / hide customer reviews. scope="salon" (owner): every review of the salon, about the
  * salon or any of its stylists. scope="stylist": the reviews about the signed-in stylist.
  */
-export default function ReviewModeration({ token, scope }: { token: string; scope: ReviewScope }) {
+export default function ReviewModeration({
+  token,
+  scope,
+  independent = false,
+}: {
+  token: string;
+  scope: ReviewScope;
+  /** An independent stylist's business: every review is about them, so no "about the salon" tag. */
+  independent?: boolean;
+}) {
   const [reviews, setReviews] = useState<ModerationReview[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<ReviewStatus>("PENDING");
@@ -108,7 +117,7 @@ export default function ReviewModeration({ token, scope }: { token: string; scop
                 )}
               </div>
 
-              {scope === "salon" && (
+              {scope === "salon" && !independent && (
                 <span
                   className={cx(
                     "mt-2.5 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold",

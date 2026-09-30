@@ -236,8 +236,12 @@ export default function SalonAccountingPage() {
                         <p className="truncate font-bold text-app-ink">{item.customerName}</p>
                         <p className="mt-0.5 truncate text-xs text-app-muted">
                           {shortDate(item.startAt)}
-                          <Sep />
-                          {item.stylist.displayName}
+                          {!independent && (
+                            <>
+                              <Sep />
+                              {item.stylist.displayName}
+                            </>
+                          )}
                           <Sep />
                           {item.services.join("، ")}
                         </p>
@@ -247,18 +251,23 @@ export default function SalonAccountingPage() {
                         {item.tipToman > 0 && <p className="text-[11px] font-bold text-app-done">با {formatToman(item.tipToman)} انعام</p>}
                       </div>
                     </div>
-                    <p className="mt-2 text-xs text-app-muted">
-                      سهم آرایشگر ({formatPercent(item.commissionPercent)}{item.tipToman > 0 && " + انعام"}):{" "}
-                      <span className="font-bold text-app-accent">{formatToman(item.stylistShareToman)}</span>
-                      <Sep />
-                      سهم سالن: <span className="font-bold text-app-ink">{formatToman(item.salonShareToman)}</span>
-                      {item.chargedToman !== item.priceToman && (
-                        <>
-                          <Sep />
-                          <span className="text-app-pending">اصلاح‌شده</span>
-                        </>
-                      )}
-                    </p>
+                    {/* An independent stylist has no split: the whole amount is theirs. */}
+                    {independent ? (
+                      item.chargedToman !== item.priceToman && <p className="mt-2 text-xs text-app-pending">مبلغ اصلاح‌شده</p>
+                    ) : (
+                      <p className="mt-2 text-xs text-app-muted">
+                        سهم آرایشگر ({formatPercent(item.commissionPercent)}{item.tipToman > 0 && " + انعام"}):{" "}
+                        <span className="font-bold text-app-accent">{formatToman(item.stylistShareToman)}</span>
+                        <Sep />
+                        سهم سالن: <span className="font-bold text-app-ink">{formatToman(item.salonShareToman)}</span>
+                        {item.chargedToman !== item.priceToman && (
+                          <>
+                            <Sep />
+                            <span className="text-app-pending">اصلاح‌شده</span>
+                          </>
+                        )}
+                      </p>
+                    )}
                   </button>
                 ))}
               </div>
@@ -361,7 +370,7 @@ export default function SalonAccountingPage() {
         />
       )}
       <ExportSheet report={report} onClose={() => setExportOpen(false)} />
-      {chargeSheet && <ChargeSheet key={chargeSheet.id} token={token} item={chargeSheet} onClose={() => setChargeSheet(null)} onSaved={refresh} />}
+      {chargeSheet && <ChargeSheet key={chargeSheet.id} token={token} item={chargeSheet} independent={independent} onClose={() => setChargeSheet(null)} onSaved={refresh} />}
       {expenseSheet && (
         <ExpenseSheet
           key={expenseSheet.n}
@@ -522,7 +531,20 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
 }
 
 /** Correct what a completed appointment actually brought in; the split follows. */
-function ChargeSheet({ token, item, onClose, onSaved }: { token: string; item: IncomeItem; onClose: () => void; onSaved: () => void }) {
+function ChargeSheet({
+  token,
+  item,
+  independent,
+  onClose,
+  onSaved,
+}: {
+  token: string;
+  item: IncomeItem;
+  /** An independent stylist: no split — amount and tip are all theirs. */
+  independent: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [amount, setAmount] = useState<number | null>(item.chargedToman);
   const [tipAmount, setTipAmount] = useState<number | null>(item.tipToman || null);
   const [busy, setBusy] = useState(false);
@@ -571,10 +593,15 @@ function ChargeSheet({ token, item, onClose, onSaved }: { token: string; item: I
         <MoneyInput value={amount} onChange={setAmount} />
       </Field>
       <div className="mt-3">
-        <Field label="انعام برای آرایشگر (اختیاری)" hint="اگر مشتری انعام را به سالن داد (مثلاً روی کارت‌خوان)؛ تمامش سهم آرایشگر است.">
+        <Field
+          label={independent ? "انعام (اختیاری)" : "انعام برای آرایشگر (اختیاری)"}
+          hint={independent ? "اگر مشتری انعام داد؛ جزو درآمد شما حساب می‌شود." : "اگر مشتری انعام را به سالن داد (مثلاً روی کارت‌خوان)؛ تمامش سهم آرایشگر است."}
+        >
           <MoneyInput value={tipAmount} onChange={setTipAmount} />
         </Field>
       </div>
+      {!independent && (
+        <>
       <div className="mt-4 grid grid-cols-2 gap-2 rounded-3xl bg-app-card-2 p-4">
         <MoneyFigure label={`سهم آرایشگر (${formatPercent(item.commissionPercent)}${tip ? " + انعام" : ""})`} amount={commission + tip} tone="accent" />
         <MoneyFigure label="سهم سالن" amount={value - commission} />
@@ -582,6 +609,8 @@ function ChargeSheet({ token, item, onClose, onSaved }: { token: string; item: I
       <p className="mt-2 px-1 text-xs leading-6 text-app-muted">
         درصد سهم همانی است که هنگام انجام این نوبت برای آرایشگر ثبت بود (اگر خدمتی درصد جداگانه داشته باشد، میانگین وزنی بر اساس قیمت).
       </p>
+        </>
+      )}
       {error && <p className="mt-3 text-sm font-medium text-app-danger">{error}</p>}
     </Sheet>
   );
