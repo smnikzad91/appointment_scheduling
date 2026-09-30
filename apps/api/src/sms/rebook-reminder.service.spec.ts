@@ -56,7 +56,7 @@ describe('RebookReminderService', () => {
     expect(msg).toMatchObject({ kind: 'rebook-customer', to: '09120000001', params: { customer: 'نگار', days: '۳۰', service: 'کوتاهی مو', salon: 'سالن رز' } });
     expect(msg.params.link).toBe(`https://dev-iot.ir/r/${claim.data.rebookCode}`); // kept for the /r page, not in the text
     expect(msg.text).not.toMatch(/https?:\/\//);
-    expect(msg.text).toBe('نگار عزیز، ۳۰ روز از کوتاهی مو در سالن رز گذشت؛ وقت نوبت بعدی است');
+    expect(msg.text).toBe('نگار عزیز، ۳۰ روز از کوتاهی مو گذشت؛ وقت نوبت بعدی است');
     expect([...msg.text].length).toBeLessThanOrEqual(70);
   });
 
@@ -157,5 +157,6 @@ describe('RebookReminderService', () => {
     expect([...text].length).toBeLessThanOrEqual(70);
     expect(text).not.toMatch(/https?:\/\//);
     expect(text).toContain('وقت نوبت بعدی است');
+    expect(text).not.toContain('سالن');
   });
 });

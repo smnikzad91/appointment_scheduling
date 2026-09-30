@@ -99,18 +99,20 @@ export const stylistConfirmNudgeText = (p: { day: string; time: string; customer
   fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل نوبتت تایید کنید`);
 
 /**
- * "Time to book again" to the customer: one segment (≤70 chars) and no link — Iranian operators'
- * filters can block SMS that carry a domain. Long names are shortened with "…". The /r/<code> page
+ * "Time to book again" to the customer: one segment (≤70 chars), no link — Iranian operators'
+ * filters can block SMS that carry a domain — and no salon/stylist name. Long names are shortened with "…". The /r/<code> page
  * still exists (params.link, for a template API or a later link-friendly line); customers opt out
  * of these texts from their dashboard (User.promoSmsOptOut).
  */
 export const SMS_TWO_SEGMENTS = 134;
 
+// No salon or stylist name in the text (salon and independent stylist alike); `salon` stays in
+// params for a template API.
 export const rebookText = (p: { customer: string; days: string; service: string; salon: string; link?: string }) =>
   fitSms(
-    { customer: p.customer, days: p.days, service: p.service, salon: p.salon },
-    ["customer", "service", "salon"],
-    (q) => `${q.customer} عزیز، ${q.days} روز از ${q.service} در ${q.salon} گذشت؛ وقت نوبت بعدی است`,
+    { customer: p.customer, days: p.days, service: p.service },
+    ["customer", "service"],
+    (q) => `${q.customer} عزیز، ${q.days} روز از ${q.service} گذشت؛ وقت نوبت بعدی است`,
   );
 
 // GSM 03.38 basic set (+ the escape-table chars, which cost two septets). Anything else — Persian
