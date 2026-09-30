@@ -9,8 +9,8 @@
 //
 // Reads apps/web/src/content/tutorials.ts (titles, text, callouts), tutorialShots.json (frame
 // positions) and apps/web/public/tutorials/*.webp — re-run after scripts/tutorials/capture.mjs.
-// Writes story-highlights/<panel>/NNN-<guide>-<step>.jpg, numbered in publishing order; each run
-// replaces a panel folder's JPGs. Needs Playwright's Chromium (CHROMIUM_PATH to override).
+// Writes story-highlights/<panel>/NN_<english_slug>.png (01_register_salon_intro.png,
+// 02_your_details.png, …), numbered in publishing order; each run replaces a panel folder's PNGs. Needs Playwright's Chromium (CHROMIUM_PATH to override).
 
 import { chromium } from "playwright";
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
@@ -35,6 +35,108 @@ const PANELS = [
   { role: "independent", dir: "02-independent-stylist-panel", label: "پنل آرایشگر مستقل" },
   { role: "customer", dir: "03-customer-panel", label: "پنل مشتری" },
 ];
+
+/**
+ * English filename slug per step (by screenshot id), so a phone's file list reads in order and
+ * says what each slide is. A guide's cover is "<guide>_intro". A step missing here falls back to
+ * "<guide>_step<n>" — add it when adding a guide.
+ */
+const STEP_SLUGS = {
+  "owner-register-1": "your_details",
+  "owner-register-2": "salon_name_and_province",
+  "owner-register-3": "choose_province_and_city",
+  "owner-register-4": "add_salon_location",
+  "owner-register-5": "finish_signup",
+  "owner-home-1": "salon_panel_tour",
+  "owner-settings-1": "cover_photo_and_logo",
+  "owner-settings-2": "brand_color",
+  "owner-stylists-1": "invite_stylist",
+  "owner-stylists-2": "stylist_details_and_share",
+  "owner-stylists-3": "send_activation_link",
+  "owner-services-1": "add_service",
+  "owner-services-2": "service_price_and_duration",
+  "owner-services-3": "create_category",
+  "owner-booking-1": "new_booking",
+  "owner-booking-2": "customer_and_stylist",
+  "owner-booking-3": "service_and_day",
+  "owner-booking-4": "pick_time",
+  "owner-manage-1": "pending_bookings",
+  "owner-manage-2": "change_status_or_edit",
+  "owner-manage-3": "month_calendar",
+  "owner-manage-4": "week_view",
+  "owner-reviews-1": "approve_reviews",
+  "owner-gallery-1": "add_portfolio_photo",
+  "owner-gallery-2": "photo_stylist_and_delete",
+  "owner-accounting-1": "month_summary",
+  "owner-accounting-2": "stylist_balances",
+  "owner-accounting-3": "record_stylist_payment",
+  "owner-accounting-4": "income_list",
+  "owner-accounting-5": "adjust_amount_and_tip",
+  "owner-accounting-6": "salon_expenses",
+  "owner-accounting-7": "monthly_report",
+  "stylist-activate-1": "open_link_set_password",
+  "stylist-home-1": "today_page",
+  "stylist-appointments-1": "bookings_list",
+  "stylist-appointments-2": "booking_details_and_status",
+  "stylist-book-1": "new_booking_for_yourself",
+  "stylist-book-2": "customer_services_and_time",
+  "stylist-reviews-1": "your_reviews",
+  "stylist-earnings-1": "month_share_and_balance",
+  "stylist-earnings-2": "completed_bookings",
+  "stylist-earnings-3": "salon_payments",
+  "stylist-expenses-2": "add_expense",
+  "stylist-expenses-1": "attach_receipt",
+  "stylist-expenses-3": "expense_list_and_search",
+  "stylist-expenses-4": "net_income",
+  "stylist-schedule-1": "working_days",
+  "stylist-schedule-2": "pick_hours",
+  "stylist-schedule-3": "add_time_off",
+  "stylist-schedule-4": "time_off_days",
+  "stylist-services-1": "your_prices_and_durations",
+  "stylist-profile-1": "about_you",
+  "stylist-profile-2": "portfolio",
+  "customer-search-1": "search_and_city_filter",
+  "customer-search-2": "nearest_salons",
+  "customer-search-3": "map_view",
+  "customer-book-1": "start_booking",
+  "customer-book-2": "choose_service",
+  "customer-book-3": "choose_stylist",
+  "customer-book-4": "day_and_time",
+  "customer-book-5": "contact_details",
+  "customer-book-6": "verification_code",
+  "customer-book-7": "confirm_booking",
+  "customer-book-8": "booking_done",
+  "customer-bookings-1": "upcoming_bookings",
+  "customer-bookings-2": "past_bookings",
+  "customer-signup-1": "account_details",
+  "customer-signup-2": "accept_terms_and_sign_up",
+  "customer-signin-1": "sign_in_next_time",
+  "customer-review-1": "review_a_visit",
+  "customer-review-2": "rating_and_comment",
+  "customer-saved-1": "save_favorite_salon",
+  "customer-saved-2": "favorites_on_home",
+  "customer-waitlist-1": "waitlist_for_full_days",
+  "customer-wallet-1": "wallet_card_and_top_up",
+  "customer-support-1": "support_ticket",
+  "customer-support-2": "write_request",
+  "customer-profile-1": "profile_and_password",
+  "indie-register-1": "choose_independent_stylist",
+  "indie-register-2": "business_name_and_workplace",
+  "indie-register-3": "province_city_address_map",
+  "indie-home-1": "panel_and_approval",
+  "indie-services-1": "services_and_prices",
+  "indie-schedule-1": "hours_and_days_off",
+  "indie-settings-1": "workplace",
+  "indie-appointments-1": "bookings_list",
+  "indie-appointments-2": "booking_details_and_place",
+  "indie-book-1": "book_with_place",
+  "indie-reviews-1": "customer_reviews",
+  "indie-accounting-1": "month_summary",
+  "indie-accounting-2": "add_expenses",
+  "indie-page-1": "your_booking_page",
+  "indie-page-2": "workplace_on_page",
+  "indie-search-1": "found_in_search",
+};
 
 const fa = (v) => String(v).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -231,16 +333,23 @@ for (const panel of PANELS) {
   if (!guides.length) continue;
   const dir = path.join(OUT, ONLY ? "_preview" : panel.dir);
   mkdirSync(dir, { recursive: true });
-  for (const f of readdirSync(dir)) if (f.endsWith(".jpg")) unlinkSync(path.join(dir, f));
+  for (const f of readdirSync(dir)) if (/\.(jpg|png)$/.test(f)) unlinkSync(path.join(dir, f));
   let n = 0;
+  const count = guides.reduce((sum, t) => sum + 1 + t.steps.length, 0);
+  // two-digit prefixes keep phones sorting 02 before 10; more than 99 slides would break that
+  if (count > 99) throw new Error(`${panel.dir}: ${count} slides — more than two digits can order`);
   for (const t of guides) {
-    const slides = [["cover", coverSlide(t, panel)], ...t.steps.map((_, i) => [`step${i + 1}`, stepSlide(t, i, panel)])];
+    const guide = t.slug.replace(/-/g, "_");
+    const slides = [
+      [`${guide}_intro`, coverSlide(t, panel)],
+      ...t.steps.map((st, i) => [STEP_SLUGS[st.shot] ?? `${guide}_step${i + 1}`, stepSlide(t, i, panel)]),
+    ];
     for (const [name, html] of slides) {
       n++;
       await tab.setContent(html, { waitUntil: "load" });
       await tab.evaluate(() => document.fonts.ready);
-      const file = path.join(dir, `${String(n).padStart(3, "0")}-${t.slug}-${name}.jpg`);
-      await tab.screenshot({ path: file, type: "jpeg", quality: 90 });
+      const file = path.join(dir, `${String(n).padStart(2, "0")}_${name}.png`);
+      await tab.screenshot({ path: file, type: "png" });
     }
   }
   total += n;
