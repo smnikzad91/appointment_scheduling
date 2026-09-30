@@ -9,10 +9,14 @@ const SIGNALS = [
   { icon: BellRing, tone: "text-g-accent-3", title: "پیامک یادآوری ارسال شد", note: "مانیکور — فردا ۱۷:۰۰", who: "سالن رز — سمیرا" },
 ];
 
-/** Desktop-only side of the auth screens: brand, one line of pitch, live-looking booking feed. */
+/**
+ * Desktop-only side of the auth screens: brand, one line of pitch, live-looking booking feed.
+ * Sticky and one screen tall, so beside a long form (salon sign-up) it stays in view from the top
+ * instead of centring on the whole page and starting halfway down.
+ */
 export default function AuthBrandPanel() {
   return (
-    <aside className="hidden w-[44%] shrink-0 flex-col justify-center py-10 lg:flex">
+    <aside className="hidden w-[44%] shrink-0 flex-col justify-center self-start py-10 lg:sticky lg:top-0 lg:flex lg:h-dvh">
       <GuestLogo className="g-rise mb-12 self-start" />
       <h2 className="g-rise text-4xl font-black leading-[1.35] text-g-ink" style={rise(1)}>
         نوبت‌های سالن،
