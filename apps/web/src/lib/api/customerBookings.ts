@@ -13,8 +13,8 @@ export interface CustomerBooking {
   endAt: string;
   priceToman: number;
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
-  /** The customer booked here, so they get the full address (even an independent stylist's home). */
-  salon: { name: string; slug: string; kind?: SalonKind; address?: string; hostSalonName?: string | null };
+  /** The customer booked here: the full address, except an independent stylist's private (home) one unless the appointment is there (then null). */
+  salon: { name: string; slug: string; kind?: SalonKind; address?: string | null; hostSalonName?: string | null };
   stylist: { displayName: string };
   /** Independent stylists: where it happens, and a home visit's address. */
   serviceLocation?: ServiceLocation | null;

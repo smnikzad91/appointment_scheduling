@@ -1,7 +1,10 @@
 import { Role, SalonKind, ServiceLocation } from '@appointment-scheduling/database';
 import { roleSatisfies } from '../auth/guards/roles.guard.js';
 import { hasPrivateAddress, publicLocation } from './public-location.util.js';
-import { AppointmentsService } from '../appointments/appointments.service.js';
+import { AppointmentsService, forCustomer } from '../appointments/appointments.service.js';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
+import { UpdateSalonDto } from './dto/update-salon.dto.js';
 import { StylistsService } from '../stylists/stylists.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { NotificationsService } from '../notifications/notifications.service.js';
@@ -128,5 +131,34 @@ describe('resolveBookingPlace', () => {
     expect(resolveBookingPlace(indie, null, null, true)).toEqual({ serviceLocation: null, visitAddress: null });
     expect(resolveBookingPlace(indie, ServiceLocation.STUDIO, 'ignored', true)).toEqual({ serviceLocation: ServiceLocation.STUDIO, visitAddress: null });
     expect(() => resolveBookingPlace(indie, ServiceLocation.CLIENT_HOME, null, true)).toThrow(/address for the home visit/);
+  });
+});
+
+describe('forCustomer', () => {
+  const salon = { address: 'خیابان آزادی، پلاک ۱۲', latitude: 36.463712, longitude: 52.861549, kind: SalonKind.INDEPENDENT };
+  const homeOnly = { ...salon, serviceLocations: [ServiceLocation.HOME, ServiceLocation.CLIENT_HOME] };
+
+  it("gives a customer the stylist's home address only for an appointment there", () => {
+    expect(forCustomer({ serviceLocation: ServiceLocation.HOME, salon: homeOnly }).salon.address).toBe(salon.address);
+    for (const serviceLocation of [ServiceLocation.CLIENT_HOME, null]) {
+      const seen = forCustomer({ serviceLocation, salon: homeOnly }).salon;
+      expect(seen).toMatchObject({ address: null, latitude: 36.46, longitude: 52.86, approximateLocation: true });
+    }
+  });
+
+  it('leaves a public address alone', () => {
+    const studio = { ...salon, serviceLocations: [ServiceLocation.STUDIO, ServiceLocation.CLIENT_HOME] };
+    expect(forCustomer({ serviceLocation: ServiceLocation.CLIENT_HOME, salon: studio }).salon.address).toBe(salon.address);
+  });
+});
+
+describe('UpdateSalonDto serviceLocations', () => {
+  const errors = (body: object) => validate(plainToInstance(UpdateSalonDto, body)).then((e) => e.map((x) => x.property));
+
+  it('may be left out but not sent as null or empty', async () => {
+    expect(await errors({})).toEqual([]);
+    expect(await errors({ serviceLocations: [ServiceLocation.HOME] })).toEqual([]);
+    expect(await errors({ serviceLocations: null })).toEqual(['serviceLocations']);
+    expect(await errors({ serviceLocations: [] })).toEqual(['serviceLocations']);
   });
 });

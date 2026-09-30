@@ -6,6 +6,7 @@ import { AppointmentStatus, NotificationType, Role, SalonKind, ServiceLocation }
 import { PrismaService } from "../prisma/prisma.service.js";
 import { JwtPayload } from "../auth/auth.service.js";
 import { findEligibleStylists } from "../salons/eligible-stylists.util.js";
+import { hasPrivateAddress, publicLocation } from "../salons/public-location.util.js";
 import { effectiveServicePricing, sumEffectivePricing } from "../salons/service-pricing.util.js";
 import { CreateAppointmentDto, CreateSalonAppointmentDto } from "./dto/create-appointment.dto.js";
 import { instantToSalonWallTime, salonWallTimeToInstant } from "../availability/salon-time.util.js";
@@ -58,6 +59,17 @@ export function resolveBookingPlace(
   return { serviceLocation, visitAddress };
 }
 
+/**
+ * A booking as its customer sees it. An independent stylist's private (home) address is theirs to
+ * know only when the appointment is at the stylist's home; a home visit or an unspecified place
+ * gets the salon as the public sees it (no address, rounded pin).
+ */
+export function forCustomer<T extends { serviceLocation: ServiceLocation | null; salon: Parameters<typeof publicLocation>[0] }>(appointment: T) {
+  const { salon } = appointment;
+  if (!hasPrivateAddress(salon) || appointment.serviceLocation === ServiceLocation.HOME) return appointment;
+  return { ...appointment, salon: publicLocation(salon) };
+}
+
 @Injectable()
 export class AppointmentsService {
   private readonly logger = new Logger(AppointmentsService.name);
@@ -73,7 +85,7 @@ export class AppointmentsService {
   async create(customerId: string, dto: CreateAppointmentDto) {
     const salon = await this.prisma.salon.findUnique({ where: { id: dto.salonId }, select: { status: true, timezone: true } });
     if (!salon || salon.status !== "ACTIVE") throw new NotFoundException("Salon not found");
-    return this.book(customerId, dto, salon.timezone, false, customerId);
+    return forCustomer(await this.book(customerId, dto, salon.timezone, false, customerId));
   }
 
   /**
@@ -242,12 +254,13 @@ export class AppointmentsService {
     throw new BadRequestException("This time slot is no longer available");
   }
 
-  findMineAsCustomer(customerId: string) {
-    return this.prisma.appointment.findMany({
+  async findMineAsCustomer(customerId: string) {
+    const appointments = await this.prisma.appointment.findMany({
       where: { customerId },
       orderBy: { startAt: "desc" },
       include: { ...APPOINTMENT_INCLUDE, stylist: true },
     });
+    return appointments.map(forCustomer);
   }
 
   async findMineAsStylist(userId: string) {

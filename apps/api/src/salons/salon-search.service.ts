@@ -93,7 +93,7 @@ export class SalonSearchService {
       const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
       // A private (home) address is never searchable.
       where.push(Prisma.sql`(s."name" ILIKE ${like}
-        OR (s."address" ILIKE ${like} AND (s."kind" = 'SALON' OR s."serviceLocations" && ARRAY['IN_SALON', 'STUDIO']::"ServiceLocation"[]))
+        OR (s."address" ILIKE ${like} AND NOT ${PRIVATE_ADDRESS_SQL})
         OR s."hostSalonName" ILIKE ${like}
         OR EXISTS (
         SELECT 1 FROM "services" sv WHERE sv."salonId" = s."id" AND sv."active" AND sv."name" ILIKE ${like}))`);
@@ -106,14 +106,18 @@ export class SalonSearchService {
     }
 
     where.push(Prisma.sql`s."latitude" IS NOT NULL`);
+    // A private (home) address is placed by its rounded pin, like publicLocation(): filtering or
+    // ordering by the exact point would let repeated radius searches narrow it down.
+    const lat = roundedIfPrivate("latitude");
+    const lng = roundedIfPrivate("longitude");
     if (dto.radiusKm != null) {
       const box = boundingBox(near.lat, near.lng, dto.radiusKm);
-      where.push(Prisma.sql`s."latitude" BETWEEN ${box.minLat} AND ${box.maxLat} AND s."longitude" BETWEEN ${box.minLng} AND ${box.maxLng}`);
+      where.push(Prisma.sql`${lat} BETWEEN ${box.minLat} AND ${box.maxLat} AND ${lng} BETWEEN ${box.minLng} AND ${box.maxLng}`);
     }
     // Haversine, the SQL twin of haversineKm in geo.util.ts.
     const km = Prisma.sql`(2 * ${EARTH_RADIUS_KM} * asin(least(1, sqrt(
-      power(sin(radians(s."latitude" - ${near.lat}) / 2), 2) +
-      cos(radians(${near.lat})) * cos(radians(s."latitude")) * power(sin(radians(s."longitude" - ${near.lng}) / 2), 2)))))`;
+      power(sin(radians(${lat} - ${near.lat}) / 2), 2) +
+      cos(radians(${near.lat})) * cos(radians(${lat})) * power(sin(radians(${lng} - ${near.lng}) / 2), 2)))))`;
     const rows = await this.prisma.$queryRaw<{ id: string; km: number }[]>`
       SELECT * FROM (SELECT s."id", ${km} AS km FROM "salons" s WHERE ${Prisma.join(where, " AND ")}) t
       ${dto.radiusKm != null ? Prisma.sql`WHERE t.km <= ${dto.radiusKm}` : Prisma.empty}
@@ -144,6 +148,15 @@ export class SalonSearchService {
       return row ? [toSalonCard(row, stats.get(id), null)] : [];
     });
   }
+}
+
+/** SQL twin of hasPrivateAddress(): an independent stylist working neither in a salon nor a studio. */
+const PRIVATE_ADDRESS_SQL = Prisma.sql`(s."kind" = 'INDEPENDENT' AND NOT (s."serviceLocations" && ARRAY['IN_SALON', 'STUDIO']::"ServiceLocation"[]))`;
+
+/** The column as the public sees it: rounded to 2 decimals (~1 km) for a private address, as in publicLocation(). */
+function roundedIfPrivate(column: "latitude" | "longitude"): Prisma.Sql {
+  const col = Prisma.raw(`s."${column}"`);
+  return Prisma.sql`(CASE WHEN ${PRIVATE_ADDRESS_SQL} THEN round(${col}::numeric, 2)::double precision ELSE ${col} END)`;
 }
 
 export function toSalonCard(row: SalonCardRow, stats: RatingStats | undefined, km: number | null) {

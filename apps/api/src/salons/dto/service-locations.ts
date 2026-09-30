@@ -1,12 +1,15 @@
 import { applyDecorators } from "@nestjs/common";
 import { ServiceLocation } from "@appointment-scheduling/database";
 import { Transform } from "class-transformer";
-import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsEnum, IsOptional, IsString, MaxLength, ValidateIf } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsEnum, IsString, MaxLength, ValidateIf } from "class-validator";
 
-/** Where an independent stylist works: one or more of IN_SALON / STUDIO / HOME / CLIENT_HOME. */
+/**
+ * Where an independent stylist works: one or more of IN_SALON / STUDIO / HOME / CLIENT_HOME.
+ * May be left out, but never null (the list column can't be; a 400 rather than a database error).
+ */
 export function IsServiceLocations() {
   return applyDecorators(
-    IsOptional(),
+    ValidateIf((_, v) => v !== undefined),
     IsArray(),
     ArrayMinSize(1),
     ArrayMaxSize(4),
