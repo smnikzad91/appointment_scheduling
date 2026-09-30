@@ -6,7 +6,7 @@ import { persianApiError } from "@/lib/api/errorMessages";
 import { requestOtp, verifyOtp } from "@/lib/api/bookings";
 import { formatCountdown, useResendCountdown } from "@/hooks/useResendCountdown";
 import { loadCustomerSession, saveCustomerSession, clearCustomerSession, type CustomerSession } from "@/lib/customerSession";
-import { normalizeDigits, isValidIranianMobile, toPersianDigits, splitFullName } from "@/lib/persian";
+import { normalizeDigits, isValidIranianMobile, toPersianDigits } from "@/lib/persian";
 import { useWebOtp } from "@/lib/useWebOtp";
 import CustomerBookings from "@/components/app/CustomerBookings";
 import { Button, Card, Field, IconButton, ListSkeleton, TextInput } from "@/components/app/ui";
@@ -53,7 +53,8 @@ export default function MyBookingsPage() {
 
 function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => void }) {
   const [step, setStep] = useState<"phone" | "otp">("phone");
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -62,8 +63,8 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
   async function handleRequestOtp(e: React.FormEvent) {
     e.preventDefault();
     const normalized = normalizeDigits(phone);
-    if (!name.trim()) {
-      setError("لطفاً نام خود را وارد کنید");
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("لطفاً نام و نام خانوادگی خود را وارد کنید");
       return;
     }
     if (!isValidIranianMobile(normalized)) {
@@ -77,7 +78,7 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
       const { devCode } = await requestOtp(normalized);
       // No SMS provider yet: the API returned the code, so sign in without the code step.
       if (devCode) {
-        const { accessToken, user } = await verifyOtp(normalized, devCode, splitFullName(name));
+        const { accessToken, user } = await verifyOtp(normalized, devCode, { firstName: firstName.trim(), lastName: lastName.trim() });
         onLoggedIn({ token: accessToken, firstName: user.firstName });
         return;
       }
@@ -98,7 +99,7 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
     setError(null);
     setLoading(true);
     try {
-      const { accessToken, user } = await verifyOtp(phone, otp, splitFullName(name));
+      const { accessToken, user } = await verifyOtp(phone, otp, { firstName: firstName.trim(), lastName: lastName.trim() });
       onLoggedIn({ token: accessToken, firstName: user.firstName });
     } catch {
       setError("کد وارد شده صحیح نیست");
@@ -135,9 +136,14 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
       <Card className="p-5">
         {step === "phone" ? (
           <form onSubmit={handleRequestOtp} className="flex flex-col gap-4">
-            <Field label="نام و نام خانوادگی">
-              <TextInput value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="مثلاً سارا احمدی" />
-            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="نام">
+                <TextInput value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" placeholder="مثلاً سارا" />
+              </Field>
+              <Field label="نام خانوادگی">
+                <TextInput value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" placeholder="مثلاً احمدی" />
+              </Field>
+            </div>
             <Field label="شماره موبایل">
               <TextInput
                 type="tel"

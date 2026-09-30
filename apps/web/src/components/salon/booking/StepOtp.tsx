@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useBooking } from "./BookingProvider";
-import { normalizeDigits, toPersianDigits, splitFullName } from "@/lib/persian";
+import { normalizeDigits, toPersianDigits } from "@/lib/persian";
 import { verifyOtp, requestOtp } from "@/lib/api/bookings";
 import { SalonApiError } from "@/lib/api/salonApiClient";
 import { useWebOtp } from "@/lib/useWebOtp";
@@ -69,7 +69,7 @@ export default function StepOtp() {
     setError(null);
     setVerifying(true);
     try {
-      const { accessToken } = await verifyOtp(state.customerPhone, code, splitFullName(state.customerName));
+      const { accessToken } = await verifyOtp(state.customerPhone, code, { firstName: state.customerFirstName.trim(), lastName: state.customerLastName.trim() });
       updateState({ accessToken });
       goNext();
     } catch (err) {

@@ -13,7 +13,8 @@ interface BookingState {
   stylistId: string | null;
   dateKey: string | null;
   startMinute: number | null;
-  customerName: string;
+  customerFirstName: string;
+  customerLastName: string;
   customerPhone: string;
   accessToken: string | null; // set once OTP verification succeeds
   /** The code, when the API hands it back (no SMS provider yet) — StepOtp then verifies by itself. */
@@ -28,7 +29,8 @@ const INITIAL_STATE: BookingState = {
   stylistId: null,
   dateKey: null,
   startMinute: null,
-  customerName: "",
+  customerFirstName: "",
+  customerLastName: "",
   customerPhone: "",
   accessToken: null,
   devCode: null,

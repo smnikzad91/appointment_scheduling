@@ -15,8 +15,8 @@ export default function StepContact() {
     e.preventDefault();
     const phone = normalizeDigits(state.customerPhone);
 
-    if (!state.customerName.trim()) {
-      setError("لطفاً نام خود را وارد کنید");
+    if (!state.customerFirstName.trim() || !state.customerLastName.trim()) {
+      setError("لطفاً نام و نام خانوادگی خود را وارد کنید");
       return;
     }
     if (!isValidIranianMobile(phone)) {
@@ -40,17 +40,32 @@ export default function StepContact() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1.5 text-sm">
-        نام و نام خانوادگی
-        <input
-          type="text"
-          value={state.customerName}
-          onChange={(e) => updateState({ customerName: e.target.value })}
-          className="rounded-lg border border-g-line px-3 py-2.5 text-sm focus:outline-none focus-visible:ring-2"
-          style={{ "--tw-ring-color": "var(--salon-brand)" } as React.CSSProperties}
-          placeholder="مثلاً سارا احمدی"
-        />
-      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
+          نام
+          <input
+            type="text"
+            autoComplete="given-name"
+            value={state.customerFirstName}
+            onChange={(e) => updateState({ customerFirstName: e.target.value })}
+            className="w-full rounded-lg border border-g-line px-3 py-2.5 text-sm focus:outline-none focus-visible:ring-2"
+            style={{ "--tw-ring-color": "var(--salon-brand)" } as React.CSSProperties}
+            placeholder="مثلاً سارا"
+          />
+        </label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
+          نام خانوادگی
+          <input
+            type="text"
+            autoComplete="family-name"
+            value={state.customerLastName}
+            onChange={(e) => updateState({ customerLastName: e.target.value })}
+            className="w-full rounded-lg border border-g-line px-3 py-2.5 text-sm focus:outline-none focus-visible:ring-2"
+            style={{ "--tw-ring-color": "var(--salon-brand)" } as React.CSSProperties}
+            placeholder="مثلاً احمدی"
+          />
+        </label>
+      </div>
 
       <label className="flex flex-col gap-1.5 text-sm">
         شماره موبایل

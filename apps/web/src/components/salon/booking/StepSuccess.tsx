@@ -6,7 +6,7 @@ import { CheckCircle2, CalendarPlus, CalendarCheck } from "lucide-react";
 import { useBooking } from "./BookingProvider";
 import { buildIcsFile } from "@/lib/ics";
 import { dateKeyToDate, formatJalaliFull } from "@/lib/jalali";
-import { formatMinutesAsClock, splitFullName } from "@/lib/persian";
+import { formatMinutesAsClock } from "@/lib/persian";
 import { salonWallTimeToInstant } from "@/lib/salonTime";
 import { saveCustomerSession } from "@/lib/customerSession";
 
@@ -15,7 +15,7 @@ export default function StepSuccess() {
 
   useEffect(() => {
     if (state.accessToken) {
-      saveCustomerSession({ token: state.accessToken, firstName: splitFullName(state.customerName).firstName });
+      saveCustomerSession({ token: state.accessToken, firstName: state.customerFirstName.trim() });
     }
     // Only ever needs to run once, right when the success screen mounts with a fresh token.
     // eslint-disable-next-line react-hooks/exhaustive-deps

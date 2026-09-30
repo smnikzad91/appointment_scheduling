@@ -33,8 +33,3 @@ export function formatMinutesAsClock(minutes: number): string {
   return toPersianDigits(clock);
 }
 
-/** Splits a single "full name" input into first/last name for APIs that want them separately. */
-export function splitFullName(fullName: string): { firstName: string; lastName: string } {
-  const parts = fullName.trim().split(/\s+/);
-  return { firstName: parts[0] ?? "", lastName: parts.slice(1).join(" ") || parts[0] || "" };
-}
