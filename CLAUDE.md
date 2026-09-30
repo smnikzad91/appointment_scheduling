@@ -26,6 +26,9 @@
      iran-locations/      Iran's 31 provinces → counties (TS, type-strippable like database); salon
                            province/city are validated against it (api) and drive the cascading
                            selects (web). Add a missing county there — nothing else changes.
+   story-highlights/      Instagram Story Highlight slides per panel (generated JPGs, committed) —
+                           `node scripts/story-highlights/build.mjs` rebuilds them from the Help Center
+                           guides + screenshots; see story-highlights/README.md
    archive/
      mqttcloud-legacy/    dead code stripped from apps/web (MQTT broker feature, unrelated
                            to this product) — kept for reference, not wired up
