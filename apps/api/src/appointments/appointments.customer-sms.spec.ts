@@ -11,7 +11,7 @@ const stylistUser = { sub: 'sty-user-1', role: 'STYLIST' } as JwtPayload;
 const customerUser = { sub: 'cust-1', role: 'CUSTOMER' } as JwtPayload;
 const inTwoHours = () => new Date(Date.now() + 2 * 60 * 60_000);
 
-function setup({ allowance = true } = {}) {
+function setup({ allowance = true, kind = 'SALON' } = {}) {
   const tx = {
     $executeRaw: vi.fn(),
     workingHour: { findMany: vi.fn().mockResolvedValue([0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, startMinute: 0, endMinute: 1440 }))) },
@@ -42,8 +42,8 @@ function setup({ allowance = true } = {}) {
         customerId: 'cust-1',
         services: [],
         startAt: inTwoHours(),
-        salon: { name: 'سالن رز', timezone: 'Asia/Tehran' },
-        stylist: { displayName: 'مریم' },
+        salon: { name: 'سالن رز', timezone: 'Asia/Tehran', kind },
+        stylist: { displayName: 'مریم', user: { firstName: 'مریم', lastName: 'کاظمی' } },
         customer: { phone: '09121234567' },
       }),
     },
@@ -66,6 +66,18 @@ const booking = (startAt: Date) => ({ customerPhone: '09121234567', stylistId: '
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('SMS to the customer when staff book', () => {
+  it('names only the stylist for an independent stylist', async () => {
+    const { service, sms } = setup({ kind: 'INDEPENDENT' });
+    await service.createForSalon(owner, booking(inTwoHours()));
+    await flush();
+
+    expect(sms.send).toHaveBeenCalledTimes(1);
+    const [message] = sms.send.mock.calls[0];
+    expect(message.kind).toBe('booked-customer');
+    expect(message.text).toMatch(/^نوبتت: .+ ساعت .+ با مریم کاظمی ثبت شد$/);
+    expect(message.text).not.toContain('سالن رز');
+  });
+
   it.each([
     ['the owner', owner],
     ['a stylist', stylistUser],

@@ -49,10 +49,21 @@ export const jalaliDay = (instant: Date, timeZone: string) =>
   new Intl.DateTimeFormat("fa-IR-u-ca-persian", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(instant);
 
 type BookingParams = { day: string; time: string; salon: string; stylist: string };
+type CustomerBookingKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
+
+/**
+ * An independent stylist is the business, so the text names only them (their full name) — no
+ * «در {salon} با {stylist}» naming the same person twice: «نوبتت: {day} ساعت {time} با سارا ایلکا ثبت شد».
+ */
+export const independentBookingText = (kind: CustomerBookingKind, p: { day: string; time: string; name: string }) => {
+  const verb = { "booked-customer": "ثبت شد", "confirmed-customer": "تایید شد", "cancelled-customer": "لغو شد", "rescheduled-customer": "منتقل شد" }[kind];
+  const lead = kind === "rescheduled-customer" ? "نوبتت: نوبت شما به " : "نوبتت: ";
+  return fitSms(p, ["name"], (q) => `${lead}${q.day} ساعت ${q.time} با ${q.name} ${verb}`);
+};
 
 /** Texts for the customer when staff book, move or cancel their appointment. When both names
  * don't fit, the stylist is left out rather than cutting the salon's name short. */
-export const customerBookingText = (kind: "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer", p: BookingParams) => {
+export const customerBookingText = (kind: CustomerBookingKind, p: BookingParams) => {
   const withStylist = (build: (q: BookingParams, by: string) => string) => {
     const text = fitSms(p, ["salon", "stylist"], (q) => build(q, ` با ${q.stylist}`));
     return text.includes(p.salon) ? text : fitSms(p, ["salon"], (q) => build(q, ""));

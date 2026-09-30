@@ -18,7 +18,7 @@ import { NotificationsService, type BookingData } from "../notifications/notific
 import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { clock, customerBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
+import { clock, customerBookingText, independentBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
 
 type CustomerSmsKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
 
@@ -438,8 +438,8 @@ export class AppointmentsService {
         select: {
           salonId: true,
           startAt: true,
-          salon: { select: { name: true, timezone: true } },
-          stylist: { select: { displayName: true } },
+          salon: { select: { name: true, timezone: true, kind: true } },
+          stylist: { select: { displayName: true, user: { select: { firstName: true, lastName: true } } } },
           customer: { select: { phone: true } },
         },
       });
@@ -450,7 +450,12 @@ export class AppointmentsService {
         salon: a.salon.name,
         stylist: a.stylist.displayName,
       };
-      const text = customerBookingText(kind, params);
+      // An independent stylist: only their full name, the business being them (sms.text.ts).
+      const fullName = `${a.stylist.user.firstName} ${a.stylist.user.lastName}`.trim() || a.stylist.displayName;
+      const text =
+        a.salon.kind === SalonKind.INDEPENDENT
+          ? independentBookingText(kind, { day: params.day, time: params.time, name: fullName })
+          : customerBookingText(kind, params);
       if (!(await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text)))) return;
       await this.sms.send({ kind, to: a.customer.phone, params, text });
     } catch (err) {
