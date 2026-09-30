@@ -41,6 +41,8 @@ export function PasswordInput(props: Omit<InputProps, "type" | "trailing">) {
   return (
     <FloatingInput
       {...props}
+      // shown as text, it's still a password: never kept as a draft (FormDraftKeeper)
+      data-no-draft=""
       type={visible ? "text" : "password"}
       dir="ltr"
       trailing={

@@ -14,6 +14,7 @@ import GradientButton from "@/components/guest/GradientButton";
 import { rise } from "@/components/guest/motion";
 import { planFeatureLines, planPriceLabel, type PricingPlanData } from "@/lib/pricing";
 import { SERVICE_LOCATIONS, SERVICE_LOCATION_HINT, SERVICE_LOCATION_LABEL, type SalonKind, type ServiceLocation } from "@/lib/independent";
+import { useBackgroundDraft } from "@/lib/useBackgroundDraft";
 
 export type SignUpPlan = Pick<PricingPlanData, "id" | "name" | "monthlyPriceToman" | "maxStylists" | "smsPerMonth" | "features" | "recommended">;
 
@@ -46,6 +47,23 @@ export default function SignUpSalonForm({
   const [pin, setPin] = useState<GeoLocation | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // The choices that aren't plain text fields (FormDraftKeeper brings those back), kept if the OS
+  // kills the app while they're in another app — e.g. fetching the salon's address.
+  useBackgroundDraft(
+    "signup-salon",
+    () =>
+      place.province || pin || serviceLocations.length || kind !== initialKind
+        ? { kind, serviceLocations, place, pin, planId }
+        : null,
+    (d) => {
+      setKind(d.kind);
+      setServiceLocations(d.serviceLocations);
+      setPlace(d.place);
+      setPin(d.pin);
+      setPlanId(d.planId);
+    },
+  );
 
   const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 

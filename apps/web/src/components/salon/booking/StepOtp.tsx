@@ -119,6 +119,7 @@ export default function StepOtp() {
             type="tel"
             inputMode="numeric"
             autoComplete={i === 0 ? "one-time-code" : "off"}
+            data-no-draft=""
             value={digit ? toPersianDigits(digit) : ""}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}

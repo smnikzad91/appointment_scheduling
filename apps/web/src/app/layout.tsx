@@ -9,6 +9,7 @@ import ToastProvider from "@/components/common/ToastProvider";
 import AgGridSetup from "@/components/common/AgGridSetup";
 import ClientErrorReporter from "@/components/common/ClientErrorReporter";
 import SplashScreen from "@/components/common/SplashScreen";
+import FormDraftKeeper from "@/components/common/FormDraftKeeper";
 import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
@@ -84,6 +85,7 @@ export default function RootLayout({
         <AgGridSetup />
         <ClientErrorReporter />
         <ServiceWorkerRegister />
+        <FormDraftKeeper />
         <SessionWrapper>
           <LanguageProvider>
             <ThemeProvider>

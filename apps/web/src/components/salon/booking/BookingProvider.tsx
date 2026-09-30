@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { Salon, Booking } from "@/types/salon";
 import type { ServiceLocation } from "@/lib/independent";
+import { useBackgroundDraft } from "@/lib/useBackgroundDraft";
 
 export type BookingStep = "services" | "stylist" | "datetime" | "contact" | "otp" | "summary" | "success";
 
@@ -115,6 +116,22 @@ export function BookingProvider({ salon, prefill, children }: { salon: Salon; pr
   const updateState = useCallback((patch: Partial<BookingState>) => {
     setState((s) => ({ ...s, ...patch }));
   }, []);
+
+  // If the OS kills the app while the customer is in another app (checking their calendar, the
+  // SMS code), bring them back to the same step with the same choices — also over a prefilled
+  // sheet (short link, «رزرو دوباره»): the draft is what they did after it. A finished booking
+  // isn't brought back.
+  useBackgroundDraft<{ step: BookingStep; state: BookingState }>(
+    `booking:${salon.slug}`,
+    () => (isOpen && step !== "success" ? { step, state } : null),
+    (draft) => {
+      if (!steps.includes(draft.step)) return;
+      const afterOtp = steps.indexOf(draft.step) > steps.indexOf("otp");
+      setState({ ...initialState, ...draft.state });
+      setStep(afterOtp && !draft.state.accessToken ? "contact" : draft.step);
+      setIsOpen(true);
+    },
+  );
 
   const stepIndex = steps.indexOf(step);
 

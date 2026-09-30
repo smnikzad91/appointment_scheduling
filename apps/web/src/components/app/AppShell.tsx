@@ -11,6 +11,7 @@ import { SITE_NAME } from "@/lib/site";
 import Sheet from "./Sheet";
 import InstallAppBanner from "./InstallAppBanner";
 import { Avatar, ListGroup, cx } from "./ui";
+import { clearAllDrafts } from "@/lib/formDrafts";
 
 export interface AppTab {
   href: string;
@@ -169,7 +170,10 @@ export default function AppShell({
           </button>
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: "/signin" })}
+            onClick={() => {
+              clearAllDrafts();
+              signOut({ callbackUrl: "/signin" });
+            }}
             className="flex h-14 w-full items-center gap-3 px-4 text-[15px] font-semibold text-app-danger active:bg-app-card-2"
           >
             <LogOut className="h-5 w-5" aria-hidden />
