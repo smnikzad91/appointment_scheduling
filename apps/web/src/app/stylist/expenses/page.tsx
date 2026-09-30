@@ -23,6 +23,7 @@ import Sheet from "@/components/app/Sheet";
 import Sep from "@/components/common/Sep";
 import { DaySelect, PeriodSwitcher, dayKeyToInstant, instantToDayKey, shortDate } from "@/components/app/accounting";
 import { Button, ChipTabs, EmptyState, ErrorBanner, Field, IconButton, ListSkeleton, PageHeader, TextArea, cx, riseStyle } from "@/components/app/ui";
+import { toastError } from "@/lib/toastError";
 
 const PAGE_SIZE = 20;
 /** Expenses go back 12 months: this month and the 11 before it (the API has the same limit). */
@@ -210,8 +211,7 @@ function ExpenseSheet({
   const [description, setDescription] = useState(expense?.description ?? "");
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const receipt = useReceipt(expense?.receiptUrl ?? null, "expenses", setError);
+  const receipt = useReceipt(expense?.receiptUrl ?? null, "expenses", (message) => message && toastError(message));
 
   function close() {
     receipt.discard();
@@ -219,10 +219,9 @@ function ExpenseSheet({
   }
 
   async function save() {
-    if (!amount) return setError("مبلغ هزینه را وارد کنید");
-    if (!description.trim()) return setError("توضیح هزینه را بنویسید");
+    if (!amount) return toastError("مبلغ هزینه را وارد کنید");
+    if (!description.trim()) return toastError("توضیح هزینه را بنویسید");
     setBusy("save");
-    setError(null);
     try {
       const data = { category, amountToman: amount, spentAt: dayKeyToInstant(dayKey), description: description.trim(), receiptUrl: receipt.url };
       if (expense) await updateMyExpense(token, expense.id, data);
@@ -231,7 +230,7 @@ function ExpenseSheet({
       onSaved();
       close();
     } catch (err) {
-      setError(persianApiError(err, "ذخیره هزینه انجام نشد"));
+      toastError(persianApiError(err, "ذخیره هزینه انجام نشد"));
       setBusy(null);
     }
   }
@@ -246,7 +245,7 @@ function ExpenseSheet({
       onSaved();
       close();
     } catch (err) {
-      setError(persianApiError(err, "حذف هزینه انجام نشد"));
+      toastError(persianApiError(err, "حذف هزینه انجام نشد"));
       setBusy(null);
     }
   }
@@ -300,7 +299,6 @@ function ExpenseSheet({
 
         <ReceiptField receipt={receipt} />
 
-        {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
         {expense && (
           <Button variant="danger" block icon={Trash2} busy={busy === "delete"} disabled={busy !== null} onClick={remove}>
             {confirmDelete ? "بله، این هزینه حذف شود" : "حذف هزینه"}

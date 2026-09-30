@@ -18,6 +18,7 @@ import Sheet from "@/components/app/Sheet";
 import { Button, EmptyState, ErrorBanner, Field, IconButton, ListGroup, ListSkeleton, PageHeader, SectionTitle, TextInput, Toggle, cx } from "@/components/app/ui";
 import PickerSelect from "@/components/app/PickerSelect";
 import TimePicker from "@/components/app/TimePicker";
+import { toastError } from "@/lib/toastError";
 
 interface DayRow {
   open: boolean;
@@ -41,14 +42,12 @@ export default function StylistSchedulePage() {
   const [days, setDays] = useState<Record<number, DayRow> | null>(null);
   const [timeOff, setTimeOff] = useState<TimeOffEntry[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [hoursError, setHoursError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   const [timeOffOpen, setTimeOffOpen] = useState(false);
   const [newTimeOff, setNewTimeOff] = useState({ start: "", end: "", reason: "" });
-  const [timeOffError, setTimeOffError] = useState<string | null>(null);
   const [addingTimeOff, setAddingTimeOff] = useState(false);
 
   const reload = useCallback(() => {
@@ -99,11 +98,10 @@ export default function StylistSchedulePage() {
     if (!token || !days) return;
     const invalid = Object.values(days).some((row) => row.open && row.endMinute <= row.startMinute);
     if (invalid) {
-      setHoursError("ساعت پایان هر روز باید بعد از ساعت شروع باشد");
+      toastError("ساعت پایان هر روز باید بعد از ساعت شروع باشد");
       return;
     }
     setSaving(true);
-    setHoursError(null);
     try {
       const hours: WorkingHourEntry[] = Object.entries(days)
         .filter(([, row]) => row.open)
@@ -113,7 +111,7 @@ export default function StylistSchedulePage() {
       setDirty(false);
       setTimeout(() => setSaved(false), 2500);
     } catch {
-      setHoursError("ذخیره ساعات کاری انجام نشد، دوباره تلاش کنید");
+      toastError("ذخیره ساعات کاری انجام نشد، دوباره تلاش کنید");
     } finally {
       setSaving(false);
     }
@@ -122,18 +120,16 @@ export default function StylistSchedulePage() {
   function openTimeOff() {
     const first = dayOptions[0].key;
     setNewTimeOff({ start: first, end: first, reason: "" });
-    setTimeOffError(null);
     setTimeOffOpen(true);
   }
 
   async function handleAddTimeOff() {
     if (!token || !newTimeOff.start || !newTimeOff.end) return;
     if (newTimeOff.end < newTimeOff.start) {
-      setTimeOffError("تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد");
+      toastError("تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد");
       return;
     }
     setAddingTimeOff(true);
-    setTimeOffError(null);
     try {
       // Whole salon-local days: from midnight of the first day to midnight after the last day.
       await createMyTimeOff(token, {
@@ -144,7 +140,7 @@ export default function StylistSchedulePage() {
       setTimeOffOpen(false);
       reload();
     } catch {
-      setTimeOffError("ثبت مرخصی انجام نشد");
+      toastError("ثبت مرخصی انجام نشد");
     } finally {
       setAddingTimeOff(false);
     }
@@ -217,9 +213,8 @@ export default function StylistSchedulePage() {
       </p>
 
       {/* Save bar — only while there's something to save (or right after saving). */}
-      {(dirty || saved || hoursError) && (
+      {(dirty || saved) && (
         <div className="app-rise sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 mt-4">
-          {hoursError && <ErrorBanner>{hoursError}</ErrorBanner>}
           <Button block busy={saving} icon={saved ? Check : undefined} onClick={handleSaveHours} className="shadow-[0_12px_30px_-12px_rgb(0_0_0/0.45)]">
             {saved ? "ذخیره شد" : "ذخیره ساعات کاری"}
           </Button>
@@ -287,7 +282,6 @@ export default function StylistSchedulePage() {
           <Field label="دلیل (اختیاری)">
             <TextInput value={newTimeOff.reason} onChange={(e) => setNewTimeOff((f) => ({ ...f, reason: e.target.value }))} placeholder="مثلاً سفر" />
           </Field>
-          {timeOffError && <p className="text-sm font-medium text-app-danger">{timeOffError}</p>}
         </div>
       </Sheet>
     </>

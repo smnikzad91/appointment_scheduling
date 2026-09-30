@@ -7,13 +7,13 @@ import { formatJalaliFull, dateKeyToDate } from "@/lib/jalali";
 import { createBooking } from "@/lib/api/bookings";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { placeLabel } from "@/lib/independent";
+import { toastError } from "@/lib/toastError";
 
 export default function StepSummary() {
   const { salon, state, updateState, setResult, goNext } = useBooking();
   // An independent stylist working in more than one place: the customer picks where.
   const places = salon.kind === "INDEPENDENT" ? salon.serviceLocations : [];
   const homeVisit = state.serviceLocation === "CLIENT_HOME";
-  const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
 
   const stylist = salon.stylists.find((s) => s.id === state.stylistId);
@@ -33,9 +33,8 @@ export default function StepSummary() {
 
   async function handleConfirm() {
     if (!state.dateKey || state.startMinute === null || !state.accessToken) return;
-    if (places.length > 1 && !state.serviceLocation) return setError("محل انجام نوبت را انتخاب کنید");
-    if (homeVisit && state.visitAddress.trim().length < 5) return setError("نشانی محل خدمت در منزل را وارد کنید");
-    setError(null);
+    if (places.length > 1 && !state.serviceLocation) return toastError("محل انجام نوبت را انتخاب کنید");
+    if (homeVisit && state.visitAddress.trim().length < 5) return toastError("نشانی محل خدمت در منزل را وارد کنید");
     setConfirming(true);
     try {
       const booking = await createBooking({
@@ -51,7 +50,7 @@ export default function StepSummary() {
       setResult(booking);
       goNext();
     } catch (err) {
-      setError(persianApiError(err));
+      toastError(persianApiError(err));
     } finally {
       setConfirming(false);
     }
@@ -144,7 +143,6 @@ export default function StepSummary() {
         </label>
       )}
 
-      {error && <p className="text-xs text-rose-500">{error}</p>}
 
       <button
         type="button"

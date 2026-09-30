@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
+import { toastError } from "@/lib/toastError";
 
 type Reply = { _id: string; sender: "user" | "admin"; message: string; images?: string[]; createdAt: string };
 type TicketUser = { firstName?: string; lastName?: string; email?: string } | null;
@@ -45,7 +46,7 @@ export default function AdminTicketDetailPage() {
   const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (images.length + files.length > 5) { alert(isRTL ? "حداکثر ۵ تصویر" : "Max 5 images"); return; }
+    if (images.length + files.length > 5) { toastError(isRTL ? "حداکثر ۵ تصویر" : "Max 5 images"); return; }
     setUploading(true);
     for (const file of files) {
       const fd = new FormData();

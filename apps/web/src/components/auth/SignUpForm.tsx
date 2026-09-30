@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { signIn } from "next-auth/react";
 import AuthCard, { AuthLink } from "@/components/guest/AuthCard";
-import { FloatingInput, FormError, GlassCheckbox, PasswordInput, PasswordStrength } from "@/components/guest/fields";
+import { FloatingInput, GlassCheckbox, PasswordInput, PasswordStrength } from "@/components/guest/fields";
 import GradientButton from "@/components/guest/GradientButton";
 import SocialAuth from "@/components/guest/SocialAuth";
 import { rise } from "@/components/guest/motion";
+import { toastError } from "@/lib/toastError";
 
 const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 
@@ -19,15 +20,13 @@ export default function SignUpForm() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (!IRANIAN_MOBILE.test(phone)) {
-      setError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد (مثال: ۰۹۱۱۹۱۰۰۹۹۱)");
+      toastError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد (مثال: ۰۹۱۱۹۱۰۰۹۹۱)");
       return;
     }
 
@@ -42,7 +41,7 @@ export default function SignUpForm() {
     const data = await res.json();
 
     if (!res.ok) {
-      setError(data.error || "خطا در ثبت‌نام");
+      toastError(data.error || "خطا در ثبت‌نام");
       setLoading(false);
       return;
     }
@@ -72,7 +71,6 @@ export default function SignUpForm() {
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <FormError>{error}</FormError>
 
         <div className="g-rise grid grid-cols-2 gap-3" style={rise(3)}>
           <FloatingInput label="نام" autoComplete="given-name" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />

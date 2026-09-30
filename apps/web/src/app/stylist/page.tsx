@@ -174,7 +174,6 @@ export default function StylistOverviewPage() {
         onSetStatus={actions.setStatus}
         onEdit={actions.edit}
         busyStatus={actions.busyStatus}
-        error={actions.error}
       />
       {actions.editing && token && (
         <SalonBookingSheet

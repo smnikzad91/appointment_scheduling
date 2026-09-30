@@ -168,7 +168,6 @@ export default function AppointmentsScreen({
         onSetStatus={actions.setStatus}
         onEdit={edit ? actions.edit : undefined}
         busyStatus={actions.busyStatus}
-        error={actions.error}
       />
       {edit && newAt && (
         <SalonBookingSheet

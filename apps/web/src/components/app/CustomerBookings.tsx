@@ -23,6 +23,7 @@ import { StatusChip, relativeDayLabel } from "./appointments";
 import Sheet from "./Sheet";
 import { Button, ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader, TextArea, cx, riseStyle } from "./ui";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 type Tab = "upcoming" | "past";
 
@@ -77,14 +78,12 @@ export default function CustomerBookings({
   const [reviewTarget, setReviewTarget] = useState<CustomerBooking | null>(null);
   const [drafts, setDrafts] = useState<Record<ReviewTarget, Draft>>(EMPTY_DRAFTS);
   const [reviewing, setReviewing] = useState(false);
-  const [sheetError, setSheetError] = useState<string | null>(null);
 
   // Editing one of the customer's own reviews.
   const [editing, setEditing] = useState<{ booking: CustomerBooking; review: BookingReview } | null>(null);
   const [editDraft, setEditDraft] = useState<Draft>({ rating: 0, comment: "" });
   const [editBusy, setEditBusy] = useState<"save" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     if (!token) return;
@@ -114,13 +113,12 @@ export default function CustomerBookings({
   async function confirmCancel() {
     if (!token || !cancelTarget) return;
     setCancelling(true);
-    setSheetError(null);
     try {
       await cancelBooking(token, cancelTarget.id);
       setCancelTarget(null);
       reload();
     } catch {
-      setSheetError("لغو نوبت انجام نشد، دوباره تلاش کنید");
+      toastError("لغو نوبت انجام نشد، دوباره تلاش کنید");
     } finally {
       setCancelling(false);
     }
@@ -128,7 +126,6 @@ export default function CustomerBookings({
 
   function openReview(booking: CustomerBooking) {
     setDrafts(EMPTY_DRAFTS);
-    setSheetError(null);
     setReviewTarget(booking);
   }
 
@@ -141,11 +138,10 @@ export default function CustomerBookings({
     // Stars only, text only, or both — a section with neither is skipped.
     const toSend = missingTargets(reviewTarget).filter((t) => drafts[t].rating > 0 || drafts[t].comment.trim() !== "");
     if (toSend.length === 0) {
-      setSheetError("برای ثبت نظر، امتیاز بدهید یا چند کلمه بنویسید");
+      toastError("برای ثبت نظر، امتیاز بدهید یا چند کلمه بنویسید");
       return;
     }
     setReviewing(true);
-    setSheetError(null);
     try {
       for (const target of toSend) {
         const { rating, comment } = drafts[target];
@@ -153,7 +149,7 @@ export default function CustomerBookings({
       }
       setReviewTarget(null);
     } catch (err) {
-      setSheetError(persianApiError(err, "ثبت نظر انجام نشد"));
+      toastError(persianApiError(err, "ثبت نظر انجام نشد"));
     } finally {
       setReviewing(false);
       reload(); // also picks up a review that went through before a later one failed
@@ -164,7 +160,6 @@ export default function CustomerBookings({
     setEditing({ booking, review });
     setEditDraft({ rating: review.rating ?? 0, comment: review.comment ?? "" });
     setConfirmDelete(false);
-    setEditError(null);
   }
 
   const editDirty =
@@ -174,17 +169,16 @@ export default function CustomerBookings({
   async function saveEdit() {
     if (!token || !editing) return;
     if (editDraft.rating === 0 && editDraft.comment.trim() === "") {
-      setEditError("امتیاز بدهید یا چند کلمه بنویسید؛ برای پاک کردن کامل، «حذف نظر» را بزنید");
+      toastError("امتیاز بدهید یا چند کلمه بنویسید؛ برای پاک کردن کامل، «حذف نظر» را بزنید");
       return;
     }
     setEditBusy("save");
-    setEditError(null);
     try {
       await updateReview(token, editing.review.id, { rating: editDraft.rating || null, comment: editDraft.comment.trim() || null });
       setEditing(null);
       reload();
     } catch (err) {
-      setEditError(persianApiError(err, "ذخیره تغییرات انجام نشد"));
+      toastError(persianApiError(err, "ذخیره تغییرات انجام نشد"));
     } finally {
       setEditBusy(null);
     }
@@ -197,13 +191,12 @@ export default function CustomerBookings({
       return;
     }
     setEditBusy("delete");
-    setEditError(null);
     try {
       await deleteReview(token, editing.review.id);
       setEditing(null);
       reload();
     } catch (err) {
-      setEditError(persianApiError(err, "حذف نظر انجام نشد"));
+      toastError(persianApiError(err, "حذف نظر انجام نشد"));
     } finally {
       setEditBusy(null);
     }
@@ -313,7 +306,7 @@ export default function CustomerBookings({
                       </Link>
                     )}
                     {canCancel && (
-                      <Button variant="danger" className="h-11 flex-1" onClick={() => { setSheetError(null); setCancelTarget(b); }}>
+                      <Button variant="danger" className="h-11 flex-1" onClick={() => { setCancelTarget(b); }}>
                         لغو نوبت
                       </Button>
                     )}
@@ -332,7 +325,6 @@ export default function CustomerBookings({
               نوبت {relativeDayLabel(toSalonWallTime(cancelTarget.startAt).dateKey)} ساعت{" "}
               {formatMinutesAsClock(toSalonWallTime(cancelTarget.startAt).minuteOfDay)} در {cancelTarget.salon.name} لغو شود؟
             </p>
-            {sheetError && <ErrorBanner>{sheetError}</ErrorBanner>}
             <div className="grid grid-cols-2 gap-2.5">
               <Button variant="secondary" onClick={() => setCancelTarget(null)}>
                 منصرف شدم
@@ -399,7 +391,6 @@ export default function CustomerBookings({
             <p className="px-1 text-xs leading-6 text-app-muted">
               می‌توانید فقط امتیاز بدهید، فقط نظر بنویسید یا هر دو؛ هر بخش را هم می‌توانید خالی بگذارید. نظر شما پس از تایید سالن یا آرایشگر در صفحه سالن نمایش داده می‌شود.
             </p>
-            {sheetError && <p className="text-sm font-medium text-app-danger">{sheetError}</p>}
           </div>
         )}
       </Sheet>
@@ -455,7 +446,6 @@ export default function CustomerBookings({
                 ? "این نظر الان در صفحه سالن نمایش داده می‌شود. اگر ویرایشش کنید، تا تایید دوباره نمایش داده نمی‌شود."
                 : "بعد از ذخیره، نظر شما دوباره برای تایید فرستاده می‌شود."}
             </p>
-            {editError && <p className="text-sm font-medium text-app-danger">{editError}</p>}
             <Button variant="danger" block icon={Trash2} busy={editBusy === "delete"} disabled={editBusy !== null} onClick={removeReview}>
               {confirmDelete ? "بله، این نظر حذف شود" : "حذف نظر"}
             </Button>

@@ -42,6 +42,7 @@ import {
   riseStyle,
 } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 /** New stylists start at a 20% share; the owner can change it in the form or later. */
 const DEFAULT_COMMISSION = "20";
@@ -64,7 +65,6 @@ export default function SalonStylistsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [sheetError, setSheetError] = useState<string | null>(null);
   const [overrideDrafts, setOverrideDrafts] = useState<Record<string, { price: string; duration: string; pct: string }>>({});
   const [savingServiceId, setSavingServiceId] = useState<string | null>(null);
   const [commissionDraft, setCommissionDraft] = useState("");
@@ -73,7 +73,6 @@ export default function SalonStylistsPage() {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invite, setInvite] = useState(EMPTY_INVITE);
-  const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
   // The new stylist's one-time "set your password" link, shown once right after creating them.
   const [created, setCreated] = useState<{ name: string; token: string; expiresAt: string } | null>(null);
@@ -107,7 +106,6 @@ export default function SalonStylistsPage() {
   const selected = stylists?.find((s) => s.id === selectedId) ?? null;
 
   function openStylist(stylist: OwnerStylist) {
-    setSheetError(null);
     setOverrideDrafts({});
     setCommissionDraft(String(stylist.commissionPercent));
     setCommissionSaved(false);
@@ -118,12 +116,11 @@ export default function SalonStylistsPage() {
   async function handleRegenerateLink(stylist: OwnerStylist) {
     if (!token) return;
     setLinkBusy(true);
-    setSheetError(null);
     try {
       const link = await regenerateStylistSetupLink(token, stylist.id);
       setSheetLink({ stylistId: stylist.id, token: link.setupToken, expiresAt: link.expiresAt });
     } catch {
-      setSheetError("ساخت لینک جدید انجام نشد");
+      toastError("ساخت لینک جدید انجام نشد");
     } finally {
       setLinkBusy(false);
     }
@@ -150,12 +147,11 @@ export default function SalonStylistsPage() {
   async function saveServices(stylist: OwnerStylist, next: StylistServiceEntry[], serviceId: string) {
     if (!token) return;
     setSavingServiceId(serviceId);
-    setSheetError(null);
     try {
       await setStylistServices(token, stylist.id, next);
       reload();
     } catch {
-      setSheetError("به‌روزرسانی خدمات آرایشگر انجام نشد");
+      toastError("به‌روزرسانی خدمات آرایشگر انجام نشد");
     } finally {
       setSavingServiceId(null);
     }
@@ -230,13 +226,12 @@ export default function SalonStylistsPage() {
     const commissionPercent = parseCommission(commissionDraft);
     if (!token || commissionPercent === null) return;
     setSavingCommission(true);
-    setSheetError(null);
     try {
       const updated = await updateStylist(token, stylist.id, { commissionPercent });
       setStylists((list) => list?.map((s) => (s.id === stylist.id ? { ...s, commissionPercent: updated.commissionPercent } : s)) ?? list);
       setCommissionSaved(true);
     } catch {
-      setSheetError("ذخیره سهم آرایشگر انجام نشد");
+      toastError("ذخیره سهم آرایشگر انجام نشد");
     } finally {
       setSavingCommission(false);
     }
@@ -247,20 +242,19 @@ export default function SalonStylistsPage() {
     if (!token) return;
     const phone = normalizeDigits(invite.phone);
     if (!invite.firstName.trim() || !invite.lastName.trim()) {
-      setInviteError("نام و نام خانوادگی را وارد کنید");
+      toastError("نام و نام خانوادگی را وارد کنید");
       return;
     }
     if (!isValidIranianMobile(phone)) {
-      setInviteError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
+      toastError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
       return;
     }
     const commissionPercent = parseCommission(invite.commission);
     if (commissionPercent === null) {
-      setInviteError("سهم آرایشگر از درآمد را وارد کنید (۰ تا ۱۰۰ درصد)");
+      toastError("سهم آرایشگر از درآمد را وارد کنید (۰ تا ۱۰۰ درصد)");
       return;
     }
     setInviting(true);
-    setInviteError(null);
     try {
       const result = await inviteStylist(token, {
         phone,
@@ -278,7 +272,7 @@ export default function SalonStylistsPage() {
       }
       reload();
     } catch (err) {
-      setInviteError(
+      toastError(
         err instanceof SalonApiError && err.status === 409
           ? "این شماره قبلاً در نوبتت ثبت شده و نمی‌توان آن را به‌عنوان آرایشگر اضافه کرد"
           : persianApiError(err, "افزودن آرایشگر انجام نشد"), // e.g. the plan's stylist limit
@@ -291,7 +285,6 @@ export default function SalonStylistsPage() {
   function closeInvite() {
     setInviteOpen(false);
     setCreated(null);
-    setInviteError(null);
   }
 
   if (!stylists || !services) {
@@ -386,7 +379,6 @@ export default function SalonStylistsPage() {
             />
             <div className="mb-5" />
 
-            {sheetError && <p className="mb-3 rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{sheetError}</p>}
 
             <h3 className="mb-2 px-1 text-[13px] font-bold text-app-muted">ورود آرایشگر</h3>
             <div className="mb-5 rounded-3xl border border-app-line bg-app-card p-4">
@@ -553,7 +545,6 @@ export default function SalonStylistsPage() {
                 placeholder="09121234567"
               />
             </Field>
-            {inviteError && <p className="text-sm font-medium text-app-danger">{inviteError}</p>}
             <Button type="submit" block icon={UserPlus} busy={inviting}>
               ساخت حساب آرایشگر
             </Button>

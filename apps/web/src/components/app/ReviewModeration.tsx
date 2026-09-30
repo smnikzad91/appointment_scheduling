@@ -9,6 +9,7 @@ import { formatSalonDate } from "@/lib/salonTime";
 import { Stars } from "@/components/common/StarRating";
 import { Button, ChipTabs, EmptyState, ErrorBanner, ListSkeleton, StatTile, cx, riseStyle } from "./ui";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 const EMPTY: Record<ReviewStatus, { title: string; hint: string }> = {
   PENDING: { title: "نظر تازه‌ای منتظر تایید نیست", hint: "نظرهای جدید مشتری‌ها پیش از نمایش در صفحه سالن اینجا می‌آیند." },
@@ -34,7 +35,6 @@ export default function ReviewModeration({
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<ReviewStatus>("PENDING");
   const [busy, setBusy] = useState<string | null>(null); // `${id}:${status}`
-  const [itemError, setItemError] = useState<{ id: string; message: string } | null>(null);
 
   const reload = useCallback(() => {
     listReviewsForModeration(token, scope)
@@ -49,12 +49,11 @@ export default function ReviewModeration({
 
   async function setStatus(review: ModerationReview, status: "APPROVED" | "REJECTED") {
     setBusy(`${review.id}:${status}`);
-    setItemError(null);
     try {
       const updated = await moderateReview(token, review.id, status);
       setReviews((list) => list?.map((r) => (r.id === updated.id ? updated : r)) ?? list);
     } catch (err) {
-      setItemError({ id: review.id, message: persianApiError(err, "انجام نشد، دوباره تلاش کنید") });
+      toastError(persianApiError(err, "انجام نشد، دوباره تلاش کنید"));
     } finally {
       setBusy(null);
     }
@@ -134,7 +133,6 @@ export default function ReviewModeration({
                 <p className="mt-2.5 text-sm text-app-muted">بدون متن — فقط امتیاز</p>
               )}
 
-              {itemError?.id === r.id && <p className="mt-2 text-sm font-medium text-app-danger">{itemError.message}</p>}
 
               <div className="mt-3 flex gap-2">
                 {r.status !== "APPROVED" && (

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import AuthCard, { AuthLink } from "@/components/guest/AuthCard";
-import { FloatingInput, FormError, PasswordInput } from "@/components/guest/fields";
+import { FloatingInput, PasswordInput } from "@/components/guest/fields";
 import GradientButton from "@/components/guest/GradientButton";
 import SocialAuth from "@/components/guest/SocialAuth";
 import { rise } from "@/components/guest/motion";
@@ -14,6 +14,7 @@ import { persianApiError } from "@/lib/api/errorMessages";
 import { isValidIranianMobile, normalizeDigits, toPersianDigits } from "@/lib/persian";
 import { formatCountdown, useResendCountdown } from "@/hooks/useResendCountdown";
 import { useWebOtp } from "@/lib/useWebOtp";
+import { toastError } from "@/lib/toastError";
 
 const OTP_LENGTH = 5;
 
@@ -38,12 +39,10 @@ export default function SignInForm() {
   const [mode, setMode] = useState<"otp" | "password">("password");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     const result = await signIn("credentials", {
@@ -53,7 +52,7 @@ export default function SignInForm() {
     });
 
     if (result?.error) {
-      setError("ایمیل/شماره موبایل یا رمز عبور اشتباه است");
+      toastError("ایمیل/شماره موبایل یا رمز عبور اشتباه است");
       setLoading(false);
       return;
     }
@@ -85,7 +84,6 @@ export default function SignInForm() {
             aria-selected={mode === value}
             onClick={() => {
               setMode(value);
-              setError("");
             }}
             className={`rounded-xl px-3 py-2.5 text-sm font-bold transition ${mode === value ? "bg-g-accent text-white shadow-sm" : "text-g-muted hover:text-g-ink"}`}
           >
@@ -98,7 +96,6 @@ export default function SignInForm() {
         <OtpSignIn onSignedIn={() => goToPanel(router)} onUsePassword={() => setMode("password")} />
       ) : (
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <FormError>{error}</FormError>
 
         <FloatingInput
           className="g-rise"
@@ -144,20 +141,18 @@ export default function SignInForm() {
 function OtpSignIn({ onSignedIn, onUsePassword }: { onSignedIn: () => Promise<void>; onUsePassword: () => void }) {
   const [phone, setPhone] = useState("");
   const [sent, setSent] = useState<{ phone: string; devCode?: string } | null>(null);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function sendCode(e: React.FormEvent) {
     e.preventDefault();
     const normalized = normalizeDigits(phone.trim());
-    if (!isValidIranianMobile(normalized)) return setError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
-    setError("");
+    if (!isValidIranianMobile(normalized)) return toastError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
     setLoading(true);
     try {
       const { devCode } = await requestOtp(normalized);
       setSent({ phone: normalized, devCode });
     } catch (err) {
-      setError(persianApiError(err, "ارسال کد ورود ممکن نشد، دوباره تلاش کنید"));
+      toastError(persianApiError(err, "ارسال کد ورود ممکن نشد، دوباره تلاش کنید"));
     } finally {
       setLoading(false);
     }
@@ -172,7 +167,6 @@ function OtpSignIn({ onSignedIn, onUsePassword }: { onSignedIn: () => Promise<vo
         onUsePassword={onUsePassword}
         onChangePhone={() => {
           setSent(null);
-          setError("");
         }}
       />
     );
@@ -180,7 +174,6 @@ function OtpSignIn({ onSignedIn, onUsePassword }: { onSignedIn: () => Promise<vo
 
   return (
     <form onSubmit={sendCode} className="flex flex-col gap-4">
-      <FormError>{error}</FormError>
       <FloatingInput
         className="g-rise"
         style={rise(3)}
@@ -217,17 +210,15 @@ function OtpCodeForm({
 }) {
   // No SMS provider yet (the api's OTP bypass): it returned the code, so fill it in and sign in.
   const [code, setCode] = useState(devCode ?? "");
-  const [error, setError] = useState<React.ReactNode>("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const { secondsLeft, restart } = useResendCountdown();
 
   async function verify(otp: string) {
-    setError("");
     setLoading(true);
     const result = await signIn("otp", { phone, code: otp, redirect: false });
     if (result?.error) {
-      setError(
+      toastError(
         result.code === "no_account" ? (
           <>
             حسابی با این شماره موبایل وجود ندارد. <AuthLink href="/signup">ثبت‌نام کنید</AuthLink>
@@ -265,7 +256,6 @@ function OtpCodeForm({
   });
 
   async function resend() {
-    setError("");
     setResending(true);
     try {
       const { devCode: next } = await requestOtp(phone);
@@ -273,7 +263,7 @@ function OtpCodeForm({
       setCode(next ?? "");
       if (next?.length === OTP_LENGTH) void verify(next);
     } catch (err) {
-      setError(persianApiError(err, "ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید"));
+      toastError(persianApiError(err, "ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید"));
     } finally {
       setResending(false);
     }
@@ -290,7 +280,6 @@ function OtpCodeForm({
       <p className="text-sm leading-7 text-g-muted">
         کد {toPersianDigits(OTP_LENGTH)} رقمی به شماره <span dir="ltr">{toPersianDigits(phone)}</span> پیامک شد.
       </p>
-      <FormError>{error}</FormError>
       <FloatingInput
         label="کد ورود"
         hint="-----"

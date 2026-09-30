@@ -9,6 +9,7 @@ import { addDaysToDateKey, formatSalonDate, toSalonWallTime } from "@/lib/salonT
 import Sheet from "./Sheet";
 import { Button, Card, cx, riseStyle } from "./ui";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 // Shared by the salon-owner and stylist panels. Owner rows also carry the stylist's name.
 export type AppAppointment = StylistAppointment & { stylist?: { displayName: string } };
@@ -168,7 +169,6 @@ export function AppointmentSheet({
   onSetStatus,
   onEdit,
   busyStatus,
-  error,
 }: {
   appointment: AppAppointment | null;
   showStylist?: boolean;
@@ -177,7 +177,6 @@ export function AppointmentSheet({
   onEdit?: (a: AppAppointment) => void;
   onSetStatus: (a: AppAppointment, status: AppointmentStatus) => void;
   busyStatus: AppointmentStatus | null;
-  error?: string | null;
 }) {
   if (!a) return null;
   const { start, end, duration } = wall(a);
@@ -225,8 +224,6 @@ export function AppointmentSheet({
           ویرایش نوبت
         </Button>
       )}
-
-      {error && <p className="mb-3 rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{error}</p>}
 
       {actions.length > 0 ? (
         <div className="grid grid-cols-2 gap-2.5">
@@ -349,10 +346,8 @@ export function useAppointmentActions(
   // The appointment open in the edit form (SalonBookingSheet), which replaces the detail sheet.
   const [editing, setEditing] = useState<AppAppointment | null>(null);
   const [busyStatus, setBusyStatus] = useState<AppointmentStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const open = useCallback((a: AppAppointment) => {
-    setError(null);
     setSelected(a);
   }, []);
   const close = useCallback(() => setSelected(null), []);
@@ -365,13 +360,12 @@ export function useAppointmentActions(
   const setStatus = useCallback(
     async (a: AppAppointment, status: AppointmentStatus) => {
       setBusyStatus(status);
-      setError(null);
       try {
         await updateStatus(a.id, status);
         setSelected(null);
         onChanged();
       } catch {
-        setError("تغییر وضعیت نوبت انجام نشد، دوباره تلاش کنید");
+        toastError("تغییر وضعیت نوبت انجام نشد، دوباره تلاش کنید");
       } finally {
         setBusyStatus(null);
       }
@@ -379,5 +373,5 @@ export function useAppointmentActions(
     [updateStatus, onChanged],
   );
 
-  return { selected, open, close, setStatus, busyStatus, error, editing, edit, closeEdit };
+  return { selected, open, close, setStatus, busyStatus, editing, edit, closeEdit };
 }

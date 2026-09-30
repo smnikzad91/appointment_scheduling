@@ -6,6 +6,7 @@ import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
 import SelectField from "@/components/admin/SelectField";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toastError";
 
 interface Props { id: string }
 
@@ -16,7 +17,6 @@ export default function EditNewsItemForm({ id }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
@@ -109,7 +109,6 @@ export default function EditNewsItemForm({ id }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setSaving(true);
 
     const res = await fetch(`/api/admin/news/${id}`, {
@@ -121,7 +120,7 @@ export default function EditNewsItemForm({ id }: Props) {
     const data = await res.json();
     setSaving(false);
 
-    if (!res.ok) { setError(data.error ?? "Failed to save"); return; }
+    if (!res.ok) { toastError(data.error ?? "Failed to save"); return; }
     toast.success(t("newsSaved"));
     setTimeout(() => router.push("/admin/news"), 800);
   };
@@ -148,11 +147,6 @@ export default function EditNewsItemForm({ id }: Props) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400">
-            {error}
-          </div>
-        )}
 
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <div className="grid gap-4 sm:grid-cols-2">

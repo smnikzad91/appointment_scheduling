@@ -2,21 +2,20 @@
 
 import { useState } from "react";
 import { salonApiFetch } from "@/lib/api/salonApiClient";
+import { toastError } from "@/lib/toastError";
 
 /** Stop (or resume) the "time to book again" texts, for the customer this link was sent to. */
 export default function PromoSmsChoice({ code, initialOptedOut }: { code: string; initialOptedOut: boolean }) {
   const [optedOut, setOptedOut] = useState(initialOptedOut);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
 
   async function set(optOut: boolean) {
     setBusy(true);
-    setError(false);
     try {
       await salonApiFetch(`/rebook/${encodeURIComponent(code)}/promo-sms`, { method: "POST", body: JSON.stringify({ optOut }) });
       setOptedOut(optOut);
     } catch {
-      setError(true);
+      toastError("انجام نشد؛ دوباره تلاش کنید.");
     } finally {
       setBusy(false);
     }
@@ -37,7 +36,6 @@ export default function PromoSmsChoice({ code, initialOptedOut }: { code: string
           دیگر پیامک یادآوری نوبت بعدی نفرستید
         </button>
       )}
-      {error && <p className="mt-1 text-app-danger">انجام نشد؛ دوباره تلاش کنید.</p>}
     </div>
   );
 }

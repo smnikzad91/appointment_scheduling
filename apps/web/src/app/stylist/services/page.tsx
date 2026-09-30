@@ -7,6 +7,7 @@ import { getMyStylistProfile, updateMyServiceOverride, type SelfStylist } from "
 import { formatToman, normalizeDigits, toPersianDigits } from "@/lib/persian";
 import { Card, EmptyState, ErrorBanner, ListSkeleton, PageHeader, TextInput, Toggle, cx, riseStyle } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 type Entry = SelfStylist["services"][number];
 /** rebook: null = follow the salon's setting for this service; rebookDays "" = the salon's days. */
@@ -58,7 +59,7 @@ export default function StylistServicesPage() {
     const draft = draftFor(entry);
     const rebookDays = draft.rebookDays.trim() ? Number(draft.rebookDays) : null;
     if (rebookDays !== null && !(rebookDays >= 1 && rebookDays <= REBOOK_MAX_DAYS)) {
-      setError(`فاصله یادآوری باید بین ۱ تا ${toPersianDigits(REBOOK_MAX_DAYS)} روز باشد`);
+      toastError(`فاصله یادآوری باید بین ۱ تا ${toPersianDigits(REBOOK_MAX_DAYS)} روز باشد`);
       return;
     }
     setSavingId(entry.serviceId);
@@ -79,7 +80,7 @@ export default function StylistServicesPage() {
       setSavedId(entry.serviceId);
       setTimeout(() => setSavedId((id) => (id === entry.serviceId ? null : id)), 2000);
     } catch {
-      setError("ذخیره تغییرات انجام نشد");
+      toastError("ذخیره تغییرات انجام نشد");
     } finally {
       setSavingId(null);
     }
@@ -94,7 +95,6 @@ export default function StylistServicesPage() {
         subtitle="قیمت، زمان و پیامک یادآوری نوبت بعدیِ هر خدمت را برای خودتان تنظیم کنید؛ خالی یعنی پیش‌فرض سالن."
       />
 
-      {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {profile.services.length === 0 ? (
         <EmptyState icon={Scissors} title="هنوز خدمتی به شما داده نشده" hint="خدماتی که ارائه می‌دهید را صاحب سالن مشخص می‌کند." />

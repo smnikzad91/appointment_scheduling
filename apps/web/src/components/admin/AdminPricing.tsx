@@ -19,6 +19,7 @@ import { isSafeCtaHref, PLAN_LIMITS, planFeatureLines, planPriceLabel, type Pric
 import { normalizeDigits } from "@/lib/persian";
 import { useT } from "@/i18n/useT";
 import { useLocaleFormat } from "@/i18n/useLocaleFormat";
+import { toastError } from "@/lib/toastError";
 
 const card = "rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]";
 const input =
@@ -357,7 +358,6 @@ function PlanEditor({
   const [ctaLabel, setCtaLabel] = useState(plan?.ctaLabel ?? "انتخاب پلن");
   const [ctaHref, setCtaHref] = useState(plan?.ctaHref ?? "/signup-salon");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const draft: PlanDraft = {
     name: name.trim(),
@@ -384,15 +384,14 @@ function PlanEditor({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (problem) {
-      setError(problem);
+      toastError(problem);
       return;
     }
     setBusy(true);
-    setError(null);
     try {
       onSaved(plan ? await updatePlan(plan.id, draft) : await createPlan(draft));
     } catch (err) {
-      setError(apiError(err, t("prSaveFailed")));
+      toastError(apiError(err, t("prSaveFailed")));
     } finally {
       setBusy(false);
     }
@@ -501,7 +500,6 @@ function PlanEditor({
           </ul>
         </div>
 
-        {error && <p className="mt-4 text-sm text-rose-500">{error}</p>}
 
         <div className="mt-6 flex justify-end gap-3">
           <button type="button" className={ghostBtn} onClick={onClose} disabled={busy}>

@@ -32,6 +32,7 @@ import {
 } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
 import PickerSelect from "@/components/app/PickerSelect";
+import { toastError } from "@/lib/toastError";
 
 interface ServiceDraft {
   id: string | null; // null = new service
@@ -65,12 +66,10 @@ export default function SalonServicesPage() {
   const [filter, setFilter] = useState<string>("all");
 
   const [draft, setDraft] = useState<ServiceDraft | null>(null);
-  const [draftError, setDraftError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [categoryError, setCategoryError] = useState<string | null>(null);
 
   // Services whose on/off switch is being saved (locked until the server answers).
   const [pendingActive, setPendingActive] = useState<Set<string>>(() => new Set());
@@ -101,12 +100,10 @@ export default function SalonServicesPage() {
   useEffect(reload, [reload]);
 
   function openNew() {
-    setDraftError(null);
     setDraft({ ...EMPTY_DRAFT, categoryId: filter !== "all" && filter !== "none" ? filter : "" });
   }
 
   function openEdit(service: OwnerService) {
-    setDraftError(null);
     setDraft({
       id: service.id,
       name: service.name,
@@ -123,12 +120,12 @@ export default function SalonServicesPage() {
     const duration = Number(normalizeDigits(draft.durationMinutes));
     const price = Number(normalizeDigits(draft.priceToman));
     if (!draft.name.trim() || !duration || !price) {
-      setDraftError("نام، مدت و قیمت خدمت را کامل کنید");
+      toastError("نام، مدت و قیمت خدمت را کامل کنید");
       return;
     }
     const rebookDays = Number(normalizeDigits(draft.rebookDays));
     if (draft.rebookEnabled && !(rebookDays >= 1 && rebookDays <= REBOOK_MAX_DAYS)) {
-      setDraftError(`فاصله یادآوری باید بین ۱ تا ${toPersianDigits(REBOOK_MAX_DAYS)} روز باشد`);
+      toastError(`فاصله یادآوری باید بین ۱ تا ${toPersianDigits(REBOOK_MAX_DAYS)} روز باشد`);
       return;
     }
     const rebook = {
@@ -136,7 +133,6 @@ export default function SalonServicesPage() {
       ...(rebookDays >= 1 && rebookDays <= REBOOK_MAX_DAYS && { rebookReminderDays: rebookDays }),
     };
     setSaving(true);
-    setDraftError(null);
     try {
       if (draft.id) {
         const saved = await updateService(token, draft.id, {
@@ -159,7 +155,7 @@ export default function SalonServicesPage() {
       setDraft(null);
       reload();
     } catch {
-      setDraftError("ذخیره خدمت انجام نشد، دوباره تلاش کنید");
+      toastError("ذخیره خدمت انجام نشد، دوباره تلاش کنید");
     } finally {
       setSaving(false);
     }
@@ -176,7 +172,7 @@ export default function SalonServicesPage() {
     try {
       applySaved(await updateService(token, service.id, { active }));
     } catch {
-      setError("تغییر وضعیت خدمت انجام نشد");
+      toastError("تغییر وضعیت خدمت انجام نشد");
       reload();
     } finally {
       setPendingActive((ids) => {
@@ -190,25 +186,23 @@ export default function SalonServicesPage() {
   async function handleAddCategory(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !newCategoryName.trim()) return;
-    setCategoryError(null);
     try {
       await createCategory(token, { name: newCategoryName.trim(), order: categories?.length ?? 0 });
       setNewCategoryName("");
       reload();
     } catch {
-      setCategoryError("افزودن دسته‌بندی انجام نشد");
+      toastError("افزودن دسته‌بندی انجام نشد");
     }
   }
 
   async function handleDeleteCategory(category: OwnerCategory) {
     if (!token || !confirm(`دسته «${category.name}» حذف شود؟ خدمات آن بدون دسته می‌مانند.`)) return;
-    setCategoryError(null);
     try {
       await deleteCategory(token, category.id);
       if (filter === category.id) setFilter("all");
       reload();
     } catch {
-      setCategoryError("حذف دسته‌بندی انجام نشد");
+      toastError("حذف دسته‌بندی انجام نشد");
     }
   }
 
@@ -393,7 +387,6 @@ export default function SalonServicesPage() {
                 </div>
               )}
             </div>
-            {draftError && <p className="text-sm font-medium text-app-danger">{draftError}</p>}
           </div>
         )}
       </Sheet>
@@ -406,7 +399,6 @@ export default function SalonServicesPage() {
             افزودن
           </Button>
         </form>
-        {categoryError && <p className="mb-3 text-sm font-medium text-app-danger">{categoryError}</p>}
         {categories.length === 0 ? (
           <p className="py-6 text-center text-sm text-app-muted">هنوز دسته‌بندی ندارید.</p>
         ) : (

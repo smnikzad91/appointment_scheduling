@@ -10,6 +10,7 @@ import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessTok
 import { STYLIST_UPDATED_EVENT, getMyStylistProfile, updateMyStylistProfile, type SelfStylist } from "@/lib/api/stylistSelf";
 import { toPersianDigits } from "@/lib/persian";
 import { Button, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, cx, LinkCard } from "@/components/app/ui";
+import { toastError } from "@/lib/toastError";
 
 const BIO_MAX = 300;
 
@@ -46,7 +47,7 @@ export default function StylistProfilePage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
-      setError("ذخیره تغییرات انجام نشد");
+      toastError("ذخیره تغییرات انجام نشد");
     } finally {
       setSaving(false);
     }
@@ -102,7 +103,6 @@ export default function StylistProfilePage() {
       </Field>
 
       <div className="mt-4">
-        {error && <ErrorBanner>{error}</ErrorBanner>}
         <Button type="submit" block busy={saving} disabled={!bioChanged && !saving} icon={saved ? Check : undefined}>
           {saved ? "ذخیره شد" : "ذخیره"}
         </Button>

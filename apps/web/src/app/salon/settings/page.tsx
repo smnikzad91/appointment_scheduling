@@ -16,6 +16,7 @@ import { persianApiError } from "@/lib/api/errorMessages";
 import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, Toggle, cx, LinkCard } from "@/components/app/ui";
 import { SERVICE_LOCATIONS, SERVICE_LOCATION_HINT, SERVICE_LOCATION_LABEL, isIndependent } from "@/lib/independent";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 // Curated brand colors that read well on the public salon page; the last swatch opens a picker.
 const SELECT_CLASS =
@@ -30,7 +31,6 @@ export default function SalonSettingsPage() {
   const [form, setForm] = useState<UpdateSalonInput>({});
   const [dirty, setDirty] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const colorInputRef = useRef<HTMLInputElement>(null);
@@ -69,9 +69,8 @@ export default function SalonSettingsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
-    if (form.serviceLocations && form.serviceLocations.length === 0) return setError("دست‌کم یک محل ارائه خدمات را انتخاب کنید");
+    if (form.serviceLocations && form.serviceLocations.length === 0) return toastError("دست‌کم یک محل ارائه خدمات را انتخاب کنید");
     setSaving(true);
-    setError(null);
     try {
       setSalon(await updateMySalon(token, form));
       window.dispatchEvent(new Event(SALON_UPDATED_EVENT));
@@ -79,7 +78,7 @@ export default function SalonSettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
-      setError(persianApiError(err, "ذخیره تغییرات انجام نشد، دوباره تلاش کنید"));
+      toastError(persianApiError(err, "ذخیره تغییرات انجام نشد، دوباره تلاش کنید"));
     } finally {
       setSaving(false);
     }
@@ -293,9 +292,8 @@ export default function SalonSettingsPage() {
       </Card>
 
       {/* Save bar — pinned just above the tab bar, only while there's something to save. */}
-      {(dirty || saved || error) && (
+      {(dirty || saved) && (
         <div className="app-rise sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 mt-6">
-          {error && <ErrorBanner>{error}</ErrorBanner>}
           <Button type="submit" block busy={saving} icon={saved ? Check : undefined} className="shadow-[0_12px_30px_-12px_rgb(0_0_0/0.45)]">
             {saved ? "ذخیره شد" : "ذخیره تغییرات"}
           </Button>

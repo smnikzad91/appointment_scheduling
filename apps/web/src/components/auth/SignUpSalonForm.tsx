@@ -9,12 +9,13 @@ import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoa
 import type { GeoLocation } from "@/types/salon";
 import { toPersianDigits } from "@/lib/persian";
 import AuthCard, { AuthLink } from "@/components/guest/AuthCard";
-import { FloatingInput, FloatingTextArea, FormError, PasswordInput, PasswordStrength } from "@/components/guest/fields";
+import { FloatingInput, FloatingTextArea, PasswordInput, PasswordStrength } from "@/components/guest/fields";
 import GradientButton from "@/components/guest/GradientButton";
 import { rise } from "@/components/guest/motion";
 import { planFeatureLines, planPriceLabel, type PricingPlanData } from "@/lib/pricing";
 import { SERVICE_LOCATIONS, SERVICE_LOCATION_HINT, SERVICE_LOCATION_LABEL, type SalonKind, type ServiceLocation } from "@/lib/independent";
 import { useBackgroundDraft } from "@/lib/useBackgroundDraft";
+import { toastError } from "@/lib/toastError";
 
 export type SignUpPlan = Pick<PricingPlanData, "id" | "name" | "monthlyPriceToman" | "maxStylists" | "smsPerMonth" | "features" | "recommended">;
 
@@ -45,7 +46,6 @@ export default function SignUpSalonForm({
   const [place, setPlace] = useState({ province: "", city: "" });
   const [address, setAddress] = useState("");
   const [pin, setPin] = useState<GeoLocation | null>(null);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // The choices that aren't plain text fields (FormDraftKeeper brings those back), kept if the OS
@@ -69,22 +69,21 @@ export default function SignUpSalonForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (!IRANIAN_MOBILE.test(phone)) {
-      setError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد (مثال: ۰۹۱۱۹۱۰۰۹۹۱)");
+      toastError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد (مثال: ۰۹۱۱۹۱۰۰۹۹۱)");
       return;
     }
     if (independent && serviceLocations.length === 0) {
-      setError("مشخص کنید کجا خدمات می‌دهید");
+      toastError("مشخص کنید کجا خدمات می‌دهید");
       return;
     }
     if (!place.province || !place.city) {
-      setError(independent ? "استان و شهر محل کارتان را انتخاب کنید" : "استان و شهر سالن را انتخاب کنید");
+      toastError(independent ? "استان و شهر محل کارتان را انتخاب کنید" : "استان و شهر سالن را انتخاب کنید");
       return;
     }
     if (!pin) {
-      setError(
+      toastError(
         independent
           ? "محل کارتان را روی نقشه مشخص کنید تا مشتری‌های نزدیک شما را پیدا کنند"
           : "محل سالن را روی نقشه مشخص کنید تا مشتری‌ها بتوانند آن را پیدا کنند",
@@ -121,7 +120,7 @@ export default function SignUpSalonForm({
     const data = await res.json();
 
     if (!res.ok) {
-      setError(data.error || "خطا در ثبت‌نام");
+      toastError(data.error || "خطا در ثبت‌نام");
       setLoading(false);
       return;
     }
@@ -159,7 +158,6 @@ export default function SignUpSalonForm({
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <FormError>{error}</FormError>
 
         <div role="radiogroup" aria-label="نوع کسب‌وکار" className="g-rise grid grid-cols-2 gap-2.5" style={rise(2.5)}>
           {(

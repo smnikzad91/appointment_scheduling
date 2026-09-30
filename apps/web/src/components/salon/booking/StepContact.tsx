@@ -5,10 +5,10 @@ import { useBooking } from "./BookingProvider";
 import { normalizeDigits, isValidIranianMobile } from "@/lib/persian";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { requestOtp } from "@/lib/api/bookings";
+import { toastError } from "@/lib/toastError";
 
 export default function StepContact() {
   const { state, updateState, goNext } = useBooking();
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -16,15 +16,14 @@ export default function StepContact() {
     const phone = normalizeDigits(state.customerPhone);
 
     if (!state.customerFirstName.trim() || !state.customerLastName.trim()) {
-      setError("لطفاً نام و نام خانوادگی خود را وارد کنید");
+      toastError("لطفاً نام و نام خانوادگی خود را وارد کنید");
       return;
     }
     if (!isValidIranianMobile(phone)) {
-      setError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
+      toastError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
       return;
     }
 
-    setError(null);
     setSubmitting(true);
     updateState({ customerPhone: phone });
     try {
@@ -32,7 +31,7 @@ export default function StepContact() {
       updateState({ devCode: devCode ?? null });
       goNext();
     } catch (err) {
-      setError(persianApiError(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
+      toastError(persianApiError(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
     } finally {
       setSubmitting(false);
     }
@@ -82,7 +81,6 @@ export default function StepContact() {
         />
       </label>
 
-      {error && <p className="text-xs text-rose-500">{error}</p>}
 
       <button
         type="submit"

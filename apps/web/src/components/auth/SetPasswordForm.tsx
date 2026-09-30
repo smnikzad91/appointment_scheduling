@@ -7,9 +7,10 @@ import { completePasswordSetup, getPasswordSetup, type PasswordSetupInfo } from 
 import { persianApiError } from "@/lib/api/errorMessages";
 import { toPersianDigits } from "@/lib/persian";
 import AuthCard, { AuthLink } from "@/components/guest/AuthCard";
-import { FormError, PasswordInput, PasswordStrength } from "@/components/guest/fields";
+import { PasswordInput, PasswordStrength } from "@/components/guest/fields";
 import GradientButton from "@/components/guest/GradientButton";
 import { rise } from "@/components/guest/motion";
+import { toastError } from "@/lib/toastError";
 
 const MIN_LENGTH = 8;
 
@@ -24,7 +25,6 @@ export default function SetPasswordForm({ token }: { token: string }) {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -35,13 +35,12 @@ export default function SetPasswordForm({ token }: { token: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     if (password.length < MIN_LENGTH) {
-      setError(`رمز عبور باید حداقل ${toPersianDigits(MIN_LENGTH)} کاراکتر باشد`);
+      toastError(`رمز عبور باید حداقل ${toPersianDigits(MIN_LENGTH)} کاراکتر باشد`);
       return;
     }
     if (password !== confirm) {
-      setError("رمز عبور و تکرار آن یکسان نیستند");
+      toastError("رمز عبور و تکرار آن یکسان نیستند");
       return;
     }
     setLoading(true);
@@ -56,7 +55,7 @@ export default function SetPasswordForm({ token }: { token: string }) {
       router.push("/stylist");
       router.refresh();
     } catch (err) {
-      setError(persianApiError(err, "ثبت رمز عبور انجام نشد"));
+      toastError(persianApiError(err, "ثبت رمز عبور انجام نشد"));
       setLoading(false);
     }
   };
@@ -101,7 +100,6 @@ export default function SetPasswordForm({ token }: { token: string }) {
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <FormError>{error}</FormError>
 
         {/* Lets the phone's password manager save the new password against this number. */}
         <input type="text" name="username" autoComplete="username" value={info.phone ?? ""} readOnly hidden />

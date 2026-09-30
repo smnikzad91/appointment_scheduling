@@ -8,6 +8,7 @@ import { SalonApiError } from "@/lib/api/salonApiClient";
 import { useWebOtp } from "@/lib/useWebOtp";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { formatCountdown, useResendCountdown } from "@/hooks/useResendCountdown";
+import { toastError } from "@/lib/toastError";
 
 const OTP_LENGTH = 5;
 
@@ -17,7 +18,6 @@ export default function StepOtp() {
   const [digits, setDigits] = useState<string[]>(() =>
     state.devCode?.length === OTP_LENGTH ? state.devCode.split("") : Array(OTP_LENGTH).fill(""),
   );
-  const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
   // The api allows one code per phone per minute.
@@ -66,21 +66,19 @@ export default function StepOtp() {
   }
 
   async function handleVerify(code: string) {
-    setError(null);
     setVerifying(true);
     try {
       const { accessToken } = await verifyOtp(state.customerPhone, code, { firstName: state.customerFirstName.trim(), lastName: state.customerLastName.trim() });
       updateState({ accessToken });
       goNext();
     } catch (err) {
-      setError(err instanceof SalonApiError ? "کد وارد شده صحیح نیست" : "خطایی رخ داد، دوباره تلاش کنید");
+      toastError(err instanceof SalonApiError ? "کد وارد شده صحیح نیست" : "خطایی رخ داد، دوباره تلاش کنید");
     } finally {
       setVerifying(false);
     }
   }
 
   async function handleResend() {
-    setError(null);
     setResending(true);
     try {
       const { devCode } = await requestOtp(state.customerPhone);
@@ -93,7 +91,7 @@ export default function StepOtp() {
         inputRefs.current[0]?.focus();
       }
     } catch (err) {
-      setError(persianApiError(err, "ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید"));
+      toastError(persianApiError(err, "ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید"));
     } finally {
       setResending(false);
     }
@@ -131,7 +129,6 @@ export default function StepOtp() {
       </div>
 
       {verifying && <p className="text-xs text-g-muted">در حال بررسی کد...</p>}
-      {error && <p className="text-xs text-rose-500">{error}</p>}
 
       {secondsLeft > 0 ? (
         <p className="text-xs text-g-muted">

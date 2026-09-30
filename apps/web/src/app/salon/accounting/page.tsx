@@ -39,6 +39,7 @@ import Sheet from "@/components/app/Sheet";
 import Sep from "@/components/common/Sep";
 import { BalanceChip, DaySelect, HeroAmount, MoneyFigure, PeriodSwitcher, dayKeyToInstant, formatPercent, instantToDayKey, shortDate } from "@/components/app/accounting";
 import { Avatar, Button, ChipTabs, EmptyState, ErrorBanner, Field, IconButton, ListSkeleton, PageHeader, TextInput, cx, riseStyle } from "@/components/app/ui";
+import { toastError } from "@/lib/toastError";
 
 type Tab = "stylists" | "income" | "expenses" | "services";
 const METHODS = Object.keys(PAYOUT_METHOD_LABEL) as PayoutMethod[];
@@ -395,7 +396,6 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
   const [dayKey, setDayKey] = useState(todayKey);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const loadPayouts = useCallback(() => {
@@ -406,9 +406,8 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
   useEffect(loadPayouts, [loadPayouts]);
 
   async function save() {
-    if (!amount) return setError("مبلغ پرداخت را وارد کنید");
+    if (!amount) return toastError("مبلغ پرداخت را وارد کنید");
     setBusy(true);
-    setError(null);
     try {
       await createPayout(token, { stylistId: stylist.id, amountToman: amount, method, paidAt: dayKeyToInstant(dayKey), note: note.trim() || undefined });
       setAmount(null);
@@ -416,7 +415,7 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
       loadPayouts();
       onChanged();
     } catch (err) {
-      setError(persianApiError(err, "ثبت پرداخت انجام نشد"));
+      toastError(persianApiError(err, "ثبت پرداخت انجام نشد"));
     } finally {
       setBusy(false);
     }
@@ -430,7 +429,7 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
       loadPayouts();
       onChanged();
     } catch (err) {
-      setError(persianApiError(err, "حذف پرداخت انجام نشد"));
+      toastError(persianApiError(err, "حذف پرداخت انجام نشد"));
     }
   }
 
@@ -480,7 +479,6 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
             <DaySelect label="تاریخ پرداخت" value={dayKey} onChange={setDayKey} fromKey={addDaysToDateKey(todayKey, -90)} toKey={todayKey} />
           </Field>
           <TextInput value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="توضیح (اختیاری)، مثلاً تسویه شهریور" />
-          {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
           <Button block busy={busy} onClick={save}>
             ثبت پرداخت{amount ? ` ${formatToman(amount)}` : ""}
           </Button>
@@ -548,7 +546,6 @@ function ChargeSheet({
   const [amount, setAmount] = useState<number | null>(item.chargedToman);
   const [tipAmount, setTipAmount] = useState<number | null>(item.tipToman || null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const value = amount ?? 0;
   const tip = tipAmount ?? 0;
   const commission = Math.round((value * item.commissionPercent) / 100);
@@ -556,13 +553,12 @@ function ChargeSheet({
 
   async function save() {
     setBusy(true);
-    setError(null);
     try {
       await adjustCharge(token, item.id, value, tip);
       onSaved();
       onClose();
     } catch (err) {
-      setError(persianApiError(err, "ذخیره مبلغ انجام نشد"));
+      toastError(persianApiError(err, "ذخیره مبلغ انجام نشد"));
     } finally {
       setBusy(false);
     }
@@ -611,7 +607,6 @@ function ChargeSheet({
       </p>
         </>
       )}
-      {error && <p className="mt-3 text-sm font-medium text-app-danger">{error}</p>}
     </Sheet>
   );
 }
@@ -642,8 +637,7 @@ function ExpenseSheet({
   const [note, setNote] = useState(expense?.note ?? "");
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const receipt = useReceipt(expense?.receiptUrl ?? null, "salon-expenses", setError);
+  const receipt = useReceipt(expense?.receiptUrl ?? null, "salon-expenses", (message) => message && toastError(message));
 
   function close() {
     receipt.discard();
@@ -651,9 +645,8 @@ function ExpenseSheet({
   }
 
   async function save() {
-    if (!amount) return setError("مبلغ هزینه را وارد کنید");
+    if (!amount) return toastError("مبلغ هزینه را وارد کنید");
     setBusy("save");
-    setError(null);
     try {
       const data = { category, amountToman: amount, spentAt: dayKeyToInstant(dayKey), note: note.trim() || undefined, receiptUrl: receipt.url };
       if (expense) await updateExpense(token, expense.id, { ...data, note: note.trim() || null });
@@ -662,7 +655,7 @@ function ExpenseSheet({
       onSaved();
       close();
     } catch (err) {
-      setError(persianApiError(err, "ذخیره هزینه انجام نشد"));
+      toastError(persianApiError(err, "ذخیره هزینه انجام نشد"));
     } finally {
       setBusy(null);
     }
@@ -678,7 +671,7 @@ function ExpenseSheet({
       onSaved();
       close();
     } catch (err) {
-      setError(persianApiError(err, "حذف هزینه انجام نشد"));
+      toastError(persianApiError(err, "حذف هزینه انجام نشد"));
       setBusy(null);
     }
   }
@@ -724,7 +717,6 @@ function ExpenseSheet({
           <TextInput value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="مثلاً رنگ مو و اکسیدان" />
         </Field>
         <ReceiptField receipt={receipt} />
-        {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
         {expense && (
           <Button variant="danger" block icon={Trash2} busy={busy === "delete"} disabled={busy !== null} onClick={remove}>
             {confirmDelete ? "بله، این هزینه حذف شود" : "حذف هزینه"}

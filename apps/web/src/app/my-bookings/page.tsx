@@ -10,6 +10,7 @@ import { normalizeDigits, isValidIranianMobile, toPersianDigits } from "@/lib/pe
 import { useWebOtp } from "@/lib/useWebOtp";
 import CustomerBookings from "@/components/app/CustomerBookings";
 import { Button, Card, Field, IconButton, ListSkeleton, TextInput } from "@/components/app/ui";
+import { toastError } from "@/lib/toastError";
 
 const OTP_LENGTH = 5;
 
@@ -57,21 +58,19 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleRequestOtp(e: React.FormEvent) {
     e.preventDefault();
     const normalized = normalizeDigits(phone);
     if (!firstName.trim() || !lastName.trim()) {
-      setError("لطفاً نام و نام خانوادگی خود را وارد کنید");
+      toastError("لطفاً نام و نام خانوادگی خود را وارد کنید");
       return;
     }
     if (!isValidIranianMobile(normalized)) {
-      setError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
+      toastError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
       return;
     }
-    setError(null);
     setLoading(true);
     setPhone(normalized);
     try {
@@ -84,7 +83,7 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
       }
       setStep("otp");
     } catch (err) {
-      setError(persianApiError(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
+      toastError(persianApiError(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
     } finally {
       setLoading(false);
     }
@@ -96,13 +95,12 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
   }
 
   async function verify(otp: string) {
-    setError(null);
     setLoading(true);
     try {
       const { accessToken, user } = await verifyOtp(phone, otp, { firstName: firstName.trim(), lastName: lastName.trim() });
       onLoggedIn({ token: accessToken, firstName: user.firstName });
     } catch {
-      setError("کد وارد شده صحیح نیست");
+      toastError("کد وارد شده صحیح نیست");
     } finally {
       setLoading(false);
     }
@@ -157,7 +155,6 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
                 placeholder="۰۹۱۲۳۴۵۶۷۸۹"
               />
             </Field>
-            {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
             <Button type="submit" block busy={loading}>
               دریافت کد تایید
             </Button>
@@ -176,7 +173,6 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
               autoFocus
               className="h-14 text-center text-2xl font-black tracking-[0.6em]"
             />
-            {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
             <Button type="submit" block busy={loading} disabled={code.length !== OTP_LENGTH}>
               تایید و ورود
             </Button>
@@ -184,9 +180,8 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
               phone={phone}
               onSent={() => {
                 setCode("");
-                setError(null);
               }}
-              onError={setError}
+              onError={toastError}
             />
             <Button
               variant="ghost"
@@ -194,7 +189,6 @@ function LoginCard({ onLoggedIn }: { onLoggedIn: (session: CustomerSession) => v
               onClick={() => {
                 setStep("phone");
                 setCode("");
-                setError(null);
               }}
             >
               تغییر شماره

@@ -34,6 +34,8 @@ Several Prisma enums (`SocialPlatform`, `ContactStatus`, `TicketStatus`, `Ticket
 
 ## Errors shown to users
 
+After an action (save, send, submit, validation), show the error with `toastError(message)` (`src/lib/toastError.ts`: sonner, top-center, 4 s, RTL, Vazirmatn; the `<Toaster>` is in `components/common/ToastProvider.tsx`, top-center for every toast) — never an inline error box at the end of a form or sheet, which sits off-screen below the button just tapped. A page or list that failed to **load** keeps `<ErrorBanner onRetry>` in place of the missing content.
+
 apps/api replies in English (it also serves the Android apps). Never show an API error's `message` to a user directly — pass the error through `persianApiError()` in `src/lib/api/errorMessages.ts`, and add new API messages to its table when you add them to apps/api.
 
 ## Salon time

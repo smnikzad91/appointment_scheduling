@@ -12,6 +12,7 @@ import Sep from "@/components/common/Sep";
 import { useT } from "@/i18n/useT";
 import { useLocaleFormat } from "@/i18n/useLocaleFormat";
 import type { TranslationKey } from "@/i18n/translations";
+import { toastError } from "@/lib/toastError";
 
 const TABS: { label: TranslationKey; value: AdminSalon["status"] | "ALL" }[] = [
   { label: "slPending", value: "PENDING" },
@@ -68,7 +69,7 @@ export default function AdminSalonsPage() {
       await setSalonStatus(token, id, status);
       reload();
     } catch {
-      setError("slStatusError");
+      toastError(t("slStatusError"));
     } finally {
       setBusyId(null);
     }
@@ -248,7 +249,6 @@ function PlanEditor({
   const [mode, setMode] = useState<"none" | "days">(salon.planExpiresAt ? "days" : "none");
   const [days, setDays] = useState("30");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [now] = useState(() => Date.now());
   const currentEnd = salon.planExpiresAt ? new Date(salon.planExpiresAt).getTime() : null;
@@ -259,12 +259,11 @@ function PlanEditor({
 
   async function save() {
     setBusy(true);
-    setError(null);
     try {
       await setSalonSubscription(token, salon.id, planId || null, planId ? expiresAt : null);
       onSaved();
     } catch (err) {
-      setError(apiError(err, t("slStatusError")));
+      toastError(apiError(err, t("slStatusError")));
     } finally {
       setBusy(false);
     }
@@ -325,7 +324,6 @@ function PlanEditor({
           </div>
         )}
 
-        {error && <p className="text-sm text-rose-500">{error}</p>}
 
         <div className="flex justify-end gap-3">
           <button type="button" className={btn} onClick={onClose} disabled={busy}>

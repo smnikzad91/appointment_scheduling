@@ -7,9 +7,10 @@ import { ArrowLeft, Check, Lock, Mail, MessageCircle } from "lucide-react";
 import { Reveal } from "@/components/public/shared/Reveal";
 import { Container } from "@/components/public/shared/Container";
 import { Button } from "@/components/public/shared/Button";
-import { FloatingInput, FloatingTextArea, FormError } from "@/components/guest/fields";
+import { FloatingInput, FloatingTextArea } from "@/components/guest/fields";
 import GradientButton from "@/components/guest/GradientButton";
 import { easeSignal } from "@/components/public/shared/motion";
+import { toastError } from "@/lib/toastError";
 
 type Field = "name" | "email" | "subject" | "message";
 
@@ -24,14 +25,12 @@ const contactInfo = [
 export default function ContactPageClient() {
   const [form, setForm] = useState(defaultForm);
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
 
   const set = (field: Field, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(""); setSending(true);
+    e.preventDefault(); setSending(true);
     const res = await fetch("/api/public/contact", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -40,7 +39,7 @@ export default function ContactPageClient() {
     setSending(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "خطایی رخ داد. دوباره تلاش کنید.");
+      toastError(data.error ?? "خطایی رخ داد. دوباره تلاش کنید.");
       return;
     }
     setSent(true);
@@ -114,7 +113,6 @@ export default function ContactPageClient() {
                 <FloatingInput label="موضوع" hint="مثلاً: سوال درباره پلن حرفه‌ای" required value={form.subject} onChange={(e) => set("subject", e.target.value)} />
                 <FloatingTextArea label="پیام" hint="پیام خود را اینجا بنویسید…" required rows={6} value={form.message} onChange={(e) => set("message", e.target.value)} />
 
-                <FormError>{error}</FormError>
 
                 <div className="mt-2 flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs leading-6 text-g-faint">
