@@ -17,6 +17,7 @@ import { formatMinutesAsClock, formatToman, isValidIranianMobile, normalizeDigit
 import { addDaysToDateKey, salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { dateKeyToDate, toJalali } from "@/lib/jalali";
 import Sep from "@/components/common/Sep";
+import { SERVICE_LOCATION_LABEL, type SalonKind, type ServiceLocation } from "@/lib/independent";
 import Sheet from "./Sheet";
 import TimePicker from "./TimePicker";
 import type { AppAppointment } from "./appointments";
@@ -28,7 +29,7 @@ const STEP = 15;
 const TIME_OPTIONS = Array.from({ length: (24 * 60) / STEP }, (_, i) => i * STEP).filter((m) => m >= 6 * 60);
 
 interface Loaded {
-  salon: { slug: string; timezone: string; status: string };
+  salon: { slug: string; timezone: string; status: string; kind?: SalonKind; serviceLocations?: ServiceLocation[] };
   stylists: {
     id: string;
     displayName: string;
@@ -101,6 +102,9 @@ export default function SalonBookingSheet({
   const [slots, setSlots] = useState<{ key: string; free: number[] } | null>(null);
   const dayStripRef = useRef<HTMLDivElement>(null);
   const [notes, setNotes] = useState(editing?.notes ?? "");
+  // Independent stylists: where it happens ("" = not specified) and a home visit's address.
+  const [place, setPlace] = useState<ServiceLocation | "">(editing?.serviceLocation ?? "");
+  const [visitAddress, setVisitAddress] = useState(editing?.visitAddress ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -190,10 +194,22 @@ export default function SalonBookingSheet({
     [todayKey],
   );
 
+  // Offered only to an independent stylist working in more than one place (a single one is implied).
+  const places = data?.salon.kind === "INDEPENDENT" && (data.salon.serviceLocations?.length ?? 0) > 1 ? data.salon.serviceLocations! : [];
+
+  /** Only a changed place / address is sent when editing. */
+  function placeFields(before: ServiceLocation | null, beforeAddress: string | null) {
+    const next = place || null;
+    const address = next === "CLIENT_HOME" ? visitAddress.trim() : null;
+    if (next === before && (address ?? null) === (beforeAddress ?? null)) return {};
+    return { serviceLocation: next, visitAddress: address };
+  }
+
   async function saveEdit(a: AppAppointment) {
     if (!data) return;
     if (servicesTouched && chosenIds.length === 0) return setError("دست‌کم یک خدمت انتخاب کنید");
     if (!firstName.trim()) return setError("نام مشتری را وارد کنید");
+    if (place === "CLIENT_HOME" && visitAddress.trim().length < 5) return setError("نشانی مشتری را برای خدمات در منزل وارد کنید");
     const startAt = salonWallTimeToInstant(dateKey, minute, data.salon.timezone).toISOString();
     setBusy(true);
     setError(null);
@@ -202,6 +218,7 @@ export default function SalonBookingSheet({
         ...(servicesTouched && { serviceIds: chosenIds }),
         ...(new Date(startAt).getTime() !== new Date(a.startAt).getTime() && { startAt }),
         notes: notes.trim() || null,
+        ...placeFields(editing?.serviceLocation ?? null, editing?.visitAddress ?? null),
         // Only a changed name is saved on the booking, so an untouched one keeps following the account.
         ...(firstName.trim() !== a.customer.firstName && { customerFirstName: firstName.trim() }),
         ...(lastName.trim() !== a.customer.lastName && { customerLastName: lastName.trim() || null }),
@@ -222,6 +239,7 @@ export default function SalonBookingSheet({
     if (!known && !firstName.trim()) return setError("نام مشتری را وارد کنید");
     if (!stylistId) return setError(asStylist ? "حساب آرایشگری شما غیرفعال است" : "آرایشگر را انتخاب کنید");
     if (chosenIds.length === 0) return setError("دست‌کم یک خدمت انتخاب کنید");
+    if (place === "CLIENT_HOME" && visitAddress.trim().length < 5) return setError("نشانی مشتری را برای خدمات در منزل وارد کنید");
     setBusy(true);
     setError(null);
     try {
@@ -233,6 +251,8 @@ export default function SalonBookingSheet({
         serviceIds: chosenIds,
         startAt: salonWallTimeToInstant(dateKey, minute, data.salon.timezone).toISOString(),
         notes: notes.trim() || undefined,
+        ...(place && { serviceLocation: place }),
+        ...(place === "CLIENT_HOME" && { visitAddress: visitAddress.trim() }),
       });
       onCreated();
       onClose();
@@ -434,6 +454,32 @@ export default function SalonBookingSheet({
             {totalMinutes > 0 && ` مدت: ${toPersianDigits(totalMinutes)} دقیقه، تا ${formatMinutesAsClock(minute + totalMinutes)}.`}
           </p>
         </div>
+
+        {places.length > 0 && (
+          <Field label="محل انجام نوبت">
+            <div className="flex flex-wrap gap-2">
+              {places.map((loc) => (
+                <button
+                  key={loc}
+                  type="button"
+                  onClick={() => setPlace(place === loc ? "" : loc)}
+                  aria-pressed={place === loc}
+                  className={cx(
+                    "h-10 rounded-full px-4 text-sm font-semibold transition active:scale-95",
+                    place === loc ? "bg-app-accent text-app-accent-ink" : "border border-app-line bg-app-card text-app-muted",
+                  )}
+                >
+                  {SERVICE_LOCATION_LABEL[loc]}
+                </button>
+              ))}
+            </div>
+          </Field>
+        )}
+        {place === "CLIENT_HOME" && (
+          <Field label="نشانی مشتری">
+            <TextArea rows={2} maxLength={300} value={visitAddress} onChange={(e) => setVisitAddress(e.target.value)} placeholder="شهر، خیابان، کوچه، پلاک، طبقه" />
+          </Field>
+        )}
 
         <Field label="یادداشت (اختیاری)">
           <TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثلاً رنگ مورد نظر مشتری" />

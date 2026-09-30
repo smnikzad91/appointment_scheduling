@@ -91,7 +91,7 @@ export function SalonShell({ children }: { children: React.ReactNode }) {
           : { href: "/salon/stylists", label: "آرایشگرها", icon: Users },
         { href: "/salon/settings", label: "تنظیمات", icon: Settings },
       ]}
-      accountLinks={[{ href: "/tutorials?role=owner", label: "راهنمای استفاده", icon: BookOpen }]}
+      accountLinks={[{ href: independent ? "/tutorials?role=independent" : "/tutorials?role=owner", label: "راهنمای استفاده", icon: BookOpen }]}
     >
       {children}
     </AppShell>

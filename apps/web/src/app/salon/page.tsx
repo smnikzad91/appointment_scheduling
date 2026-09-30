@@ -123,7 +123,7 @@ export default function SalonOverviewPage() {
               className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 text-sm font-bold active:scale-[0.98]"
             >
               <ExternalLink className="h-4 w-4" aria-hidden />
-              صفحه سالن
+              {independent ? "صفحه رزرو" : "صفحه سالن"}
             </Link>
           </div>
         )}
@@ -131,13 +131,15 @@ export default function SalonOverviewPage() {
 
       {salon.status === "PENDING" && (
         <p className="mt-3 rounded-3xl bg-app-pending/12 p-4 text-sm leading-7 text-app-pending">
-          سالن شما در انتظار تایید پشتیبانی است. تا آن موقع صفحه رزرو برای مشتری‌ها نمایش داده نمی‌شود؛ اما می‌توانید خدمات،
-          آرایشگرها و تنظیمات را آماده کنید.
+          {independent
+            ? "حساب شما در انتظار تایید پشتیبانی است. تا آن موقع صفحه رزرو برای مشتری‌ها نمایش داده نمی‌شود؛ اما می‌توانید خدمات، ساعات کاری و تنظیمات را آماده کنید."
+            : "سالن شما در انتظار تایید پشتیبانی است. تا آن موقع صفحه رزرو برای مشتری‌ها نمایش داده نمی‌شود؛ اما می‌توانید خدمات، آرایشگرها و تنظیمات را آماده کنید."}
         </p>
       )}
       {salon.status === "SUSPENDED" && (
         <p className="mt-3 rounded-3xl bg-app-danger/12 p-4 text-sm leading-7 text-app-danger">
-          سالن شما به‌طور موقت معلق شده و برای مشتری‌ها قابل مشاهده نیست. برای اطلاعات بیشتر با پشتیبانی تماس بگیرید.
+          {independent ? "صفحه شما" : "سالن شما"} به‌طور موقت معلق شده و برای مشتری‌ها قابل مشاهده نیست. برای اطلاعات بیشتر با پشتیبانی
+          تماس بگیرید.
         </p>
       )}
 
@@ -185,7 +187,7 @@ export default function SalonOverviewPage() {
 
       <SectionTitle>برنامه امروز</SectionTitle>
       {today.length === 0 ? (
-        <EmptyState icon={Sparkles} title="امروز نوبتی ثبت نشده" hint="لینک رزرو سالن را برای مشتری‌ها بفرستید تا خودشان آنلاین نوبت بگیرند." />
+        <EmptyState icon={Sparkles} title="امروز نوبتی ثبت نشده" hint={`لینک رزرو ${independent ? "خودتان" : "سالن"} را برای مشتری‌ها بفرستید تا خودشان آنلاین نوبت بگیرند.`} />
       ) : (
         <TodayTimeline appointments={today} showStylist={!independent} onOpen={actions.open} />
       )}

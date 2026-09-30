@@ -72,9 +72,18 @@ export const customerBookingText = (kind: "booked-customer" | "rescheduled-custo
 export const stylistReminderText = (p: { time: string; customer: string; services: string }) =>
   fitSms(p, ["customer", "services"], (q) => `یادآوری نوبتت: ساعت ${q.time} نوبت ${q.customer} (${q.services})`);
 
-/** To the stylist when a customer books online: the booking waits for their confirmation. */
-export const stylistNewBookingText = (p: { day: string; time: string; customer: string }) =>
-  fitSms(p, ["customer"], (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتت تایید کنید`);
+/**
+ * To the stylist when a customer books online: the booking waits for their confirmation. A home
+ * visit says so (the address itself is in the panel — it wouldn't fit one segment).
+ */
+export const stylistNewBookingText = (p: { day: string; time: string; customer: string; homeVisit?: boolean }) => {
+  const { homeVisit, ...rest } = p;
+  const build = (where: string) =>
+    fitSms(rest, ["customer"], (q) => `نوبت جدید ${q.customer}${where}، ${q.day} ${q.time}؛ در پنل نوبتت تایید کنید`);
+  // The hint only when it still fits one segment (a long weekday + date can leave no room).
+  const withHint = homeVisit ? build(" در منزل مشتری") : "";
+  return withHint && withHint.length <= SMS_SEGMENT ? withHint : build("");
+};
 
 /** Once, when an online booking is still unconfirmed a couple of hours later. */
 export const stylistConfirmNudgeText = (p: { day: string; time: string; customer: string }) =>

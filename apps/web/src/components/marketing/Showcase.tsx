@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { INDEPENDENT_BADGE } from "@/lib/independent";
 import { MapPin, Star } from "lucide-react";
 import { getShowcase, type Showcase as ShowcaseData, type ShowcaseSalon, type ShowcaseStylist } from "@/lib/api/showcase";
 import { toPersianDigits } from "@/lib/persian";
@@ -67,11 +68,11 @@ export default async function Showcase() {
               <RankRow
                 key={s.id}
                 rank={i + 1}
-                href={`/s/${s.salon.slug}#stylists`}
+                href={s.independent ? `/s/${s.salon.slug}` : `/s/${s.salon.slug}#stylists`}
                 image={s.avatarUrl}
                 round
                 name={s.displayName}
-                sub={s.salon.name}
+                sub={s.independent ? `${INDEPENDENT_BADGE}، ${s.salon.city}` : s.salon.name}
                 rating={s.rating}
                 count={s.ratingCount}
               />
@@ -178,7 +179,7 @@ function SalonCard({ salon, featured }: { salon: ShowcaseSalon; featured?: boole
 function StylistCard({ stylist }: { stylist: ShowcaseStylist }) {
   return (
     <Link
-      href={`/s/${stylist.salon.slug}#stylists`}
+      href={stylist.independent ? `/s/${stylist.salon.slug}` : `/s/${stylist.salon.slug}#stylists`}
       className="block w-[62%] shrink-0 snap-start g-glass-soft rounded-3xl p-5 text-center transition duration-300 hover:-translate-y-1 hover:border-g-accent/30 sm:w-auto"
     >
       <span className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-g-accent/15 text-3xl font-black text-g-accent ring-4 ring-white/5">
@@ -191,7 +192,7 @@ function StylistCard({ stylist }: { stylist: ShowcaseStylist }) {
       </span>
       <span className="mt-3 block truncate text-lg font-extrabold text-g-ink">{stylist.displayName}</span>
       <span className="block truncate text-sm text-g-faint">
-        {stylist.salon.name}، {stylist.salon.city}
+        {stylist.independent ? INDEPENDENT_BADGE : stylist.salon.name}، {stylist.salon.city}
       </span>
       <span className="mt-2 flex justify-center">
         <RatingBadge rating={stylist.rating} count={stylist.ratingCount} />

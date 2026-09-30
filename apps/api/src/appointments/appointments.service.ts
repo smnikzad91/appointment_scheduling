@@ -33,6 +33,31 @@ const APPOINTMENT_INCLUDE = {
 // column including passwordHash. Always select only what the viewer (stylist/owner) needs to see.
 const SAFE_CUSTOMER_SELECT = { select: { id: true, firstName: true, lastName: true, phone: true, avatarUrl: true } } as const;
 
+/**
+ * Where an independent stylist's booking happens: one of the places they work (the only one by
+ * default); a home visit needs the customer's address. Salons have no choice — always null.
+ * `openAllowed` (staff): with several places, it may be left unspecified; online the customer picks.
+ */
+export function resolveBookingPlace(
+  salon: { kind: SalonKind; serviceLocations: ServiceLocation[] },
+  requested: ServiceLocation | null | undefined,
+  address: string | null | undefined,
+  openAllowed: boolean,
+): { serviceLocation: ServiceLocation | null; visitAddress: string | null } {
+  if (salon.kind !== SalonKind.INDEPENDENT) return { serviceLocation: null, visitAddress: null };
+  const offered = salon.serviceLocations;
+  const serviceLocation = requested ?? (offered.length === 1 ? offered[0] : undefined);
+  if (!serviceLocation) {
+    if (openAllowed) return { serviceLocation: null, visitAddress: null };
+    throw new BadRequestException("Choose where the appointment takes place");
+  }
+  if (!offered.includes(serviceLocation)) throw new BadRequestException("This stylist doesn't work at that place");
+  if (serviceLocation !== ServiceLocation.CLIENT_HOME) return { serviceLocation, visitAddress: null };
+  const visitAddress = address?.trim();
+  if (!visitAddress || visitAddress.length < 5) throw new BadRequestException("Enter the address for the home visit");
+  return { serviceLocation, visitAddress };
+}
+
 @Injectable()
 export class AppointmentsService {
   private readonly logger = new Logger(AppointmentsService.name);
@@ -72,18 +97,8 @@ export class AppointmentsService {
    */
   private async bookingPlace(dto: CreateAppointmentDto, bySalon: boolean) {
     const salon = await this.prisma.salon.findUnique({ where: { id: dto.salonId }, select: { kind: true, serviceLocations: true } });
-    if (!salon || salon.kind !== SalonKind.INDEPENDENT) return { serviceLocation: null, visitAddress: null };
-    const offered = salon.serviceLocations;
-    const serviceLocation = dto.serviceLocation ?? (offered.length === 1 ? offered[0] : undefined);
-    if (!serviceLocation) {
-      if (bySalon) return { serviceLocation: null, visitAddress: null };
-      throw new BadRequestException("Choose where the appointment takes place");
-    }
-    if (!offered.includes(serviceLocation)) throw new BadRequestException("This stylist doesn't work at that place");
-    if (serviceLocation !== ServiceLocation.CLIENT_HOME) return { serviceLocation, visitAddress: null };
-    const visitAddress = dto.visitAddress?.trim();
-    if (!visitAddress || visitAddress.length < 5) throw new BadRequestException("Enter the address for the home visit");
-    return { serviceLocation, visitAddress };
+    if (!salon) return { serviceLocation: null, visitAddress: null };
+    return resolveBookingPlace(salon, dto.serviceLocation, dto.visitAddress, bySalon);
   }
 
   /** A customer who has booked at this salon before, looked up by phone (to prefill the name). */
@@ -300,10 +315,20 @@ export class AppointmentsService {
   async updateDetails(user: JwtPayload, appointmentId: string, dto: UpdateAppointmentDto) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
-      include: { services: true, salon: { select: { timezone: true } } },
+      include: { services: true, salon: { select: { timezone: true, kind: true, serviceLocations: true } } },
     });
     if (!appointment) throw new NotFoundException("Appointment not found");
     await this.assertStaffAccess(user, appointment);
+    // Place (independent stylists): re-checked only when either part is sent; null = leave it open.
+    const placeChanged = dto.serviceLocation !== undefined || dto.visitAddress !== undefined;
+    const place = placeChanged
+      ? resolveBookingPlace(
+          appointment.salon,
+          dto.serviceLocation === undefined ? appointment.serviceLocation : dto.serviceLocation,
+          dto.visitAddress === undefined ? appointment.visitAddress : dto.visitAddress,
+          true,
+        )
+      : null;
     if (!ACTIVE_STATUSES.includes(appointment.status)) throw new BadRequestException("This appointment can no longer be edited");
 
     const currentIds = appointment.services.map((s) => s.serviceId);
@@ -372,6 +397,7 @@ export class AppointmentsService {
           ...(dto.notes !== undefined && { notes: dto.notes?.trim() || null }),
           ...(dto.customerFirstName !== undefined && { customerFirstName: dto.customerFirstName || null }),
           ...(dto.customerLastName !== undefined && { customerLastName: dto.customerLastName || null }),
+          ...place,
         },
         include: APPOINTMENT_INCLUDE,
       });

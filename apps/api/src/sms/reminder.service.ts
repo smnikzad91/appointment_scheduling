@@ -202,7 +202,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
         time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
         customer: bookingCustomerFullName(a),
       };
-      const text = stylistNewBookingText(params);
+      const text = stylistNewBookingText({ ...params, homeVisit: a.serviceLocation === "CLIENT_HOME" });
       if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text)))) continue;
       if (await this.sms.send({ kind: "new-booking-stylist", to: a.stylist.user.phone, params, text })) sent++;
     }

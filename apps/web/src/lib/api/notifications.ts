@@ -6,6 +6,8 @@ import { salonApiFetch } from "./salonApiClient";
 export interface NewReviewData {
   reviewId: string;
   target: "SALON" | "STYLIST";
+  /** An independent stylist's own business: the review is about "you". */
+  independent?: boolean;
   rating: number | null;
   excerpt: string | null;
   customerName: string;

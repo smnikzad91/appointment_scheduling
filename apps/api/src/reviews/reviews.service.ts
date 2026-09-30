@@ -122,7 +122,7 @@ export class ReviewsService {
     const review = await this.prisma.review.findUnique({
       where: { id: reviewId },
       include: {
-        salon: { select: { ownerId: true } },
+        salon: { select: { ownerId: true, kind: true } },
         stylist: { select: { userId: true, displayName: true } },
         appointment: { select: { customer: { select: { firstName: true, lastName: true } } } },
       },
@@ -139,6 +139,8 @@ export class ReviewsService {
       customerName: publicName(firstName, lastName),
       stylistName: review.stylist?.displayName ?? null,
       edited,
+      // An independent stylist's business review is about them ("about you", not "about the salon").
+      ...(review.salon.kind === SalonKind.INDEPENDENT && { independent: true }),
     });
   }
 

@@ -102,3 +102,24 @@ describe('StylistsService for an independent stylist', () => {
     await expect(service.invite('u1', { phone: '09120000000', firstName: 'a', lastName: 'b', displayName: 'a' })).rejects.toThrow(/works alone/);
   });
 });
+
+describe('stylistNewBookingText home-visit hint', () => {
+  it('says "at the customer\'s home" when it fits, and never goes past one segment', async () => {
+    const { stylistNewBookingText, SMS_SEGMENT } = await import('../sms/sms.text.js');
+    const short = stylistNewBookingText({ day: 'شنبه ۵ مهر', time: '۱۰:۰۰', customer: 'سارا', homeVisit: true });
+    expect(short).toContain('در منزل مشتری');
+    expect(short.length).toBeLessThanOrEqual(SMS_SEGMENT);
+    const long = stylistNewBookingText({ day: 'پنجشنبه ۲۲ اردیبهشت', time: '۱۴:۳۰', customer: 'سارا احمدی نژاد', homeVisit: true });
+    expect(long.length).toBeLessThanOrEqual(SMS_SEGMENT);
+  });
+});
+
+describe('resolveBookingPlace', () => {
+  it('lets staff leave the place open or clear it, and still needs an address for a home visit', async () => {
+    const { resolveBookingPlace } = await import('../appointments/appointments.service.js');
+    const indie = { kind: SalonKind.INDEPENDENT, serviceLocations: [ServiceLocation.STUDIO, ServiceLocation.CLIENT_HOME] };
+    expect(resolveBookingPlace(indie, null, null, true)).toEqual({ serviceLocation: null, visitAddress: null });
+    expect(resolveBookingPlace(indie, ServiceLocation.STUDIO, 'ignored', true)).toEqual({ serviceLocation: ServiceLocation.STUDIO, visitAddress: null });
+    expect(() => resolveBookingPlace(indie, ServiceLocation.CLIENT_HOME, null, true)).toThrow(/address for the home visit/);
+  });
+});

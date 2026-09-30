@@ -1,5 +1,6 @@
 import { Transform } from "class-transformer";
-import { ArrayMinSize, IsArray, IsDateString, IsOptional, IsString, MaxLength, ValidateIf } from "class-validator";
+import { ArrayMinSize, IsArray, IsDateString, IsEnum, IsOptional, IsString, MaxLength, ValidateIf } from "class-validator";
+import { ServiceLocation } from "@appointment-scheduling/database";
 
 /** Trims text before validation. */
 const Trim = () => Transform(({ value }) => (typeof value === "string" ? value.trim() : value));
@@ -34,4 +35,14 @@ export class UpdateAppointmentDto {
   @IsString()
   @MaxLength(50)
   customerLastName?: string | null;
+
+  /** Independent stylists: where it happens; `null` = not specified. A home visit needs visitAddress. */
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsEnum(ServiceLocation)
+  serviceLocation?: ServiceLocation | null;
+
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @IsString()
+  @MaxLength(300)
+  visitAddress?: string | null;
 }

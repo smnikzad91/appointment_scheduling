@@ -116,8 +116,9 @@ export default function SalonSettingsPage() {
         name={form.name || salon.name}
         coverUrl={salon.coverImageUrl}
         avatarUrl={salon.logoUrl}
-        avatarLabel="لوگو"
-        avatarShape="square"
+        // An independent stylist's "logo" is their own photo.
+        avatarLabel={independent ? "عکس شما" : "لوگو"}
+        avatarShape={independent ? "circle" : "square"}
         folder="salons"
         onSave={savePhotos}
       />
@@ -143,7 +144,13 @@ export default function SalonSettingsPage() {
         subtitle={independent ? "درآمد، هزینه‌ها و سود خالص ماه" : "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها"}
         className="mt-3"
       />
-      <LinkCard href="/tutorials?role=owner" icon={BookOpen} title="راهنمای استفاده" subtitle="راهنمای تصویری قدم‌به‌قدم همه بخش‌های پنل سالن" className="mt-3" />
+      <LinkCard
+        href={independent ? "/tutorials?role=independent" : "/tutorials?role=owner"}
+        icon={BookOpen}
+        title="راهنمای استفاده"
+        subtitle={independent ? "راهنمای قدم‌به‌قدم پنل آرایشگر مستقل" : "راهنمای تصویری قدم‌به‌قدم همه بخش‌های پنل سالن"}
+        className="mt-3"
+      />
 
       {subscription && (
         <div id="subscription" className="scroll-mt-20">

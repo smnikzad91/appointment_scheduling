@@ -301,6 +301,9 @@ export interface SalonBookingInput {
   serviceIds: string[];
   startAt: string; // ISO instant
   notes?: string;
+  /** Independent stylists: where it happens (omitted = not specified), a home visit's address. */
+  serviceLocation?: ServiceLocation;
+  visitAddress?: string;
 }
 
 export function createSalonBooking(token: string, data: SalonBookingInput) {
@@ -315,7 +318,16 @@ export function createSalonBooking(token: string, data: SalonBookingInput) {
 export function updateAppointmentDetails(
   token: string,
   id: string,
-  data: { serviceIds?: string[]; startAt?: string; notes?: string | null; customerFirstName?: string | null; customerLastName?: string | null },
+  data: {
+    serviceIds?: string[];
+    startAt?: string;
+    notes?: string | null;
+    customerFirstName?: string | null;
+    customerLastName?: string | null;
+    /** Independent stylists: null = not specified. */
+    serviceLocation?: ServiceLocation | null;
+    visitAddress?: string | null;
+  },
 ) {
   return salonApiFetch<OwnerAppointment>(`/appointments/${id}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify(data) });
 }

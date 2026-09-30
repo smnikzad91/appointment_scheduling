@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getMySalon } from "@/lib/api/ownerSalon";
+import { isIndependent } from "@/lib/independent";
 import { Check, KeyRound, Link2, Plus, UserPlus, Users } from "lucide-react";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { SubscriptionNotice, useMySubscription } from "@/components/app/Subscription";
@@ -46,6 +49,14 @@ const EMPTY_INVITE = { phone: "", firstName: "", lastName: "", displayName: "", 
 
 export default function SalonStylistsPage() {
   const token = useApiAccessToken();
+  const router = useRouter();
+  // An independent stylist works alone: nothing to manage here, their hours live on /salon/schedule.
+  useEffect(() => {
+    if (!token) return;
+    getMySalon(token)
+      .then((s) => isIndependent(s) && router.replace("/salon/schedule"))
+      .catch(() => {});
+  }, [token, router]);
   const [stylists, setStylists] = useState<OwnerStylist[] | null>(null);
   // Reloads when the active count changes, so the plan's seat count stays current.
   const subscription = useMySubscription(token, stylists?.filter((s) => s.active).length);

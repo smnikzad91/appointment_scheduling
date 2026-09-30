@@ -46,6 +46,8 @@ export type NotificationData = NewReviewData | BookingData | PayoutData | Review
 export interface NewReviewData {
   reviewId: string;
   target: "SALON" | "STYLIST";
+  /** Set for an independent stylist's own business. */
+  independent?: boolean;
   rating: number | null;
   /** First ~120 characters of the comment, if any. */
   excerpt: string | null;

@@ -44,8 +44,8 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
   const salon = "salonName" in n.data && n.data.salonName ? n.data.salonName : "سالن";
   switch (n.type) {
     case "NEW_REVIEW": {
-      const { customerName, target, stylistName, edited } = n.data;
-      const about = target === "SALON" ? "سالن" : scope === "stylist" ? "شما" : stylistName ?? "آرایشگر";
+      const { customerName, target, stylistName, edited, independent } = n.data;
+      const about = target === "SALON" ? (independent ? "شما" : "سالن") : scope === "stylist" ? "شما" : stylistName ?? "آرایشگر";
       return {
         icon: MessageSquareText,
         tone: "text-app-accent",

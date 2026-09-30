@@ -259,7 +259,7 @@ export default function SalonServicesPage() {
         <EmptyState
           icon={Scissors}
           title="هنوز خدمتی اینجا نیست"
-          hint="خدماتی که سالن ارائه می‌دهد را با مدت و قیمت اضافه کنید تا مشتری‌ها بتوانند رزرو کنند."
+          hint="خدماتی که ارائه می‌دهید را با مدت و قیمت اضافه کنید تا مشتری‌ها بتوانند رزرو کنند."
           action={<Button icon={Plus} onClick={openNew}>افزودن خدمت</Button>}
         />
       ) : (

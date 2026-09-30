@@ -37,6 +37,8 @@ export default function AdminSalonsPage() {
   const t = useT();
   const { date } = useLocaleFormat();
   const [tab, setTab] = useState<AdminSalon["status"] | "ALL">("PENDING");
+  // Salons, independent stylists, or both (filtered here; the list is small).
+  const [kindFilter, setKindFilter] = useState<"ALL" | "SALON" | "INDEPENDENT">("ALL");
   const [salons, setSalons] = useState<AdminSalon[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   // A translation key, turned into text at render so it follows an FA/EN switch right away.
@@ -56,6 +58,7 @@ export default function AdminSalonsPage() {
   }
 
   useEffect(reload, [token, tab]);
+  const shown = (salons ?? []).filter((s) => kindFilter === "ALL" || (s.kind ?? "SALON") === kindFilter);
 
   async function handleSetStatus(id: string, status: AdminSalon["status"]) {
     if (!token) return;
@@ -98,17 +101,40 @@ export default function AdminSalonsPage() {
         ))}
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            ["ALL", "slKindAll"],
+            ["SALON", "slKindSalons"],
+            ["INDEPENDENT", "slKindIndependents"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setKindFilter(value)}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+              kindFilter === value
+                ? "bg-gray-800 text-white dark:bg-white dark:text-gray-900"
+                : "border border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300"
+            }`}
+          >
+            {t(label)}
+          </button>
+        ))}
+      </div>
+
       {error && <p className="text-sm text-rose-500">{t(error)}</p>}
 
       {!salons ? (
         <p className="text-sm text-gray-500">{t("slLoading")}</p>
-      ) : salons.length === 0 ? (
+      ) : shown.length === 0 ? (
         <p className="rounded-xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500 dark:border-gray-800">
           {t("slEmpty")}
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {salons.map((salon) => (
+          {shown.map((salon) => (
             <div key={salon.id} className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
