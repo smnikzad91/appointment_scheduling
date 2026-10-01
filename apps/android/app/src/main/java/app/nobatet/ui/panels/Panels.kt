@@ -1,5 +1,11 @@
 package app.nobatet.ui.panels
 
+import app.nobatet.util.openInBrowser
+import app.nobatet.ui.components.Toasts
+import app.nobatet.data.DeepLink
+import androidx.compose.runtime.key
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import app.nobatet.ui.components.AppTextButton
 import android.content.Context
 import android.content.Intent
@@ -68,8 +74,18 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var overlay by remember { mutableStateOf<CustomerOverlay?>(null) }
     val openSalon: (String) -> Unit = { overlay = CustomerOverlay.Salon(it) }
+    // a website link opened in the app: its salon page, booking prefilled when the link asks
+    val link by container.links.link.collectAsState()
+    LaunchedEffect(link) {
+        val l = link ?: return@LaunchedEffect
+        container.links.link.value = null
+        runCatching { resolveLink(container, l) }
+            .onSuccess { overlay = it }
+            .onFailure { Toasts.error("این لینک معتبر نیست یا سالن دیگر فعال نیست") }
+    }
     when (val o = overlay) {
-        is CustomerOverlay.Salon -> {
+        // keyed, so a link to the same salon starts its booking afresh
+        is CustomerOverlay.Salon -> key(o) {
             SalonScreen(container, o.slug, onBack = { overlay = null }, onSeeBookings = { overlay = null; tab = TAB_BOOKINGS }, prefill = o.prefill)
             return
         }
@@ -114,9 +130,16 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
     )
 }
 
+/** A website link → the salon page to show (and the booking to start). */
+private suspend fun resolveLink(container: AppContainer, link: DeepLink): CustomerOverlay.Salon = when (link) {
+    is DeepLink.Salon -> CustomerOverlay.Salon(link.slug, if (link.book) BookingPrefill(link.serviceIds, link.stylistId, link.date) else null)
+    is DeepLink.Handle -> container.api.resolveHandle(link.handle).let { CustomerOverlay.Salon(it.slug, BookingPrefill(emptyList(), it.stylistId)) }
+    is DeepLink.Rebook -> CustomerOverlay.Salon(container.api.rebookLink(link.code).salon.slug, BookingPrefill(emptyList()))
+}
+
 /** «راهنمای استفاده»: the web's Help Center for this role. */
 fun tutorialsLink(context: Context, role: String) = AccountLink("راهنمای استفاده", Icons.AutoMirrored.Outlined.MenuBook) {
-    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.WEB_BASE_URL + "tutorials?role=$role"))) }
+    context.openInBrowser(BuildConfig.WEB_BASE_URL + "tutorials?role=$role")
 }
 
 /** The admin panel is web-only. */
@@ -127,7 +150,7 @@ fun AdminNotice(onSignOut: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
         Text("پنل مدیریت فقط در وب‌سایت", style = MaterialTheme.typography.titleLarge, color = colors.ink)
         Text("برای مدیریت سالن‌ها، کاربران و محتوا از نسخه وب استفاده کنید.", color = colors.muted, textAlign = TextAlign.Center)
-        app.nobatet.ui.components.PrimaryButton("باز کردن وب‌سایت") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.WEB_BASE_URL + "admin"))) }
+        app.nobatet.ui.components.PrimaryButton("باز کردن وب‌سایت") { context.openInBrowser(BuildConfig.WEB_BASE_URL + "admin") }
         AppTextButton(onClick = onSignOut) { Text("خروج") }
     }
 }

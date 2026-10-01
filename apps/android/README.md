@@ -26,6 +26,14 @@ instead of «آرایشگرها»). The admin panel stays on the website (the ap
   `password`, `avatar`, `sms-preferences`, `tickets`): `https://nobatet.app/` with the **same**
   Bearer token (apps/web `lib/requestSession.ts`). The wallet routes don't accept it yet.
 
+## Website links
+`nobatet.app/s/{slug}` (with `?book=1&services=&stylist=&date=`), `/book/@{handle}` and `/r/{code}` open in
+the app (`data/DeepLinks.kt`): the customer panel shows that salon and starts the booking; other roles get a
+note. They skip the "open with" chooser once apps/web serves `/.well-known/assetlinks.json` with the
+signing key: set `ANDROID_CERT_SHA256` in `apps/web/.env.production` (comma-separated SHA-256
+fingerprints; add Play's app-signing key too if Google re-signs) and redeploy. The app's own «open the
+website» buttons go through `openInBrowser` so they don't loop back into the app.
+
 ## Release
 - CI also builds `assembleRelease` + `bundleRelease` (artifact `nobatet-release`); `versionCode` = the
   workflow run number, `versionName` from `NOBATET_VERSION_NAME` (default 0.1.0).

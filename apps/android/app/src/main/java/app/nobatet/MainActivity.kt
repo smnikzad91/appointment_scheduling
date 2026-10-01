@@ -1,5 +1,6 @@
 package app.nobatet
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import app.nobatet.ui.BrandSplash
 import app.nobatet.ui.components.Toaster
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import app.nobatet.data.DeepLink
 import app.nobatet.data.ThemeChoice
 import app.nobatet.ui.AppRoot
 import app.nobatet.ui.theme.LocalThemeControl
@@ -31,6 +33,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val container = (application as NobatetApp).container
+        // a website link that opened the app (a fresh start; not again after rotation)
+        if (savedInstanceState == null) DeepLink.parse(intent?.data)?.let { container.links.link.value = it }
         var themeLoaded = false
         // keep the splash until the saved light/dark choice is read, so the first frame is right
         splash.setKeepOnScreenCondition { !themeLoaded }
@@ -55,5 +59,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /** A website link while the app is already open (launchMode singleTask). */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        DeepLink.parse(intent.data)?.let { (application as NobatetApp).container.links.link.value = it }
     }
 }

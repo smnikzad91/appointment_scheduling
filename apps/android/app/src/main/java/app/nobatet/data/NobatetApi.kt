@@ -38,6 +38,14 @@ interface NobatetApi {
     @GET("salons/{slug}")
     suspend fun salon(@Path("slug") slug: String): SalonDetail
 
+    /** A share-kit short link's target (salon slug, and the stylist for a stylist's handle). */
+    @GET("book/{handle}")
+    suspend fun resolveHandle(@Path("handle") handle: String): BookTarget
+
+    /** The «وقت نوبت بعدی» SMS link: which salon to book again at. */
+    @GET("rebook/{code}")
+    suspend fun rebookLink(@Path("code") code: String): RebookLink
+
     @GET("salons/{slug}/reviews")
     suspend fun salonPublicReviews(@Path("slug") slug: String): List<PublicReview>
 

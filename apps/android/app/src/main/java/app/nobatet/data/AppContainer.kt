@@ -57,4 +57,7 @@ class AppContainer(context: Context) {
 
     /** The customer's saved salons, shared by the salon page and home. */
     val favorites = FavoritesStore(api)
+
+    /** A website link opened in the app, handled by the customer panel. */
+    val links = PendingLinks()
 }

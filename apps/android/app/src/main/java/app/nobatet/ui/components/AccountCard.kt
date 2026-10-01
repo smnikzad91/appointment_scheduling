@@ -1,5 +1,6 @@
 package app.nobatet.ui.components
 
+import app.nobatet.util.openInBrowser
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -77,7 +78,7 @@ fun AccountLinks(container: AppContainer, helpRole: String) {
     var confirm by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         AppTextButton(onClick = {
-            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.WEB_BASE_URL + "tutorials?role=$helpRole"))) }
+            context.openInBrowser(BuildConfig.WEB_BASE_URL + "tutorials?role=$helpRole")
         }) { Text("راهنمای استفاده") }
         AppTextButton(onClick = { confirm = true }) { Text("درخواست حذف حساب", color = c.danger) }
     }

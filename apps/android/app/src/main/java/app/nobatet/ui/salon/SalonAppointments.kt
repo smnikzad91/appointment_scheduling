@@ -1,5 +1,6 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.util.openInBrowser
 import app.nobatet.ui.staff.TodayTimeline
 import app.nobatet.ui.staff.HomeSectionTitle
 import app.nobatet.ui.staff.NoticeChip
@@ -259,7 +260,7 @@ fun SalonHomeScreen(container: AppContainer, data: SalonData, sheets: SalonSheet
                         runCatching { context.startActivity(Intent.createChooser(send, "اشتراک لینک رزرو")) }
                     }
                     HeroButton(if (independent) "صفحه رزرو" else "صفحه سالن", Icons.AutoMirrored.Outlined.OpenInNew, Color.White.copy(alpha = 0.1f), HeroInk) {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.WEB_BASE_URL + "s/" + salon.slug))) }
+                        context.openInBrowser(BuildConfig.WEB_BASE_URL + "s/" + salon.slug)
                     }
                 }
             }

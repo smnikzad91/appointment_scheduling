@@ -102,8 +102,13 @@ class SalonViewModel(private val container: AppContainer, private val slug: Stri
     /** Straight to the day/time step with these choices (services no longer offered are dropped). */
     fun openBookingPrefilled(prefill: BookingPrefill) {
         val ids = prefill.serviceIds.filter { id -> salon.activeServices.any { it.id == id } }
-        if (ids.isEmpty()) return openBooking()
         val stylist = prefill.stylistId?.takeIf { id -> salon.stylists.any { it.id == id } }
+        // no services chosen (a short link, «?book=1»): start at the services step, with the stylist if one came
+        if (ids.isEmpty()) {
+            openBooking()
+            if (stylist != null) setBooking { it.copy(stylistId = stylist) }
+            return
+        }
         setBooking {
             BookingState(open = true, step = BookingStep.DATETIME, serviceIds = ids, stylistId = stylist,
                 place = if (salon.independent) salon.serviceLocations.singleOrNull() else null)
