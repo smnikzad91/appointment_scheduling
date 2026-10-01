@@ -44,6 +44,13 @@ export function fitSms<T extends Record<string, string>>(p: T, trimmable: (keyof
 export const customerReminderText = (p: { time: string; salon: string; stylist: string }) =>
   fitSms(p, ["salon", "stylist"], (q) => `یادآوری نوبتت: ساعت ${q.time} در ${q.salon} با ${q.stylist}`);
 
+/**
+ * An independent stylist's reminder: the services instead of the business name, and the stylist's
+ * first name — «یادآوری نوبتت: ساعت ۰۹:۰۰ ترمیم ناخن ژل با سارا». Services are cut first.
+ */
+export const independentReminderText = (p: { time: string; services: string; name: string }) =>
+  fitSms(p, ["services", "name"], (q) => `یادآوری نوبتت: ساعت ${q.time} ${q.services} با ${q.name}`);
+
 /** "سه‌شنبه ۷ مهر" — weekday and Jalali date of an instant, in the salon's time zone. */
 export const jalaliDay = (instant: Date, timeZone: string) =>
   new Intl.DateTimeFormat("fa-IR-u-ca-persian", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(instant);
@@ -52,8 +59,8 @@ type BookingParams = { day: string; time: string; salon: string; stylist: string
 type CustomerBookingKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
 
 /**
- * An independent stylist is the business, so the text names only them (their full name) — no
- * «در {salon} با {stylist}» naming the same person twice: «نوبتت: {day} ساعت {time} با سارا ایلکا ثبت شد».
+ * An independent stylist is the business, so the text names only them (first name) — no
+ * «در {salon} با {stylist}» naming the same person twice: «نوبتت: {day} ساعت {time} با سارا ثبت شد».
  */
 export const independentBookingText = (kind: CustomerBookingKind, p: { day: string; time: string; name: string }) => {
   const verb = { "booked-customer": "ثبت شد", "confirmed-customer": "تایید شد", "cancelled-customer": "لغو شد", "rescheduled-customer": "منتقل شد" }[kind];

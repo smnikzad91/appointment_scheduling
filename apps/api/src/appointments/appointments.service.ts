@@ -439,7 +439,7 @@ export class AppointmentsService {
           salonId: true,
           startAt: true,
           salon: { select: { name: true, timezone: true, kind: true } },
-          stylist: { select: { displayName: true, user: { select: { firstName: true, lastName: true } } } },
+          stylist: { select: { displayName: true, user: { select: { firstName: true } } } },
           customer: { select: { phone: true } },
         },
       });
@@ -450,11 +450,11 @@ export class AppointmentsService {
         salon: a.salon.name,
         stylist: a.stylist.displayName,
       };
-      // An independent stylist: only their full name, the business being them (sms.text.ts).
-      const fullName = `${a.stylist.user.firstName} ${a.stylist.user.lastName}`.trim() || a.stylist.displayName;
+      // An independent stylist: only their first name, the business being them (sms.text.ts).
+      const firstName = a.stylist.user.firstName.trim() || a.stylist.displayName;
       const text =
         a.salon.kind === SalonKind.INDEPENDENT
-          ? independentBookingText(kind, { day: params.day, time: params.time, name: fullName })
+          ? independentBookingText(kind, { day: params.day, time: params.time, name: firstName })
           : customerBookingText(kind, params);
       if (!(await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text)))) return;
       await this.sms.send({ kind, to: a.customer.phone, params, text });

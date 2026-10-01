@@ -58,6 +58,15 @@ const updates = (prisma: ReturnType<typeof setup>['prisma'], id = 'a1') =>
   prisma.appointment.update.mock.calls.filter((c) => c[0].where.id === id).map((c) => c[0].data);
 
 describe('ReminderService.tick', () => {
+  it("reminds an independent stylist's customer of the services and the stylist's first name, not the business", async () => {
+    const { service, sms } = setup([
+      appt({ salon: { name: 'Nail artist', timezone: 'Asia/Tehran', kind: 'INDEPENDENT' }, stylist: { displayName: 'سارا', user: { phone: '09120000002', firstName: 'سارا' } } }),
+    ]);
+    await service.tick(NOW);
+    const customer = sms.send.mock.calls.map((c) => c[0]).find((m) => m.kind === 'reminder-customer');
+    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ کوتاهی مو، براشینگ با سارا');
+  });
+
   it('texts both the customer and the stylist, in salon-local time, then marks the booking done', async () => {
     const { service, sms, prisma } = setup([appt()]);
     expect(await service.tick(NOW)).toBe(2);

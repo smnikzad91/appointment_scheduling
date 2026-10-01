@@ -6,7 +6,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { instantToSalonWallTime } from "../availability/salon-time.util.js";
 import { SmsService } from "./sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { clock, customerReminderText, jalaliDay, smsParts, stylistConfirmNudgeText, stylistNewBookingText, stylistReminderText } from "./sms.text.js";
+import { clock, customerReminderText, independentReminderText, jalaliDay, smsParts, stylistConfirmNudgeText, stylistNewBookingText, stylistReminderText } from "./sms.text.js";
 import { maySendNow, parseQuietHours, type QuietWindow } from "./quiet-hours.util.js";
 import { runsBackgroundJobs } from "./job-runner.js";
 
@@ -61,8 +61,8 @@ type DueAppointment = {
   customerReminderAttempts: number;
   stylistReminderSentAt: Date | null;
   stylistReminderAttempts: number;
-  salon: { name: string; timezone: string };
-  stylist: { displayName: string; user: { phone: string | null } };
+  salon: { name: string; timezone: string; kind?: string };
+  stylist: { displayName: string; user: { phone: string | null; firstName?: string } };
   customer: { firstName: string; lastName: string; phone: string | null };
   services: { service: { name: string } }[];
 };
@@ -106,8 +106,8 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
           OR: [{ reminderLeaseUntil: null }, { reminderLeaseUntil: { lt: now } }],
         },
         include: {
-          salon: { select: { name: true, timezone: true } },
-          stylist: { select: { displayName: true, user: { select: { phone: true } } } },
+          salon: { select: { name: true, timezone: true, kind: true } },
+          stylist: { select: { displayName: true, user: { select: { phone: true, firstName: true } } } },
           customer: { select: { firstName: true, lastName: true, phone: true } },
           services: { select: { service: { select: { name: true } } } },
         },
@@ -139,14 +139,16 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
     }
 
     const time = clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay);
+    const services = a.services.map((s) => s.service.name).join("، ");
     const customerParams = { time, salon: a.salon.name, stylist: a.stylist.displayName };
-    const stylistParams = {
-      time,
-      customer: bookingCustomerFullName(a),
-      services: a.services.map((s) => s.service.name).join("، "),
-    };
+    // An independent stylist: the services instead of the business name, and their first name.
+    const customerText =
+      a.salon.kind === "INDEPENDENT"
+        ? independentReminderText({ time, services, name: a.stylist.user.firstName?.trim() || a.stylist.displayName })
+        : customerReminderText(customerParams);
+    const stylistParams = { time, customer: bookingCustomerFullName(a), services };
     const messages = {
-      customer: a.customer.phone && { kind: "reminder-customer" as const, to: a.customer.phone, params: customerParams, text: customerReminderText(customerParams) },
+      customer: a.customer.phone && { kind: "reminder-customer" as const, to: a.customer.phone, params: customerParams, text: customerText },
       stylist: a.stylist.user.phone && { kind: "reminder-stylist" as const, to: a.stylist.user.phone, params: stylistParams, text: stylistReminderText(stylistParams) },
     };
 

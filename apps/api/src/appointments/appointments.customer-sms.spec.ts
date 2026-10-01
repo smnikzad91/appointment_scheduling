@@ -74,7 +74,7 @@ describe('SMS to the customer when staff book', () => {
     expect(sms.send).toHaveBeenCalledTimes(1);
     const [message] = sms.send.mock.calls[0];
     expect(message.kind).toBe('booked-customer');
-    expect(message.text).toMatch(/^نوبتت: .+ ساعت .+ با مریم کاظمی ثبت شد$/);
+    expect(message.text).toMatch(/^نوبتت: .+ ساعت .+ با مریم ثبت شد$/);
     expect(message.text).not.toContain('سالن رز');
   });
 
