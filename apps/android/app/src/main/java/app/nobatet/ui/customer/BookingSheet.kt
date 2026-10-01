@@ -3,15 +3,6 @@ package app.nobatet.ui.customer
 import app.nobatet.ui.components.SecondaryButton
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppTextField
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.ViewWeek
-import app.nobatet.ui.components.MonthCalendar
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -165,23 +156,8 @@ private fun StylistStep(vm: SalonViewModel, b: BookingState) {
 private fun DateTimeStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState) {
     val c = LocalAppColors.current
     val today = salonToday(salon.timezone)
-    var showMonth by rememberSaveable { mutableStateOf(false) }
-    // the strip shows the next 14 days, like the web; a later day picked in the month view
-    // moves the strip so it stays in sight
-    val stripStart = b.date?.takeIf { it.isAfter(today.plusDays(13)) }?.minusDays(3) ?: today
-    val days = (0L until 14L).map { stripStart.plusDays(it) }
-    val strip = rememberLazyListState()
-    LaunchedEffect(b.date, stripStart) { days.indexOf(b.date).takeIf { it > 0 }?.let { strip.animateScrollToItem((it - 1).coerceAtLeast(0)) } }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Muted(b.date?.persianLabel() ?: "یک روز انتخاب کنید", Modifier.weight(1f))
-        AppTextButton(onClick = { showMonth = !showMonth }) {
-            Icon(if (showMonth) Icons.Outlined.ViewWeek else Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
-            Text(if (showMonth) "روزهای پیش رو" else "تقویم ماه", modifier = Modifier.padding(start = 6.dp))
-        }
-    }
-    if (showMonth) {
-        MonthCalendar(selected = b.date, from = today, until = today.plusMonths(6), onSelect = { vm.chooseDate(it); showMonth = false })
-    } else LazyRow(state = strip, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
+    val days = (0L until 14L).map { today.plusDays(it) }
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
         items(days, key = { it.toString() }) { d ->
             val selected = d == b.date
             val j = d.toJalali()
