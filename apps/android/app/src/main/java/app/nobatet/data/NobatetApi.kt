@@ -166,6 +166,103 @@ interface NobatetApi {
 
     @PATCH("stylists/me/handle")
     suspend fun setMyHandle(@Body body: HandleRequest): HandleResponse
+
+    // ── Salon panel (owner / independent stylist) ────────────────────────────────────────────
+
+    @GET("salons/mine")
+    suspend fun mySalon(): OwnerSalon
+
+    @PATCH("salons/mine")
+    suspend fun updateMySalon(@Body body: SalonPatch): OwnerSalon
+
+    @PATCH("salons/mine/handle")
+    suspend fun setSalonHandle(@Body body: HandleRequest): SalonHandle
+
+    @GET("salons/mine/subscription")
+    suspend fun mySubscription(): OwnerSubscription
+
+    @GET("salons/mine/categories")
+    suspend fun myCategories(): List<OwnerCategory>
+
+    @POST("salons/mine/categories")
+    suspend fun addCategory(@Body body: CategoryInput): OwnerCategory
+
+    @PATCH("categories/{id}")
+    suspend fun updateCategory(@Path("id") id: String, @Body body: CategoryInput): OwnerCategory
+
+    @DELETE("categories/{id}")
+    suspend fun deleteCategory(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    @GET("salons/mine/services")
+    suspend fun mySalonServices(): List<OwnerService>
+
+    /** name, description?, categoryId?, durationMinutes, priceToman, rebookReminderEnabled, rebookReminderDays (nulls kept: categoryId null = none). */
+    @POST("salons/mine/services")
+    suspend fun addService(@Body body: kotlinx.serialization.json.JsonObject): OwnerService
+
+    @PATCH("services/{id}")
+    suspend fun updateService(@Path("id") id: String, @Body body: kotlinx.serialization.json.JsonObject): OwnerService
+
+    @DELETE("services/{id}")
+    suspend fun deleteService(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    @GET("salons/mine/stylists")
+    suspend fun mySalonStylists(): List<OwnerStylist>
+
+    @POST("salons/mine/stylists")
+    suspend fun inviteStylist(@Body body: InviteStylistRequest): OwnerStylist
+
+    @POST("salons/mine/stylists/{id}/setup-link")
+    suspend fun newSetupLink(@Path("id") id: String): SetupLink
+
+    @PATCH("stylists/{id}")
+    suspend fun updateStylist(@Path("id") id: String, @Body body: StylistPatch): OwnerStylist
+
+    /** {services: [{serviceId, overridePriceToman, overrideDurationMinutes, commissionPercent}]} with nulls kept. */
+    @PUT("stylists/{id}/services")
+    suspend fun setStylistServices(@Path("id") id: String, @Body body: kotlinx.serialization.json.JsonObject): OwnerStylist
+
+    @GET("appointments/salon/mine")
+    suspend fun mySalonAppointments(): List<StaffAppointment>
+
+    @GET("salons/mine/accounting")
+    suspend fun salonSummary(@Query("from") from: String, @Query("to") to: String): SalonSummary
+
+    @GET("salons/mine/accounting/income")
+    suspend fun salonIncome(@Query("from") from: String, @Query("to") to: String): List<SalonIncomeItem>
+
+    @PATCH("salons/mine/accounting/appointments/{id}/charge")
+    suspend fun adjustCharge(@Path("id") id: String, @Body body: ChargeRequest): SalonIncomeItem
+
+    @GET("salons/mine/payouts")
+    suspend fun salonPayouts(@Query("from") from: String, @Query("to") to: String): List<SalonPayout>
+
+    @POST("salons/mine/payouts")
+    suspend fun addPayout(@Body body: PayoutRequest): SalonPayout
+
+    @DELETE("salons/mine/payouts/{id}")
+    suspend fun deletePayout(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    @GET("salons/mine/expenses")
+    suspend fun salonExpenses(@Query("from") from: String, @Query("to") to: String): List<SalonExpense>
+
+    @POST("salons/mine/expenses")
+    suspend fun addSalonExpense(@Body body: SalonExpenseInput): SalonExpense
+
+    @PATCH("salons/mine/expenses/{id}")
+    suspend fun updateSalonExpense(@Path("id") id: String, @Body body: SalonExpenseInput): SalonExpense
+
+    @DELETE("salons/mine/expenses/{id}")
+    suspend fun deleteSalonExpense(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    @GET("salons/mine/gallery")
+    suspend fun salonGallery(): List<GalleryItem>
+
+    @POST("salons/mine/gallery")
+    suspend fun addSalonGalleryImage(@Body body: NewGalleryImage): GalleryItem
+
+    @GET("salons/mine/reviews")
+    suspend fun salonReviews(): List<ModerationReview>
 }
 
 /** apps/web's own routes (https://nobatet.app/api/…), with the same apps/api token. */

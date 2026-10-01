@@ -24,7 +24,6 @@ import app.nobatet.data.Role
 import app.nobatet.ui.auth.LoginScreen
 import app.nobatet.ui.panels.AdminNotice
 import app.nobatet.ui.panels.CustomerPanel
-import app.nobatet.ui.panels.SalonPanel
 import app.nobatet.ui.theme.LocalAppColors
 
 /** One app for every role: the signed-in account's role picks the panel (as the web's /launch). */
@@ -49,8 +48,8 @@ fun AppRoot(container: AppContainer) {
             is SessionState.SignedIn -> when (s.user.role) {
                 Role.CUSTOMER -> CustomerPanel(container, s.user, onSignOut = session::signOut)
                 Role.STYLIST -> app.nobatet.ui.stylist.StylistPanel(container, s.user, onSignOut = session::signOut)
-                Role.SALON_OWNER -> SalonPanel(s.user, independent = false, onSignOut = session::signOut)
-                Role.INDEPENDENT_STYLIST -> SalonPanel(s.user, independent = true, onSignOut = session::signOut)
+                Role.SALON_OWNER -> app.nobatet.ui.salon.SalonPanel(container, s.user, independent = false, onSignOut = session::signOut)
+                Role.INDEPENDENT_STYLIST -> app.nobatet.ui.salon.SalonPanel(container, s.user, independent = true, onSignOut = session::signOut)
                 // The admin panel stays on the website.
                 Role.PLATFORM_ADMIN -> AdminNotice(onSignOut = session::signOut)
             }

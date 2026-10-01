@@ -1,0 +1,216 @@
+package app.nobatet.ui.salon
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import app.nobatet.data.AppContainer
+import app.nobatet.data.AppointmentStatus
+import app.nobatet.data.StaffAppointment
+import app.nobatet.data.StatusUpdate
+import app.nobatet.data.persianError
+import app.nobatet.ui.components.AppCard
+import app.nobatet.ui.components.Empty
+import app.nobatet.ui.components.Loading
+import app.nobatet.ui.components.Muted
+import app.nobatet.ui.components.SectionTitle
+import app.nobatet.ui.staff.AppointmentDetailSheet
+import app.nobatet.ui.staff.StaffAppointmentCard
+import app.nobatet.ui.staff.StaffBookingSheet
+import app.nobatet.ui.stylist.localDate
+import app.nobatet.ui.theme.LocalAppColors
+import app.nobatet.util.formatToman
+import app.nobatet.util.persianLabel
+import app.nobatet.util.salonToday
+import app.nobatet.util.toPersianDigits
+import kotlinx.coroutines.launch
+import java.time.Instant
+
+/** The status sheet and booking sheets of the salon panel (the owner picks the stylist; independent: themselves). */
+class SalonSheetsState {
+    var selected by mutableStateOf<StaffAppointment?>(null)
+    var editing by mutableStateOf<StaffAppointment?>(null)
+    /** Creating: choosing a stylist (salon) or booking for this stylist id. */
+    var choosingStylist by mutableStateOf(false)
+    var creatingFor by mutableStateOf<String?>(null)
+    var busy by mutableStateOf(false)
+    val snackbar = SnackbarHostState()
+
+    fun startCreate(data: SalonData) {
+        val salon = data.salon ?: return
+        val only = data.stylists.singleOrNull { it.active }
+        if (salon.independent || only != null) creatingFor = (only ?: data.stylists.firstOrNull())?.id else choosingStylist = true
+    }
+}
+
+@Composable
+fun SalonSheets(container: AppContainer, data: SalonData, sheets: SalonSheetsState) {
+    val scope = rememberCoroutineScope()
+    val salon = data.salon ?: return
+    val c = LocalAppColors.current
+    sheets.selected?.let { a ->
+        AppointmentDetailSheet(
+            a, salon.timezone, sheets.busy,
+            onDismiss = { sheets.selected = null },
+            onEdit = { sheets.selected = null; sheets.editing = a },
+            onStatus = { status ->
+                scope.launch {
+                    sheets.busy = true
+                    runCatching { container.api.setStatus(a.id, StatusUpdate(status)) }
+                        .onSuccess { sheets.selected = null; data.loadAppointments() }
+                        .onFailure { sheets.snackbar.showSnackbar(persianError(it, "تغییر وضعیت نوبت انجام نشد، دوباره تلاش کنید", container.json)) }
+                    sheets.busy = false
+                }
+            },
+        )
+    }
+    if (sheets.choosingStylist) {
+        AlertDialog(
+            onDismissRequest = { sheets.choosingStylist = false },
+            title = { Text("نوبت با کدام آرایشگر؟") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    data.stylists.filter { it.active }.forEach { st ->
+                        Text(st.displayName, color = c.ink, modifier = Modifier.clickable { sheets.choosingStylist = false; sheets.creatingFor = st.id }.padding(vertical = 10.dp))
+                    }
+                    if (data.stylists.none { it.active }) Muted("هنوز آرایشگر فعالی ندارید.")
+                }
+            },
+            confirmButton = { TextButton(onClick = { sheets.choosingStylist = false }) { Text("انصراف") } },
+        )
+    }
+    val stylistId = sheets.editing?.stylistId ?: sheets.creatingFor
+    if (stylistId != null) {
+        StaffBookingSheet(
+            container, salon.slug, salon.timezone, stylistId, data.bookableFor(stylistId), sheets.editing,
+            onDismiss = { sheets.editing = null; sheets.creatingFor = null },
+            onSaved = { sheets.editing = null; sheets.creatingFor = null; data.loadAppointments() },
+        )
+    }
+}
+
+/** «نوبت‌ها» of the salon: پیش‌رو / منتظر تایید / گذشته / لغوشده, a stylist filter (salon), «+». */
+@Composable
+fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
+    val c = LocalAppColors.current
+    val salon = data.salon ?: return
+    val tz = salon.timezone
+    val today = salonToday(tz)
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var stylistFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    val now = Instant.now()
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            ScrollableTabRow(selectedTabIndex = tab, containerColor = c.bg, contentColor = c.accent, edgePadding = 8.dp) {
+                listOf("پیش‌رو", "منتظر تایید", "گذشته", "لغوشده").forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
+            }
+            if (!salon.independent && data.stylists.size > 1) {
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip(selected = stylistFilter == null, onClick = { stylistFilter = null }, label = { Text("همه") })
+                    data.stylists.forEach { st -> FilterChip(selected = stylistFilter == st.id, onClick = { stylistFilter = st.id }, label = { Text(st.displayName) }) }
+                }
+            }
+            val list = data.appointments
+            if (list == null) Loading() else {
+                val mine = list.filter { stylistFilter == null || it.stylistId == stylistFilter }
+                val filtered = when (tab) {
+                    0 -> mine.filter { (it.status == AppointmentStatus.PENDING || it.status == AppointmentStatus.CONFIRMED) && Instant.parse(it.endAt).isAfter(now) }.sortedBy { it.startAt }
+                    1 -> mine.filter { it.status == AppointmentStatus.PENDING }.sortedBy { it.startAt }
+                    2 -> mine.filter { it.status == AppointmentStatus.COMPLETED || it.status == AppointmentStatus.NO_SHOW || (it.status != AppointmentStatus.CANCELLED && !Instant.parse(it.endAt).isAfter(now)) }.sortedByDescending { it.startAt }
+                    else -> mine.filter { it.status == AppointmentStatus.CANCELLED }.sortedByDescending { it.startAt }
+                }
+                if (filtered.isEmpty()) Empty("نوبتی نیست") else {
+                    val groups = filtered.groupBy { it.localDate(tz) }
+                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        groups.forEach { (day, items) ->
+                            item(key = "h$day") { Muted(if (day == today) "امروز، ${day.persianLabel()}" else day.persianLabel(), Modifier.padding(top = 6.dp)) }
+                            items(items, key = { it.id }) { a ->
+                                StaffAppointmentCard(a, tz, showStylist = if (salon.independent) null else a.stylist?.displayName) { sheets.selected = a }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        FloatingActionButton(onClick = { sheets.startCreate(data) }, containerColor = c.accent, contentColor = c.accentInk, modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)) {
+            Icon(Icons.Outlined.Add, contentDescription = "نوبت تازه")
+        }
+        SnackbarHost(sheets.snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
+    }
+}
+
+enum class SalonPage(val title: String) { ACCOUNTING("حسابداری"), REVIEWS("نظرات مشتری‌ها"), GALLERY("گالری نمونه کارها"), SHARE("کیت معرفی") }
+
+/** The salon home: today, what waits for confirmation, the plan notice, and the other pages. */
+@Composable
+fun SalonHomeScreen(data: SalonData, sheets: SalonSheetsState, onOpenPage: (SalonPage) -> Unit) {
+    val c = LocalAppColors.current
+    val salon = data.salon ?: return
+    val tz = salon.timezone
+    val today = salonToday(tz)
+    val list = data.appointments.orEmpty()
+    val todays = list.filter { it.localDate(tz) == today && it.status != AppointmentStatus.CANCELLED }.sortedBy { it.startAt }
+    val pending = list.filter { it.status == AppointmentStatus.PENDING }.sortedBy { it.startAt }
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (salon.status == "PENDING") item {
+                AppCard { Text("در انتظار تایید پشتیبانی", color = c.pending, style = MaterialTheme.typography.titleSmall); Muted("پس از تایید، صفحه شما در جستجو نمایش داده می‌شود و نوبت آنلاین می‌گیرید.") }
+            }
+            data.subscription?.takeIf { it.status == "expired" }?.let { item { AppCard { Text("اشتراک سالن به پایان رسیده است", color = c.danger); Muted("پیامک‌ها ارسال نمی‌شوند؛ برای تمدید با پشتیبانی تماس بگیرید.") } } }
+            item {
+                AppCard {
+                    Muted("امروز، ${today.persianLabel()}")
+                    Text("${todays.size.toString().toPersianDigits()} نوبت", style = MaterialTheme.typography.headlineSmall, color = c.ink)
+                    Muted("درآمد پیش‌بینی امروز")
+                    Text(formatToman(todays.filter { it.status != AppointmentStatus.NO_SHOW }.sumOf { it.priceToman }), color = c.accent, style = MaterialTheme.typography.titleLarge)
+                }
+            }
+            if (pending.isNotEmpty()) {
+                item { SectionTitle("منتظر تایید (${pending.size.toString().toPersianDigits()})") }
+                items(pending, key = { "p" + it.id }) { a -> StaffAppointmentCard(a, tz, if (salon.independent) null else a.stylist?.displayName) { sheets.selected = a } }
+            }
+            item { SectionTitle("برنامه امروز") }
+            if (todays.isEmpty()) item { Muted(if (data.appointments == null) "در حال بارگذاری..." else "امروز نوبتی ندارید.") }
+            items(todays, key = { "t" + it.id }) { a -> StaffAppointmentCard(a, tz, if (salon.independent) null else a.stylist?.displayName) { sheets.selected = a } }
+            item { SectionTitle("بیشتر", Modifier.padding(top = 8.dp)) }
+            items(SalonPage.entries) { page ->
+                AppCard(Modifier.clickable { onOpenPage(page) }) {
+                    Row(verticalAlignment = Alignment.CenterVertically) { Text(page.title, color = c.ink, modifier = Modifier.weight(1f)); Text("›", color = c.muted) }
+                }
+            }
+        }
+        SnackbarHost(sheets.snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
+    }
+}

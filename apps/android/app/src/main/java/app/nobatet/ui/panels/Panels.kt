@@ -101,21 +101,6 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
     )
 }
 
-/** Salon owners, and independent stylists (their own one-person business): «ساعات کاری» instead of «آرایشگرها». */
-@Composable
-fun SalonPanel(user: ApiUser, independent: Boolean, onSignOut: () -> Unit) = PanelScaffold(
-    title = if (independent) "${user.firstName} ${user.lastName}".trim() else "پنل سالن",
-    onSignOut = onSignOut,
-    tabs = listOf(
-        PanelTab("خانه", Icons.Outlined.Home) { Welcome(user.firstName, "نوبت‌های امروز و خلاصه کار اینجا نمایش داده می‌شوند.") },
-        PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth) { ComingSoon("نوبت‌ها") },
-        PanelTab("خدمات", Icons.Outlined.ContentCut) { ComingSoon("خدمات") },
-        if (independent) PanelTab("ساعات کاری", Icons.Outlined.Schedule) { ComingSoon("ساعات کاری") }
-        else PanelTab("آرایشگرها", Icons.Outlined.Groups) { ComingSoon("آرایشگرها") },
-        PanelTab("تنظیمات", Icons.Outlined.Settings) { ComingSoon("تنظیمات") },
-    ),
-)
-
 /** The admin panel is web-only. */
 @Composable
 fun AdminNotice(onSignOut: () -> Unit) {

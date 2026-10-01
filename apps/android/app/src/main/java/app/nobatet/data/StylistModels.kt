@@ -96,6 +96,8 @@ data class StaffAppointment(
     val customer: StaffCustomer,
     val customerFirstName: String? = null,
     val customerLastName: String? = null,
+    /** Salon lists (owner): who it's with. */
+    val stylist: BookingStylist? = null,
 ) {
     /** This booking's name if staff set one, else the account's (apps/api already overlays it). */
     val customerName get() = "${customer.firstName} ${customer.lastName}".trim()
