@@ -47,7 +47,15 @@ import app.nobatet.data.persianError
 import app.nobatet.ui.components.Empty
 import app.nobatet.ui.components.MonthSwitcher
 import app.nobatet.ui.components.Muted
+import app.nobatet.ui.staff.AppointmentBucket
 import app.nobatet.ui.staff.AppointmentDetailSheet
+import app.nobatet.ui.staff.AppointmentMonthView
+import app.nobatet.ui.staff.AppointmentsView
+import app.nobatet.ui.staff.AppointmentsViewSwitch
+import app.nobatet.ui.staff.BucketChips
+import app.nobatet.ui.staff.DayHeading
+import app.nobatet.ui.staff.bucketOf
+import app.nobatet.ui.staff.rememberAppointmentsView
 import app.nobatet.ui.staff.BookableService
 import app.nobatet.ui.staff.StaffAppointmentCard
 import app.nobatet.ui.staff.StaffBookingSheet
@@ -123,34 +131,27 @@ fun StaffSheets(actions: StaffActions, stylist: SelfStylist) {
     }
 }
 
-/** «نوبت‌ها»: پیش‌رو / منتظر تایید / گذشته / لغوشده, or a Jalali month calendar; «+» books a customer. */
+/** «نوبت‌ها», as the web's: «فهرست / هفته / ماه», the list's filter chips, «+» books a customer. */
 @Composable
 fun StylistAppointmentsScreen(stylist: SelfStylist, appointments: List<StaffAppointment>?, actions: StaffActions) {
     val c = LocalAppColors.current
     val tz = stylist.salon.timezone
     val today = salonToday(tz)
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    val tabs = listOf("پیش‌رو", "منتظر تایید", "گذشته", "لغوشده", "هفته", "تقویم ماه")
-    val now = Instant.now()
+    val (view, setView) = rememberAppointmentsView()
+    var bucket by rememberSaveable { mutableStateOf(AppointmentBucket.UPCOMING) }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            ScrollableTabRow(selectedTabIndex = tab, containerColor = c.bg, contentColor = c.accent, edgePadding = 8.dp) {
-                tabs.forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
-            }
+            AppointmentsViewSwitch(view, setView, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp))
             val list = appointments
+            if (view == AppointmentsView.LIST && list != null) BucketChips(list, bucket) { bucket = it }
             when {
                 list == null -> app.nobatet.ui.components.Loading()
-                tab == 4 -> app.nobatet.ui.staff.WeekGrid(list, tz, today, Modifier.weight(1f)) { actions.selected = it }
-                tab == 5 -> MonthCalendar(list, tz, today, Modifier.weight(1f)) { actions.selected = it }
+                view == AppointmentsView.WEEK -> app.nobatet.ui.staff.WeekGrid(list, tz, today, Modifier.weight(1f)) { actions.selected = it }
+                view == AppointmentsView.MONTH -> AppointmentMonthView(list, tz, today, Modifier.weight(1f)) { actions.selected = it }
                 else -> {
-                    val filtered = when (tab) {
-                        0 -> list.filter { (it.status == AppointmentStatus.PENDING || it.status == AppointmentStatus.CONFIRMED) && Instant.parse(it.endAt).isAfter(now) }.sortedBy { it.startAt }
-                        1 -> list.filter { it.status == AppointmentStatus.PENDING }.sortedBy { it.startAt }
-                        2 -> list.filter { it.status == AppointmentStatus.COMPLETED || it.status == AppointmentStatus.NO_SHOW || (it.status != AppointmentStatus.CANCELLED && !Instant.parse(it.endAt).isAfter(now)) }.sortedByDescending { it.startAt }
-                        else -> list.filter { it.status == AppointmentStatus.CANCELLED }.sortedByDescending { it.startAt }
-                    }
-                    if (filtered.isEmpty()) Empty("نوبتی نیست") else DayGroupedList(filtered, tz, today, Modifier.weight(1f)) { actions.selected = it }
+                    val filtered = bucketOf(list, bucket)
+                    if (filtered.isEmpty()) Empty(bucket.empty, modifier = Modifier.padding(16.dp)) else DayGroupedList(filtered, tz, today, Modifier.weight(1f)) { actions.selected = it }
                 }
             }
         }
@@ -162,58 +163,21 @@ fun StylistAppointmentsScreen(stylist: SelfStylist, appointments: List<StaffAppo
     }
 }
 
+/** Appointments under day headings (the web's AppointmentList); [stylistName] adds «با …» (salon panel). */
 @Composable
-fun DayGroupedList(list: List<StaffAppointment>, tz: String, today: LocalDate, modifier: Modifier = Modifier, onOpen: (StaffAppointment) -> Unit) {
+fun DayGroupedList(
+    list: List<StaffAppointment>,
+    tz: String,
+    today: LocalDate,
+    modifier: Modifier = Modifier,
+    stylistName: (StaffAppointment) -> String? = { null },
+    onOpen: (StaffAppointment) -> Unit,
+) {
     val groups = list.groupBy { it.localDate(tz) }
-    LazyColumn(modifier, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyColumn(modifier, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         groups.forEach { (day, items) ->
-            item(key = "h$day") { Muted(if (day == today) "امروز، ${day.persianLabel()}" else day.persianLabel(), Modifier.padding(top = 6.dp)) }
-            items(items, key = { it.id }) { a -> StaffAppointmentCard(a, tz) { onOpen(a) } }
+            item(key = "h$day") { DayHeading(day, today, items.size) }
+            items(items, key = { it.id }) { a -> StaffAppointmentCard(a, tz, stylistName(a)) { onOpen(a) } }
         }
-    }
-}
-
-/** A Jalali month grid (Saturday first) with each day's booking count; a tap lists that day. */
-@Composable
-private fun MonthCalendar(list: List<StaffAppointment>, tz: String, today: LocalDate, modifier: Modifier = Modifier, onOpen: (StaffAppointment) -> Unit) {
-    val c = LocalAppColors.current
-    var offset by rememberSaveable { mutableIntStateOf(0) }
-    var day by remember { mutableStateOf<LocalDate?>(today) }
-    val period = jalaliMonthPeriod(today, offset)
-    val active = list.filter { it.status != AppointmentStatus.CANCELLED }
-    val counts = active.groupingBy { it.localDate(tz) }.eachCount()
-    val days = generateSequence(period.start) { it.plusDays(1) }.takeWhile { it.isBefore(period.end) }.toList()
-    // Saturday = column 0
-    val lead = (period.start.dayOfWeek.value - DayOfWeek.SATURDAY.value + 7) % 7
-    Column(modifier.fillMaxSize().padding(horizontal = 12.dp)) {
-        MonthSwitcher(period.label, onPrev = { offset-- }, onNext = { offset++ }, canNext = offset < 12)
-        Row(Modifier.fillMaxWidth()) {
-            listOf("ش", "ی", "د", "س", "چ", "پ", "ج").forEach { Text(it, color = c.muted, textAlign = TextAlign.Center, modifier = Modifier.weight(1f)) }
-        }
-        val cells: List<LocalDate?> = List(lead) { null } + days
-        cells.chunked(7).forEach { week ->
-            Row(Modifier.fillMaxWidth()) {
-                (0 until 7).forEach { i ->
-                    val d = week.getOrNull(i)
-                    Box(Modifier.weight(1f).aspectRatio(1f).padding(2.dp)) {
-                        if (d != null) {
-                            val on = d == day
-                            val n = counts[d] ?: 0
-                            Column(
-                                Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(if (on) c.accent else if (n > 0) c.accentSoft else c.card)
-                                    .border(1.dp, if (d == today) c.accent else c.line, RoundedCornerShape(12.dp)).clickable { day = d },
-                                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
-                            ) {
-                                Text(d.toJalali().day.toString().toPersianDigits(), color = if (on) c.accentInk else c.ink, style = MaterialTheme.typography.labelLarge)
-                                if (n > 0) Text(n.toString().toPersianDigits(), color = if (on) c.accentInk else c.accent, style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        val dayList = day?.let { d -> active.filter { it.localDate(tz) == d }.sortedBy { it.startAt } }.orEmpty()
-        if (day != null && dayList.isEmpty()) Muted("نوبتی در این روز نیست", Modifier.padding(12.dp))
-        else DayGroupedList(dayList, tz, today, Modifier.weight(1f), onOpen)
     }
 }

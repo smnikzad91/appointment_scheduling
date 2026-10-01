@@ -46,7 +46,16 @@ import app.nobatet.ui.components.Empty
 import app.nobatet.ui.components.Loading
 import app.nobatet.ui.components.Muted
 import app.nobatet.ui.components.SectionTitle
+import app.nobatet.ui.staff.AppointmentBucket
 import app.nobatet.ui.staff.AppointmentDetailSheet
+import app.nobatet.ui.staff.AppointmentMonthView
+import app.nobatet.ui.staff.AppointmentsView
+import app.nobatet.ui.staff.AppointmentsViewSwitch
+import app.nobatet.ui.staff.BucketChips
+import app.nobatet.ui.staff.FilterPill
+import app.nobatet.ui.staff.bucketOf
+import app.nobatet.ui.staff.rememberAppointmentsView
+import app.nobatet.ui.stylist.DayGroupedList
 import app.nobatet.ui.staff.StaffAppointmentCard
 import app.nobatet.ui.staff.StaffBookingSheet
 import app.nobatet.ui.stylist.localDate
@@ -121,48 +130,36 @@ fun SalonSheets(container: AppContainer, data: SalonData, sheets: SalonSheetsSta
     }
 }
 
-/** «نوبت‌ها» of the salon: پیش‌رو / منتظر تایید / گذشته / لغوشده, a stylist filter (salon), «+». */
+/** «نوبت‌ها» of the salon, as the web's: «فهرست / هفته / ماه», a stylist filter (salon), «+». */
 @Composable
 fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
     val c = LocalAppColors.current
     val salon = data.salon ?: return
     val tz = salon.timezone
     val today = salonToday(tz)
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val (view, setView) = rememberAppointmentsView()
+    var bucket by rememberSaveable { mutableStateOf(AppointmentBucket.UPCOMING) }
     var stylistFilter by rememberSaveable { mutableStateOf<String?>(null) }
-    val now = Instant.now()
+    val stylistName: (StaffAppointment) -> String? = { a -> if (salon.independent) null else a.stylist?.displayName }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            ScrollableTabRow(selectedTabIndex = tab, containerColor = c.bg, contentColor = c.accent, edgePadding = 8.dp) {
-                listOf("پیش‌رو", "منتظر تایید", "گذشته", "لغوشده", "هفته").forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
-            }
+            AppointmentsViewSwitch(view, setView, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp))
             if (!salon.independent && data.stylists.size > 1) {
-                Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(selected = stylistFilter == null, onClick = { stylistFilter = null }, label = { Text("همه") })
-                    data.stylists.forEach { st -> FilterChip(selected = stylistFilter == st.id, onClick = { stylistFilter = st.id }, label = { Text(st.displayName) }) }
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterPill("همه آرایشگرها", stylistFilter == null) { stylistFilter = null }
+                    data.stylists.forEach { st -> FilterPill(st.displayName, stylistFilter == st.id) { stylistFilter = st.id } }
                 }
             }
-            val list = data.appointments
-            if (list == null) Loading() else if (tab == 4) {
-                app.nobatet.ui.staff.WeekGrid(list.filter { stylistFilter == null || it.stylistId == stylistFilter }, tz, today, Modifier.weight(1f)) { sheets.selected = it }
-            } else {
-                val mine = list.filter { stylistFilter == null || it.stylistId == stylistFilter }
-                val filtered = when (tab) {
-                    0 -> mine.filter { (it.status == AppointmentStatus.PENDING || it.status == AppointmentStatus.CONFIRMED) && Instant.parse(it.endAt).isAfter(now) }.sortedBy { it.startAt }
-                    1 -> mine.filter { it.status == AppointmentStatus.PENDING }.sortedBy { it.startAt }
-                    2 -> mine.filter { it.status == AppointmentStatus.COMPLETED || it.status == AppointmentStatus.NO_SHOW || (it.status != AppointmentStatus.CANCELLED && !Instant.parse(it.endAt).isAfter(now)) }.sortedByDescending { it.startAt }
-                    else -> mine.filter { it.status == AppointmentStatus.CANCELLED }.sortedByDescending { it.startAt }
-                }
-                if (filtered.isEmpty()) Empty("نوبتی نیست") else {
-                    val groups = filtered.groupBy { it.localDate(tz) }
-                    LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        groups.forEach { (day, items) ->
-                            item(key = "h$day") { Muted(if (day == today) "امروز، ${day.persianLabel()}" else day.persianLabel(), Modifier.padding(top = 6.dp)) }
-                            items(items, key = { it.id }) { a ->
-                                StaffAppointmentCard(a, tz, showStylist = if (salon.independent) null else a.stylist?.displayName) { sheets.selected = a }
-                            }
-                        }
-                    }
+            val list = data.appointments?.filter { stylistFilter == null || it.stylistId == stylistFilter }
+            if (view == AppointmentsView.LIST && list != null) BucketChips(list, bucket) { bucket = it }
+            when {
+                list == null -> Loading()
+                view == AppointmentsView.WEEK -> app.nobatet.ui.staff.WeekGrid(list, tz, today, Modifier.weight(1f)) { sheets.selected = it }
+                view == AppointmentsView.MONTH -> AppointmentMonthView(list, tz, today, Modifier.weight(1f), stylistName) { sheets.selected = it }
+                else -> {
+                    val filtered = bucketOf(list, bucket)
+                    if (filtered.isEmpty()) Empty(bucket.empty, modifier = Modifier.padding(16.dp))
+                    else DayGroupedList(filtered, tz, today, Modifier.weight(1f), stylistName) { sheets.selected = it }
                 }
             }
         }
