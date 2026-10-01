@@ -101,7 +101,7 @@ Paths are stored without query strings (they can carry phone numbers).
 
 ## Routes the Android app calls
 
-The Android app signs in against apps/api, so a route of apps/web it needs must accept that token too: use `requestSession()` (`src/lib/requestSession.ts`) instead of `auth()` — the NextAuth session, or `Authorization: Bearer <apps/api token>` checked through apps/api `GET /auth/me` (cached up to a minute; a deleted account is refused). Same `{ user: { id, role } }` shape. Done for `/api/upload` (POST/DELETE), `/api/receipts/**`, `/api/user/profile`, `password`, `avatar`, `sms-preferences`, `tickets/**`. Wallet/finance routes are left out (legacy, not used by the salon product).
+The Android app signs in against apps/api, so a route of apps/web it needs must accept that token too: use `requestSession()` (`src/lib/requestSession.ts`) instead of `auth()` — the NextAuth session, or `Authorization: Bearer <apps/api token>` checked through apps/api `GET /auth/me` (cached up to a minute; a deleted account is refused). Same `{ user: { id, role } }` shape. Done for `/api/upload` (POST/DELETE), `/api/receipts/**`, `/api/user/profile`, `password`, `avatar`, `sms-preferences`, `tickets/**`, `finance/**` (wallet). The Android app also reads `public/app-version.json` (latest / minimum versionCode, download link) to offer or require an update — bump it with each app release.
 
 ## Route Groups
 
