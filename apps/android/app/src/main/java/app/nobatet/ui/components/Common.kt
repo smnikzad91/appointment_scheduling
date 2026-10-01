@@ -1,5 +1,11 @@
 package app.nobatet.ui.components
 
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +38,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -118,9 +129,29 @@ fun Avatar(name: String, path: String?, size: Dp = 44.dp, square: Boolean = fals
     }
 }
 
+/** A screen still loading: the web's ListSkeleton (pulsing card-shaped rows), not a spinner. */
 @Composable
-fun Loading(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = LocalAppColors.current.accent) }
+fun Loading(modifier: Modifier = Modifier, rows: Int = 4) {
+    ListSkeleton(modifier.fillMaxSize().padding(16.dp), rows)
+}
+
+/** The web's ListSkeleton: [rows] card-shaped placeholders, 80 high. */
+@Composable
+fun ListSkeleton(modifier: Modifier = Modifier, rows: Int = 4) {
+    Column(modifier.semantics { contentDescription = "در حال بارگذاری" }, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        repeat(rows) { SkeletonBlock(Modifier.fillMaxWidth().height(80.dp)) }
+    }
+}
+
+/** One pulsing placeholder (Tailwind's animate-pulse: opacity 1 → 0.5 → 1 every 2 s) on card-2. */
+@Composable
+fun SkeletonBlock(modifier: Modifier = Modifier, shape: Shape = RoundedCornerShape(24.dp)) {
+    val c = LocalAppColors.current
+    val pulse by rememberInfiniteTransition(label = "skeleton").animateFloat(
+        initialValue = 1f, targetValue = 0.5f, label = "pulse",
+        animationSpec = infiniteRepeatable(tween(1000, easing = CubicBezierEasing(0.4f, 0f, 0.6f, 1f)), RepeatMode.Reverse),
+    )
+    Box(modifier.graphicsLayer { alpha = pulse }.clip(shape).background(c.card2))
 }
 
 /** A screen that failed to load: the web's ErrorBanner with «تلاش دوباره». */

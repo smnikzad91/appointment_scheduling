@@ -197,7 +197,10 @@ private fun DateTimeStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState
         }
     }
     when {
-        b.slotsLoading -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = c.accent) }
+        // the web's slot skeleton: two rows of time-shaped placeholders
+        b.slotsLoading -> FlowRow(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            repeat(8) { app.nobatet.ui.components.SkeletonBlock(Modifier.width(76.dp).height(40.dp), RoundedCornerShape(14.dp)) }
+        }
         b.slots.none { it.available } -> Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Muted("در این روز ساعت خالی وجود ندارد؛ روز دیگری را انتخاب کنید.")
             // the web's WaitlistButton

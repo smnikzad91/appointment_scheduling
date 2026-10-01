@@ -1,5 +1,7 @@
 package app.nobatet.ui.salon
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -188,7 +190,7 @@ fun SalonHomeScreen(data: SalonData, sheets: SalonSheetsState, onOpenPage: (Salo
                 AppCard { Text("در انتظار تایید پشتیبانی", color = c.pending, style = MaterialTheme.typography.titleSmall); Muted("پس از تایید، صفحه شما در جستجو نمایش داده می‌شود و نوبت آنلاین می‌گیرید.") }
             }
             data.subscription?.takeIf { it.status == "expired" }?.let { item { AppCard { Text("اشتراک سالن به پایان رسیده است", color = c.danger); Muted("پیامک‌ها ارسال نمی‌شوند؛ برای تمدید با پشتیبانی تماس بگیرید.") } } }
-            item {
+            if (data.appointments == null) item { app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(150.dp)) } else item {
                 AppCard {
                     Muted("امروز، ${today.persianLabel()}")
                     Text("${todays.size.toString().toPersianDigits()} نوبت", style = MaterialTheme.typography.headlineSmall, color = c.ink)
@@ -201,7 +203,8 @@ fun SalonHomeScreen(data: SalonData, sheets: SalonSheetsState, onOpenPage: (Salo
                 items(pending, key = { "p" + it.id }) { a -> StaffAppointmentCard(a, tz, if (salon.independent) null else a.stylist?.displayName) { sheets.selected = a } }
             }
             item { SectionTitle("برنامه امروز") }
-            if (todays.isEmpty()) item { Muted(if (data.appointments == null) "در حال بارگذاری..." else "امروز نوبتی ندارید.") }
+            if (data.appointments == null) items(2) { app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(80.dp)) }
+            else if (todays.isEmpty()) item { Muted("امروز نوبتی ندارید.") }
             items(todays, key = { "t" + it.id }) { a -> StaffAppointmentCard(a, tz, if (salon.independent) null else a.stylist?.displayName) { sheets.selected = a } }
             item { SectionTitle("بیشتر", Modifier.padding(top = 8.dp)) }
             items(SalonPage.entries) { page ->

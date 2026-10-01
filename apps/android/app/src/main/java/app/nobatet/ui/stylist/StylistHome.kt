@@ -1,5 +1,7 @@
 package app.nobatet.ui.stylist
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,7 +55,7 @@ fun StylistHomeScreen(stylist: SelfStylist, appointments: List<StaffAppointment>
     val pending = list.filter { it.status == AppointmentStatus.PENDING }.sortedBy { it.startAt }
     Box(Modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
+            if (appointments == null) item { app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(150.dp)) } else item {
                 AppCard {
                     Muted("امروز، ${today.persianLabel()}")
                     Text("${todays.size.toString().toPersianDigits()} نوبت", style = MaterialTheme.typography.headlineSmall, color = c.ink)
@@ -66,7 +68,8 @@ fun StylistHomeScreen(stylist: SelfStylist, appointments: List<StaffAppointment>
                 items(pending, key = { "p" + it.id }) { a -> StaffAppointmentCard(a, tz) { actions.selected = a } }
             }
             item { SectionTitle("برنامه امروز") }
-            if (todays.isEmpty()) item { Muted(if (appointments == null) "در حال بارگذاری..." else "امروز نوبتی ندارید.") }
+            if (appointments == null) items(2) { app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(80.dp)) }
+            else if (todays.isEmpty()) item { Muted("امروز نوبتی ندارید.") }
             items(todays, key = { "t" + it.id }) { a -> StaffAppointmentCard(a, tz) { actions.selected = a } }
             item { SectionTitle("بیشتر", Modifier.padding(top = 8.dp)) }
             items(StylistPage.entries) { page ->

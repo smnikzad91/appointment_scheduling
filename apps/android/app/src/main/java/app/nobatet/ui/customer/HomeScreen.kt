@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -53,6 +54,7 @@ import java.time.LocalDate
 fun HomeScreen(container: AppContainer, firstName: String, onDiscover: () -> Unit, onOpenSalon: (String) -> Unit, onBookings: () -> Unit) {
     val c = LocalAppColors.current
     var next by remember { mutableStateOf<CustomerBooking?>(null) }
+    var nextLoaded by remember { mutableStateOf(false) }
     var favorites by remember { mutableStateOf<List<SalonCard>>(emptyList()) }
     var waitlist by remember { mutableStateOf<List<WaitlistEntry>>(emptyList()) }
     val scope = rememberCoroutineScope()
@@ -61,6 +63,7 @@ fun HomeScreen(container: AppContainer, firstName: String, onDiscover: () -> Uni
             next = runCatching { container.api.myBookings() }.getOrNull()
                 ?.filter { (it.status == AppointmentStatus.PENDING || it.status == AppointmentStatus.CONFIRMED) && Instant.parse(it.endAt).isAfter(Instant.now()) }
                 ?.minByOrNull { it.startAt }
+            nextLoaded = true
         }
         launch { favorites = runCatching { container.api.favorites() }.getOrDefault(emptyList()) }
         launch { waitlist = runCatching { container.api.myWaitlist() }.getOrDefault(emptyList()) }
@@ -72,7 +75,8 @@ fun HomeScreen(container: AppContainer, firstName: String, onDiscover: () -> Uni
         }
         item {
             val b = next
-            if (b == null) {
+            if (!nextLoaded) app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(150.dp))
+            else if (b == null) {
                 AppCard {
                     Text("نوبت پیش‌رویی ندارید", color = c.ink, style = MaterialTheme.typography.titleSmall)
                     Muted("سالن یا آرایشگر دلخواهتان را پیدا کنید و آنلاین نوبت بگیرید.")
