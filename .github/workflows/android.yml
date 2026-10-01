@@ -25,7 +25,18 @@ jobs:
         with:
           gradle-version: "8.11.1"
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle assembleDebug --stacktrace 2>&1 | tee build.log
+      # Compiler errors as annotations (readable on the run page without signing in to the logs).
+      - name: Report compile errors
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "^e: |error:|What went wrong" -A2 build.log | head -60 | while IFS= read -r line; do
+            [ -n "$line" ] && echo "::error::${line//$'\r'/}"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: nobatet-debug-apk
