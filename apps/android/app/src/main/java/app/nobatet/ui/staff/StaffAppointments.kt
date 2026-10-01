@@ -1,5 +1,6 @@
 package app.nobatet.ui.staff
 
+import app.nobatet.ui.components.SecondaryButton
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
@@ -14,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -98,12 +98,11 @@ fun AppointmentDetailSheet(
             a.visitAddress?.let { Line("نشانی مشتری", it) }
             a.notes?.takeIf { it.isNotBlank() }?.let { Line("یادداشت", it) }
             a.customer.phone?.let { phone ->
-                OutlinedButton(
-                    onClick = { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) },
-                    shape = RoundedCornerShape(999.dp), modifier = Modifier.fillMaxWidth(),
+                SecondaryButton(
+                    onClick = { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) }, modifier = Modifier.fillMaxWidth(),
                 ) { Text("تماس با مشتری ${phone.toPersianDigits()}") }
             }
-            if (a.isOpen) OutlinedButton(onClick = onEdit, shape = RoundedCornerShape(999.dp), modifier = Modifier.fillMaxWidth()) { Text("ویرایش نوبت") }
+            if (a.isOpen) SecondaryButton(onClick = onEdit, modifier = Modifier.fillMaxWidth()) { Text("ویرایش نوبت") }
             nextActions(a.status).forEach { (status, label) ->
                 PrimaryButton(
                     label, enabled = !busy,

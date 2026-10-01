@@ -1,5 +1,7 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -22,10 +24,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -123,8 +123,8 @@ private fun NewTicketForm(container: AppContainer, onCreated: (String) -> Unit) 
     var sending by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().imePadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(subject, { if (it.length <= 200) subject = it }, label = { Text("موضوع") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(message, { if (it.length <= 3000) message = it }, label = { Text("متن پیام") }, minLines = 6, modifier = Modifier.fillMaxWidth())
+        AppTextField(subject, { if (it.length <= 200) subject = it }, label = { Text("موضوع") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        AppTextField(message, { if (it.length <= 3000) message = it }, label = { Text("متن پیام") }, minLines = 6, modifier = Modifier.fillMaxWidth())
         PrimaryButton(if (sending) "در حال ارسال..." else "ارسال تیکت", enabled = !sending) {
             when {
                 subject.trim().length < 5 -> scope.launch { Toasts.error("موضوع باید حداقل ۵ کاراکتر باشد") }
@@ -165,7 +165,7 @@ private fun TicketThread(container: AppContainer, id: String) {
         }
         if (t.status != "closed") {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(reply, { if (it.length <= 3000) reply = it }, placeholder = { Text("پاسخ شما") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                AppTextField(reply, { if (it.length <= 3000) reply = it }, placeholder = { Text("پاسخ شما") }, minLines = 2, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PrimaryButton("ارسال پاسخ", Modifier.weight(1f), enabled = !busy) {
                         if (reply.trim().length < 5) scope.launch { Toasts.error("پاسخ باید حداقل ۵ کاراکتر باشد") }
@@ -177,7 +177,7 @@ private fun TicketThread(container: AppContainer, id: String) {
                             busy = false
                         }
                     }
-                    TextButton(onClick = {
+                    AppTextButton(onClick = {
                         scope.launch { runCatching { container.web.closeTicket(id) }.onSuccess { reload++ } }
                     }) { Text("بستن تیکت", color = c.muted) }
                 }

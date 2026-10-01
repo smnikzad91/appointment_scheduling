@@ -1,10 +1,12 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.SecondaryButton
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppTextField
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ViewWeek
 import app.nobatet.ui.components.MonthCalendar
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +46,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -128,7 +129,7 @@ private fun ServicesStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState
     if (stylist != null && !salon.independent) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Muted("خدمات ${stylist.displayName}", Modifier.weight(1f))
-            androidx.compose.material3.TextButton(onClick = { vm.chooseStylist(null) }) { Text("همه خدمات سالن") }
+            AppTextButton(onClick = { vm.chooseStylist(null) }) { Text("همه خدمات سالن") }
         }
     }
     salon.activeServices.filter { s -> stylist == null || salon.independent || stylist.services.any { it.serviceId == s.id } }.forEach { s ->
@@ -173,7 +174,7 @@ private fun DateTimeStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState
     LaunchedEffect(b.date, stripStart) { days.indexOf(b.date).takeIf { it > 0 }?.let { strip.animateScrollToItem((it - 1).coerceAtLeast(0)) } }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Muted(b.date?.persianLabel() ?: "یک روز انتخاب کنید", Modifier.weight(1f))
-        TextButton(onClick = { showMonth = !showMonth }) {
+        AppTextButton(onClick = { showMonth = !showMonth }) {
             Icon(if (showMonth) Icons.Outlined.ViewWeek else Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
             Text(if (showMonth) "روزهای پیش رو" else "تقویم ماه", modifier = Modifier.padding(start = 6.dp))
         }
@@ -204,7 +205,7 @@ private fun DateTimeStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState
         b.slots.none { it.available } -> Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Muted("در این روز ساعت خالی وجود ندارد؛ روز دیگری را انتخاب کنید.")
             // the web's WaitlistButton
-            androidx.compose.material3.OutlinedButton(onClick = vm::joinWaitlist, shape = RoundedCornerShape(999.dp)) { Text("اگر وقتی خالی شد خبرم کن") }
+            SecondaryButton(onClick = vm::joinWaitlist) { Text("اگر وقتی خالی شد خبرم کن") }
         }
         else -> listOf("صبح" to (0 until 12 * 60), "ظهر" to (12 * 60 until 16 * 60), "عصر" to (16 * 60 until 24 * 60)).forEach { (label, range) ->
             val slots = b.slots.filter { it.startMinute in range }
@@ -237,7 +238,7 @@ private fun PlaceStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState) {
         Choice(b.place == loc, onClick = { vm.choosePlace(loc) }) { Text(loc.label(salon.hostSalonName), color = c.ink, style = MaterialTheme.typography.titleSmall) }
     }
     if (b.place == ServiceLocation.CLIENT_HOME) {
-        OutlinedTextField(
+        AppTextField(
             value = b.visitAddress, onValueChange = vm::setVisitAddress, modifier = Modifier.fillMaxWidth(), minLines = 2,
             label = { Text("نشانی شما") }, placeholder = { Text("شهر، خیابان، کوچه، پلاک، طبقه") },
         )
@@ -255,7 +256,7 @@ private fun SummaryStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState)
     if (salon.independent) b.place?.let { SummaryLine("محل", it.label(salon.hostSalonName) + if (it == ServiceLocation.CLIENT_HOME) ": ${b.visitAddress.trim()}" else "") }
     SummaryLine("مدت", formatDuration(vm.totalDuration()))
     SummaryLine("مبلغ", (if (b.stylistId == null && !salon.independent) "از " else "") + formatToman(vm.totalPrice()))
-    OutlinedTextField(b.notes, vm::setNotes, label = { Text("یادداشت برای سالن (اختیاری)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+    AppTextField(b.notes, vm::setNotes, label = { Text("یادداشت برای سالن (اختیاری)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
     Muted("نوبت پس از تایید آرایشگر قطعی می‌شود و پیامک تایید برایتان ارسال می‌شود.")
 }
 

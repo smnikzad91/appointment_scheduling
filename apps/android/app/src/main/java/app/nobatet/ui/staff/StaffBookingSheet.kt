@@ -1,5 +1,6 @@
 package app.nobatet.ui.staff
 
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -121,15 +121,15 @@ fun StaffBookingSheet(
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SectionTitle(if (editing == null) "نوبت تازه" else "ویرایش نوبت")
                     if (editing == null) {
-                        OutlinedTextField(
+                        AppTextField(
                             phone, { phone = it.normalizeDigits().filter(Char::isDigit).take(11) }, label = { Text("شماره موبایل مشتری") }, singleLine = true,
                             modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         )
                         if (known) Muted("مشتری قبلی؛ نام از نوبت‌های قبلی پر شد.")
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(firstName, { firstName = it }, label = { Text("نام") }, singleLine = true, modifier = Modifier.weight(1f))
-                        OutlinedTextField(lastName, { lastName = it }, label = { Text("نام خانوادگی") }, singleLine = true, modifier = Modifier.weight(1f))
+                        AppTextField(firstName, { firstName = it }, label = { Text("نام") }, singleLine = true, modifier = Modifier.weight(1f))
+                        AppTextField(lastName, { lastName = it }, label = { Text("نام خانوادگی") }, singleLine = true, modifier = Modifier.weight(1f))
                     }
                     Muted("خدمات")
                     services.forEach { s ->
@@ -147,7 +147,7 @@ fun StaffBookingSheet(
                     DayStrip((0L until 30L).map { today.plusDays(it) }, date, today) { date = it }
                     Muted(if (free.isNotEmpty()) "ساعت — ساعت‌های سبز خالی‌اند؛ برای مشتری حضوری هر ساعتی را می‌توانید انتخاب کنید." else "ساعت")
                     TimeChips(times, minute, free) { minute = it }
-                    OutlinedTextField(notes, { notes = it.take(500) }, label = { Text("یادداشت (اختیاری)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                    AppTextField(notes, { notes = it.take(500) }, label = { Text("یادداشت (اختیاری)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
                     if (selected.isNotEmpty()) Muted("${formatDuration(selected.sumOf { it.duration })}، ${formatToman(selected.sumOf { it.price })}")
                 }
                 Box(Modifier.padding(16.dp)) {

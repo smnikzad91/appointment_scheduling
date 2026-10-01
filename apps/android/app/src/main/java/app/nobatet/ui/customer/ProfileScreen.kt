@@ -1,5 +1,8 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.AppSwitch
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -19,11 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -102,7 +101,7 @@ fun ProfileScreen(container: AppContainer, user: ApiUser, onOpenSupport: () -> U
                 RemoteImage(avatar, Modifier.size(96.dp).clip(CircleShape).clickable(enabled = !uploading) {
                     pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 })
-                TextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !uploading) {
+                AppTextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !uploading) {
                     Text(if (uploading) "در حال آپلود..." else "تغییر عکس")
                 }
                 Text("${user.firstName} ${user.lastName}", style = MaterialTheme.typography.titleLarge, color = c.ink)
@@ -117,9 +116,8 @@ fun ProfileScreen(container: AppContainer, user: ApiUser, onOpenSupport: () -> U
                         Text("یادآوری «وقت نوبت بعدی»", color = c.ink)
                         Muted("کد ورود، یادآوری نوبت‌ها و تغییرات رزرو همیشه ارسال می‌شوند.")
                     }
-                    Switch(
+                    AppSwitch(
                         checked = promoOn ?: true, enabled = promoOn != null,
-                        colors = SwitchDefaults.colors(checkedTrackColor = c.accent),
                         onCheckedChange = { on ->
                             promoOn = on
                             scope.launch {
@@ -138,7 +136,7 @@ fun ProfileScreen(container: AppContainer, user: ApiUser, onOpenSupport: () -> U
                     Triple("رمز عبور جدید (حداقل ۸ کاراکتر)", next) { v: String -> next = v },
                     Triple("تکرار رمز عبور جدید", repeat) { v: String -> repeat = v },
                 ).forEach { (label, value, set) ->
-                    OutlinedTextField(
+                    AppTextField(
                         value = value, onValueChange = set, label = { Text(label) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                         visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     )
@@ -169,7 +167,7 @@ fun ProfileScreen(container: AppContainer, user: ApiUser, onOpenSupport: () -> U
                 Muted("سوال یا مشکلی دارید؟ تیکت بفرستید.")
             }
             app.nobatet.ui.components.AccountLinks(container, "customer")
-            TextButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("خروج از حساب", color = c.danger) }
+            AppTextButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("خروج از حساب", color = c.danger) }
         }
     }
 }

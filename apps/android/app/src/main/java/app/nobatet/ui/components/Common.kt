@@ -36,7 +36,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Shape
@@ -164,7 +163,7 @@ fun LoadError(message: String, onRetry: () -> Unit, modifier: Modifier = Modifie
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(message, color = c.danger, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            TextButton(onClick = onRetry) { Text("تلاش دوباره", color = c.danger, fontWeight = FontWeight.Bold) }
+            AppTextButton(onClick = onRetry) { Text("تلاش دوباره", color = c.danger, fontWeight = FontWeight.Bold) }
         }
     }
 }

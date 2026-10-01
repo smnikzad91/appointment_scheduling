@@ -1,5 +1,7 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
 import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,15 +19,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -106,7 +105,7 @@ fun SalonSheets(container: AppContainer, data: SalonData, sheets: SalonSheetsSta
         )
     }
     if (sheets.choosingStylist) {
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { sheets.choosingStylist = false },
             title = { Text("نوبت با کدام آرایشگر؟") },
             text = {
@@ -117,7 +116,7 @@ fun SalonSheets(container: AppContainer, data: SalonData, sheets: SalonSheetsSta
                     if (data.stylists.none { it.active }) Muted("هنوز آرایشگر فعالی ندارید.")
                 }
             },
-            confirmButton = { TextButton(onClick = { sheets.choosingStylist = false }) { Text("انصراف") } },
+            confirmButton = { AppTextButton(onClick = { sheets.choosingStylist = false }) { Text("انصراف") } },
         )
     }
     val stylistId = sheets.editing?.stylistId ?: sheets.creatingFor

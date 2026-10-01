@@ -1,5 +1,9 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.AppChip
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -19,14 +23,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -129,9 +127,7 @@ fun SalonAccountingPage(container: AppContainer, data: SalonData) {
                 }
             } ?: Loading(Modifier.padding(24.dp))
         }
-        ScrollableTabRow(selectedTabIndex = tab, containerColor = c.bg, contentColor = c.accent, edgePadding = 8.dp) {
-            tabs.forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
-        }
+        app.nobatet.ui.components.ChipTabs(tabs.indices.map { it to tabs[it] }, tab) { tab = it }
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             when (tabName) {
                 "درآمد" -> {
@@ -158,7 +154,7 @@ fun SalonAccountingPage(container: AppContainer, data: SalonData) {
                         AppCard {
                             Row { Text(p.stylist?.displayName ?: "", color = c.ink, modifier = Modifier.weight(1f)); Text(formatToman(p.amountToman), color = c.ink) }
                             Muted((PAYOUT_METHOD_LABEL[p.method] ?: p.method) + "، " + Instant.parse(p.paidAt).toSalonDateTime(tz).toLocalDate().persianLabel() + (p.note?.let { "، $it" } ?: ""))
-                            TextButton(onClick = {
+                            AppTextButton(onClick = {
                                 scope.launch { runCatching { container.api.deletePayout(p.id) }.onSuccess { reload++ }.onFailure { Toasts.error(persianError(it, "حذف پرداخت انجام نشد", container.json)) } }
                             }) { Text("حذف پرداخت", color = c.danger) }
                         }
@@ -204,27 +200,27 @@ private fun ChargeDialog(container: AppContainer, item: SalonIncomeItem, onDismi
     var charged by remember { mutableStateOf(item.chargedToman.toString()) }
     var tip by remember { mutableStateOf(item.tipToman.takeIf { it > 0 }?.toString().orEmpty()) }
     var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text("اصلاح مبلغ و انعام") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Muted("${item.customerName}، ${item.services.joinToString("، ")}")
-                OutlinedTextField(charged.toPersianDigits(), { charged = digits(it) }, label = { Text("مبلغ دریافتی (تومان)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                OutlinedTextField(tip.toPersianDigits(), { tip = digits(it) }, label = { Text("انعام (تومان، اختیاری)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                AppTextField(charged.toPersianDigits(), { charged = digits(it) }, label = { Text("مبلغ دریافتی (تومان)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                AppTextField(tip.toPersianDigits(), { tip = digits(it) }, label = { Text("انعام (تومان، اختیاری)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 error?.let { Text(it, color = c.danger) }
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                val amt = charged.toIntOrNull() ?: return@TextButton run { error = "مبلغ را وارد کنید" }
+            AppTextButton(onClick = {
+                val amt = charged.toIntOrNull() ?: return@AppTextButton run { error = "مبلغ را وارد کنید" }
                 scope.launch {
                     runCatching { container.api.adjustCharge(item.id, ChargeRequest(amt, tip.toIntOrNull() ?: 0)) }.onSuccess { onDone() }
                         .onFailure { error = persianError(it, "اصلاح مبلغ انجام نشد", container.json) }
                 }
             }) { Text("ذخیره") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }
 
@@ -236,29 +232,29 @@ private fun PayoutDialog(container: AppContainer, st: StylistAccount, onDismiss:
     var method by remember { mutableStateOf("CARD_TO_CARD") }
     var note by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text("ثبت پرداخت به ${st.displayName}") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(amount.toPersianDigits(), { amount = digits(it) }, label = { Text("مبلغ (تومان)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                AppTextField(amount.toPersianDigits(), { amount = digits(it) }, label = { Text("مبلغ (تومان)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    PAYOUT_METHOD_LABEL.forEach { (k, label) -> FilterChip(selected = method == k, onClick = { method = k }, label = { Text(label) }) }
+                    PAYOUT_METHOD_LABEL.forEach { (k, label) -> AppChip(selected = method == k, onClick = { method = k }, label = { Text(label) }) }
                 }
-                OutlinedTextField(note, { note = it.take(200) }, label = { Text("یادداشت (اختیاری)") }, singleLine = true)
+                AppTextField(note, { note = it.take(200) }, label = { Text("یادداشت (اختیاری)") }, singleLine = true)
                 error?.let { Text(it, color = c.danger) }
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                val amt = amount.toIntOrNull()?.takeIf { it > 0 } ?: return@TextButton run { error = "مبلغ را وارد کنید" }
+            AppTextButton(onClick = {
+                val amt = amount.toIntOrNull()?.takeIf { it > 0 } ?: return@AppTextButton run { error = "مبلغ را وارد کنید" }
                 scope.launch {
                     runCatching { container.api.addPayout(PayoutRequest(st.id, amt, method, note.trim().ifEmpty { null })) }.onSuccess { onDone() }
                         .onFailure { error = persianError(it, "ثبت پرداخت انجام نشد", container.json) }
                 }
             }) { Text("ثبت پرداخت") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }
 
@@ -283,32 +279,32 @@ private fun SalonExpenseDialog(container: AppContainer, tz: String, editing: Sal
             busy = false
         }
     }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (editing == null) "ثبت هزینه" else "ویرایش هزینه") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SALON_EXPENSE_CATEGORIES.forEach { (k, label) -> FilterChip(selected = category == k, onClick = { category = k }, label = { Text(label) }) }
+                    SALON_EXPENSE_CATEGORIES.forEach { (k, label) -> AppChip(selected = category == k, onClick = { category = k }, label = { Text(label) }) }
                 }
-                OutlinedTextField(amount.toPersianDigits(), { amount = digits(it) }, label = { Text("مبلغ (تومان)") }, singleLine = true,
+                AppTextField(amount.toPersianDigits(), { amount = digits(it) }, label = { Text("مبلغ (تومان)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(note, { note = it.take(200) }, label = { Text("توضیح (اختیاری)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                AppTextField(note, { note = it.take(200) }, label = { Text("توضیح (اختیاری)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Muted("روز")
                 DayStrip((0L until 60L).map { today.minusDays(it) }, day, today) { day = it }
-                TextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) {
+                AppTextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) {
                     Text(if (busy) "در حال آپلود..." else if (receipt != null) "تغییر عکس رسید" else "پیوست عکس رسید (اختیاری)")
                 }
-                if (receipt != null) TextButton(onClick = { receipt = null }) { Text("حذف رسید", color = c.danger) }
+                if (receipt != null) AppTextButton(onClick = { receipt = null }) { Text("حذف رسید", color = c.danger) }
                 error?.let { Text(it, color = c.danger) }
-                if (editing != null) TextButton(onClick = {
+                if (editing != null) AppTextButton(onClick = {
                     scope.launch { runCatching { container.api.deleteSalonExpense(editing.id) }.onSuccess { onDone("هزینه حذف شد") }.onFailure { error = persianError(it, "حذف هزینه انجام نشد", container.json) } }
                 }) { Text("حذف هزینه", color = c.danger) }
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy, onClick = {
-                val amt = amount.toIntOrNull()?.takeIf { it > 0 } ?: return@TextButton run { error = "مبلغ را وارد کنید" }
+            AppTextButton(enabled = !busy, onClick = {
+                val amt = amount.toIntOrNull()?.takeIf { it > 0 } ?: return@AppTextButton run { error = "مبلغ را وارد کنید" }
                 scope.launch {
                     busy = true
                     val input = SalonExpenseInput(category, amt, salonWallTimeToInstant(day, 12 * 60, tz).toString(), note.trim().ifEmpty { null }, receipt)
@@ -319,6 +315,6 @@ private fun SalonExpenseDialog(container: AppContainer, tz: String, editing: Sal
                 }
             }) { Text("ذخیره") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }

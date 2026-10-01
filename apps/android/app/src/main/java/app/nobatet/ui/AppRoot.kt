@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,7 +51,7 @@ fun AppRoot(container: AppContainer) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text("اتصال به نوبتت برقرار نشد", color = colors.ink, textAlign = TextAlign.Center)
-                Button(onClick = session::refresh) { Text("تلاش دوباره") }
+                app.nobatet.ui.components.PrimaryButton("تلاش دوباره", onClick = session::refresh)
             }
             is SessionState.SignedIn -> when (s.user.role) {
                 Role.CUSTOMER -> CustomerPanel(container, s.user, onSignOut = session::signOut)

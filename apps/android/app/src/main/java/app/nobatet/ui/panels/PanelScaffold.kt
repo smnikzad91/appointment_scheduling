@@ -56,11 +56,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.nobatet.R
 import app.nobatet.ui.components.Avatar
+import app.nobatet.ui.components.PageHeader
 import app.nobatet.ui.theme.LocalAppColors
 import app.nobatet.ui.theme.LocalThemeControl
 
 /** One bottom tab, as in apps/web components/app/panels.tsx. */
-data class PanelTab(val label: String, val icon: ImageVector, val content: @Composable () -> Unit)
+data class PanelTab(
+    val label: String,
+    val icon: ImageVector,
+    /** The web's PageHeader over the tab (none on a home tab, which has its own greeting). */
+    val title: String? = null,
+    val subtitle: String? = null,
+    val content: @Composable () -> Unit,
+)
 
 /** Who the app bar represents (the web's ShellIdentity): the user, the stylist, or the salon (square logo). */
 data class ShellIdentity(val name: String, val image: String?, val square: Boolean = false)
@@ -117,7 +125,11 @@ fun PanelScaffold(
         },
         bottomBar = { TabBar(tabs, selected, select) },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).background(colors.bg)) { tabs[selected].content() }
+        Column(Modifier.fillMaxSize().padding(padding).background(colors.bg)) {
+            val tab = tabs[selected]
+            tab.title?.let { PageHeader(it, tab.subtitle) }
+            Box(Modifier.weight(1f)) { tab.content() }
+        }
     }
     if (accountOpen) AccountSheet(panelName, identity, accountName, accountLinks, onSignOut) { accountOpen = false }
 }

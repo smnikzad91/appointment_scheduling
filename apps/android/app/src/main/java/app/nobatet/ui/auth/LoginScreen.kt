@@ -1,5 +1,7 @@
 package app.nobatet.ui.auth
 
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
@@ -40,9 +42,7 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -156,7 +156,7 @@ private fun FooterLink(text: String, link: String, onClick: () -> Unit) {
     val c = LocalAppColors.current
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         Text(text, color = c.muted, style = MaterialTheme.typography.bodyMedium)
-        TextButton(onClick = onClick) { Text(link, color = c.accent, fontWeight = FontWeight.Bold) }
+        AppTextButton(onClick = onClick) { Text(link, color = c.accent, fontWeight = FontWeight.Bold) }
     }
 }
 
@@ -164,11 +164,11 @@ private fun FooterLink(text: String, link: String, onClick: () -> Unit) {
 private fun PasswordForm(state: LoginUiState, vm: LoginViewModel) {
     var visible by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(
+        AppTextField(
             value = state.identifier, onValueChange = vm::setIdentifier, singleLine = true, modifier = Modifier.fillMaxWidth(),
             label = { Text("شماره موبایل یا ایمیل") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
         )
-        OutlinedTextField(
+        AppTextField(
             value = state.password, onValueChange = vm::setPassword, singleLine = true, modifier = Modifier.fillMaxWidth(),
             label = { Text("رمز عبور") },
             visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -181,7 +181,7 @@ private fun PasswordForm(state: LoginUiState, vm: LoginViewModel) {
         )
         PrimaryButton(if (state.busy) "در حال ورود..." else "ورود", enabled = !state.busy, onClick = vm::signInWithPassword)
         // no reset-by-email: an SMS code signs anyone in, then the password can be changed in the app
-        TextButton(onClick = { vm.setTab(LoginTab.OTP) }) { Text("رمز را فراموش کرده‌اید؟ با کد پیامکی وارد شوید") }
+        AppTextButton(onClick = { vm.setTab(LoginTab.OTP) }) { Text("رمز را فراموش کرده‌اید؟ با کد پیامکی وارد شوید") }
     }
 }
 
@@ -191,7 +191,7 @@ private fun OtpForm(state: LoginUiState, vm: LoginViewModel) {
     app.nobatet.util.SmsCodeListener(active = state.codeSent, length = OTP_LENGTH) { vm.setCode(it) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (!state.codeSent) {
-            OutlinedTextField(
+            AppTextField(
                 value = state.phone, onValueChange = vm::setPhone, singleLine = true, modifier = Modifier.fillMaxWidth(),
                 label = { Text("شماره موبایل") }, placeholder = { Text("۰۹۱۲۳۴۵۶۷۸۹") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -199,15 +199,15 @@ private fun OtpForm(state: LoginUiState, vm: LoginViewModel) {
             PrimaryButton(if (state.busy) "در حال ارسال کد..." else "ارسال کد تایید", enabled = !state.busy, onClick = vm::sendCode)
         } else {
             Text("کد ${OTP_LENGTH.toString().toPersianDigits()} رقمی ارسال‌شده به ${state.phone.toPersianDigits()} را وارد کنید", color = LocalAppColors.current.muted)
-            OutlinedTextField(
+            AppTextField(
                 value = state.code, onValueChange = vm::setCode, singleLine = true, modifier = Modifier.fillMaxWidth(),
                 label = { Text("کد تایید") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
             )
             PrimaryButton(if (state.busy) "در حال بررسی..." else "تایید", enabled = !state.busy && state.code.length == OTP_LENGTH, onClick = vm::verifyCode)
-            TextButton(onClick = vm::sendCode, enabled = state.resendIn == 0 && !state.busy) {
+            AppTextButton(onClick = vm::sendCode, enabled = state.resendIn == 0 && !state.busy) {
                 Text(if (state.resendIn > 0) "ارسال دوباره کد تا ${state.resendIn.toString().toPersianDigits()} ثانیه دیگر" else "ارسال دوباره کد")
             }
-            TextButton(onClick = vm::changePhone) { Text("تغییر شماره موبایل") }
+            AppTextButton(onClick = vm::changePhone) { Text("تغییر شماره موبایل") }
         }
     }
 }
@@ -216,14 +216,14 @@ private fun OtpForm(state: LoginUiState, vm: LoginViewModel) {
 private fun SignUpForm(state: LoginUiState, vm: LoginViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(state.firstName, vm::setFirstName, label = { Text("نام") }, singleLine = true, modifier = Modifier.weight(1f))
-            OutlinedTextField(state.lastName, vm::setLastName, label = { Text("نام خانوادگی") }, singleLine = true, modifier = Modifier.weight(1f))
+            AppTextField(state.firstName, vm::setFirstName, label = { Text("نام") }, singleLine = true, modifier = Modifier.weight(1f))
+            AppTextField(state.lastName, vm::setLastName, label = { Text("نام خانوادگی") }, singleLine = true, modifier = Modifier.weight(1f))
         }
-        OutlinedTextField(
+        AppTextField(
             state.phone, vm::setPhone, label = { Text("شماره موبایل") }, placeholder = { Text("۰۹۱۲۳۴۵۶۷۸۹") }, singleLine = true,
             modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
         )
-        OutlinedTextField(
+        AppTextField(
             state.password, vm::setPassword, label = { Text("رمز عبور (حداقل ۸ کاراکتر)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         )

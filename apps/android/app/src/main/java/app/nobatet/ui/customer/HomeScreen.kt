@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.AppTextButton
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -113,7 +113,7 @@ fun HomeScreen(container: AppContainer, firstName: String, onDiscover: () -> Uni
                 AppCard(Modifier.clickable { onOpenSalon(w.salon.slug) }) {
                     Text(w.salon.name + (w.stylist?.let { " با ${it.displayName}" } ?: ""), color = c.ink, style = MaterialTheme.typography.titleSmall)
                     Muted(runCatching { LocalDate.parse(w.dateKey).persianLabel() }.getOrDefault(w.dateKey) + if (w.notifiedAt != null) "، وقت خالی اعلام شد" else "، منتظر وقت خالی")
-                    TextButton(onClick = {
+                    AppTextButton(onClick = {
                         scope.launch { runCatching { container.api.leaveWaitlist(w.id) }.onSuccess { waitlist = waitlist - w } }
                     }) { Text("حذف از لیست انتظار", color = c.danger) }
                 }

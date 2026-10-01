@@ -1,5 +1,8 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.components.AppSwitch
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,11 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -86,11 +85,11 @@ fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChang
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(name, color = c.ink, modifier = Modifier.weight(1f))
                         if (h.open) {
-                            TextButton(onClick = { picking = i to true }) { Text(formatClock(h.start)) }
+                            AppTextButton(onClick = { picking = i to true }) { Text(formatClock(h.start)) }
                             Text("تا", color = c.muted)
-                            TextButton(onClick = { picking = i to false }) { Text(formatClock(h.end)) }
+                            AppTextButton(onClick = { picking = i to false }) { Text(formatClock(h.end)) }
                         } else Muted("تعطیل")
-                        Switch(checked = h.open, onCheckedChange = { hours[i] = h.copy(open = it) }, colors = SwitchDefaults.colors(checkedTrackColor = c.accent))
+                        AppSwitch(checked = h.open, onCheckedChange = { hours[i] = h.copy(open = it) })
                     }
                 }
                 PrimaryButton(if (saving) "در حال ذخیره..." else "ذخیره ساعات کاری", enabled = !saving) {
@@ -117,7 +116,7 @@ fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChang
                 DayStrip((0L until 60L).map { today.plusDays(it) }, offFrom, today) { offFrom = it; if (offTo == null || offTo!!.isBefore(it)) offTo = it }
                 Muted("تا روز")
                 DayStrip((0L until 60L).map { today.plusDays(it) }, offTo, today) { offTo = it }
-                OutlinedTextField(offReason, { offReason = it.take(200) }, label = { Text("علت (اختیاری)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                AppTextField(offReason, { offReason = it.take(200) }, label = { Text("علت (اختیاری)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 PrimaryButton("ثبت مرخصی") {
                     val from = offFrom
                     val to = offTo
@@ -145,7 +144,7 @@ fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChang
                     val to = Instant.parse(t.endAt).toSalonDateTime(tz).minusMinutes(1)
                     Text(if (from.toLocalDate() == to.toLocalDate()) from.toLocalDate().persianLabel() else "${from.toLocalDate().persianLabel()} تا ${to.toLocalDate().persianLabel()}", color = c.ink)
                     t.reason?.let { Muted(it) }
-                    TextButton(onClick = {
+                    AppTextButton(onClick = {
                         scope.launch { runCatching { container.api.deleteTimeOff(t.id) }.onSuccess { timeOff = timeOff - t } }
                     }) { Text("حذف مرخصی", color = c.danger) }
                 }

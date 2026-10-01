@@ -1,5 +1,8 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import android.Manifest
 import android.content.pm.PackageManager
@@ -26,12 +29,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -146,8 +146,8 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
             }
             Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 44.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row {
-                    TextButton(onClick = { pickLogo.launch(image) }, enabled = busy == null) { Text(if (busy == "logo") "در حال آپلود..." else if (indie) "تغییر عکس شما" else "تغییر لوگو") }
-                    TextButton(onClick = { pickCover.launch(image) }, enabled = busy == null) { Text(if (busy == "cover") "در حال آپلود..." else "تغییر کاور") }
+                    AppTextButton(onClick = { pickLogo.launch(image) }, enabled = busy == null) { Text(if (busy == "logo") "در حال آپلود..." else if (indie) "تغییر عکس شما" else "تغییر لوگو") }
+                    AppTextButton(onClick = { pickCover.launch(image) }, enabled = busy == null) { Text(if (busy == "cover") "در حال آپلود..." else "تغییر کاور") }
                 }
                 data.subscription?.let { sub ->
                     AppCard {
@@ -160,10 +160,10 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                 }
                 AppCard {
                     SectionTitle(if (indie) "اطلاعات شما" else "اطلاعات سالن")
-                    OutlinedTextField(name, { name = it.take(100) }, label = { Text(if (indie) "نام کاری" else "نام سالن") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(description, { description = it.take(1000) }, label = { Text("درباره") }, minLines = 3, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(phone, { phone = it.take(20) }, label = { Text("تلفن تماس") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(instagram, { instagram = it.take(60) }, label = { Text("اینستاگرام") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    AppTextField(name, { name = it.take(100) }, label = { Text(if (indie) "نام کاری" else "نام سالن") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    AppTextField(description, { description = it.take(1000) }, label = { Text("درباره") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                    AppTextField(phone, { phone = it.take(20) }, label = { Text("تلفن تماس") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    AppTextField(instagram, { instagram = it.take(60) }, label = { Text("اینستاگرام") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
                 if (indie) AppCard {
                     SectionTitle("محل ارائه خدمات")
@@ -173,8 +173,8 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                             Text(label, color = c.ink)
                         }
                     }
-                    if (ServiceLocation.IN_SALON in places) OutlinedTextField(host, { host = it.take(100) }, label = { Text("نام سالن محل کار") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    if (ServiceLocation.CLIENT_HOME in places) OutlinedTextField(area, { area = it.take(200) }, label = { Text("محدوده خدمات در منزل") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    if (ServiceLocation.IN_SALON in places) AppTextField(host, { host = it.take(100) }, label = { Text("نام سالن محل کار") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    if (ServiceLocation.CLIENT_HOME in places) AppTextField(area, { area = it.take(200) }, label = { Text("محدوده خدمات در منزل") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
                 AppCard {
                     SectionTitle("موقعیت")
@@ -182,10 +182,10 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                         PickerField("استان", province.ifEmpty { "انتخاب کنید" }, Modifier.weight(1f)) { picking = "province" }
                         PickerField("شهر / شهرستان", city.ifEmpty { "ابتدا استان" }, Modifier.weight(1f)) { if (province.isNotEmpty()) picking = "city" }
                     }
-                    OutlinedTextField(address, { address = it.take(300) }, label = { Text("آدرس دقیق") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                    AppTextField(address, { address = it.take(300) }, label = { Text("آدرس دقیق") }, minLines = 2, modifier = Modifier.fillMaxWidth())
                     Muted("روی نقشه بزنید تا محل مشخص شود.")
                     PinMap(pin, provinces.firstOrNull { it.name == province }?.center) { pin = it }
-                    TextButton(onClick = {
+                    AppTextButton(onClick = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                             scope.launch { currentLocation(context)?.let { pin = it.latitude to it.longitude } ?: Toasts.error("موقعیت شما پیدا نشد") }
                         } else permission.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
@@ -233,12 +233,12 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
     picking?.let { what ->
         val options = if (what == "province") provinces.map { it.name } else provinces.firstOrNull { it.name == province }?.cities.orEmpty()
         var query by remember(what) { mutableStateOf("") }
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { picking = null },
             title = { Text(if (what == "province") "استان" else "شهر / شهرستان") },
             text = {
                 Column {
-                    OutlinedTextField(query, { query = it }, placeholder = { Text("جستجو") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    AppTextField(query, { query = it }, placeholder = { Text("جستجو") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     LazyColumn(Modifier.heightIn(max = 360.dp)) {
                         items(options.filter { query.isBlank() || it.contains(query.trim()) }) { o ->
                             Text(o, color = c.ink, modifier = Modifier.fillMaxWidth().clickable {
@@ -248,7 +248,7 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { picking = null }) { Text("بستن") } },
+            confirmButton = { AppTextButton(onClick = { picking = null }) { Text("بستن") } },
         )
     }
 }

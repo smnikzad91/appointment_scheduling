@@ -1,5 +1,7 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.SecondaryButton
+import app.nobatet.ui.components.AppTextButton
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
@@ -16,11 +18,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,11 +70,11 @@ fun SalonContact(salon: SalonDetail) {
     val context = LocalContext.current
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         salon.phone?.takeIf { it.isNotBlank() }?.let { phone ->
-            OutlinedButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) } }, shape = RoundedCornerShape(999.dp)) { Text("تماس") }
+            SecondaryButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) } }) { Text("تماس") }
         }
         salon.instagram?.takeIf { it.isNotBlank() }?.let { ig ->
             val handle = ig.trim().removePrefix("@").substringAfterLast("instagram.com/").trim('/')
-            OutlinedButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://instagram.com/$handle"))) } }, shape = RoundedCornerShape(999.dp)) { Text("اینستاگرام") }
+            SecondaryButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://instagram.com/$handle"))) } }) { Text("اینستاگرام") }
         }
     }
 }
@@ -141,6 +140,6 @@ fun StylistCard(st: SalonStylist, salon: SalonDetail, reviews: List<PublicReview
         if (gallery.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items(gallery, key = { it.id }) { g -> RemoteImage(g.url, Modifier.size(72.dp).clip(RoundedCornerShape(10.dp))) }
         }
-        TextButton(onClick = onBook) { Text("رزرو با ${st.displayName}") }
+        AppTextButton(onClick = onBook) { Text("رزرو با ${st.displayName}") }
     }
 }

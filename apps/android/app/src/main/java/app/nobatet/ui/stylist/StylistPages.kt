@@ -1,5 +1,9 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.components.AppChip
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -29,12 +33,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -223,33 +223,33 @@ private fun ExpenseDialog(container: AppContainer, tz: String, editing: StylistE
             busy = false
         }
     }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (editing == null) "ثبت هزینه" else "ویرایش هزینه") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    STYLIST_EXPENSE_CATEGORIES.forEach { (k, label) -> FilterChip(selected = category == k, onClick = { category = k }, label = { Text(label) }) }
+                    STYLIST_EXPENSE_CATEGORIES.forEach { (k, label) -> AppChip(selected = category == k, onClick = { category = k }, label = { Text(label) }) }
                 }
-                OutlinedTextField(
+                AppTextField(
                     amount.toPersianDigits(), { amount = it.normalizeDigits().filter(Char::isDigit).take(10) }, label = { Text("مبلغ (تومان)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(description, { description = it.take(200) }, label = { Text("توضیح") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                AppTextField(description, { description = it.take(200) }, label = { Text("توضیح") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Muted("روز")
                 DayStrip((0L until 60L).map { today.minusDays(it) }, day, today) { day = it }
-                TextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) {
+                AppTextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) {
                     Text(if (busy) "در حال آپلود..." else if (receipt != null) "تغییر عکس رسید" else "پیوست عکس رسید (اختیاری)")
                 }
-                if (receipt != null) TextButton(onClick = { receipt = null }) { Text("حذف رسید", color = c.danger) }
+                if (receipt != null) AppTextButton(onClick = { receipt = null }) { Text("حذف رسید", color = c.danger) }
                 error?.let { Text(it, color = c.danger) }
-                if (editing != null) TextButton(onClick = {
+                if (editing != null) AppTextButton(onClick = {
                     scope.launch { runCatching { container.api.deleteExpense(editing.id) }.onSuccess { onDone("هزینه حذف شد") }.onFailure { error = persianError(it, "حذف هزینه انجام نشد", container.json) } }
                 }) { Text("حذف هزینه", color = c.danger) }
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy, onClick = {
+            AppTextButton(enabled = !busy, onClick = {
                 val amt = amount.toIntOrNull()
                 when {
                     amt == null || amt <= 0 -> error = "مبلغ را وارد کنید"
@@ -265,7 +265,7 @@ private fun ExpenseDialog(container: AppContainer, tz: String, editing: StylistE
                 }
             }) { Text("ذخیره") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }
 
@@ -290,8 +290,8 @@ private fun ReviewsPage(container: AppContainer) {
                             .onSuccess { updated -> reviews = list.map { if (it.id == r.id) updated else it } }
                             .onFailure { Toasts.error(persianError(it, "انجام نشد، دوباره تلاش کنید", container.json)) }
                     }
-                    if (r.status != ReviewStatus.APPROVED) TextButton(onClick = { moderate(ReviewStatus.APPROVED) }) { Text("تایید و انتشار") }
-                    if (r.status != ReviewStatus.REJECTED) TextButton(onClick = { moderate(ReviewStatus.REJECTED) }) { Text("رد", color = c.danger) }
+                    if (r.status != ReviewStatus.APPROVED) AppTextButton(onClick = { moderate(ReviewStatus.APPROVED) }) { Text("تایید و انتشار") }
+                    if (r.status != ReviewStatus.REJECTED) AppTextButton(onClick = { moderate(ReviewStatus.REJECTED) }) { Text("رد", color = c.danger) }
                 }
             }
         }
@@ -325,11 +325,11 @@ private fun SharePage(container: AppContainer, stylist: SelfStylist) {
         PrimaryButton("ارسال لینک") {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "نوبت آنلاین با ${stylist.displayName}: $url"), "ارسال لینک"))
         }
-        TextButton(onClick = {
+        AppTextButton(onClick = {
             (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("link", url))
             scope.launch { Toasts.success("لینک کپی شد") }
         }) { Text("کپی لینک") }
-        TextButton(onClick = {
+        AppTextButton(onClick = {
             val poster = app.nobatet.util.drawStoryPoster(
                 context,
                 app.nobatet.util.PosterData(
@@ -346,7 +346,7 @@ private fun SharePage(container: AppContainer, stylist: SelfStylist) {
         AppCard {
             SectionTitle("تغییر نام کاربری")
             Muted("با تغییر آن، لینک و کد QR قبلی دیگر کار نمی‌کنند.")
-            OutlinedTextField(draft, { draft = it.lowercase().take(30) }, prefix = { Text("@") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            AppTextField(draft, { draft = it.lowercase().take(30) }, prefix = { Text("@") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             PrimaryButton("ذخیره", enabled = draft.isNotBlank() && draft != h) {
                 scope.launch {
                     runCatching { container.api.setMyHandle(HandleRequest(draft.trim())) }

@@ -1,5 +1,9 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.AppChip
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -20,12 +24,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -103,7 +103,7 @@ fun WalletScreen(container: AppContainer) {
             AppCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SectionTitle("کارت‌های من", Modifier.weight(1f))
-                    TextButton(onClick = { addingCard = true }) { Text("افزودن کارت") }
+                    AppTextButton(onClick = { addingCard = true }) { Text("افزودن کارت") }
                 }
                 if (cards.isEmpty()) Muted("کارتی ثبت نشده")
                 cards.forEach { card ->
@@ -112,7 +112,7 @@ fun WalletScreen(container: AppContainer) {
                             Text(formatCardNumber(card.cardNumber).toPersianDigits(), color = c.ink)
                             Muted("${card.bankName}، ${card.ownerName}")
                         }
-                        TextButton(onClick = {
+                        AppTextButton(onClick = {
                             scope.launch { runCatching { container.web.deleteBankCard(card.id) }.onSuccess { reload++ }.onFailure { Toasts.error(persianError(it, "حذف کارت انجام نشد", container.json)) } }
                         }) { Text("حذف", color = c.danger) }
                     }
@@ -125,7 +125,7 @@ fun WalletScreen(container: AppContainer) {
                     if (d.createdAt.isNotEmpty()) Muted(runCatching { Instant.parse(d.createdAt).toSalonDateTime(null).persianDateTime() }.getOrDefault(""))
                     d.interceptionCode?.let { Muted("کد پیگیری: $it") }
                     d.adminNote?.takeIf { it.isNotBlank() }?.let { Muted("پاسخ پشتیبانی: $it") }
-                    if (d.status != "approved") TextButton(onClick = {
+                    if (d.status != "approved") AppTextButton(onClick = {
                         scope.launch { runCatching { container.web.deleteDeposit(d.id) }.onSuccess { reload++ }.onFailure { Toasts.error(persianError(it, "حذف واریز انجام نشد", container.json)) } }
                     }) { Text("حذف", color = c.danger) }
                 }
@@ -147,20 +147,20 @@ private fun AddCardDialog(container: AppContainer, onDismiss: () -> Unit, onDone
     var owner by remember { mutableStateOf("") }
     var bank by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text("افزودن کارت بانکی") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(number.toPersianDigits(), { number = it.normalizeDigits().filter(Char::isDigit).take(16) }, label = { Text("شماره کارت ۱۶ رقمی") }, singleLine = true,
+                AppTextField(number.toPersianDigits(), { number = it.normalizeDigits().filter(Char::isDigit).take(16) }, label = { Text("شماره کارت ۱۶ رقمی") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(owner, { owner = it.take(60) }, label = { Text("نام صاحب کارت") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(bank, { bank = it.take(40) }, label = { Text("نام بانک") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                AppTextField(owner, { owner = it.take(60) }, label = { Text("نام صاحب کارت") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                AppTextField(bank, { bank = it.take(40) }, label = { Text("نام بانک") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 error?.let { Text(it, color = c.danger) }
             }
         },
         confirmButton = {
-            TextButton(onClick = {
+            AppTextButton(onClick = {
                 when {
                     number.length != 16 -> error = "شماره کارت باید ۱۶ رقم باشد"
                     owner.isBlank() || bank.isBlank() -> error = "نام صاحب کارت و بانک را وارد کنید"
@@ -171,7 +171,7 @@ private fun AddCardDialog(container: AppContainer, onDismiss: () -> Unit, onDone
                 }
             }) { Text("ثبت کارت") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }
 
@@ -193,26 +193,26 @@ private fun DepositDialog(container: AppContainer, cards: List<BankCard>, onDism
             busy = false
         }
     }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text("ثبت واریز") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Muted("از کدام کارت واریز کردید؟")
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    cards.forEach { card -> FilterChip(selected = cardId == card.id, onClick = { cardId = card.id }, label = { Text("…" + card.cardNumber.takeLast(4).toPersianDigits() + " " + card.bankName) }) }
+                    cards.forEach { card -> AppChip(selected = cardId == card.id, onClick = { cardId = card.id }, label = { Text("…" + card.cardNumber.takeLast(4).toPersianDigits() + " " + card.bankName) }) }
                 }
-                OutlinedTextField(amount.toPersianDigits(), { amount = it.normalizeDigits().filter(Char::isDigit).take(10) }, label = { Text("مبلغ واریزی (تومان)") }, singleLine = true,
+                AppTextField(amount.toPersianDigits(), { amount = it.normalizeDigits().filter(Char::isDigit).take(10) }, label = { Text("مبلغ واریزی (تومان)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(note, { note = it.take(200) }, label = { Text("توضیح (اختیاری)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                TextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) {
+                AppTextField(note, { note = it.take(200) }, label = { Text("توضیح (اختیاری)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                AppTextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) {
                     Text(if (busy) "در حال آپلود..." else if (receipt != null) "رسید پیوست شد؛ تغییر" else "پیوست عکس رسید")
                 }
                 error?.let { Text(it, color = c.danger) }
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy, onClick = {
+            AppTextButton(enabled = !busy, onClick = {
                 val amt = amount.toIntOrNull()
                 when {
                     cardId == null -> error = "کارت را انتخاب کنید"
@@ -225,6 +225,6 @@ private fun DepositDialog(container: AppContainer, cards: List<BankCard>, onDism
                 }
             }) { Text("ثبت واریز") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }

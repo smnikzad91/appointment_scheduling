@@ -1,5 +1,9 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.AppSwitch
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import android.content.Intent
 import androidx.compose.foundation.Image
@@ -22,14 +26,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,9 +72,6 @@ fun SalonStylistsScreen(container: AppContainer, data: SalonData) {
     Box(Modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { PrimaryButton("افزودن آرایشگر") { inviting = true } }
-            data.subscription?.stylists?.limit?.let { limit ->
-                item { Muted("ظرفیت پلن: ${data.subscription!!.stylists.active.toString().toPersianDigits()} از ${limit.toString().toPersianDigits()} آرایشگر فعال") }
-            }
             if (data.stylists.isEmpty()) item { Empty("هنوز آرایشگری اضافه نکرده‌اید") }
             items(data.stylists, key = { it.id }) { st ->
                 AppCard(Modifier.clickable { open = st }) {
@@ -118,19 +114,19 @@ private fun InviteDialog(container: AppContainer, data: SalonData, onDismiss: ()
     var chosen by remember { mutableStateOf(data.services.filter { it.active }.map { it.id }.toSet()) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text("افزودن آرایشگر") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(phone, { phone = it.normalizeDigits().filter(Char::isDigit).take(11) }, label = { Text("شماره موبایل") }, singleLine = true,
+                AppTextField(phone, { phone = it.normalizeDigits().filter(Char::isDigit).take(11) }, label = { Text("شماره موبایل") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(firstName, { firstName = it }, label = { Text("نام") }, singleLine = true, modifier = Modifier.weight(1f))
-                    OutlinedTextField(lastName, { lastName = it }, label = { Text("نام خانوادگی") }, singleLine = true, modifier = Modifier.weight(1f))
+                    AppTextField(firstName, { firstName = it }, label = { Text("نام") }, singleLine = true, modifier = Modifier.weight(1f))
+                    AppTextField(lastName, { lastName = it }, label = { Text("نام خانوادگی") }, singleLine = true, modifier = Modifier.weight(1f))
                 }
-                OutlinedTextField(displayName, { displayName = it }, label = { Text("نام نمایشی (اختیاری)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(commission.toPersianDigits(), { commission = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("سهم آرایشگر (٪)") }, singleLine = true,
+                AppTextField(displayName, { displayName = it }, label = { Text("نام نمایشی (اختیاری)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                AppTextField(commission.toPersianDigits(), { commission = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("سهم آرایشگر (٪)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 Muted("خدمات")
                 data.services.filter { it.active }.forEach { s ->
@@ -143,7 +139,7 @@ private fun InviteDialog(container: AppContainer, data: SalonData, onDismiss: ()
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy, onClick = {
+            AppTextButton(enabled = !busy, onClick = {
                 val pct = commission.toIntOrNull()
                 when {
                     !isValidIranianMobile(phone) -> error = "شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد"
@@ -161,7 +157,7 @@ private fun InviteDialog(container: AppContainer, data: SalonData, onDismiss: ()
                 }
             }) { Text("افزودن") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }
 
@@ -178,21 +174,21 @@ private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerSty
     }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text(st.displayName) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 st.user.phone?.let { Muted(it.toPersianDigits()) }
                 if (st.user.mustSetPassword) Muted("هنوز حساب را فعال نکرده است.")
-                TextButton(onClick = {
+                AppTextButton(onClick = {
                     scope.launch { runCatching { container.api.newSetupLink(st.id) }.onSuccess { onLink(it.setupToken) }.onFailure { error = persianError(it, "ساخت لینک انجام نشد", container.json) } }
                 }) { Text(if (st.user.mustSetPassword) "لینک فعال‌سازی تازه" else "لینک تعیین رمز تازه") }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("فعال", color = c.ink, modifier = Modifier.weight(1f))
-                    Switch(checked = active, onCheckedChange = { active = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.accent))
+                    AppSwitch(checked = active, onCheckedChange = { active = it })
                 }
-                OutlinedTextField(commission.toPersianDigits(), { commission = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("سهم آرایشگر (٪)") }, singleLine = true,
+                AppTextField(commission.toPersianDigits(), { commission = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("سهم آرایشگر (٪)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 Muted("خدماتی که انجام می‌دهد (خالی = قیمت و مدت سالن، سهم پیش‌فرض)")
                 data.services.filter { it.active }.forEach { s ->
@@ -204,11 +200,11 @@ private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerSty
                         val (price, minutes, rate) = overrides[s.id] ?: Triple("", "", "")
                         fun set(t: Triple<String, String, String>) { overrides = overrides + (s.id to t) }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            OutlinedTextField(price.toPersianDigits(), { set(Triple(it.normalizeDigits().filter(Char::isDigit).take(9), minutes, rate)) }, label = { Text("قیمت") }, singleLine = true,
+                            AppTextField(price.toPersianDigits(), { set(Triple(it.normalizeDigits().filter(Char::isDigit).take(9), minutes, rate)) }, label = { Text("قیمت") }, singleLine = true,
                                 modifier = Modifier.weight(1.4f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                            OutlinedTextField(minutes.toPersianDigits(), { set(Triple(price, it.normalizeDigits().filter(Char::isDigit).take(3), rate)) }, label = { Text("دقیقه") }, singleLine = true,
+                            AppTextField(minutes.toPersianDigits(), { set(Triple(price, it.normalizeDigits().filter(Char::isDigit).take(3), rate)) }, label = { Text("دقیقه") }, singleLine = true,
                                 modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                            OutlinedTextField(rate.toPersianDigits(), { set(Triple(price, minutes, it.normalizeDigits().filter(Char::isDigit).take(3))) }, label = { Text("سهم ٪") }, singleLine = true,
+                            AppTextField(rate.toPersianDigits(), { set(Triple(price, minutes, it.normalizeDigits().filter(Char::isDigit).take(3))) }, label = { Text("سهم ٪") }, singleLine = true,
                                 modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                         }
                     }
@@ -217,10 +213,10 @@ private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerSty
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy, onClick = {
+            AppTextButton(enabled = !busy, onClick = {
                 val pct = commission.toIntOrNull()
-                if (pct == null || pct !in 0..100) { error = "سهم باید بین ۰ تا ۱۰۰ باشد"; return@TextButton }
-                if (overrides.filterKeys { it in chosen }.values.any { (it.third.toIntOrNull() ?: 0) > 100 }) { error = "سهم هر خدمت باید بین ۰ تا ۱۰۰ باشد"; return@TextButton }
+                if (pct == null || pct !in 0..100) { error = "سهم باید بین ۰ تا ۱۰۰ باشد"; return@AppTextButton }
+                if (overrides.filterKeys { it in chosen }.values.any { (it.third.toIntOrNull() ?: 0) > 100 }) { error = "سهم هر خدمت باید بین ۰ تا ۱۰۰ باشد"; return@AppTextButton }
                 scope.launch {
                     busy = true
                     try {
@@ -247,7 +243,7 @@ private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerSty
                 }
             }) { Text("ذخیره") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }
 
@@ -257,7 +253,7 @@ private fun SetupLinkDialog(name: String, token: String, onDismiss: () -> Unit) 
     val context = LocalContext.current
     val url = BuildConfig.WEB_BASE_URL.trimEnd('/') + "/set-password/" + token
     val qr = remember(url) { qrBitmap(url) }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text("لینک فعال‌سازی $name") },
         text = {
@@ -267,10 +263,10 @@ private fun SetupLinkDialog(name: String, token: String, onDismiss: () -> Unit) 
             }
         },
         confirmButton = {
-            TextButton(onClick = {
+            AppTextButton(onClick = {
                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "لینک فعال‌سازی حساب آرایشگری شما در نوبتت: $url"), "ارسال لینک"))
             }) { Text("ارسال لینک") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("بستن") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("بستن") } },
     )
 }

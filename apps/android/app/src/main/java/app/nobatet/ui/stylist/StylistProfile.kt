@@ -1,5 +1,7 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,9 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -101,12 +101,12 @@ fun StylistProfileScreen(container: AppContainer, stylist: SelfStylist, onChange
                 Text(stylist.displayName, style = MaterialTheme.typography.titleLarge, color = c.ink)
                 Muted(stylist.salon.name)
                 Row {
-                    TextButton(onClick = { pickAvatar.launch(image) }, enabled = busy == null) { Text(if (busy == "avatar") "در حال آپلود..." else "تغییر عکس") }
-                    TextButton(onClick = { pickCover.launch(image) }, enabled = busy == null) { Text(if (busy == "cover") "در حال آپلود..." else "تغییر کاور") }
+                    AppTextButton(onClick = { pickAvatar.launch(image) }, enabled = busy == null) { Text(if (busy == "avatar") "در حال آپلود..." else "تغییر عکس") }
+                    AppTextButton(onClick = { pickCover.launch(image) }, enabled = busy == null) { Text(if (busy == "cover") "در حال آپلود..." else "تغییر کاور") }
                 }
                 AppCard {
                     SectionTitle("معرفی خودتان")
-                    OutlinedTextField(bio, { bio = it.take(500) }, minLines = 3, modifier = Modifier.fillMaxWidth(), placeholder = { Text("سابقه، تخصص و سبک کارتان را بنویسید") })
+                    AppTextField(bio, { bio = it.take(500) }, minLines = 3, modifier = Modifier.fillMaxWidth(), placeholder = { Text("سابقه، تخصص و سبک کارتان را بنویسید") })
                     PrimaryButton("ذخیره معرفی") {
                         scope.launch {
                             runCatching { container.api.updateMyStylist(StylistProfilePatch(bio = bio.trim())) }
@@ -120,14 +120,14 @@ fun StylistProfileScreen(container: AppContainer, stylist: SelfStylist, onChange
                         SectionTitle("نمونه کارها", Modifier.weight(1f))
                         Muted("${gallery.size.toString().toPersianDigits()} از ${GALLERY_LIMIT.toString().toPersianDigits()}")
                     }
-                    TextButton(onClick = { pickGallery.launch(image) }, enabled = busy == null && gallery.size < GALLERY_LIMIT) {
+                    AppTextButton(onClick = { pickGallery.launch(image) }, enabled = busy == null && gallery.size < GALLERY_LIMIT) {
                         Text(if (busy == "gallery") "در حال آپلود..." else "افزودن نمونه کار")
                     }
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         gallery.forEach { g ->
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 RemoteImage(g.url, Modifier.size(100.dp).clip(RoundedCornerShape(14.dp)))
-                                TextButton(onClick = {
+                                AppTextButton(onClick = {
                                     scope.launch {
                                         runCatching { container.api.deleteGalleryImage(g.id) }.onSuccess { gallery = gallery - g }
                                             .onFailure { Toasts.error(persianError(it, "حذف عکس انجام نشد", container.json)) }

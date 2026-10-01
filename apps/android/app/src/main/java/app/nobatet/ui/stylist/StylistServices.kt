@@ -1,5 +1,8 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.components.AppSwitch
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,11 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,28 +66,28 @@ private fun ServiceEditor(container: AppContainer, s: SelfStylistService, onChan
         Text(s.service.name, color = c.ink, style = MaterialTheme.typography.titleSmall)
         Muted("سالن: ${formatDuration(s.service.durationMinutes)}، ${formatToman(s.service.priceToman)}")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
+            AppTextField(
                 price.toPersianDigits(), { price = it.normalizeDigits().filter(Char::isDigit).take(9) }, label = { Text("قیمت شما (تومان)") }, singleLine = true,
                 modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), placeholder = { Text("مثل سالن") },
             )
-            OutlinedTextField(
+            AppTextField(
                 duration.toPersianDigits(), { duration = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("مدت (دقیقه)") }, singleLine = true,
                 modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), placeholder = { Text("مثل سالن") },
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("پیامک «وقت نوبت بعدی»", color = c.ink, modifier = Modifier.weight(1f))
-            Switch(checked = rebookOn, onCheckedChange = { rebookOn = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.accent))
+            AppSwitch(checked = rebookOn, onCheckedChange = { rebookOn = it })
         }
-        if (rebookOn) OutlinedTextField(
+        if (rebookOn) AppTextField(
             rebookDays.toPersianDigits(), { rebookDays = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("چند روز بعد از نوبت") }, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         )
-        TextButton(enabled = !saving, onClick = {
+        AppTextButton(enabled = !saving, onClick = {
             val days = rebookDays.toIntOrNull()
             if (rebookOn && (days == null || days !in 1..REBOOK_MAX_DAYS)) {
                 scope.launch { Toasts.error("فاصله یادآوری باید بین ۱ تا ۳۶۵ روز باشد") }
-                return@TextButton
+                return@AppTextButton
             }
             scope.launch {
                 saving = true

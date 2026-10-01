@@ -1,5 +1,8 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.AppChip
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import android.Manifest
 import android.content.pm.PackageManager
@@ -38,13 +41,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -96,7 +95,7 @@ fun DiscoverScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(
+        AppTextField(
             value = s.query, onValueChange = vm::setQuery, singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             placeholder = { Text("نام سالن، آرایشگر یا خدمت") },
@@ -104,9 +103,8 @@ fun DiscoverScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
             shape = RoundedCornerShape(16.dp),
         )
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val chipColors = FilterChipDefaults.filterChipColors(selectedContainerColor = c.accentSoft, selectedLabelColor = c.accent)
-            FilterChip(
-                selected = s.near != null, colors = chipColors,
+            AppChip(
+                selected = s.near != null,
                 label = { Text(if (s.locating) "در حال یافتن موقعیت..." else "نزدیک من") },
                 onClick = {
                     when {
@@ -117,9 +115,9 @@ fun DiscoverScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
                 },
             )
             listOf(null to "همه", SalonKind.SALON to "سالن‌ها", SalonKind.INDEPENDENT to "آرایشگران مستقل").forEach { (kind, label) ->
-                FilterChip(selected = s.kind == kind, onClick = { vm.setKind(kind) }, label = { Text(label) }, colors = chipColors)
+                AppChip(selected = s.kind == kind, onClick = { vm.setKind(kind) }, label = { Text(label) })
             }
-            FilterChip(selected = s.showMap, onClick = { vm.setShowMap(!s.showMap) }, label = { Text(if (s.showMap) "فهرست" else "نقشه") }, colors = chipColors)
+            AppChip(selected = s.showMap, onClick = { vm.setShowMap(!s.showMap) }, label = { Text(if (s.showMap) "فهرست" else "نقشه") })
         }
         when {
             s.loading -> Loading()
@@ -133,7 +131,7 @@ fun DiscoverScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
             ) {
                 items(s.items, key = { it.id }) { SalonCardRow(it) { onOpenSalon(it.slug) } }
                 if (s.items.size < s.total) item {
-                    TextButton(onClick = vm::loadMore, enabled = !s.loadingMore, modifier = Modifier.fillMaxWidth()) {
+                    AppTextButton(onClick = vm::loadMore, enabled = !s.loadingMore, modifier = Modifier.fillMaxWidth()) {
                         Text(if (s.loadingMore) "در حال بارگذاری..." else "نمایش بیشتر")
                     }
                 }

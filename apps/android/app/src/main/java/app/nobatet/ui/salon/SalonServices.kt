@@ -1,5 +1,10 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.AppChip
+import app.nobatet.ui.components.AppSwitch
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -16,14 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,7 +67,7 @@ fun SalonServicesScreen(container: AppContainer, data: SalonData) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PrimaryButton("افزودن خدمت", Modifier.weight(1f)) { adding = true }
-                    TextButton(onClick = { newCategory = "" }) { Text("دسته‌بندی تازه") }
+                    AppTextButton(onClick = { newCategory = "" }) { Text("دسته‌بندی تازه") }
                 }
             }
             if (data.services.isEmpty()) item { Empty("هنوز خدمتی تعریف نکرده‌اید", "خدمات و قیمت‌ها را اضافه کنید تا مشتری‌ها نوبت بگیرند.") }
@@ -78,7 +77,7 @@ fun SalonServicesScreen(container: AppContainer, data: SalonData) {
                 item(key = "c" + (cat?.id ?: "none")) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                         SectionTitle(cat?.name ?: "بدون دسته‌بندی", Modifier.weight(1f))
-                        if (cat != null && services.isEmpty()) TextButton(onClick = {
+                        if (cat != null && services.isEmpty()) AppTextButton(onClick = {
                             scope.launch { runCatching { container.api.deleteCategory(cat.id) }.onSuccess { categories = categories - cat }.onFailure { Toasts.error(persianError(it, "حذف دسته‌بندی انجام نشد", container.json)) } }
                         }) { Text("حذف", color = c.danger) }
                     }
@@ -103,12 +102,12 @@ fun SalonServicesScreen(container: AppContainer, data: SalonData) {
         }
     }
     newCategory?.let { name ->
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { newCategory = null },
             title = { Text("دسته‌بندی تازه") },
-            text = { OutlinedTextField(name, { newCategory = it.take(60) }, label = { Text("نام دسته") }, singleLine = true) },
+            text = { AppTextField(name, { newCategory = it.take(60) }, label = { Text("نام دسته") }, singleLine = true) },
             confirmButton = {
-                TextButton(enabled = name.isNotBlank(), onClick = {
+                AppTextButton(enabled = name.isNotBlank(), onClick = {
                     scope.launch {
                         runCatching { container.api.addCategory(CategoryInput(name.trim(), categories.size)) }
                             .onSuccess { categories = categories + it; newCategory = null }
@@ -116,7 +115,7 @@ fun SalonServicesScreen(container: AppContainer, data: SalonData) {
                     }
                 }) { Text("ذخیره") }
             },
-            dismissButton = { TextButton(onClick = { newCategory = null }) { Text("انصراف") } },
+            dismissButton = { AppTextButton(onClick = { newCategory = null }) { Text("انصراف") } },
         )
     }
 }
@@ -136,35 +135,35 @@ private fun ServiceDialog(container: AppContainer, categories: List<OwnerCategor
     var rebookDays by remember { mutableStateOf((editing?.rebookReminderDays ?: 30).toString()) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (editing == null) "افزودن خدمت" else "ویرایش خدمت") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(name, { name = it.take(100) }, label = { Text("نام خدمت") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                AppTextField(name, { name = it.take(100) }, label = { Text("نام خدمت") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (categories.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(selected = categoryId == null, onClick = { categoryId = null }, label = { Text("بدون دسته") })
-                    categories.forEach { cat -> FilterChip(selected = categoryId == cat.id, onClick = { categoryId = cat.id }, label = { Text(cat.name) }) }
+                    AppChip(selected = categoryId == null, onClick = { categoryId = null }, label = { Text("بدون دسته") })
+                    categories.forEach { cat -> AppChip(selected = categoryId == cat.id, onClick = { categoryId = cat.id }, label = { Text(cat.name) }) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(duration.toPersianDigits(), { duration = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("مدت (دقیقه)") }, singleLine = true,
+                    AppTextField(duration.toPersianDigits(), { duration = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("مدت (دقیقه)") }, singleLine = true,
                         modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                    OutlinedTextField(price.toPersianDigits(), { price = it.normalizeDigits().filter(Char::isDigit).take(9) }, label = { Text("قیمت (تومان)") }, singleLine = true,
+                    AppTextField(price.toPersianDigits(), { price = it.normalizeDigits().filter(Char::isDigit).take(9) }, label = { Text("قیمت (تومان)") }, singleLine = true,
                         modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 }
-                OutlinedTextField(description, { description = it.take(500) }, label = { Text("توضیح (اختیاری)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                AppTextField(description, { description = it.take(500) }, label = { Text("توضیح (اختیاری)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("پیامک «وقت نوبت بعدی»", color = c.ink, modifier = Modifier.weight(1f))
-                    Switch(checked = rebookOn, onCheckedChange = { rebookOn = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.accent))
+                    AppSwitch(checked = rebookOn, onCheckedChange = { rebookOn = it })
                 }
-                if (rebookOn) OutlinedTextField(rebookDays.toPersianDigits(), { rebookDays = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("چند روز بعد از نوبت") },
+                if (rebookOn) AppTextField(rebookDays.toPersianDigits(), { rebookDays = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("چند روز بعد از نوبت") },
                     singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 if (editing != null) Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("فعال (قابل رزرو)", color = c.ink, modifier = Modifier.weight(1f))
-                    Switch(checked = active, onCheckedChange = { active = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.accent))
+                    AppSwitch(checked = active, onCheckedChange = { active = it })
                 }
                 error?.let { Text(it, color = c.danger) }
-                if (editing != null) TextButton(onClick = {
+                if (editing != null) AppTextButton(onClick = {
                     scope.launch {
                         runCatching { container.api.deleteService(editing.id) }.onSuccess { onDone("خدمت حذف شد") }
                             .onFailure { error = persianError(it, "حذف خدمت انجام نشد", container.json) }
@@ -173,7 +172,7 @@ private fun ServiceDialog(container: AppContainer, categories: List<OwnerCategor
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy, onClick = {
+            AppTextButton(enabled = !busy, onClick = {
                 val d = duration.toIntOrNull()
                 val p = price.toIntOrNull()
                 val days = rebookDays.toIntOrNull()
@@ -198,6 +197,6 @@ private fun ServiceDialog(container: AppContainer, categories: List<OwnerCategor
                 }
             }) { Text("ذخیره") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }

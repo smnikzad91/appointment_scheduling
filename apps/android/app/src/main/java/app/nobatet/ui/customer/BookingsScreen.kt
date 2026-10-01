@@ -1,5 +1,8 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,12 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,10 +64,8 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onReb
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            TabRow(selectedTabIndex = tab, containerColor = c.bg, contentColor = c.accent) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("پیش‌رو") })
-                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("گذشته") })
-            }
+            app.nobatet.ui.components.PageHeader("نوبت‌های من")
+            app.nobatet.ui.components.ChipTabs(listOf(0 to "پیش‌رو", 1 to "گذشته"), tab) { tab = it }
             val list = if (tab == 0) s.upcoming else s.past
             when {
                 s.loading -> Loading()
@@ -99,12 +96,12 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onReb
     }
 
     confirm?.let { b ->
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { confirm = null },
             title = { Text("لغو نوبت") },
             text = { Text("نوبت ${b.salon.name} لغو شود؟") },
-            confirmButton = { TextButton(onClick = { confirm = null; vm.cancel(b.id) }) { Text("لغو نوبت", color = c.danger) } },
-            dismissButton = { TextButton(onClick = { confirm = null }) { Text("انصراف") } },
+            confirmButton = { AppTextButton(onClick = { confirm = null; vm.cancel(b.id) }) { Text("لغو نوبت", color = c.danger) } },
+            dismissButton = { AppTextButton(onClick = { confirm = null }) { Text("انصراف") } },
         )
     }
 }
@@ -132,9 +129,9 @@ private fun BookingCard(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(formatToman(b.priceToman), color = c.accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
             if (upcoming && (b.status == AppointmentStatus.PENDING || b.status == AppointmentStatus.CONFIRMED)) {
-                TextButton(onClick = onCancel, enabled = !cancelling) { Text(if (cancelling) "در حال لغو..." else "لغو نوبت", color = c.danger) }
+                AppTextButton(onClick = onCancel, enabled = !cancelling) { Text(if (cancelling) "در حال لغو..." else "لغو نوبت", color = c.danger) }
             }
-            if (!upcoming) TextButton(onClick = onRebook) { Text("رزرو دوباره") }
+            if (!upcoming) AppTextButton(onClick = onRebook) { Text("رزرو دوباره") }
         }
         // reviews: one about the salon and, at a salon, one about the stylist (an independent stylist: one)
         if (b.status == AppointmentStatus.COMPLETED) {
@@ -143,7 +140,7 @@ private fun BookingCard(
                 val review = b.reviews.firstOrNull { it.target == target }
                 val about = if (target == ReviewTarget.SALON) (if (b.salon.kind == SalonKind.INDEPENDENT) b.stylist.displayName else "سالن") else b.stylist.displayName
                 if (review == null) {
-                    TextButton(onClick = { onReview(target) }) { Text("ثبت نظر درباره $about") }
+                    AppTextButton(onClick = { onReview(target) }) { Text("ثبت نظر درباره $about") }
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -151,8 +148,8 @@ private fun BookingCard(
                             review.comment?.let { Muted(it) }
                             Muted(if (review.status == app.nobatet.data.ReviewStatus.APPROVED) "منتشر شده" else if (review.status == app.nobatet.data.ReviewStatus.PENDING) "در انتظار تایید" else "تایید نشد")
                         }
-                        TextButton(onClick = { onReview(target) }) { Text("ویرایش") }
-                        TextButton(onClick = { onDeleteReview(review) }) { Text("حذف", color = c.danger) }
+                        AppTextButton(onClick = { onReview(target) }) { Text("ویرایش") }
+                        AppTextButton(onClick = { onDeleteReview(review) }) { Text("حذف", color = c.danger) }
                     }
                 }
             }
@@ -166,7 +163,7 @@ fun ReviewDialog(title: String, initialRating: Int?, initialComment: String, onD
     val c = LocalAppColors.current
     var rating by remember { mutableStateOf(initialRating) }
     var comment by remember { mutableStateOf(initialComment) }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -179,15 +176,15 @@ fun ReviewDialog(title: String, initialRating: Int?, initialComment: String, onD
                         )
                     }
                 }
-                androidx.compose.material3.OutlinedTextField(
+                AppTextField(
                     value = comment, onValueChange = { if (it.length <= 500) comment = it }, minLines = 3, modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("تجربه‌تان را بنویسید (اختیاری)") },
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(rating, comment.trim().ifEmpty { null }) }, enabled = rating != null || comment.isNotBlank()) { Text("ثبت نظر") }
+            AppTextButton(onClick = { onSave(rating, comment.trim().ifEmpty { null }) }, enabled = rating != null || comment.isNotBlank()) { Text("ثبت نظر") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }

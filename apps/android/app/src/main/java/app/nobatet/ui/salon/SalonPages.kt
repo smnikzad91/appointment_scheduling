@@ -1,5 +1,8 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
+import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -27,9 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -99,8 +100,8 @@ private fun SalonReviewsPage(container: AppContainer, data: SalonData) {
                             .onSuccess { updated -> reviews = list.map { if (it.id == r.id) updated else it } }
                             .onFailure { Toasts.error(persianError(it, "انجام نشد، دوباره تلاش کنید", container.json)) }
                     }
-                    if (r.status != ReviewStatus.APPROVED) TextButton(onClick = { moderate(ReviewStatus.APPROVED) }) { Text("تایید و انتشار") }
-                    if (r.status != ReviewStatus.REJECTED) TextButton(onClick = { moderate(ReviewStatus.REJECTED) }) { Text("رد", color = c.danger) }
+                    if (r.status != ReviewStatus.APPROVED) AppTextButton(onClick = { moderate(ReviewStatus.APPROVED) }) { Text("تایید و انتشار") }
+                    if (r.status != ReviewStatus.REJECTED) AppTextButton(onClick = { moderate(ReviewStatus.REJECTED) }) { Text("رد", color = c.danger) }
                 }
             }
         }
@@ -131,7 +132,7 @@ private fun SalonGalleryPage(container: AppContainer, data: SalonData) {
     var crediting by remember { mutableStateOf<GalleryItem?>(null) }
     val list = gallery ?: return Loading()
     crediting?.let { g ->
-        androidx.compose.material3.AlertDialog(
+        AppDialog(
             onDismissRequest = { crediting = null },
             title = { Text("کار کدام آرایشگر است؟") },
             text = {
@@ -148,7 +149,7 @@ private fun SalonGalleryPage(container: AppContainer, data: SalonData) {
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { crediting = null }) { Text("انصراف") } },
+            confirmButton = { AppTextButton(onClick = { crediting = null }) { Text("انصراف") } },
         )
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -163,9 +164,9 @@ private fun SalonGalleryPage(container: AppContainer, data: SalonData) {
                     // the owner credits a piece to a stylist (shown on their card on the salon page)
                     if (data.salon?.independent != true && data.stylists.isNotEmpty()) {
                         val name = data.stylists.firstOrNull { it.id == g.stylistId }?.displayName ?: "سالن"
-                        TextButton(onClick = { crediting = g }) { Text(name) }
+                        AppTextButton(onClick = { crediting = g }) { Text(name) }
                     }
-                    TextButton(onClick = {
+                    AppTextButton(onClick = {
                         scope.launch { runCatching { container.api.deleteGalleryImage(g.id) }.onSuccess { gallery = list - g }.onFailure { Toasts.error(persianError(it, "حذف عکس انجام نشد", container.json)) } }
                     }) { Text("حذف", color = c.danger) }
                 }
@@ -192,11 +193,11 @@ private fun SalonSharePage(container: AppContainer, data: SalonData) {
         PrimaryButton("ارسال لینک") {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "نوبت آنلاین در ${salon.name}: $url"), "ارسال لینک"))
         }
-        TextButton(onClick = {
+        AppTextButton(onClick = {
             (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("link", url))
             scope.launch { Toasts.success("لینک کپی شد") }
         }) { Text("کپی لینک") }
-        TextButton(onClick = {
+        AppTextButton(onClick = {
             val subtitle = buildList {
                 if (salon.independent) add(if (!salon.hostSalonName.isNullOrBlank()) "آرایشگر مستقل در ${salon.hostSalonName}" else "آرایشگر مستقل")
                 add(listOfNotNull(salon.city.takeIf { it.isNotBlank() }, salon.province).joinToString("، "))
@@ -215,7 +216,7 @@ private fun SalonSharePage(container: AppContainer, data: SalonData) {
         AppCard {
             SectionTitle("تغییر نام کاربری")
             Muted("با تغییر آن، لینک و کد QR قبلی دیگر کار نمی‌کنند.")
-            OutlinedTextField(draft, { draft = it.lowercase().take(30) }, prefix = { Text("@") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            AppTextField(draft, { draft = it.lowercase().take(30) }, prefix = { Text("@") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             PrimaryButton("ذخیره", enabled = draft.isNotBlank() && draft != h) {
                 scope.launch {
                     runCatching { container.api.setSalonHandle(HandleRequest(draft.trim())) }

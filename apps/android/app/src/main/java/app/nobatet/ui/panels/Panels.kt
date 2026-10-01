@@ -1,5 +1,6 @@
 package app.nobatet.ui.panels
 
+import app.nobatet.ui.components.AppTextButton
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -19,10 +20,8 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,7 +102,7 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
             PanelTab("خانه", Icons.Outlined.Home) {
                 HomeScreen(container, user.firstName, onDiscover = { tab = TAB_DISCOVER }, onOpenSalon = openSalon, onBookings = { tab = TAB_BOOKINGS })
             },
-            PanelTab("کشف سالن", Icons.Outlined.Search) { DiscoverScreen(container, onOpenSalon = openSalon) },
+            PanelTab("کشف سالن", Icons.Outlined.Search, title = "کشف سالن", subtitle = "نزدیک‌ترین یا بهترین سالن‌ها را پیدا کنید") { DiscoverScreen(container, onOpenSalon = openSalon) },
             PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth) {
                 BookingsScreen(container, onOpenSalon = openSalon, onRebook = { slug, prefill -> overlay = CustomerOverlay.Salon(slug, prefill) })
             },
@@ -128,7 +127,7 @@ fun AdminNotice(onSignOut: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
         Text("پنل مدیریت فقط در وب‌سایت", style = MaterialTheme.typography.titleLarge, color = colors.ink)
         Text("برای مدیریت سالن‌ها، کاربران و محتوا از نسخه وب استفاده کنید.", color = colors.muted, textAlign = TextAlign.Center)
-        Button(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.WEB_BASE_URL + "admin"))) }) { Text("باز کردن وب‌سایت") }
-        TextButton(onClick = onSignOut) { Text("خروج") }
+        app.nobatet.ui.components.PrimaryButton("باز کردن وب‌سایت") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.WEB_BASE_URL + "admin"))) }
+        AppTextButton(onClick = onSignOut) { Text("خروج") }
     }
 }

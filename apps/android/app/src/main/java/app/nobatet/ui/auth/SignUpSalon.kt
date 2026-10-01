@@ -1,5 +1,8 @@
 package app.nobatet.ui.auth
 
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
+import app.nobatet.ui.components.AppTextField
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,13 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,19 +75,16 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
     val independent = kind == SalonKind.INDEPENDENT
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        TabRow(selectedTabIndex = kind.ordinal, containerColor = c.card, contentColor = c.accent) {
-            Tab(selected = !independent, onClick = { kind = SalonKind.SALON }, text = { Text("سالن") })
-            Tab(selected = independent, onClick = { kind = SalonKind.INDEPENDENT }, text = { Text("آرایشگر مستقل هستم") })
-        }
+        app.nobatet.ui.components.ChipTabs(listOf(SalonKind.SALON to "سالن", SalonKind.INDEPENDENT to "آرایشگر مستقل هستم"), kind, Modifier.padding(horizontal = 0.dp)) { kind = it }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(firstName, { firstName = it }, label = { Text("نام") }, singleLine = true, modifier = Modifier.weight(1f))
-            OutlinedTextField(lastName, { lastName = it }, label = { Text("نام خانوادگی") }, singleLine = true, modifier = Modifier.weight(1f))
+            AppTextField(firstName, { firstName = it }, label = { Text("نام") }, singleLine = true, modifier = Modifier.weight(1f))
+            AppTextField(lastName, { lastName = it }, label = { Text("نام خانوادگی") }, singleLine = true, modifier = Modifier.weight(1f))
         }
-        OutlinedTextField(phone, { phone = it.normalizeDigits().filter(Char::isDigit).take(11) }, label = { Text("شماره موبایل برای ورود") }, singleLine = true,
+        AppTextField(phone, { phone = it.normalizeDigits().filter(Char::isDigit).take(11) }, label = { Text("شماره موبایل برای ورود") }, singleLine = true,
             modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-        OutlinedTextField(password, { password = it }, label = { Text("رمز عبور (حداقل ۸ کاراکتر)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+        AppTextField(password, { password = it }, label = { Text("رمز عبور (حداقل ۸ کاراکتر)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
-        OutlinedTextField(salonName, { salonName = it.take(100) }, label = { Text(if (independent) "نام کاری" else "نام سالن") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        AppTextField(salonName, { salonName = it.take(100) }, label = { Text(if (independent) "نام کاری" else "نام سالن") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         if (independent) {
             Muted("کجا کار می‌کنید؟")
             PLACE_LABEL.forEach { (loc, label) ->
@@ -98,13 +93,13 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
                     Text(label, color = c.ink)
                 }
             }
-            if (ServiceLocation.IN_SALON in places) OutlinedTextField(host, { host = it.take(100) }, label = { Text("نام سالن محل کار") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            if (ServiceLocation.IN_SALON in places) AppTextField(host, { host = it.take(100) }, label = { Text("نام سالن محل کار") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PickerField("استان", province.ifEmpty { "انتخاب کنید" }, Modifier.weight(1f)) { picking = "province" }
             PickerField("شهر / شهرستان", city.ifEmpty { "ابتدا استان" }, Modifier.weight(1f)) { if (province.isNotEmpty()) picking = "city" }
         }
-        OutlinedTextField(address, { address = it.take(300) }, label = { Text("آدرس دقیق") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+        AppTextField(address, { address = it.take(300) }, label = { Text("آدرس دقیق") }, minLines = 2, modifier = Modifier.fillMaxWidth())
         Muted(if (independent && ServiceLocation.IN_SALON !in places && ServiceLocation.STUDIO !in places) "محل را روی نقشه بزنید؛ نشانی شما عمومی نمایش داده نمی‌شود." else "محل را روی نقشه بزنید.")
         PinMap(pin, provinces.firstOrNull { it.name == province }?.center) { pin = it }
         PrimaryButton(if (busy) "در حال ثبت‌نام..." else "ثبت‌نام", enabled = !busy) {
@@ -140,12 +135,12 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
     picking?.let { what ->
         val options = if (what == "province") provinces.map { it.name } else provinces.firstOrNull { it.name == province }?.cities.orEmpty()
         var query by remember(what) { mutableStateOf("") }
-        AlertDialog(
+        AppDialog(
             onDismissRequest = { picking = null },
             title = { Text(if (what == "province") "استان" else "شهر / شهرستان") },
             text = {
                 Column {
-                    OutlinedTextField(query, { query = it }, placeholder = { Text("جستجو") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    AppTextField(query, { query = it }, placeholder = { Text("جستجو") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     LazyColumn(Modifier.heightIn(max = 360.dp)) {
                         items(options.filter { query.isBlank() || it.contains(query.trim()) }) { o ->
                             Text(o, color = c.ink, modifier = Modifier.fillMaxWidth().clickable {
@@ -155,7 +150,7 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { picking = null }) { Text("بستن") } },
+            confirmButton = { AppTextButton(onClick = { picking = null }) { Text("بستن") } },
         )
     }
 }

@@ -30,12 +30,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -161,7 +159,7 @@ private fun TimeChip(m: Int, selected: Boolean, free: Boolean, modifier: Modifie
 /** A time in 15-minute steps (the web's TimePicker sheet) — never the OS clock with Latin digits. */
 @Composable
 fun TimePickerDialog(title: String, value: Int?, from: Int = 6 * 60, to: Int = 23 * 60 + 45, onDismiss: () -> Unit, onPick: (Int) -> Unit) {
-    AlertDialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -169,7 +167,7 @@ fun TimePickerDialog(title: String, value: Int?, from: Int = 6 * 60, to: Int = 2
                 TimeChips((from..to step 15).toList(), value) { onPick(it) }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("بستن") } },
+        confirmButton = { AppTextButton(onClick = onDismiss) { Text("بستن") } },
     )
 }
 

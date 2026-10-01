@@ -6,10 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +41,7 @@ fun PasswordChangeCard(container: AppContainer) {
             Triple("رمز عبور جدید (حداقل ۸ کاراکتر)", next) { v: String -> next = v },
             Triple("تکرار رمز عبور جدید", repeat) { v: String -> repeat = v },
         ).forEach { (label, value, set) ->
-            OutlinedTextField(
+            AppTextField(
                 value = value, onValueChange = set, label = { Text(label) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             )
@@ -79,17 +76,17 @@ fun AccountLinks(container: AppContainer, helpRole: String) {
     val scope = rememberCoroutineScope()
     var confirm by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        TextButton(onClick = {
+        AppTextButton(onClick = {
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.WEB_BASE_URL + "tutorials?role=$helpRole"))) }
         }) { Text("راهنمای استفاده") }
-        TextButton(onClick = { confirm = true }) { Text("درخواست حذف حساب", color = c.danger) }
+        AppTextButton(onClick = { confirm = true }) { Text("درخواست حذف حساب", color = c.danger) }
     }
-    if (confirm) AlertDialog(
+    if (confirm) AppDialog(
         onDismissRequest = { confirm = false },
         title = { Text("حذف حساب") },
         text = { Text("درخواست حذف حساب و اطلاعات شما برای پشتیبانی فرستاده می‌شود و پس از بررسی انجام می‌شود. نوبت‌ها و سوابق مالی سالن طبق قانون نگه داشته می‌شوند.") },
         confirmButton = {
-            TextButton(onClick = {
+            AppTextButton(onClick = {
                 confirm = false
                 scope.launch {
                     runCatching {
@@ -99,6 +96,6 @@ fun AccountLinks(container: AppContainer, helpRole: String) {
                 }
             }) { Text("ارسال درخواست", color = c.danger) }
         },
-        dismissButton = { TextButton(onClick = { confirm = false }) { Text("انصراف") } },
+        dismissButton = { AppTextButton(onClick = { confirm = false }) { Text("انصراف") } },
     )
 }

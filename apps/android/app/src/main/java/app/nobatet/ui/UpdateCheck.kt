@@ -1,10 +1,10 @@
 package app.nobatet.ui
 
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,11 +31,11 @@ fun UpdateCheck(container: AppContainer) {
     val offered = BuildConfig.VERSION_CODE < v.latestVersionCode
     if (!required && (!offered || dismissed)) return
     val open = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(v.downloadUrl))) } }
-    AlertDialog(
+    AppDialog(
         onDismissRequest = { if (!required) dismissed = true },
         title = { Text(if (required) "به‌روزرسانی لازم است" else "نسخه تازه نوبتت") },
         text = { Text(listOfNotNull(if (required) "برای ادامه، نسخه تازه اپ را نصب کنید." else "نسخه ${v.latestVersionName} آماده نصب است.", v.notes).joinToString("\n")) },
-        confirmButton = { TextButton(onClick = { open() }) { Text("دریافت نسخه تازه") } },
-        dismissButton = if (required) null else ({ TextButton(onClick = { dismissed = true }) { Text("بعداً") } }),
+        confirmButton = { AppTextButton(onClick = { open() }) { Text("دریافت نسخه تازه") } },
+        dismissButton = if (required) null else ({ AppTextButton(onClick = { dismissed = true }) { Text("بعداً") } }),
     )
 }

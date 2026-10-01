@@ -1,5 +1,8 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.SecondaryButton
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
 import app.nobatet.ui.components.Toasts
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -31,7 +34,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -207,7 +209,7 @@ private fun ServiceRow(service: SalonService, onBook: () -> Unit) {
                 Text(service.name, style = MaterialTheme.typography.titleSmall, color = c.ink)
                 Muted("${formatDuration(service.durationMinutes)}، ${formatToman(service.priceToman)}")
             }
-            OutlinedButton(onClick = onBook, shape = RoundedCornerShape(999.dp)) { Text("رزرو") }
+            SecondaryButton(onClick = onBook) { Text("رزرو") }
         }
     }
 }
@@ -218,7 +220,7 @@ private fun ServiceRow(service: SalonService, onBook: () -> Unit) {
 private fun DirectionsButton(lat: Double, lng: Double) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var open by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
-    OutlinedButton(onClick = { open = true }, shape = RoundedCornerShape(999.dp), modifier = Modifier.padding(top = 8.dp)) { Text("مسیریابی") }
+    SecondaryButton(onClick = { open = true }, modifier = Modifier.padding(top = 8.dp)) { Text("مسیریابی") }
     if (open) {
         // apps/web src/lib/directions.ts: lat first for Neshan/Google, lng first for Balad; no origin (the app uses the phone's position)
         val p = "%.7f,%.7f".format(java.util.Locale.US, lat, lng)
@@ -228,7 +230,7 @@ private fun DirectionsButton(lat: Double, lng: Double) {
             "بلد" to "https://balad.ir/directions/driving?destination=$balad",
             "گوگل مپ" to "https://www.google.com/maps/dir/?api=1&destination=$p&travelmode=driving",
         )
-        androidx.compose.material3.AlertDialog(
+        AppDialog(
             onDismissRequest = { open = false },
             title = { Text("مسیریابی با") },
             text = {
@@ -241,7 +243,7 @@ private fun DirectionsButton(lat: Double, lng: Double) {
                     }
                 }
             },
-            confirmButton = { androidx.compose.material3.TextButton(onClick = { open = false }) { Text("انصراف") } },
+            confirmButton = { AppTextButton(onClick = { open = false }) { Text("انصراف") } },
         )
     }
 }
