@@ -80,7 +80,7 @@ fun estimatedShare(a: StaffAppointment, stylist: SelfStylist): Int =
         (s.priceToman * rate / 100.0).toInt()
     }
 
-enum class StylistPage(val title: String) { EARNINGS("درآمد من"), EXPENSES("هزینه‌های من"), REVIEWS("نظرات درباره شما"), SHARE("کیت معرفی") }
+enum class StylistPage(val title: String) { EARNINGS("درآمد من"), EXPENSES("هزینه‌های من"), REVIEWS("نظرات درباره شما"), SHARE("کیت معرفی من") }
 
 /** «صبح بخیر / روز بخیر / عصر بخیر» by the salon's clock (the web's greeting). */
 private fun greeting(minuteOfDay: Int) = when {

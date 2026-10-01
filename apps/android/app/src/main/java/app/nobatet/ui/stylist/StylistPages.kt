@@ -1,5 +1,7 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.components.ShareSubject
+import app.nobatet.ui.components.ShareKit
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.Icons
@@ -321,56 +323,21 @@ fun qrBitmap(text: String, size: Int = 720): Bitmap {
     return bmp
 }
 
-/** «کیت معرفی»: the short booking link nobatet.app/book/@handle, copy/share, its QR, and changing the handle. */
+/** «کیت معرفی من»: the web's share kit for a salon's stylist (booking with them). */
 @Composable
 private fun SharePage(container: AppContainer, stylist: SelfStylist) {
-    val c = LocalAppColors.current
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var handle by remember { mutableStateOf<String?>(null) }
-    var draft by remember { mutableStateOf("") }
-    LaunchedEffect(Unit) { handle = runCatching { container.api.myHandle().handle }.getOrNull(); draft = handle.orEmpty() }
+    LaunchedEffect(Unit) { handle = runCatching { container.api.myHandle().handle }.getOrNull() }
     val h = handle ?: return Loading()
-    val url = BuildConfig.WEB_BASE_URL.trimEnd('/') + "/book/@" + h
-    val qr = remember(url) { qrBitmap(url) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("لینک رزرو شما", color = c.muted)
-        Text("nobatet.app/book/@$h", color = c.ink, style = MaterialTheme.typography.titleMedium)
-        Image(qr.asImageBitmap(), contentDescription = "کد QR لینک رزرو", modifier = Modifier.size(240.dp).clip(RoundedCornerShape(16.dp)).background(androidx.compose.ui.graphics.Color.White).padding(8.dp))
-        PrimaryButton("ارسال لینک") {
-            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "نوبت آنلاین با ${stylist.displayName}: $url"), "ارسال لینک"))
-        }
-        AppTextButton(onClick = {
-            (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("link", url))
-            scope.launch { Toasts.success("لینک کپی شد") }
-        }) { Text("کپی لینک") }
-        AppTextButton(onClick = {
-            val poster = app.nobatet.util.drawStoryPoster(
-                context,
-                app.nobatet.util.PosterData(
-                    name = stylist.displayName,
-                    subtitle = "آرایشگر در ${stylist.salon.name}" + (stylist.salon.city.takeIf { it.isNotBlank() }?.let { "، $it" } ?: ""),
-                    services = stylist.services.filter { it.service.active }.map { it.service.name },
-                    link = "nobatet.app/book/@$h",
-                    brandColor = android.graphics.Color.parseColor("#a34a30"),
-                    qr = qrBitmap(url, 900),
-                ),
-            )
-            app.nobatet.util.sharePoster(context, poster, "nobatet-$h-story.png")
-        }) { Text("پوستر استوری (اینستاگرام)") }
-        AppCard {
-            SectionTitle("تغییر نام کاربری")
-            Muted("با تغییر آن، لینک و کد QR قبلی دیگر کار نمی‌کنند.")
-            AppTextField(draft, { draft = it.lowercase().take(30) }, prefix = { Text("@") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            PrimaryButton("ذخیره", enabled = draft.isNotBlank() && draft != h) {
-                scope.launch {
-                    runCatching { container.api.setMyHandle(HandleRequest(draft.trim())) }
-                        .onSuccess { handle = it.handle; draft = it.handle; Toasts.success("نام کاربری ذخیره شد") }
-                        .onFailure { Toasts.error(persianError(it, "ذخیره انجام نشد", container.json)) }
-                }
-            }
-        }
-    }
+    val salon = stylist.salon
+    val subject = ShareSubject(
+        handle = h, customHandle = h, name = stylist.displayName, title = "آرایشگر ${salon.name}",
+        specialties = stylist.services.filter { it.service.active }.map { it.service.name },
+        place = listOfNotNull(salon.city.takeIf { it.isNotBlank() }, salon.province?.takeIf { it.isNotBlank() && it != salon.city }).joinToString("، "),
+        coverUrl = stylist.coverImageUrl, avatarUrl = stylist.avatarUrl, squareAvatar = false,
+        brandColor = runCatching { android.graphics.Color.parseColor(salon.brandColor) }.getOrDefault(android.graphics.Color.parseColor("#a34a30")),
+    )
+    ShareKit(container, subject, "لینک رزرو مستقیم با شما، کد QR و پوستر برای استوری و چاپ") { container.api.setMyHandle(HandleRequest(it)).handle.also { saved -> handle = saved } }
 }
 
 /** The month's earnings as a report (the web's buildEarningsReport). */

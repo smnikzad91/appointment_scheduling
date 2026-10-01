@@ -32,7 +32,15 @@ data class SelfStylistService(
 }
 
 @Serializable
-data class StylistSalon(val slug: String, val timezone: String = "Asia/Tehran", val status: String = "", val name: String = "", val city: String = "")
+data class StylistSalon(
+    val slug: String,
+    val timezone: String = "Asia/Tehran",
+    val status: String = "",
+    val name: String = "",
+    val city: String = "",
+    val province: String? = null,
+    val brandColor: String? = null,
+)
 
 @Serializable
 data class SelfStylist(
