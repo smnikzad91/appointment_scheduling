@@ -37,7 +37,15 @@ data class PanelTab(val label: String, val icon: ImageVector, val content: @Comp
 /** The panel shell, like the web's AppShell: app bar with the identity, content, bottom tab bar. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PanelScaffold(title: String, tabs: List<PanelTab>, onSignOut: () -> Unit, selectedTab: Int? = null, onSelectTab: ((Int) -> Unit)? = null) {
+fun PanelScaffold(
+    title: String,
+    tabs: List<PanelTab>,
+    onSignOut: () -> Unit,
+    selectedTab: Int? = null,
+    onSelectTab: ((Int) -> Unit)? = null,
+    /** App-bar buttons before «خروج» (e.g. the notifications bell). */
+    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
+) {
     val colors = LocalAppColors.current
     var ownSelected by rememberSaveable { mutableIntStateOf(0) }
     // the panel may drive the tab itself (e.g. «مشاهده نوبت‌های من» after booking)
@@ -48,7 +56,10 @@ fun PanelScaffold(title: String, tabs: List<PanelTab>, onSignOut: () -> Unit, se
         topBar = {
             TopAppBar(
                 title = { Text(title, style = MaterialTheme.typography.titleMedium) },
-                actions = { IconButton(onClick = onSignOut) { Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = "خروج") } },
+                actions = {
+                    actions()
+                    IconButton(onClick = onSignOut) { Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = "خروج") }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.bg, titleContentColor = colors.ink, actionIconContentColor = colors.muted),
             )
         },

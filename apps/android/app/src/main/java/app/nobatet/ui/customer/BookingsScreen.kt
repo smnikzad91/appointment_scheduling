@@ -37,6 +37,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import app.nobatet.data.AppContainer
 import app.nobatet.data.AppointmentStatus
 import app.nobatet.data.CustomerBooking
+import app.nobatet.data.BookingReview
+import app.nobatet.data.ReviewTarget
 import app.nobatet.data.SalonKind
 import app.nobatet.data.label
 import app.nobatet.ui.components.AppCard
@@ -52,12 +54,13 @@ import app.nobatet.util.toSalonDateTime
 import java.time.Instant
 
 @Composable
-fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
+fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onRebook: (String, BookingPrefill) -> Unit) {
     val vm: BookingsViewModel = viewModel(factory = viewModelFactory { initializer { BookingsViewModel(container) } })
     val s by vm.state.collectAsStateWithLifecycle()
     val c = LocalAppColors.current
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var confirm by remember { mutableStateOf<CustomerBooking?>(null) }
+    var reviewing by remember { mutableStateOf<Pair<CustomerBooking, ReviewTarget>?>(null) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it) } }
     // fresh list every time the tab is shown (a booking may have just been made or confirmed)
@@ -76,12 +79,27 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
                 list.isEmpty() -> Empty(if (tab == 0) "نوبت پیش‌رویی ندارید" else "هنوز نوبتی نداشته‌اید", "از «کشف سالن» نوبت بگیرید.")
                 else -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(list, key = { it.id }) { b ->
-                        BookingCard(b, upcoming = tab == 0, cancelling = s.cancelling == b.id, onCancel = { confirm = b }, onOpenSalon = { onOpenSalon(b.salon.slug) })
+                        BookingCard(
+                            b, upcoming = tab == 0, cancelling = s.cancelling == b.id, onCancel = { confirm = b }, onOpenSalon = { onOpenSalon(b.salon.slug) },
+                            onRebook = { onRebook(b.salon.slug, BookingPrefill(b.services.map { it.serviceId }, b.stylistId)) },
+                            onReview = { target -> reviewing = b to target },
+                            onDeleteReview = { review -> vm.deleteReview(b.id, review.id) },
+                        )
                     }
                 }
             }
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
+    }
+
+    reviewing?.let { (b, target) ->
+        val existing = b.reviews.firstOrNull { it.target == target }
+        ReviewDialog(
+            title = if (target == ReviewTarget.SALON) "نظر درباره ${b.salon.name}" else "نظر درباره ${b.stylist.displayName}",
+            initialRating = existing?.rating, initialComment = existing?.comment.orEmpty(),
+            onDismiss = { reviewing = null },
+            onSave = { rating, comment -> vm.saveReview(b.id, target, existing?.id, rating, comment) { reviewing = null } },
+        )
     }
 
     confirm?.let { b ->
@@ -96,7 +114,10 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
 }
 
 @Composable
-private fun BookingCard(b: CustomerBooking, upcoming: Boolean, cancelling: Boolean, onCancel: () -> Unit, onOpenSalon: () -> Unit) {
+private fun BookingCard(
+    b: CustomerBooking, upcoming: Boolean, cancelling: Boolean, onCancel: () -> Unit, onOpenSalon: () -> Unit,
+    onRebook: () -> Unit, onReview: (ReviewTarget) -> Unit, onDeleteReview: (BookingReview) -> Unit,
+) {
     val c = LocalAppColors.current
     val start = Instant.parse(b.startAt).toSalonDateTime(b.salon.timezone)
     AppCard(Modifier.clickable(onClick = onOpenSalon)) {
@@ -117,6 +138,60 @@ private fun BookingCard(b: CustomerBooking, upcoming: Boolean, cancelling: Boole
             if (upcoming && (b.status == AppointmentStatus.PENDING || b.status == AppointmentStatus.CONFIRMED)) {
                 TextButton(onClick = onCancel, enabled = !cancelling) { Text(if (cancelling) "در حال لغو..." else "لغو نوبت", color = c.danger) }
             }
+            if (!upcoming) TextButton(onClick = onRebook) { Text("رزرو دوباره") }
+        }
+        // reviews: one about the salon and, at a salon, one about the stylist (an independent stylist: one)
+        if (b.status == AppointmentStatus.COMPLETED) {
+            val targets = if (b.salon.kind == SalonKind.INDEPENDENT) listOf(ReviewTarget.SALON) else listOf(ReviewTarget.SALON, ReviewTarget.STYLIST)
+            targets.forEach { target ->
+                val review = b.reviews.firstOrNull { it.target == target }
+                val about = if (target == ReviewTarget.SALON) (if (b.salon.kind == SalonKind.INDEPENDENT) b.stylist.displayName else "سالن") else b.stylist.displayName
+                if (review == null) {
+                    TextButton(onClick = { onReview(target) }) { Text("ثبت نظر درباره $about") }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("نظر شما درباره $about" + (review.rating?.let { "، " + "★".repeat(it) } ?: ""), color = c.ink, style = MaterialTheme.typography.labelLarge)
+                            review.comment?.let { Muted(it) }
+                            Muted(if (review.status == app.nobatet.data.ReviewStatus.APPROVED) "منتشر شده" else if (review.status == app.nobatet.data.ReviewStatus.PENDING) "در انتظار تایید" else "تایید نشد")
+                        }
+                        TextButton(onClick = { onReview(target) }) { Text("ویرایش") }
+                        TextButton(onClick = { onDeleteReview(review) }) { Text("حذف", color = c.danger) }
+                    }
+                }
+            }
         }
     }
+}
+
+/** Stars (1–5, tap again to clear) and a comment (≤ 500); a review needs at least one. */
+@Composable
+fun ReviewDialog(title: String, initialRating: Int?, initialComment: String, onDismiss: () -> Unit, onSave: (Int?, String?) -> Unit) {
+    val c = LocalAppColors.current
+    var rating by remember { mutableStateOf(initialRating) }
+    var comment by remember { mutableStateOf(initialComment) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    (1..5).forEach { n ->
+                        Text(
+                            if ((rating ?: 0) >= n) "★" else "☆", color = c.pending, style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.clickable { rating = if (rating == n) null else n },
+                        )
+                    }
+                }
+                androidx.compose.material3.OutlinedTextField(
+                    value = comment, onValueChange = { if (it.length <= 500) comment = it }, minLines = 3, modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("تجربه‌تان را بنویسید (اختیاری)") },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(rating, comment.trim().ifEmpty { null }) }, enabled = rating != null || comment.isNotBlank()) { Text("ثبت نظر") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+    )
 }

@@ -165,7 +165,11 @@ private fun DateTimeStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState
     }
     when {
         b.slotsLoading -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = c.accent) }
-        b.slots.none { it.available } -> Muted("در این روز ساعت خالی وجود ندارد؛ روز دیگری را انتخاب کنید.", Modifier.padding(vertical = 16.dp))
+        b.slots.none { it.available } -> Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Muted("در این روز ساعت خالی وجود ندارد؛ روز دیگری را انتخاب کنید.")
+            // the web's WaitlistButton
+            androidx.compose.material3.OutlinedButton(onClick = vm::joinWaitlist, shape = RoundedCornerShape(999.dp)) { Text("اگر وقتی خالی شد خبرم کن") }
+        }
         else -> listOf("صبح" to (0 until 12 * 60), "ظهر" to (12 * 60 until 16 * 60), "عصر" to (16 * 60 until 24 * 60)).forEach { (label, range) ->
             val slots = b.slots.filter { it.startMinute in range }
             if (slots.isNotEmpty()) {

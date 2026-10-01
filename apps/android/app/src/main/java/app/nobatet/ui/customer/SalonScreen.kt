@@ -37,6 +37,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,13 +69,24 @@ import app.nobatet.util.formatToman
 
 /** The public salon page (/s/<slug>) with its booking sheet. */
 @Composable
-fun SalonScreen(container: AppContainer, slug: String, onBack: () -> Unit, onSeeBookings: () -> Unit) {
+fun SalonScreen(container: AppContainer, slug: String, onBack: () -> Unit, onSeeBookings: () -> Unit, prefill: BookingPrefill? = null) {
     val vm: SalonViewModel = viewModel(key = "salon-$slug", factory = viewModelFactory { initializer { SalonViewModel(container, slug) } })
     val s by vm.state.collectAsStateWithLifecycle()
     val c = LocalAppColors.current
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(vm) { vm.errors.collect { snackbar.showSnackbar(it) } }
     BackHandler(onBack = onBack)
+    // a prefilled booking opens once the salon has loaded
+    var prefillUsed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(s.salon != null) {
+        if (s.salon != null && prefill != null && !prefillUsed) {
+            prefillUsed = true
+            vm.openBookingPrefilled(prefill)
+        }
+    }
+    val favoriteIds by container.favorites.ids.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { container.favorites.ensureLoaded() }
 
     Box(Modifier.fillMaxSize().background(c.bg)) {
         when {
@@ -81,6 +99,20 @@ fun SalonScreen(container: AppContainer, slug: String, onBack: () -> Unit, onSee
             modifier = Modifier.statusBarsPadding().padding(8.dp).align(Alignment.TopStart),
             colors = IconButtonDefaults.iconButtonColors(containerColor = c.card.copy(alpha = 0.85f), contentColor = c.ink),
         ) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "بازگشت") }
+        s.salon?.let { salon ->
+            val saved = salon.id in favoriteIds
+            IconButton(
+                onClick = {
+                    scope.launch {
+                        runCatching { container.favorites.toggle(salon.id) }.onFailure { snackbar.showSnackbar("ذخیره سالن انجام نشد") }
+                    }
+                },
+                modifier = Modifier.statusBarsPadding().padding(8.dp).align(Alignment.TopEnd),
+                colors = IconButtonDefaults.iconButtonColors(containerColor = c.card.copy(alpha = 0.85f), contentColor = if (saved) c.danger else c.ink),
+            ) {
+                Icon(if (saved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder, contentDescription = if (saved) "حذف از محبوب‌ها" else "افزودن به محبوب‌ها")
+            }
+        }
         if (s.salon != null && !s.booking.open) {
             PrimaryButton("رزرو نوبت", Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp)) { vm.openBooking() }
         }

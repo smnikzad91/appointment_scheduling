@@ -64,17 +64,25 @@ fun LoginScreen(container: AppContainer, onSignedIn: (AuthResponse) -> Unit) {
             Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("ورود به نوبتت", style = androidx.compose.material3.MaterialTheme.typography.headlineMedium, color = colors.ink)
-            Text("با شماره موبایل و رمز عبور، یا با کد پیامکی وارد شوید.", color = colors.muted)
+            if (state.signUp) {
+                Text("ساخت حساب", style = androidx.compose.material3.MaterialTheme.typography.headlineMedium, color = colors.ink)
+                Text("برای رزرو آنلاین و پیگیری نوبت‌ها حساب بسازید.", color = colors.muted)
+                SignUpForm(state, vm)
+                TextButton(onClick = { vm.setSignUp(false) }) { Text("حساب دارید؟ وارد شوید") }
+            } else {
+                Text("ورود به نوبتت", style = androidx.compose.material3.MaterialTheme.typography.headlineMedium, color = colors.ink)
+                Text("با شماره موبایل و رمز عبور، یا با کد پیامکی وارد شوید.", color = colors.muted)
 
-            TabRow(selectedTabIndex = state.tab.ordinal, containerColor = colors.card, contentColor = colors.accent) {
-                Tab(selected = state.tab == LoginTab.PASSWORD, onClick = { vm.setTab(LoginTab.PASSWORD) }, text = { Text("ورود با رمز عبور") })
-                Tab(selected = state.tab == LoginTab.OTP, onClick = { vm.setTab(LoginTab.OTP) }, text = { Text("ورود با کد پیامکی") })
-            }
+                TabRow(selectedTabIndex = state.tab.ordinal, containerColor = colors.card, contentColor = colors.accent) {
+                    Tab(selected = state.tab == LoginTab.PASSWORD, onClick = { vm.setTab(LoginTab.PASSWORD) }, text = { Text("ورود با رمز عبور") })
+                    Tab(selected = state.tab == LoginTab.OTP, onClick = { vm.setTab(LoginTab.OTP) }, text = { Text("ورود با کد پیامکی") })
+                }
 
-            when (state.tab) {
-                LoginTab.PASSWORD -> PasswordForm(state, vm)
-                LoginTab.OTP -> OtpForm(state, vm)
+                when (state.tab) {
+                    LoginTab.PASSWORD -> PasswordForm(state, vm)
+                    LoginTab.OTP -> OtpForm(state, vm)
+                }
+                TextButton(onClick = { vm.setSignUp(true) }) { Text("حساب ندارید؟ ساخت حساب") }
             }
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
@@ -126,6 +134,25 @@ private fun OtpForm(state: LoginUiState, vm: LoginViewModel) {
             }
             TextButton(onClick = vm::changePhone) { Text("تغییر شماره موبایل") }
         }
+    }
+}
+
+@Composable
+private fun SignUpForm(state: LoginUiState, vm: LoginViewModel) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(state.firstName, vm::setFirstName, label = { Text("نام") }, singleLine = true, modifier = Modifier.weight(1f))
+            OutlinedTextField(state.lastName, vm::setLastName, label = { Text("نام خانوادگی") }, singleLine = true, modifier = Modifier.weight(1f))
+        }
+        OutlinedTextField(
+            state.phone, vm::setPhone, label = { Text("شماره موبایل") }, placeholder = { Text("۰۹۱۲۳۴۵۶۷۸۹") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+        )
+        OutlinedTextField(
+            state.password, vm::setPassword, label = { Text("رمز عبور (حداقل ۸ کاراکتر)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        )
+        PrimaryButton(if (state.busy) "در حال ساخت حساب..." else "ساخت حساب", enabled = !state.busy, onClick = vm::register)
     }
 }
 

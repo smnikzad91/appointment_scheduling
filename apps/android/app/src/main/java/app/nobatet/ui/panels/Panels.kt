@@ -34,6 +34,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import app.nobatet.data.ApiUser
 import app.nobatet.data.AppContainer
+import androidx.compose.runtime.remember
+import app.nobatet.ui.customer.BookingPrefill
+import app.nobatet.ui.customer.HomeScreen
+import app.nobatet.ui.customer.NotificationBell
+import app.nobatet.ui.customer.NotificationsScreen
+import app.nobatet.ui.customer.ProfileScreen
+import app.nobatet.ui.customer.SupportScreen
 import app.nobatet.ui.customer.BookingsScreen
 import app.nobatet.ui.customer.DiscoverScreen
 import app.nobatet.ui.customer.SalonScreen
@@ -43,27 +50,53 @@ import app.nobatet.ui.theme.LocalAppColors
 
 private const val TAB_BOOKINGS = 2
 
+private const val TAB_DISCOVER = 1
+
+/** What's shown over the customer panel: a salon page (maybe with a prefilled booking), notifications, support. */
+private sealed interface CustomerOverlay {
+    data class Salon(val slug: String, val prefill: BookingPrefill? = null) : CustomerOverlay
+    data object Notifications : CustomerOverlay
+    data object Support : CustomerOverlay
+}
+
 @Composable
 fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    // a salon page opened from search or a booking, shown over the panel
-    var openSlug by rememberSaveable { mutableStateOf<String?>(null) }
-    val slug = openSlug
-    if (slug != null) {
-        SalonScreen(container, slug, onBack = { openSlug = null }, onSeeBookings = { openSlug = null; tab = TAB_BOOKINGS })
-        return
+    var overlay by remember { mutableStateOf<CustomerOverlay?>(null) }
+    val openSalon: (String) -> Unit = { overlay = CustomerOverlay.Salon(it) }
+    when (val o = overlay) {
+        is CustomerOverlay.Salon -> {
+            SalonScreen(container, o.slug, onBack = { overlay = null }, onSeeBookings = { overlay = null; tab = TAB_BOOKINGS }, prefill = o.prefill)
+            return
+        }
+        CustomerOverlay.Notifications -> {
+            NotificationsScreen(container, onBack = { overlay = null }, onOpenSalon = openSalon, onOpenBookings = { overlay = null; tab = TAB_BOOKINGS })
+            return
+        }
+        CustomerOverlay.Support -> {
+            SupportScreen(container, onBack = { overlay = null })
+            return
+        }
+        null -> Unit
     }
     PanelScaffold(
         title = "نوبتت",
         onSignOut = onSignOut,
         selectedTab = tab,
         onSelectTab = { tab = it },
+        actions = { NotificationBell(container) { overlay = CustomerOverlay.Notifications } },
         tabs = listOf(
-            PanelTab("خانه", Icons.Outlined.Home) { Welcome(user.firstName, "نوبت‌های پیش‌رو و سالن‌های محبوب شما اینجا نمایش داده می‌شوند.") },
-            PanelTab("کشف سالن", Icons.Outlined.Search) { DiscoverScreen(container, onOpenSalon = { openSlug = it }) },
-            PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth) { BookingsScreen(container, onOpenSalon = { openSlug = it }) },
+            PanelTab("خانه", Icons.Outlined.Home) {
+                HomeScreen(container, user.firstName, onDiscover = { tab = TAB_DISCOVER }, onOpenSalon = openSalon, onBookings = { tab = TAB_BOOKINGS })
+            },
+            PanelTab("کشف سالن", Icons.Outlined.Search) { DiscoverScreen(container, onOpenSalon = openSalon) },
+            PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth) {
+                BookingsScreen(container, onOpenSalon = openSalon, onRebook = { slug, prefill -> overlay = CustomerOverlay.Salon(slug, prefill) })
+            },
             PanelTab("کیف پول", Icons.Outlined.AccountBalanceWallet) { ComingSoon("کیف پول") },
-            PanelTab("پروفایل", Icons.Outlined.Person) { ComingSoon("پروفایل") },
+            PanelTab("پروفایل", Icons.Outlined.Person) {
+                ProfileScreen(container, user, onOpenSupport = { overlay = CustomerOverlay.Support }, onSignOut = onSignOut)
+            },
         ),
     )
 }

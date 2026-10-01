@@ -17,6 +17,10 @@ data class DiscoverState(
     val query: String = "",
     /** null = همه, SALON = سالن‌ها, INDEPENDENT = آرایشگران مستقل. */
     val kind: SalonKind? = null,
+    /** «نزدیک من»: the customer's position — results nearest first, with distances. */
+    val near: Pair<Double, Double>? = null,
+    val locating: Boolean = false,
+    val showMap: Boolean = false,
     val items: List<SalonCard> = emptyList(),
     val total: Int = 0,
     val loading: Boolean = true,
@@ -48,6 +52,20 @@ class DiscoverViewModel(private val container: AppContainer) : ViewModel() {
 
     fun retry() = search(debounce = false)
 
+    fun setLocating(on: Boolean) = _state.update { it.copy(locating = on) }
+
+    fun setNear(lat: Double, lng: Double) {
+        _state.update { it.copy(near = lat to lng, locating = false) }
+        search(debounce = false)
+    }
+
+    fun clearNear() {
+        _state.update { it.copy(near = null) }
+        search(debounce = false)
+    }
+
+    fun setShowMap(on: Boolean) = _state.update { it.copy(showMap = on) }
+
     fun loadMore() {
         val s = _state.value
         if (s.loading || s.loadingMore || s.items.size >= s.total) return
@@ -77,7 +95,14 @@ class DiscoverViewModel(private val container: AppContainer) : ViewModel() {
     private fun params(s: DiscoverState, offset: Int) = buildMap {
         if (s.query.isNotBlank()) put("q", s.query.trim())
         s.kind?.let { put("kind", it.name) }
-        put("sort", "rating")
+        val near = s.near
+        if (near != null) {
+            put("lat", near.first.toString())
+            put("lng", near.second.toString())
+            put("sort", "distance")
+        } else {
+            put("sort", "rating")
+        }
         put("limit", PAGE.toString())
         put("offset", offset.toString())
     }

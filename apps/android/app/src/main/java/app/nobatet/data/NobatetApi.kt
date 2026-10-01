@@ -1,7 +1,13 @@
 package app.nobatet.data
 
+import okhttp3.MultipartBody
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
+import retrofit2.http.PUT
+import retrofit2.http.Part
+import retrofit2.http.Url
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -50,4 +56,77 @@ interface NobatetApi {
 
     @PATCH("appointments/{id}/status")
     suspend fun setStatus(@Path("id") id: String, @Body body: StatusUpdate): kotlinx.serialization.json.JsonObject
+
+    @POST("auth/register")
+    suspend fun register(@Body body: RegisterRequest): AuthResponse
+
+    @GET("me/favorites")
+    suspend fun favorites(): List<SalonCard>
+
+    @GET("me/favorites/ids")
+    suspend fun favoriteIds(): List<String>
+
+    @PUT("me/favorites/{salonId}")
+    suspend fun addFavorite(@Path("salonId") salonId: String): kotlinx.serialization.json.JsonObject
+
+    @DELETE("me/favorites/{salonId}")
+    suspend fun removeFavorite(@Path("salonId") salonId: String): kotlinx.serialization.json.JsonObject
+
+    @POST("salons/{slug}/waitlist")
+    suspend fun joinWaitlist(@Path("slug") slug: String, @Body body: JoinWaitlistRequest): Created
+
+    @GET("me/waitlist")
+    suspend fun myWaitlist(): List<WaitlistEntry>
+
+    @DELETE("me/waitlist/{id}")
+    suspend fun leaveWaitlist(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    @POST("appointments/{id}/review")
+    suspend fun leaveReview(@Path("id") appointmentId: String, @Body body: NewReviewRequest): BookingReview
+
+    @PATCH("reviews/{id}")
+    suspend fun updateReview(@Path("id") reviewId: String, @Body body: ReviewPatch): BookingReview
+
+    @DELETE("reviews/{id}")
+    suspend fun deleteReview(@Path("id") reviewId: String): kotlinx.serialization.json.JsonObject
+
+    @GET("notifications")
+    suspend fun notifications(): NotificationList
+
+    @POST("notifications/read-all")
+    suspend fun readAllNotifications(): kotlinx.serialization.json.JsonObject
+}
+
+/** apps/web's own routes (https://nobatet.app/api/…), with the same apps/api token. */
+interface WebApi {
+    @GET("api/user/profile")
+    suspend fun profile(): Profile
+
+    @POST("api/user/password")
+    suspend fun changePassword(@Body body: PasswordChange): kotlinx.serialization.json.JsonObject
+
+    @Multipart
+    @POST("api/user/avatar")
+    suspend fun uploadAvatar(@Part avatar: MultipartBody.Part): AvatarResponse
+
+    @GET("api/user/sms-preferences")
+    suspend fun smsPreferences(): SmsPreferences
+
+    @PUT("api/user/sms-preferences")
+    suspend fun setSmsPreferences(@Body body: SmsPreferences): SmsPreferences
+
+    @GET("api/user/tickets")
+    suspend fun tickets(): List<TicketSummary>
+
+    @POST("api/user/tickets")
+    suspend fun createTicket(@Body body: NewTicket): Created
+
+    @GET("api/user/tickets/{id}")
+    suspend fun ticket(@Path("id") id: String): TicketDetail
+
+    @POST("api/user/tickets/{id}")
+    suspend fun replyTicket(@Path("id") id: String, @Body body: TicketMessage): kotlinx.serialization.json.JsonObject
+
+    @PATCH("api/user/tickets/{id}")
+    suspend fun closeTicket(@Path("id") id: String, @Body body: TicketClose = TicketClose()): kotlinx.serialization.json.JsonObject
 }

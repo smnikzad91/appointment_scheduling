@@ -45,4 +45,14 @@ class AppContainer(context: Context) {
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
         .create(NobatetApi::class.java)
+
+    val web: WebApi = Retrofit.Builder()
+        .baseUrl(BuildConfig.WEB_BASE_URL)
+        .client(http)
+        .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+        .build()
+        .create(WebApi::class.java)
+
+    /** The customer's saved salons, shared by the salon page and home. */
+    val favorites = FavoritesStore(api)
 }

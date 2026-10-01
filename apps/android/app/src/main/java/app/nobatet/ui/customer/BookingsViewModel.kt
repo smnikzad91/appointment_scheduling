@@ -53,6 +53,36 @@ class BookingsViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
+    /** A new review (SALON, or STYLIST at a salon) or an edit of yours; null rating/comment = none. */
+    fun saveReview(bookingId: String, target: app.nobatet.data.ReviewTarget, existingId: String?, rating: Int?, comment: String?, onDone: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val text = comment?.trim()?.ifEmpty { null }
+                val saved = if (existingId == null) container.api.leaveReview(bookingId, app.nobatet.data.NewReviewRequest(target, rating, text))
+                else container.api.updateReview(existingId, app.nobatet.data.ReviewPatch(rating, text))
+                _state.update { s ->
+                    s.copy(bookings = s.bookings.map { b -> if (b.id == bookingId) b.copy(reviews = b.reviews.filterNot { it.id == saved.id || it.target == target } + saved) else b })
+                }
+                _messages.tryEmit(if (existingId == null) "نظر شما ثبت شد و پس از تایید نمایش داده می‌شود" else "نظر شما ویرایش شد و پس از تایید دوباره نمایش داده می‌شود")
+                onDone()
+            } catch (e: Exception) {
+                _messages.tryEmit(persianError(e, "ثبت نظر انجام نشد", container.json))
+            }
+        }
+    }
+
+    fun deleteReview(bookingId: String, reviewId: String) {
+        viewModelScope.launch {
+            try {
+                container.api.deleteReview(reviewId)
+                _state.update { s -> s.copy(bookings = s.bookings.map { b -> if (b.id == bookingId) b.copy(reviews = b.reviews.filterNot { it.id == reviewId }) else b }) }
+                _messages.tryEmit("نظر حذف شد")
+            } catch (e: Exception) {
+                _messages.tryEmit(persianError(e, "حذف نظر انجام نشد", container.json))
+            }
+        }
+    }
+
     fun cancel(id: String) {
         if (_state.value.cancelling != null) return
         viewModelScope.launch {

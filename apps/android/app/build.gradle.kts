@@ -57,5 +57,6 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.coil.compose)
+    implementation(libs.osmdroid)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

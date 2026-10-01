@@ -62,6 +62,7 @@ class SessionViewModel(private val container: AppContainer) : ViewModel() {
     fun signOut() {
         viewModelScope.launch {
             container.tokens.clear()
+            container.favorites.clear()
             _state.value = SessionState.SignedOut
         }
     }

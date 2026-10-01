@@ -42,6 +42,9 @@ data class BookingState(
     val result: CreatedAppointment? = null,
 )
 
+/** Choices to open the booking sheet with: «رزرو دوباره», or a "time opened up" notification. */
+data class BookingPrefill(val serviceIds: List<String>, val stylistId: String? = null, val date: LocalDate? = null)
+
 data class SalonUiState(
     val salon: SalonDetail? = null,
     val loading: Boolean = true,
@@ -90,6 +93,31 @@ class SalonViewModel(private val container: AppContainer, private val slug: Stri
     fun openBooking(serviceId: String? = null) {
         val only = salon.serviceLocations.singleOrNull()
         setBooking { BookingState(open = true, serviceIds = listOfNotNull(serviceId), place = if (salon.independent) only else null) }
+    }
+
+    /** Straight to the day/time step with these choices (services no longer offered are dropped). */
+    fun openBookingPrefilled(prefill: BookingPrefill) {
+        val ids = prefill.serviceIds.filter { id -> salon.activeServices.any { it.id == id } }
+        if (ids.isEmpty()) return openBooking()
+        val stylist = prefill.stylistId?.takeIf { id -> salon.stylists.any { it.id == id } }
+        setBooking {
+            BookingState(open = true, step = BookingStep.DATETIME, serviceIds = ids, stylistId = stylist,
+                place = if (salon.independent) salon.serviceLocations.singleOrNull() else null)
+        }
+        chooseDate(prefill.date?.takeIf { !it.isBefore(salonToday(salon.timezone)) } ?: salonToday(salon.timezone))
+    }
+
+    /** «خبرم کن»: a fully booked day — a text/notification when a time opens up (POST /salons/:slug/waitlist). */
+    fun joinWaitlist() {
+        val date = b.date ?: return
+        viewModelScope.launch {
+            try {
+                container.api.joinWaitlist(salon.slug, app.nobatet.data.JoinWaitlistRequest(date.toString(), b.serviceIds, b.stylistId))
+                fail("در لیست انتظار ثبت شدید؛ اگر وقتی خالی شد خبرتان می‌کنیم.")
+            } catch (e: Exception) {
+                fail(persianError(e, "ثبت در لیست انتظار انجام نشد", container.json))
+            }
+        }
     }
 
     fun closeBooking() = setBooking { it.copy(open = false) }

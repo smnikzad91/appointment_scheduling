@@ -31,6 +31,10 @@ data class LoginUiState(
     /** Seconds until another code may be requested (apps/api: one per phone per minute). */
     val resendIn: Int = 0,
     val busy: Boolean = false,
+    /** «ساخت حساب»: a new customer account (POST /auth/register). */
+    val signUp: Boolean = false,
+    val firstName: String = "",
+    val lastName: String = "",
 )
 
 const val OTP_LENGTH = 5
@@ -82,6 +86,23 @@ class LoginViewModel(private val container: AppContainer, private val onSignedIn
     }
 
     fun changePhone() = _state.update { it.copy(codeSent = false, code = "") }
+
+    fun setSignUp(on: Boolean) = _state.update { it.copy(signUp = on) }
+    fun setFirstName(v: String) = _state.update { it.copy(firstName = v) }
+    fun setLastName(v: String) = _state.update { it.copy(lastName = v) }
+
+    /** A customer account, as the web's /signup (name, mobile, password ≥ 8); signed in straight away. */
+    fun register() {
+        val s = _state.value
+        when {
+            s.firstName.isBlank() || s.lastName.isBlank() -> return fail("نام و نام خانوادگی را وارد کنید")
+            !isValidIranianMobile(s.phone) -> return fail("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد")
+            s.password.length < 8 -> return fail("رمز عبور باید حداقل ۸ کاراکتر باشد")
+        }
+        run("ساخت حساب انجام نشد؛ دوباره تلاش کنید") {
+            onSignedIn(container.api.register(app.nobatet.data.RegisterRequest(s.firstName.trim(), s.lastName.trim(), s.phone, s.password)))
+        }
+    }
 
     private fun startCountdown() {
         countdown?.cancel()

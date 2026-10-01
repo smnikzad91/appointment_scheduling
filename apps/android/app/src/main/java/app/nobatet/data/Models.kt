@@ -47,4 +47,4 @@ data class OtpVerifyRequest(
 
 /** NestJS error body: `message` is a string or a list of validation messages. */
 @Serializable
-data class ApiErrorBody(val message: kotlinx.serialization.json.JsonElement? = null)
+data class ApiErrorBody(val message: kotlinx.serialization.json.JsonElement? = null, val error: kotlinx.serialization.json.JsonElement? = null)

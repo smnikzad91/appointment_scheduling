@@ -25,6 +25,9 @@ data class SalonCard(
     val hostSalonName: String? = null,
     val logoUrl: String? = null,
     val coverImageUrl: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val approximateLocation: Boolean = false,
     val rating: Double? = null,
     val ratingCount: Int = 0,
     val distanceKm: Double? = null,
@@ -152,6 +155,8 @@ data class CustomerBooking(
     val serviceLocation: ServiceLocation? = null,
     val visitAddress: String? = null,
     val services: List<BookingService> = emptyList(),
+    val stylistId: String? = null,
+    val reviews: List<BookingReview> = emptyList(),
 )
 
 @Serializable

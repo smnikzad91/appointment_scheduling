@@ -27,20 +27,29 @@ private val PERSIAN = mapOf(
     "Customers may only cancel their own appointment" to "فقط نوبت‌های خودتان را می‌توانید لغو کنید",
     "This appointment can no longer be cancelled" to "این نوبت دیگر قابل لغو نیست",
     "Database unavailable" to "سرویس موقتاً در دسترس نیست؛ چند دقیقه دیگر تلاش کنید",
+    "A review needs a rating or a comment" to "امتیاز بدهید یا چند کلمه بنویسید",
+    "Choose a day within the next two months" to "روزی در دو ماه آینده انتخاب کنید",
+    "This appointment has already been reviewed" to "برای این نوبت قبلاً نظر ثبت کرده‌اید",
+    "You can only review a completed appointment" to "فقط برای نوبت‌های انجام‌شده می‌توانید نظر بدهید",
+    "Review an independent stylist once, as their business" to "برای آرایشگر مستقل یک نظر کافی است",
+    "Waitlist entry not found" to "این درخواست انتظار دیگر وجود ندارد",
+    "Phone number already registered" to "با این شماره موبایل قبلاً حساب ساخته شده است؛ وارد شوید",
+    "Email already registered" to "با این ایمیل قبلاً حساب ساخته شده است",
 )
 
 fun persianError(error: Throwable, fallback: String, json: Json): String = when (error) {
     is IOException -> "اتصال به اینترنت برقرار نیست؛ دوباره تلاش کنید"
     is HttpException -> {
-        val message = runCatching {
-            val body = error.response()?.errorBody()?.string().orEmpty()
-            when (val m = json.decodeFromString(ApiErrorBody.serializer(), body).message) {
-                is JsonPrimitive -> m.content
-                is JsonArray -> (m.firstOrNull() as? JsonPrimitive)?.content
-                else -> null
-            }
-        }.getOrNull()
+        val body = runCatching { json.decodeFromString(ApiErrorBody.serializer(), error.response()?.errorBody()?.string().orEmpty()) }.getOrNull()
+        val message = when (val m = body?.message) {
+            is JsonPrimitive -> m.content
+            is JsonArray -> (m.firstOrNull() as? JsonPrimitive)?.content
+            else -> null
+        }
+        // apps/web's own routes already answer in Persian: {"error": "…"}
+        val webError = (body?.error as? JsonPrimitive)?.content?.takeIf { e -> e.any { it in '\u0600'..'\u06FF' } }
         when {
+            webError != null -> webError
             message != null && PERSIAN.containsKey(message) -> PERSIAN.getValue(message)
             error.code() == 429 -> "چند لحظه صبر کنید و دوباره تلاش کنید"
             else -> fallback
