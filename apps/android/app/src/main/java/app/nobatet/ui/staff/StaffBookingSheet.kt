@@ -88,7 +88,7 @@ fun StaffBookingSheet(
     var firstName by remember { mutableStateOf(editing?.customer?.firstName.orEmpty()) }
     var lastName by remember { mutableStateOf(editing?.customer?.lastName.orEmpty()) }
     var known by remember { mutableStateOf(false) }
-    var chosen by remember { mutableStateOf(editing?.services?.map { it.serviceId } ?: emptyList()) }
+    var chosen by remember { mutableStateOf<List<String>>(editing?.services?.map { it.serviceId } ?: emptyList()) }
     var date by remember { mutableStateOf(editStart?.toLocalDate() ?: today) }
     var minute by remember { mutableStateOf(editStart?.let { it.hour * 60 + it.minute }) }
     var notes by remember { mutableStateOf(editing?.notes.orEmpty()) }
