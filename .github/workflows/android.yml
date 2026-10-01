@@ -1,0 +1,32 @@
+# Builds the Android app (apps/android) on every push to its branch and keeps the APK as a
+# downloadable artifact (Actions → this run → Artifacts). No Android SDK on the server, so this is
+# where it's compiled. Debug build: install it to try it, don't publish it.
+name: Android
+
+on:
+  push:
+    branches: [android-app]
+    paths: ["apps/android/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+      - name: Build debug APK
+        run: gradle assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nobatet-debug-apk
+          path: apps/android/app/build/outputs/apk/debug/*.apk

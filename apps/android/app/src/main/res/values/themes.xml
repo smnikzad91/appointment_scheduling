@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window behind Compose (shown for a moment at start): the panel background. -->
+    <style name="Theme.Nobatet" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/app_bg</item>
+        <item name="android:statusBarColor">@color/app_bg</item>
+    </style>
+    <color name="app_bg">#F6EFE6</color>
+</resources>
