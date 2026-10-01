@@ -1,4 +1,12 @@
-import { customerBookingText, independentBookingText, independentReminderText, smsParts } from './sms.text.js';
+import { customerBookingText, independentBookingText, independentReminderText, servicesSummary, smsParts } from './sms.text.js';
+
+describe('servicesSummary', () => {
+  it('names the first service and counts the rest', () => {
+    expect(servicesSummary(['کوتاهی مو'])).toBe('کوتاهی مو');
+    expect(servicesSummary(['کوتاهی مو', 'براشینگ', 'رنگ مو'])).toBe('کوتاهی مو و ۲ خدمت دیگر');
+    expect(servicesSummary([])).toBe('');
+  });
+});
 
 describe('independentReminderText', () => {
   it('names the services and the first name, never the business', () => {

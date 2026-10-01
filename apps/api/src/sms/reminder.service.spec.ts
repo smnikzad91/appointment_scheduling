@@ -64,7 +64,7 @@ describe('ReminderService.tick', () => {
     ]);
     await service.tick(NOW);
     const customer = sms.send.mock.calls.map((c) => c[0]).find((m) => m.kind === 'reminder-customer');
-    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ کوتاهی مو، براشینگ با سارا');
+    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ کوتاهی مو و ۱ خدمت دیگر با سارا');
   });
 
   it('texts both the customer and the stylist, in salon-local time, then marks the booking done', async () => {
@@ -73,7 +73,7 @@ describe('ReminderService.tick', () => {
 
     const [customer, stylist] = sms.send.mock.calls.map((c) => c[0]);
     expect(customer).toMatchObject({ kind: 'reminder-customer', to: '09120000001', params: { time: '۱۴:۲۵', salon: 'سالن رز', stylist: 'سارا' } });
-    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ کوتاهی مو، براشینگ در سالن رز با سارا');
+    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ کوتاهی مو و ۱ خدمت دیگر در سالن رز با سارا');
     expect(stylist).toMatchObject({ kind: 'reminder-stylist', to: '09120000002', params: { customer: 'نگار رضایی', services: 'کوتاهی مو، براشینگ' } });
 
     const data = updates(prisma);

@@ -42,6 +42,13 @@ export function fitSms<T extends Record<string, string>>(p: T, trimmable: (keyof
 }
 
 /**
+ * Services for a one-segment customer text: the first by name, the rest counted —
+ * «کوتاهی مو»، «کوتاهی مو و ۲ خدمت دیگر». A list would get cut mid-word.
+ */
+export const servicesSummary = (names: string[]) =>
+  names.length <= 1 ? (names[0] ?? "") : `${names[0]} و ${faDigits(names.length - 1)} خدمت دیگر`;
+
+/**
  * The customer's 1-hour reminder at a salon: services, salon, the stylist's first name —
  * «یادآوری نوبتت: ساعت ۰۹:۰۰ کوتاهی مو در سالن رز با مریم». Services are cut first, then the salon.
  */
