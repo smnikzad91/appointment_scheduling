@@ -88,6 +88,7 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Phone number already registered": "با این شماره موبایل قبلاً حساب ساخته شده است؛ وارد شوید",
   "Email already registered": "با این ایمیل قبلاً حساب ساخته شده است",
   "Invalid credentials": "شماره موبایل/ایمیل یا رمز عبور درست نیست",
+  "Account not found": "این حساب دیگر وجود ندارد؛ دوباره وارد شوید",
   "Invalid or expired code": "کد وارد شده صحیح نیست یا منقضی شده است",
   "Insufficient role": "اجازه انجام این کار را ندارید",
   "Service not found": "این خدمت دیگر وجود ندارد",

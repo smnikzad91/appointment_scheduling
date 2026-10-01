@@ -44,6 +44,11 @@
      apps/web keeps NextAuth, but its credentials providers call apps/api's /auth/login
      (password) or /auth/otp/verify (SMS code)
      (src/lib/apiAuth.ts) to verify login rather than checking a DB directly.
+   - Android app → apps/web routes: the few features that live only in apps/web (image upload
+     `/api/upload`, private receipts, `/api/user/{profile,password,avatar,sms-preferences,tickets}`)
+     also accept `Authorization: Bearer <apps/api token>` (`apps/web/src/lib/requestSession.ts`, checked
+     via apps/api `GET /auth/me`, cached ≤ 1 min), so the app uses one token everywhere. `GET /auth/me`
+     returns the current account (role included) — the app reads it at start to pick the panel.
    - Data-access split: apps/api owns the salon/booking domain + auth. apps/web owns
      everything else (CMS, finance/wallet, tickets, user profile) via its own Prisma
      client, reading/writing the same Postgres DB directly — no HTTP hop for those.

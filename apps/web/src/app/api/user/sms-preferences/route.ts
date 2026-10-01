@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requestSession } from "@/lib/requestSession";
 import { prisma } from "@/lib/prisma";
 
 // The signed-in user's promotional-SMS choice (User.promoSmsOptOut): the "time to book again"
@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 // is on the page behind the link in those texts (/r/<code>).
 
 export async function GET() {
-  const session = await auth();
+  const session = await requestSession();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { promoSmsOptOut: true } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -15,7 +15,7 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth();
+  const session = await requestSession();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = (await req.json().catch(() => null)) as { promoSmsOptOut?: unknown } | null;
   if (typeof body?.promoSmsOptOut !== "boolean") return NextResponse.json({ error: "promoSmsOptOut must be a boolean" }, { status: 400 });

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requestSession } from "@/lib/requestSession";
 import { prisma } from "@/lib/prisma";
 import type { TicketStatus, TicketReplySender } from "@/types/content";
 
 export async function GET() {
-  const session = await auth();
+  const session = await requestSession();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const tickets = await prisma.ticket.findMany({
@@ -35,7 +35,7 @@ const MESSAGE_MIN = 20;
 const MESSAGE_MAX = 3000;
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
+  const session = await requestSession();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();

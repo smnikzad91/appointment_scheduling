@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requestSession } from "@/lib/requestSession";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
@@ -23,7 +23,7 @@ function sniffImage(b: Buffer): "jpg" | "png" | "gif" | "webp" | null {
 const ALLOWED_FOLDERS = ["tickets", "deposits", "salons", "stylists", "banners", "expenses", "salon-expenses"];
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
+  const session = await requestSession();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
  * even if the save it follows didn't go through.
  */
 export async function DELETE(req: NextRequest) {
-  const session = await auth();
+  const session = await requestSession();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = (await req.json().catch(() => null)) as { urls?: unknown } | null;

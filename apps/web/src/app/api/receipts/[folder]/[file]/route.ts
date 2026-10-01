@@ -1,8 +1,8 @@
 import { readFile } from "fs/promises";
 import { extname, join } from "path";
 import { NextResponse } from "next/server";
-import type { Session } from "next-auth";
-import { auth } from "@/auth";
+import type { RequestSession } from "@/lib/requestSession";
+import { requestSession } from "@/lib/requestSession";
 import { prisma } from "@/lib/prisma";
 import { uploadsDir } from "@/lib/privateUploads";
 import { usesSalonPanel } from "@/lib/roles";
@@ -22,7 +22,7 @@ const TYPES: Record<string, string> = {
 const NAME = /^[\w-]+\.(?:jpe?g|png|webp|gif)$/i;
 
 /** Whether the signed-in user owns an expense whose receipt is `url`. */
-const OWNS: Record<string, (user: Session["user"], url: string) => Promise<boolean>> = {
+const OWNS: Record<string, (user: RequestSession["user"], url: string) => Promise<boolean>> = {
   expenses: async (user, url) =>
     user.role === "STYLIST" &&
     !!(await prisma.stylistExpense.findFirst({ where: { receiptUrl: url, stylist: { userId: user.id } }, select: { id: true } })),
@@ -38,7 +38,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/receipts/[folde
   const owns = OWNS[folder];
   if (!owns || !NAME.test(file)) return notFound();
 
-  const session = await auth();
+  const session = await requestSession();
   if (!session?.user?.id || !(await owns(session.user, `/uploads/${folder}/${file}`))) return notFound();
 
   try {

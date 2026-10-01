@@ -324,20 +324,33 @@ export class AuthService {
     }
   }
 
+  /**
+   * The signed-in account as it is now (GET /auth/me): the Android app reads its role at start to
+   * pick the panel, and apps/web uses it to accept the app's token on its own routes. A token of an
+   * account that no longer exists is refused. `role` is the current one, which may differ from the
+   * token's (e.g. after an account was turned into an independent stylist) — sign in again then.
+   */
+  async me(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException("Account not found");
+    return this.publicUser(user);
+  }
+
+  private publicUser(user: User) {
+    return {
+      id: user.id,
+      phone: user.phone,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+      role: user.role,
+      createdAt: user.createdAt,
+    };
+  }
+
   private buildAuthResponse(user: User) {
     const payload: JwtPayload = { sub: user.id, role: user.role };
-    return {
-      accessToken: this.jwt.sign(payload),
-      user: {
-        id: user.id,
-        phone: user.phone,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        avatarUrl: user.avatarUrl,
-        role: user.role,
-        createdAt: user.createdAt,
-      },
-    };
+    return { accessToken: this.jwt.sign(payload), user: this.publicUser(user) };
   }
 }

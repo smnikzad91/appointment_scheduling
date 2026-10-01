@@ -1,4 +1,7 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import type { Request } from "express";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
+import type { JwtPayload } from "./auth.service.js";
 import { AuthService } from "./auth.service.js";
 import { RegisterDto } from "./dto/register.dto.js";
 import { RegisterSalonOwnerDto } from "./dto/register-salon-owner.dto.js";
@@ -18,6 +21,13 @@ export class AuthController {
   @Post("register-salon-owner")
   registerSalonOwner(@Body() dto: RegisterSalonOwnerDto) {
     return this.authService.registerSalonOwner(dto);
+  }
+
+  /** The signed-in account (current role included). */
+  @Get("me")
+  @UseGuards(JwtAuthGuard)
+  me(@Req() req: Request) {
+    return this.authService.me((req.user as JwtPayload).sub);
   }
 
   @Post("login")
