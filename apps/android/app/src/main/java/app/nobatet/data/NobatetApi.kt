@@ -85,7 +85,7 @@ interface NobatetApi {
     suspend fun leaveReview(@Path("id") appointmentId: String, @Body body: NewReviewRequest): BookingReview
 
     @PATCH("reviews/{id}")
-    suspend fun updateReview(@Path("id") reviewId: String, @Body body: ReviewPatch): BookingReview
+    suspend fun updateReview(@Path("id") reviewId: String, @Body body: kotlinx.serialization.json.JsonObject): BookingReview
 
     @DELETE("reviews/{id}")
     suspend fun deleteReview(@Path("id") reviewId: String): kotlinx.serialization.json.JsonObject
@@ -95,6 +95,77 @@ interface NobatetApi {
 
     @POST("notifications/read-all")
     suspend fun readAllNotifications(): kotlinx.serialization.json.JsonObject
+
+    // ── Stylist panel ────────────────────────────────────────────────────────────────────────
+
+    @GET("stylists/me")
+    suspend fun myStylist(): SelfStylist
+
+    @PATCH("stylists/me")
+    suspend fun updateMyStylist(@Body body: StylistProfilePatch): SelfStylist
+
+    @PATCH("stylists/me/services/{serviceId}")
+    suspend fun updateMyService(@Path("serviceId") serviceId: String, @Body body: kotlinx.serialization.json.JsonObject): kotlinx.serialization.json.JsonObject
+
+    @PUT("stylists/me/working-hours")
+    suspend fun setMyHours(@Body body: HoursBody): kotlinx.serialization.json.JsonArray
+
+    @GET("stylists/me/time-off")
+    suspend fun myTimeOff(): List<TimeOff>
+
+    @POST("stylists/me/time-off")
+    suspend fun addTimeOff(@Body body: NewTimeOff): TimeOff
+
+    @DELETE("stylists/me/time-off/{id}")
+    suspend fun deleteTimeOff(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    @GET("appointments/stylist/mine")
+    suspend fun myStylistAppointments(): List<StaffAppointment>
+
+    @POST("appointments/salon")
+    suspend fun staffBook(@Body body: StaffBookingRequest): StaffAppointment
+
+    @PATCH("appointments/{id}")
+    suspend fun editAppointment(@Path("id") id: String, @Body body: AppointmentPatch): StaffAppointment
+
+    @GET("appointments/salon/customer")
+    suspend fun lookupCustomer(@Query("phone") phone: String): CustomerLookup
+
+    @GET("stylists/me/earnings")
+    suspend fun myEarnings(@Query("from") from: String, @Query("to") to: String): StylistEarnings
+
+    @GET("stylists/me/expenses")
+    suspend fun myExpenses(@Query("from") from: String, @Query("to") to: String, @Query("page") page: Int, @Query("pageSize") pageSize: Int = 20): ExpensePage
+
+    @POST("stylists/me/expenses")
+    suspend fun addExpense(@Body body: ExpenseInput): StylistExpense
+
+    @PATCH("stylists/me/expenses/{id}")
+    suspend fun updateExpense(@Path("id") id: String, @Body body: ExpenseInput): StylistExpense
+
+    @DELETE("stylists/me/expenses/{id}")
+    suspend fun deleteExpense(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    @GET("stylists/me/gallery")
+    suspend fun myGallery(): List<GalleryItem>
+
+    @POST("stylists/me/gallery")
+    suspend fun addGalleryImage(@Body body: NewGalleryImage): GalleryItem
+
+    @DELETE("gallery/{id}")
+    suspend fun deleteGalleryImage(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    @GET("stylists/me/reviews")
+    suspend fun myReviews(): List<ModerationReview>
+
+    @PATCH("reviews/{id}/status")
+    suspend fun moderateReview(@Path("id") id: String, @Body body: ModerateRequest): ModerationReview
+
+    @GET("stylists/me/handle")
+    suspend fun myHandle(): HandleResponse
+
+    @PATCH("stylists/me/handle")
+    suspend fun setMyHandle(@Body body: HandleRequest): HandleResponse
 }
 
 /** apps/web's own routes (https://nobatet.app/api/…), with the same apps/api token. */
@@ -108,6 +179,11 @@ interface WebApi {
     @Multipart
     @POST("api/user/avatar")
     suspend fun uploadAvatar(@Part avatar: MultipartBody.Part): AvatarResponse
+
+    /** Image upload (public folders stylists/salons; private receipts expenses/salon-expenses). Field "file". */
+    @Multipart
+    @POST("api/upload")
+    suspend fun upload(@Query("folder") folder: String, @Part file: MultipartBody.Part): UploadResponse
 
     @GET("api/user/sms-preferences")
     suspend fun smsPreferences(): SmsPreferences

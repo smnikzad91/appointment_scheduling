@@ -59,7 +59,8 @@ class BookingsViewModel(private val container: AppContainer) : ViewModel() {
             try {
                 val text = comment?.trim()?.ifEmpty { null }
                 val saved = if (existingId == null) container.api.leaveReview(bookingId, app.nobatet.data.NewReviewRequest(target, rating, text))
-                else container.api.updateReview(existingId, app.nobatet.data.ReviewPatch(rating, text))
+                // nulls on purpose: removing the stars or the text clears it
+                else container.api.updateReview(existingId, app.nobatet.data.jsonBody("rating" to rating, "comment" to text))
                 _state.update { s ->
                     s.copy(bookings = s.bookings.map { b -> if (b.id == bookingId) b.copy(reviews = b.reviews.filterNot { it.id == saved.id || it.target == target } + saved) else b })
                 }

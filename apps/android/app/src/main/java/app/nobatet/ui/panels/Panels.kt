@@ -101,19 +101,6 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
     )
 }
 
-@Composable
-fun StylistPanel(user: ApiUser, onSignOut: () -> Unit) = PanelScaffold(
-    title = "${user.firstName} ${user.lastName}".trim(),
-    onSignOut = onSignOut,
-    tabs = listOf(
-        PanelTab("امروز", Icons.Outlined.Home) { Welcome(user.firstName, "نوبت‌های امروز و درآمد پیش‌بینی امروز اینجا نمایش داده می‌شوند.") },
-        PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth) { ComingSoon("نوبت‌ها") },
-        PanelTab("ساعات کاری", Icons.Outlined.Schedule) { ComingSoon("ساعات کاری") },
-        PanelTab("خدمات", Icons.Outlined.ContentCut) { ComingSoon("خدمات") },
-        PanelTab("پروفایل", Icons.Outlined.Person) { ComingSoon("پروفایل") },
-    ),
-)
-
 /** Salon owners, and independent stylists (their own one-person business): «ساعات کاری» instead of «آرایشگرها». */
 @Composable
 fun SalonPanel(user: ApiUser, independent: Boolean, onSignOut: () -> Unit) = PanelScaffold(

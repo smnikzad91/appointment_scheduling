@@ -74,7 +74,7 @@ fun StatusChip(status: AppointmentStatus) {
         AppointmentStatus.CONFIRMED -> "تایید شده" to c.confirmed
         AppointmentStatus.COMPLETED -> "انجام شده" to c.done
         AppointmentStatus.CANCELLED -> "لغو شده" to c.muted
-        AppointmentStatus.NO_SHOW -> "حاضر نشد" to c.danger
+        AppointmentStatus.NO_SHOW -> "عدم حضور" to c.danger
     }
     Text(
         label, color = color, style = MaterialTheme.typography.labelMedium,

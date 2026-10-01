@@ -48,3 +48,18 @@ data class OtpVerifyRequest(
 /** NestJS error body: `message` is a string or a list of validation messages. */
 @Serializable
 data class ApiErrorBody(val message: kotlinx.serialization.json.JsonElement? = null, val error: kotlinx.serialization.json.JsonElement? = null)
+
+/**
+ * A JSON body that keeps nulls (the app's Json drops them — fine for "send only what changed",
+ * wrong where null means "clear it": a service's own price, a review's stars).
+ */
+fun jsonBody(vararg fields: Pair<String, Any?>): kotlinx.serialization.json.JsonObject = kotlinx.serialization.json.JsonObject(
+    fields.associate { (k, v) ->
+        k to when (v) {
+            null -> kotlinx.serialization.json.JsonNull
+            is Number -> kotlinx.serialization.json.JsonPrimitive(v)
+            is Boolean -> kotlinx.serialization.json.JsonPrimitive(v)
+            else -> kotlinx.serialization.json.JsonPrimitive(v.toString())
+        }
+    },
+)
