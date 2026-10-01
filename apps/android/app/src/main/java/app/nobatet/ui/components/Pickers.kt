@@ -1,12 +1,21 @@
 package app.nobatet.ui.components
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -77,21 +86,75 @@ fun DayStrip(days: List<LocalDate>, selected: LocalDate?, today: LocalDate, onSe
     }
 }
 
-/** Times as chips (salon-local minutes); `highlighted` = free online slots shown as quick picks. */
-@OptIn(ExperimentalLayoutApi::class)
+private val PERIODS = listOf(
+    Triple("صبح", 0, 12 * 60),
+    Triple("ظهر", 12 * 60, 16 * 60),
+    Triple("عصر", 16 * 60, 20 * 60),
+    Triple("شب", 20 * 60, 24 * 60 + 1), // includes ۲۴:۰۰ as a closing time
+)
+
+/**
+ * Times grouped by part of day — صبح / ظهر / عصر / شب — four to a row (the web's TimePicker grid).
+ * [highlighted] are known-free times: green with a dot, and «همه ساعت‌ها / فقط خالی‌ها» appears;
+ * any time can still be picked (walk-ins).
+ */
 @Composable
 fun TimeChips(options: List<Int>, selected: Int?, highlighted: Set<Int> = emptySet(), onSelect: (Int) -> Unit) {
     val c = LocalAppColors.current
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        options.forEach { m ->
-            val on = m == selected
-            val bg = when { on -> c.accent; m in highlighted -> c.accentSoft; else -> c.card }
-            Text(
-                formatClock(m), color = if (on) c.accentInk else c.ink, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center,
-                modifier = Modifier.width(72.dp).clip(RoundedCornerShape(14.dp)).background(bg)
-                    .border(1.dp, if (on) c.accent else c.line, RoundedCornerShape(14.dp)).clickable { onSelect(m) }.padding(vertical = 9.dp),
-            )
+    var onlyFree by rememberSaveable { mutableStateOf(false) }
+    val all = if (selected == null || selected in options) options else (options + selected).sorted()
+    val shown = if (onlyFree && highlighted.isNotEmpty()) all.filter { it in highlighted } else all
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (highlighted.isNotEmpty()) {
+            Row(Modifier.clip(CircleShape).background(c.card).border(1.dp, c.line, CircleShape).padding(2.dp)) {
+                listOf(false to "همه ساعت‌ها", true to "فقط خالی‌ها").forEach { (v, label) ->
+                    val on = onlyFree == v
+                    Text(
+                        label, color = if (on) c.bg else c.muted, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clip(CircleShape).background(if (on) c.ink else Color.Transparent).clickable { onlyFree = v }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+            }
         }
+        PERIODS.forEach { (label, from, to) ->
+            val items = shown.filter { it in from until to }
+            if (items.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, color = c.muted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Box(Modifier.padding(start = 8.dp).weight(1f).height(1.dp).background(c.line))
+                }
+                items.chunked(4).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        (0 until 4).forEach { i ->
+                            val m = row.getOrNull(i)
+                            if (m == null) Spacer(Modifier.weight(1f)) else TimeChip(m, m == selected, m in highlighted, Modifier.weight(1f)) { onSelect(m) }
+                        }
+                    }
+                }
+            }
+        }
+        if (shown.isEmpty()) Text("ساعت خالی‌ای برای این روز نیست.", color = c.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
+    }
+}
+
+@Composable
+private fun TimeChip(m: Int, selected: Boolean, free: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val c = LocalAppColors.current
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier.height(44.dp).clip(shape)
+            .background(when { selected -> c.accent; free -> c.done.copy(alpha = 0.1f); else -> c.card })
+            .then(if (selected) Modifier else Modifier.border(1.dp, if (free) c.done.copy(alpha = 0.4f) else c.line, shape))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        // ۲۴:۰۰ reads as a closing time (formatClock would wrap it to ۰۰:۰۰)
+        Text(
+            if (m == 24 * 60) "۲۴:۰۰" else formatClock(m), fontSize = 15.sp, fontWeight = FontWeight.Bold,
+            color = when { selected -> c.accentInk; free -> c.ink; else -> c.muted },
+        )
+        if (free && !selected) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(6.dp).clip(CircleShape).background(c.done))
     }
 }
 

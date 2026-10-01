@@ -145,7 +145,7 @@ fun StaffBookingSheet(
                     }
                     Muted("روز")
                     DayStrip((0L until 30L).map { today.plusDays(it) }, date, today) { date = it }
-                    Muted("ساعت" + if (free.isNotEmpty()) " (ساعت‌های پررنگ برای رزرو آنلاین خالی‌اند)" else "")
+                    Muted(if (free.isNotEmpty()) "ساعت — ساعت‌های سبز خالی‌اند؛ برای مشتری حضوری هر ساعتی را می‌توانید انتخاب کنید." else "ساعت")
                     TimeChips(times, minute, free) { minute = it }
                     OutlinedTextField(notes, { notes = it.take(500) }, label = { Text("یادداشت (اختیاری)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
                     if (selected.isNotEmpty()) Muted("${formatDuration(selected.sumOf { it.duration })}، ${formatToman(selected.sumOf { it.price })}")
