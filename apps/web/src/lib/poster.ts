@@ -35,7 +35,7 @@ export interface PosterData {
 }
 
 const FONT = 'Vazirmatn, Tahoma, "Segoe UI", sans-serif';
-const BG = "#121319";
+const BG = "#19121a"; // the panels' dark background (warm plum), not the navy brand dark
 const INK = "#f8f1e9";
 const MUTED = "rgba(248, 241, 233, 0.66)";
 const ACCENT = "#f2876a";
@@ -234,8 +234,8 @@ export async function drawPoster(canvas: HTMLCanvasElement, format: PosterFormat
       drawCover(ctx, cover, 0, 0, W, H);
       ctx.restore();
       const shade = ctx.createLinearGradient(0, 0, 0, H);
-      shade.addColorStop(0, "rgba(18,19,25,0.55)");
-      shade.addColorStop(1, "rgba(18,19,25,0.92)");
+      shade.addColorStop(0, "rgba(25,18,26,0.55)");
+      shade.addColorStop(1, "rgba(25,18,26,0.92)");
       ctx.fillStyle = shade;
       ctx.fillRect(0, 0, W, H);
     }
@@ -302,8 +302,8 @@ export async function drawPoster(canvas: HTMLCanvasElement, format: PosterFormat
     ctx.fillRect(coverX, y, coverW, coverH);
   }
   const fade = ctx.createLinearGradient(0, y + coverH * 0.45, 0, y + coverH);
-  fade.addColorStop(0, "rgba(18,19,25,0)");
-  fade.addColorStop(1, "rgba(18,19,25,0.75)");
+  fade.addColorStop(0, "rgba(25,18,26,0)");
+  fade.addColorStop(1, "rgba(25,18,26,0.75)");
   ctx.fillStyle = fade;
   ctx.fillRect(coverX, y, coverW, coverH);
   ctx.restore();

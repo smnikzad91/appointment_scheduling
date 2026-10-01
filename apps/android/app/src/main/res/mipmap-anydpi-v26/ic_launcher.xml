@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The web's round logo (apps/web public/images/logo/logo_symbol_transparent.png) filling the
+     launcher's visible 72dp (74dp of the 108dp canvas, so a round mask shows only the logo). The
+     background is the same logo enlarged and blurred, so a squircle/square mask's corners carry the
+     logo's own copper and navy instead of a dark frame. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>
