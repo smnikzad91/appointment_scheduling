@@ -150,8 +150,11 @@ private class PosterPainter(context: Context, val format: PosterFormat, val d: P
 
     fun background() {
         c.drawColor(BG)
+        // Fade to the same colour at zero alpha, not to Color.TRANSPARENT (transparent *black*): Android
+        // blends gradients unpremultiplied, so fading to black greys the glow out and the navy
+        // background takes over; the browser's canvas keeps the colour all the way out.
         fun glow(x: Float, y: Float, r: Float, color: Int) {
-            val p = Paint().apply { shader = RadialGradient(x, y, r, color, Color.TRANSPARENT, Shader.TileMode.CLAMP) }
+            val p = Paint().apply { shader = RadialGradient(x, y, r, color, withAlpha(color, 0f), Shader.TileMode.CLAMP) }
             c.drawRect(0f, 0f, w, h, p)
         }
         glow(w * 0.9f, h * 0.05f, w * 0.8f, withAlpha(d.brandColor, 0.45f))
