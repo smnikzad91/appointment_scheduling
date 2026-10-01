@@ -48,7 +48,7 @@ fun AppRoot(container: AppContainer) {
                 Button(onClick = session::refresh) { Text("تلاش دوباره") }
             }
             is SessionState.SignedIn -> when (s.user.role) {
-                Role.CUSTOMER -> CustomerPanel(s.user, onSignOut = session::signOut)
+                Role.CUSTOMER -> CustomerPanel(container, s.user, onSignOut = session::signOut)
                 Role.STYLIST -> StylistPanel(s.user, onSignOut = session::signOut)
                 Role.SALON_OWNER -> SalonPanel(s.user, independent = false, onSignOut = session::signOut)
                 Role.INDEPENDENT_STYLIST -> SalonPanel(s.user, independent = true, onSignOut = session::signOut)

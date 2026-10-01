@@ -27,23 +27,46 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.nobatet.BuildConfig
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import app.nobatet.data.ApiUser
+import app.nobatet.data.AppContainer
+import app.nobatet.ui.customer.BookingsScreen
+import app.nobatet.ui.customer.DiscoverScreen
+import app.nobatet.ui.customer.SalonScreen
 import app.nobatet.ui.theme.LocalAppColors
 
 // The tabs and their labels mirror apps/web components/app/panels.tsx exactly.
 
+private const val TAB_BOOKINGS = 2
+
 @Composable
-fun CustomerPanel(user: ApiUser, onSignOut: () -> Unit) = PanelScaffold(
-    title = "نوبتت",
-    onSignOut = onSignOut,
-    tabs = listOf(
-        PanelTab("خانه", Icons.Outlined.Home) { Welcome(user.firstName, "نوبت‌های پیش‌رو و سالن‌های محبوب شما اینجا نمایش داده می‌شوند.") },
-        PanelTab("کشف سالن", Icons.Outlined.Search) { ComingSoon("کشف سالن") },
-        PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth) { ComingSoon("نوبت‌ها") },
-        PanelTab("کیف پول", Icons.Outlined.AccountBalanceWallet) { ComingSoon("کیف پول") },
-        PanelTab("پروفایل", Icons.Outlined.Person) { ComingSoon("پروفایل") },
-    ),
-)
+fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) {
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    // a salon page opened from search or a booking, shown over the panel
+    var openSlug by rememberSaveable { mutableStateOf<String?>(null) }
+    val slug = openSlug
+    if (slug != null) {
+        SalonScreen(container, slug, onBack = { openSlug = null }, onSeeBookings = { openSlug = null; tab = TAB_BOOKINGS })
+        return
+    }
+    PanelScaffold(
+        title = "نوبتت",
+        onSignOut = onSignOut,
+        selectedTab = tab,
+        onSelectTab = { tab = it },
+        tabs = listOf(
+            PanelTab("خانه", Icons.Outlined.Home) { Welcome(user.firstName, "نوبت‌های پیش‌رو و سالن‌های محبوب شما اینجا نمایش داده می‌شوند.") },
+            PanelTab("کشف سالن", Icons.Outlined.Search) { DiscoverScreen(container, onOpenSalon = { openSlug = it }) },
+            PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth) { BookingsScreen(container, onOpenSalon = { openSlug = it }) },
+            PanelTab("کیف پول", Icons.Outlined.AccountBalanceWallet) { ComingSoon("کیف پول") },
+            PanelTab("پروفایل", Icons.Outlined.Person) { ComingSoon("پروفایل") },
+        ),
+    )
+}
 
 @Composable
 fun StylistPanel(user: ApiUser, onSignOut: () -> Unit) = PanelScaffold(

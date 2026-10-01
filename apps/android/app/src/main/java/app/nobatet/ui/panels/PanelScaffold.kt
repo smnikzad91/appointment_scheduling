@@ -37,9 +37,12 @@ data class PanelTab(val label: String, val icon: ImageVector, val content: @Comp
 /** The panel shell, like the web's AppShell: app bar with the identity, content, bottom tab bar. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PanelScaffold(title: String, tabs: List<PanelTab>, onSignOut: () -> Unit) {
+fun PanelScaffold(title: String, tabs: List<PanelTab>, onSignOut: () -> Unit, selectedTab: Int? = null, onSelectTab: ((Int) -> Unit)? = null) {
     val colors = LocalAppColors.current
-    var selected by rememberSaveable { mutableIntStateOf(0) }
+    var ownSelected by rememberSaveable { mutableIntStateOf(0) }
+    // the panel may drive the tab itself (e.g. «مشاهده نوبت‌های من» after booking)
+    val selected = selectedTab ?: ownSelected
+    val select: (Int) -> Unit = onSelectTab ?: { ownSelected = it }
     Scaffold(
         containerColor = colors.bg,
         topBar = {
@@ -54,7 +57,7 @@ fun PanelScaffold(title: String, tabs: List<PanelTab>, onSignOut: () -> Unit) {
                 tabs.forEachIndexed { i, tab ->
                     NavigationBarItem(
                         selected = i == selected,
-                        onClick = { selected = i },
+                        onClick = { select(i) },
                         icon = { Icon(tab.icon, contentDescription = null) },
                         label = { Text(tab.label, style = MaterialTheme.typography.labelSmall) },
                         colors = NavigationBarItemDefaults.colors(
