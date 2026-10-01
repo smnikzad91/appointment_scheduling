@@ -74,6 +74,8 @@ class SalonSheetsState {
     /** Creating: choosing a stylist (salon) or booking for this stylist id. */
     var choosingStylist by mutableStateOf(false)
     var creatingFor by mutableStateOf<String?>(null)
+    /** A booking started by tapping the week view: that day and minute. */
+    var prefill by mutableStateOf<Pair<java.time.LocalDate, Int>?>(null)
     var busy by mutableStateOf(false)
 
     fun startCreate(data: SalonData) {
@@ -106,7 +108,7 @@ fun SalonSheets(container: AppContainer, data: SalonData, sheets: SalonSheetsSta
     }
     if (sheets.choosingStylist) {
         AppDialog(
-            onDismissRequest = { sheets.choosingStylist = false },
+            onDismissRequest = { sheets.choosingStylist = false; sheets.prefill = null },
             title = { Text("نوبت با کدام آرایشگر؟") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -116,15 +118,16 @@ fun SalonSheets(container: AppContainer, data: SalonData, sheets: SalonSheetsSta
                     if (data.stylists.none { it.active }) Muted("هنوز آرایشگر فعالی ندارید.")
                 }
             },
-            confirmButton = { AppTextButton(onClick = { sheets.choosingStylist = false }) { Text("انصراف") } },
+            confirmButton = { AppTextButton(onClick = { sheets.choosingStylist = false; sheets.prefill = null }) { Text("انصراف") } },
         )
     }
     val stylistId = sheets.editing?.stylistId ?: sheets.creatingFor
     if (stylistId != null) {
         StaffBookingSheet(
             container, salon.slug, salon.timezone, stylistId, data.bookableFor(stylistId), sheets.editing,
-            onDismiss = { sheets.editing = null; sheets.creatingFor = null },
-            onSaved = { sheets.editing = null; sheets.creatingFor = null; data.loadAppointments() },
+            onDismiss = { sheets.editing = null; sheets.creatingFor = null; sheets.prefill = null },
+            onSaved = { sheets.editing = null; sheets.creatingFor = null; sheets.prefill = null; data.loadAppointments() },
+            prefill = sheets.prefill,
         )
     }
 }
@@ -153,7 +156,11 @@ fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
             if (view == AppointmentsView.LIST && list != null) BucketChips(list, bucket) { bucket = it }
             when {
                 list == null -> Loading()
-                view == AppointmentsView.WEEK -> app.nobatet.ui.staff.WeekGrid(list, tz, today, Modifier.weight(1f)) { sheets.selected = it }
+                view == AppointmentsView.WEEK -> app.nobatet.ui.staff.WeekGrid(
+                    list, tz, today, Modifier.weight(1f),
+                    // with a stylist picked in the filter, book with them; otherwise ask who
+                    onCreateAt = { d, m -> sheets.prefill = d to m; stylistFilter?.let { sheets.creatingFor = it } ?: sheets.startCreate(data) },
+                ) { sheets.selected = it }
                 view == AppointmentsView.MONTH -> AppointmentMonthView(list, tz, today, Modifier.weight(1f), stylistName) { sheets.selected = it }
                 else -> {
                     val filtered = bucketOf(list, bucket)

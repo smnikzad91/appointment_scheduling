@@ -85,6 +85,8 @@ class StaffActions(
     var selected by mutableStateOf<StaffAppointment?>(null)
     var editing by mutableStateOf<StaffAppointment?>(null)
     var creating by mutableStateOf(false)
+    /** A booking started by tapping the week view: that day and minute. */
+    var prefill by mutableStateOf<Pair<LocalDate, Int>?>(null)
     var busy by mutableStateOf(false)
 }
 
@@ -122,8 +124,9 @@ fun StaffSheets(actions: StaffActions, stylist: SelfStylist) {
     if (actions.creating || actions.editing != null) {
         StaffBookingSheet(
             actions.container, stylist.salon.slug, tz, stylist.id, stylist.bookable(), actions.editing,
-            onDismiss = { actions.creating = false; actions.editing = null },
-            onSaved = { actions.creating = false; actions.editing = null; actions.reload() },
+            onDismiss = { actions.creating = false; actions.editing = null; actions.prefill = null },
+            onSaved = { actions.creating = false; actions.editing = null; actions.prefill = null; actions.reload() },
+            prefill = actions.prefill,
         )
     }
 }
@@ -144,7 +147,9 @@ fun StylistAppointmentsScreen(stylist: SelfStylist, appointments: List<StaffAppo
             if (view == AppointmentsView.LIST && list != null) BucketChips(list, bucket) { bucket = it }
             when {
                 list == null -> app.nobatet.ui.components.Loading()
-                view == AppointmentsView.WEEK -> app.nobatet.ui.staff.WeekGrid(list, tz, today, Modifier.weight(1f)) { actions.selected = it }
+                view == AppointmentsView.WEEK -> app.nobatet.ui.staff.WeekGrid(
+                    list, tz, today, Modifier.weight(1f), onCreateAt = { d, m -> actions.prefill = d to m; actions.creating = true },
+                ) { actions.selected = it }
                 view == AppointmentsView.MONTH -> AppointmentMonthView(list, tz, today, Modifier.weight(1f)) { actions.selected = it }
                 else -> {
                     val filtered = bucketOf(list, bucket)

@@ -55,6 +55,7 @@ import app.nobatet.util.salonWallTimeToInstant
 import app.nobatet.util.toSalonDateTime
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
 
 /** A service the booking can include, with this stylist's price and duration. */
@@ -76,6 +77,8 @@ fun StaffBookingSheet(
     editing: StaffAppointment?,
     onDismiss: () -> Unit,
     onSaved: () -> Unit,
+    /** A new booking started from the week view: that day and minute. */
+    prefill: Pair<LocalDate, Int>? = null,
 ) {
     val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
@@ -87,8 +90,8 @@ fun StaffBookingSheet(
     var lastName by remember { mutableStateOf(editing?.customer?.lastName.orEmpty()) }
     var known by remember { mutableStateOf(false) }
     var chosen by remember { mutableStateOf<List<String>>(editing?.services?.map { it.serviceId } ?: emptyList()) }
-    var date by remember { mutableStateOf(editStart?.toLocalDate() ?: today) }
-    var minute by remember { mutableStateOf(editStart?.let { it.hour * 60 + it.minute }) }
+    var date by remember { mutableStateOf(editStart?.toLocalDate() ?: prefill?.first ?: today) }
+    var minute by remember { mutableStateOf(editStart?.let { it.hour * 60 + it.minute } ?: prefill?.second) }
     var notes by remember { mutableStateOf(editing?.notes.orEmpty()) }
     var free by remember { mutableStateOf(emptySet<Int>()) }
     var saving by remember { mutableStateOf(false) }

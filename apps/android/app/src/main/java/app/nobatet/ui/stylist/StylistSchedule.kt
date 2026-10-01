@@ -1,5 +1,13 @@
 package app.nobatet.ui.stylist
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import app.nobatet.ui.components.AppSwitch
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppTextField
@@ -88,10 +96,16 @@ fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChang
                             AppTextButton(onClick = { picking = i to true }) { Text(formatClock(h.start)) }
                             Text("تا", color = c.muted)
                             AppTextButton(onClick = { picking = i to false }) { Text(formatClock(h.end)) }
+                            // the web's copy button: this day's hours onto every open day
+                            IconButton(
+                                onClick = { hours.indices.forEach { j -> if (hours[j].open) hours[j] = hours[j].copy(start = h.start, end = h.end) } },
+                                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(c.card2),
+                            ) { Icon(Icons.Outlined.ContentCopy, contentDescription = "اعمال ساعت $name به همه روزهای کاری", tint = c.muted, modifier = Modifier.size(18.dp)) }
                         } else Muted("تعطیل")
                         AppSwitch(checked = h.open, onCheckedChange = { hours[i] = h.copy(open = it) })
                     }
                 }
+                Muted("با دکمه کپی، ساعت همان روز روی همه روزهای کاری اعمال می‌شود.")
                 PrimaryButton(if (saving) "در حال ذخیره..." else "ذخیره ساعات کاری", enabled = !saving) {
                     val bad = hours.indexOfFirst { it.open && it.start >= it.end }
                     if (bad >= 0) {

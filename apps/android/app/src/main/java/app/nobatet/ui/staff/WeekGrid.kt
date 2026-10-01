@@ -1,5 +1,9 @@
 package app.nobatet.ui.staff
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,7 +56,15 @@ private val DAY = 72.dp
  * their salon-local time, overlapping bookings side by side, a line for now.
  */
 @Composable
-fun WeekGrid(appointments: List<StaffAppointment>, tz: String, today: LocalDate, modifier: Modifier = Modifier, onOpen: (StaffAppointment) -> Unit) {
+fun WeekGrid(
+    appointments: List<StaffAppointment>,
+    tz: String,
+    today: LocalDate,
+    modifier: Modifier = Modifier,
+    /** Tapping an empty spot (today … 30 days ahead) starts a booking there, rounded to 15 minutes. */
+    onCreateAt: ((LocalDate, Int) -> Unit)? = null,
+    onOpen: (StaffAppointment) -> Unit,
+) {
     val c = LocalAppColors.current
     var offset by rememberSaveable { mutableIntStateOf(0) }
     val saturday = today.minusDays(((today.dayOfWeek.value - DayOfWeek.SATURDAY.value + 7) % 7).toLong()).plusWeeks(offset.toLong())
@@ -63,6 +75,8 @@ fun WeekGrid(appointments: List<StaffAppointment>, tz: String, today: LocalDate,
     val shown = appointments.filter { it.status != AppointmentStatus.CANCELLED }
     Column(modifier.fillMaxSize()) {
         Box(Modifier.padding(horizontal = 12.dp)) { MonthSwitcher(label, onPrev = { offset-- }, onNext = { offset++ }, canNext = offset < 26) }
+        if (onCreateAt != null) Text("برای ثبت نوبت، روی یک ساعت خالی بزنید.", color = c.muted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        val hourPx = with(LocalDensity.current) { HOUR.toPx() }
         Row(Modifier.fillMaxSize().horizontalScroll(rememberScrollState())) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 // header
@@ -80,7 +94,19 @@ fun WeekGrid(appointments: List<StaffAppointment>, tz: String, today: LocalDate,
                         (FIRST_HOUR until LAST_HOUR).forEach { h -> Text(formatClock(h * 60), color = c.muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.height(HOUR)) }
                     }
                     days.forEach { d ->
-                        Box(Modifier.width(DAY).height(HOUR * (LAST_HOUR - FIRST_HOUR)).border(0.5.dp, c.line)) {
+                        val bookable = onCreateAt != null && !d.isBefore(today) && !d.isAfter(today.plusDays(30))
+                        Box(
+                            Modifier.width(DAY).height(HOUR * (LAST_HOUR - FIRST_HOUR)).border(0.5.dp, c.line)
+                                .then(if (bookable) Modifier.background(c.card.copy(alpha = 0.5f)) else Modifier)
+                                .then(
+                                    if (bookable) Modifier.pointerInput(d) {
+                                        detectTapGestures { pos ->
+                                            val minute = minOf(23 * 60 + 45, FIRST_HOUR * 60 + ((pos.y / hourPx) * 60 / 15).toInt() * 15)
+                                            onCreateAt?.invoke(d, minute)
+                                        }
+                                    } else Modifier,
+                                ),
+                        ) {
                             (1 until LAST_HOUR - FIRST_HOUR).forEach { i -> Box(Modifier.offset(y = HOUR * i).fillMaxWidth().height(0.5.dp).background(c.line)) }
                             val dayItems = shown.map { it to Instant.parse(it.startAt).toSalonDateTime(tz) }.filter { it.second.toLocalDate() == d }.sortedBy { it.second }
                             // lanes for overlapping bookings
