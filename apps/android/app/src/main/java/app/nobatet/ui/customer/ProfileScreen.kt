@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.Toasts
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -19,8 +20,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -66,7 +65,6 @@ fun ProfileScreen(container: AppContainer, user: ApiUser, onOpenSupport: () -> U
     val c = LocalAppColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
     var profile by remember { mutableStateOf<Profile?>(null) }
     var avatar by remember { mutableStateOf(user.avatarUrl) }
     var uploading by remember { mutableStateOf(false) }
@@ -89,9 +87,9 @@ fun ProfileScreen(container: AppContainer, user: ApiUser, onOpenSupport: () -> U
                 val bytes = withContext(Dispatchers.IO) { compressForUpload(context, uri, maxEdge = 1024, maxBytes = 1_800_000) }
                 val part = MultipartBody.Part.createFormData("avatar", "avatar.jpg", bytes.toRequestBody("image/jpeg".toMediaType()))
                 avatar = container.web.uploadAvatar(part).avatar
-                snackbar.showSnackbar("عکس پروفایل به‌روز شد")
+                Toasts.success("عکس پروفایل به‌روز شد")
             } catch (e: Exception) {
-                snackbar.showSnackbar(persianError(e, "آپلود عکس انجام نشد", container.json))
+                Toasts.error(persianError(e, "آپلود عکس انجام نشد", container.json))
             } finally {
                 uploading = false
             }
@@ -126,7 +124,7 @@ fun ProfileScreen(container: AppContainer, user: ApiUser, onOpenSupport: () -> U
                             promoOn = on
                             scope.launch {
                                 runCatching { container.web.setSmsPreferences(SmsPreferences(promoSmsOptOut = !on)) }
-                                    .onFailure { promoOn = !on; snackbar.showSnackbar("ذخیره تنظیم پیامک انجام نشد") }
+                                    .onFailure { promoOn = !on; Toasts.error("ذخیره تنظیم پیامک انجام نشد") }
                             }
                         },
                     )
@@ -147,17 +145,17 @@ fun ProfileScreen(container: AppContainer, user: ApiUser, onOpenSupport: () -> U
                 }
                 PrimaryButton(if (savingPassword) "در حال ذخیره..." else "ذخیره رمز عبور", enabled = !savingPassword) {
                     when {
-                        current.isEmpty() || next.isEmpty() -> scope.launch { snackbar.showSnackbar("رمز فعلی و رمز جدید را وارد کنید") }
-                        next.length < 8 -> scope.launch { snackbar.showSnackbar("رمز عبور باید حداقل ۸ کاراکتر باشد") }
-                        next != repeat -> scope.launch { snackbar.showSnackbar("تکرار رمز عبور یکسان نیست") }
+                        current.isEmpty() || next.isEmpty() -> scope.launch { Toasts.error("رمز فعلی و رمز جدید را وارد کنید") }
+                        next.length < 8 -> scope.launch { Toasts.error("رمز عبور باید حداقل ۸ کاراکتر باشد") }
+                        next != repeat -> scope.launch { Toasts.error("تکرار رمز عبور یکسان نیست") }
                         else -> scope.launch {
                             savingPassword = true
                             try {
                                 container.web.changePassword(PasswordChange(current, next))
                                 current = ""; next = ""; repeat = ""
-                                snackbar.showSnackbar("رمز عبور تغییر کرد")
+                                Toasts.success("رمز عبور تغییر کرد")
                             } catch (e: Exception) {
-                                snackbar.showSnackbar(persianError(e, "تغییر رمز عبور انجام نشد", container.json))
+                                Toasts.error(persianError(e, "تغییر رمز عبور انجام نشد", container.json))
                             } finally {
                                 savingPassword = false
                             }
@@ -170,9 +168,8 @@ fun ProfileScreen(container: AppContainer, user: ApiUser, onOpenSupport: () -> U
                 SectionTitle("پشتیبانی")
                 Muted("سوال یا مشکلی دارید؟ تیکت بفرستید.")
             }
-            app.nobatet.ui.components.AccountLinks(container, "customer", snackbar)
+            app.nobatet.ui.components.AccountLinks(container, "customer")
             TextButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("خروج از حساب", color = c.danger) }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 }

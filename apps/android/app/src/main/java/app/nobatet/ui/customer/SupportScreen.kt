@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.Toasts
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,8 +24,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -69,7 +68,6 @@ fun SupportScreen(container: AppContainer, onBack: () -> Unit) {
     // null = list, "" = new ticket, else a ticket id
     var open by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
-    val snackbar = remember { SnackbarHostState() }
     BackHandler { if (open != null) open = null else onBack() }
 
     Scaffold(
@@ -81,13 +79,12 @@ fun SupportScreen(container: AppContainer, onBack: () -> Unit) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = c.bg, titleContentColor = c.ink, navigationIconContentColor = c.ink),
             )
         },
-        snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (val id = open) {
                 null -> TicketList(container, reload, onNew = { open = "" }, onOpen = { open = it })
-                "" -> NewTicketForm(container, snackbar) { newId -> reload++; open = newId }
-                else -> TicketThread(container, id, snackbar)
+                "" -> NewTicketForm(container) { newId -> reload++; open = newId }
+                else -> TicketThread(container, id)
             }
         }
     }
@@ -120,7 +117,7 @@ private fun TicketList(container: AppContainer, reload: Int, onNew: () -> Unit, 
 }
 
 @Composable
-private fun NewTicketForm(container: AppContainer, snackbar: SnackbarHostState, onCreated: (String) -> Unit) {
+private fun NewTicketForm(container: AppContainer, onCreated: (String) -> Unit) {
     var subject by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
@@ -130,14 +127,14 @@ private fun NewTicketForm(container: AppContainer, snackbar: SnackbarHostState, 
         OutlinedTextField(message, { if (it.length <= 3000) message = it }, label = { Text("متن پیام") }, minLines = 6, modifier = Modifier.fillMaxWidth())
         PrimaryButton(if (sending) "در حال ارسال..." else "ارسال تیکت", enabled = !sending) {
             when {
-                subject.trim().length < 5 -> scope.launch { snackbar.showSnackbar("موضوع باید حداقل ۵ کاراکتر باشد") }
-                message.trim().length < 20 -> scope.launch { snackbar.showSnackbar("متن پیام باید حداقل ۲۰ کاراکتر باشد") }
+                subject.trim().length < 5 -> scope.launch { Toasts.error("موضوع باید حداقل ۵ کاراکتر باشد") }
+                message.trim().length < 20 -> scope.launch { Toasts.error("متن پیام باید حداقل ۲۰ کاراکتر باشد") }
                 else -> scope.launch {
                     sending = true
                     try {
                         onCreated(container.web.createTicket(NewTicket(subject.trim(), message.trim())).id)
                     } catch (e: Exception) {
-                        snackbar.showSnackbar(persianError(e, "ارسال تیکت انجام نشد", container.json))
+                        Toasts.error(persianError(e, "ارسال تیکت انجام نشد", container.json))
                     } finally {
                         sending = false
                     }
@@ -148,7 +145,7 @@ private fun NewTicketForm(container: AppContainer, snackbar: SnackbarHostState, 
 }
 
 @Composable
-private fun TicketThread(container: AppContainer, id: String, snackbar: SnackbarHostState) {
+private fun TicketThread(container: AppContainer, id: String) {
     val c = LocalAppColors.current
     var ticket by remember { mutableStateOf<TicketDetail?>(null) }
     var reply by remember { mutableStateOf("") }
@@ -171,12 +168,12 @@ private fun TicketThread(container: AppContainer, id: String, snackbar: Snackbar
                 OutlinedTextField(reply, { if (it.length <= 3000) reply = it }, placeholder = { Text("پاسخ شما") }, minLines = 2, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PrimaryButton("ارسال پاسخ", Modifier.weight(1f), enabled = !busy) {
-                        if (reply.trim().length < 5) scope.launch { snackbar.showSnackbar("پاسخ باید حداقل ۵ کاراکتر باشد") }
+                        if (reply.trim().length < 5) scope.launch { Toasts.error("پاسخ باید حداقل ۵ کاراکتر باشد") }
                         else scope.launch {
                             busy = true
                             runCatching { container.web.replyTicket(id, TicketMessage(reply.trim())) }
                                 .onSuccess { reply = ""; reload++ }
-                                .onFailure { snackbar.showSnackbar(persianError(it, "ارسال پاسخ انجام نشد", container.json)) }
+                                .onFailure { Toasts.error(persianError(it, "ارسال پاسخ انجام نشد", container.json)) }
                             busy = false
                         }
                     }

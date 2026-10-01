@@ -1,5 +1,6 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.Toasts
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,8 +30,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -104,7 +103,6 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
     val c = LocalAppColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
     val provinces = rememberProvinces(container)
     val indie = salon.independent
     var name by remember(salon) { mutableStateOf(salon.name) }
@@ -128,7 +126,7 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
             val url = uploadPhoto(container, context, uri, "salons")
             data.salon = container.api.updateMySalon(if (field == "logo") SalonPatch(logoUrl = url) else SalonPatch(coverImageUrl = url))
         } catch (e: Exception) {
-            snackbar.showSnackbar(persianError(e, "آپلود عکس انجام نشد", container.json))
+            Toasts.error(persianError(e, "آپلود عکس انجام نشد", container.json))
         } finally {
             busy = null
         }
@@ -137,7 +135,7 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
     val pickCover = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { it?.let { u -> upload("cover", u) } }
     val image = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        if (granted.values.any { it }) scope.launch { currentLocation(context)?.let { pin = it.latitude to it.longitude } ?: snackbar.showSnackbar("موقعیت شما پیدا نشد") }
+        if (granted.values.any { it }) scope.launch { currentLocation(context)?.let { pin = it.latitude to it.longitude } ?: Toasts.error("موقعیت شما پیدا نشد") }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -189,7 +187,7 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                     PinMap(pin, provinces.firstOrNull { it.name == province }?.center) { pin = it }
                     TextButton(onClick = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                            scope.launch { currentLocation(context)?.let { pin = it.latitude to it.longitude } ?: snackbar.showSnackbar("موقعیت شما پیدا نشد") }
+                            scope.launch { currentLocation(context)?.let { pin = it.latitude to it.longitude } ?: Toasts.error("موقعیت شما پیدا نشد") }
                         } else permission.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
                     }) { Text("موقعیت من") }
                 }
@@ -206,8 +204,8 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                 }
                 PrimaryButton(if (busy == "save") "در حال ذخیره..." else "ذخیره تغییرات", enabled = busy == null) {
                     when {
-                        name.isBlank() -> scope.launch { snackbar.showSnackbar("نام را وارد کنید") }
-                        indie && places.isEmpty() -> scope.launch { snackbar.showSnackbar("محل ارائه خدمات را انتخاب کنید") }
+                        name.isBlank() -> scope.launch { Toasts.error("نام را وارد کنید") }
+                        indie && places.isEmpty() -> scope.launch { Toasts.error("محل ارائه خدمات را انتخاب کنید") }
                         else -> scope.launch {
                             busy = "save"
                             runCatching {
@@ -220,17 +218,16 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                                         hostSalonName = if (indie) host.trim() else null, serviceArea = if (indie) area.trim() else null,
                                     ),
                                 )
-                            }.onSuccess { data.salon = it; snackbar.showSnackbar("تغییرات ذخیره شد") }
-                                .onFailure { snackbar.showSnackbar(persianError(it, "ذخیره تغییرات انجام نشد", container.json)) }
+                            }.onSuccess { data.salon = it; Toasts.success("تغییرات ذخیره شد") }
+                                .onFailure { Toasts.error(persianError(it, "ذخیره تغییرات انجام نشد", container.json)) }
                             busy = null
                         }
                     }
                 }
-                app.nobatet.ui.components.PasswordChangeCard(container, snackbar)
-                app.nobatet.ui.components.AccountLinks(container, if (indie) "independent" else "owner", snackbar)
+                app.nobatet.ui.components.PasswordChangeCard(container)
+                app.nobatet.ui.components.AccountLinks(container, if (indie) "independent" else "owner")
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 
     picking?.let { what ->

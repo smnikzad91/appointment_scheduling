@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,7 +31,7 @@ import kotlinx.coroutines.launch
 
 /** Change the password (apps/web /api/user/password, same token) — for every role. */
 @Composable
-fun PasswordChangeCard(container: AppContainer, snackbar: SnackbarHostState) {
+fun PasswordChangeCard(container: AppContainer) {
     val scope = rememberCoroutineScope()
     var current by remember { mutableStateOf("") }
     var next by remember { mutableStateOf("") }
@@ -58,11 +57,11 @@ fun PasswordChangeCard(container: AppContainer, snackbar: SnackbarHostState) {
                 else -> null
             }
             scope.launch {
-                if (problem != null) return@launch snackbar.showSnackbar(problem).let { }
+                if (problem != null) return@launch Toasts.error(problem).let { }
                 saving = true
                 runCatching { container.web.changePassword(PasswordChange(current, next)) }
-                    .onSuccess { current = ""; next = ""; repeat = ""; snackbar.showSnackbar("رمز عبور تغییر کرد") }
-                    .onFailure { snackbar.showSnackbar(persianError(it, "تغییر رمز عبور انجام نشد", container.json)) }
+                    .onSuccess { current = ""; next = ""; repeat = ""; Toasts.success("رمز عبور تغییر کرد") }
+                    .onFailure { Toasts.error(persianError(it, "تغییر رمز عبور انجام نشد", container.json)) }
                 saving = false
             }
         }
@@ -74,7 +73,7 @@ fun PasswordChangeCard(container: AppContainer, snackbar: SnackbarHostState) {
  * to support as a ticket (handled by the platform admin).
  */
 @Composable
-fun AccountLinks(container: AppContainer, helpRole: String, snackbar: SnackbarHostState) {
+fun AccountLinks(container: AppContainer, helpRole: String) {
     val c = LocalAppColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -95,8 +94,8 @@ fun AccountLinks(container: AppContainer, helpRole: String, snackbar: SnackbarHo
                 scope.launch {
                     runCatching {
                         container.web.createTicket(NewTicket("درخواست حذف حساب", "لطفاً حساب کاربری من و اطلاعات مرتبط با آن را حذف کنید. (ارسال‌شده از اپ اندروید)"))
-                    }.onSuccess { snackbar.showSnackbar("درخواست حذف حساب ثبت شد؛ پشتیبانی پیگیری می‌کند") }
-                        .onFailure { snackbar.showSnackbar(persianError(it, "ثبت درخواست انجام نشد", container.json)) }
+                    }.onSuccess { Toasts.success("درخواست حذف حساب ثبت شد؛ پشتیبانی پیگیری می‌کند") }
+                        .onFailure { Toasts.error(persianError(it, "ثبت درخواست انجام نشد", container.json)) }
                 }
             }) { Text("ارسال درخواست", color = c.danger) }
         },

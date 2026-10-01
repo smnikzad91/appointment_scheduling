@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.Toasts
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -8,8 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
@@ -79,21 +78,20 @@ fun DiscoverScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
     val c = LocalAppColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
     fun locate() {
         vm.setLocating(true)
         scope.launch {
             val loc = currentLocation(context)
             if (loc == null) {
                 vm.setLocating(false)
-                snackbar.showSnackbar("موقعیت شما پیدا نشد؛ مکان‌یاب گوشی را روشن کنید")
+                Toasts.error("موقعیت شما پیدا نشد؛ مکان‌یاب گوشی را روشن کنید")
             } else {
                 vm.setNear(loc.latitude, loc.longitude)
             }
         }
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        if (granted.values.any { it }) locate() else scope.launch { snackbar.showSnackbar("برای «نزدیک من» اجازه دسترسی به موقعیت لازم است") }
+        if (granted.values.any { it }) locate() else scope.launch { Toasts.error("برای «نزدیک من» اجازه دسترسی به موقعیت لازم است") }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -142,7 +140,6 @@ fun DiscoverScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
             }
         }
     }
-    SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 }
 

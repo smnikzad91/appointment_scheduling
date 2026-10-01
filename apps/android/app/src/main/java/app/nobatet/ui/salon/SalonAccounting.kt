@@ -1,5 +1,6 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.Toasts
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -23,7 +24,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -84,7 +84,7 @@ private fun Money(label: String, amount: Int, accent: Boolean = false) {
 
 /** «حسابداری»: a Jalali month's income, stylist balances and payouts (salon), expenses, services. */
 @Composable
-fun SalonAccountingPage(container: AppContainer, data: SalonData, snackbar: SnackbarHostState) {
+fun SalonAccountingPage(container: AppContainer, data: SalonData) {
     val salon = data.salon ?: return
     val c = LocalAppColors.current
     val tz = salon.timezone
@@ -159,7 +159,7 @@ fun SalonAccountingPage(container: AppContainer, data: SalonData, snackbar: Snac
                             Row { Text(p.stylist?.displayName ?: "", color = c.ink, modifier = Modifier.weight(1f)); Text(formatToman(p.amountToman), color = c.ink) }
                             Muted((PAYOUT_METHOD_LABEL[p.method] ?: p.method) + "، " + Instant.parse(p.paidAt).toSalonDateTime(tz).toLocalDate().persianLabel() + (p.note?.let { "، $it" } ?: ""))
                             TextButton(onClick = {
-                                scope.launch { runCatching { container.api.deletePayout(p.id) }.onSuccess { reload++ }.onFailure { snackbar.showSnackbar(persianError(it, "حذف پرداخت انجام نشد", container.json)) } }
+                                scope.launch { runCatching { container.api.deletePayout(p.id) }.onSuccess { reload++ }.onFailure { Toasts.error(persianError(it, "حذف پرداخت انجام نشد", container.json)) } }
                             }) { Text("حذف پرداخت", color = c.danger) }
                         }
                     }
@@ -185,11 +185,11 @@ fun SalonAccountingPage(container: AppContainer, data: SalonData, snackbar: Snac
         }
     }
 
-    charging?.let { item -> ChargeDialog(container, item, onDismiss = { charging = null }) { charging = null; reload++; scope.launch { snackbar.showSnackbar("مبلغ اصلاح شد") } } }
-    paying?.let { st -> PayoutDialog(container, st, onDismiss = { paying = null }) { paying = null; reload++; scope.launch { snackbar.showSnackbar("پرداخت ثبت شد") } } }
+    charging?.let { item -> ChargeDialog(container, item, onDismiss = { charging = null }) { charging = null; reload++; scope.launch { Toasts.success("مبلغ اصلاح شد") } } }
+    paying?.let { st -> PayoutDialog(container, st, onDismiss = { paying = null }) { paying = null; reload++; scope.launch { Toasts.success("پرداخت ثبت شد") } } }
     if (addingExpense || expense != null) {
         SalonExpenseDialog(container, tz, expense, onDismiss = { addingExpense = false; expense = null }) { msg ->
-            addingExpense = false; expense = null; reload++; scope.launch { snackbar.showSnackbar(msg) }
+            addingExpense = false; expense = null; reload++; scope.launch { Toasts.success(msg) }
         }
     }
 }

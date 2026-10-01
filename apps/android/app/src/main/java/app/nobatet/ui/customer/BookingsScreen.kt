@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,8 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -61,8 +60,6 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onReb
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var confirm by remember { mutableStateOf<CustomerBooking?>(null) }
     var reviewing by remember { mutableStateOf<Pair<CustomerBooking, ReviewTarget>?>(null) }
-    val snackbar = remember { SnackbarHostState() }
-    LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it) } }
     // fresh list every time the tab is shown (a booking may have just been made or confirmed)
     LaunchedEffect(Unit) { vm.load() }
 
@@ -89,7 +86,6 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onReb
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 
     reviewing?.let { (b, target) ->

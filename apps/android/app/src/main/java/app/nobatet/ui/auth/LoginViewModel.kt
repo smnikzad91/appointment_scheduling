@@ -46,7 +46,7 @@ class LoginViewModel(private val container: AppContainer, private val onSignedIn
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state
 
-    /** One-off error messages, shown as a toast-like snackbar at the top (like the web's toastError). */
+    /** One-off error messages, shown as error toasts (the web's toastError). */
     private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val errors: SharedFlow<String> = _errors
 

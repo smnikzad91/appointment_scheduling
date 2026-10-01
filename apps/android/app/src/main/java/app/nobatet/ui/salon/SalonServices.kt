@@ -1,5 +1,6 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -19,8 +20,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -58,7 +57,6 @@ import kotlinx.coroutines.launch
 fun SalonServicesScreen(container: AppContainer, data: SalonData) {
     val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
     var categories by remember { mutableStateOf<List<OwnerCategory>>(emptyList()) }
     var editing by remember { mutableStateOf<OwnerService?>(null) }
     var adding by remember { mutableStateOf(false) }
@@ -81,7 +79,7 @@ fun SalonServicesScreen(container: AppContainer, data: SalonData) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                         SectionTitle(cat?.name ?: "بدون دسته‌بندی", Modifier.weight(1f))
                         if (cat != null && services.isEmpty()) TextButton(onClick = {
-                            scope.launch { runCatching { container.api.deleteCategory(cat.id) }.onSuccess { categories = categories - cat }.onFailure { snackbar.showSnackbar(persianError(it, "حذف دسته‌بندی انجام نشد", container.json)) } }
+                            scope.launch { runCatching { container.api.deleteCategory(cat.id) }.onSuccess { categories = categories - cat }.onFailure { Toasts.error(persianError(it, "حذف دسته‌بندی انجام نشد", container.json)) } }
                         }) { Text("حذف", color = c.danger) }
                     }
                 }
@@ -96,13 +94,12 @@ fun SalonServicesScreen(container: AppContainer, data: SalonData) {
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 
     if (adding || editing != null) {
         ServiceDialog(container, categories, editing, onDismiss = { adding = false; editing = null }) { msg ->
             adding = false; editing = null; data.loadCatalog()
-            scope.launch { snackbar.showSnackbar(msg) }
+            scope.launch { Toasts.success(msg) }
         }
     }
     newCategory?.let { name ->
@@ -115,7 +112,7 @@ fun SalonServicesScreen(container: AppContainer, data: SalonData) {
                     scope.launch {
                         runCatching { container.api.addCategory(CategoryInput(name.trim(), categories.size)) }
                             .onSuccess { categories = categories + it; newCategory = null }
-                            .onFailure { snackbar.showSnackbar(persianError(it, "ساخت دسته‌بندی انجام نشد", container.json)) }
+                            .onFailure { Toasts.error(persianError(it, "ساخت دسته‌بندی انجام نشد", container.json)) }
                     }
                 }) { Text("ذخیره") }
             },

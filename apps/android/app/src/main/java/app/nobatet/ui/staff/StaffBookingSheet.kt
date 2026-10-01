@@ -1,5 +1,6 @@
 package app.nobatet.ui.staff
 
+import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,8 +21,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -80,7 +79,6 @@ fun StaffBookingSheet(
 ) {
     val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
     val today = salonToday(timezone)
     val editStart = editing?.let { Instant.parse(it.startAt).toSalonDateTime(timezone) }
 
@@ -163,7 +161,7 @@ fun StaffBookingSheet(
                             else -> null
                         }
                         if (problem != null) {
-                            scope.launch { snackbar.showSnackbar(problem) }
+                            scope.launch { Toasts.error(problem) }
                             return@PrimaryButton
                         }
                         scope.launch {
@@ -190,7 +188,7 @@ fun StaffBookingSheet(
                                 }
                                 onSaved()
                             } catch (e: Exception) {
-                                snackbar.showSnackbar(persianError(e, if (editing == null) "ثبت نوبت انجام نشد" else "ذخیره تغییرات نوبت انجام نشد", container.json))
+                                Toasts.error(persianError(e, if (editing == null) "ثبت نوبت انجام نشد" else "ذخیره تغییرات نوبت انجام نشد", container.json))
                             } finally {
                                 saving = false
                             }
@@ -198,7 +196,6 @@ fun StaffBookingSheet(
                     }
                 }
             }
-            SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
         }
     }
 }

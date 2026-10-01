@@ -1,5 +1,6 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.Toasts
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -27,7 +28,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -68,20 +68,19 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SalonPageScreen(page: SalonPage, container: AppContainer, data: SalonData, onBack: () -> Unit) {
-    val snackbar = remember { SnackbarHostState() }
-    PageScaffold(page.title, onBack, snackbar) {
+    PageScaffold(page.title, onBack) {
         when (page) {
-            SalonPage.ACCOUNTING -> SalonAccountingPage(container, data, snackbar)
-            SalonPage.REVIEWS -> SalonReviewsPage(container, data, snackbar)
-            SalonPage.GALLERY -> SalonGalleryPage(container, data, snackbar)
-            SalonPage.SHARE -> SalonSharePage(container, data, snackbar)
+            SalonPage.ACCOUNTING -> SalonAccountingPage(container, data)
+            SalonPage.REVIEWS -> SalonReviewsPage(container, data)
+            SalonPage.GALLERY -> SalonGalleryPage(container, data)
+            SalonPage.SHARE -> SalonSharePage(container, data)
         }
     }
 }
 
 /** Every review of the salon (an independent stylist: about them); approve or reject. */
 @Composable
-private fun SalonReviewsPage(container: AppContainer, data: SalonData, snackbar: SnackbarHostState) {
+private fun SalonReviewsPage(container: AppContainer, data: SalonData) {
     val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
     var reviews by remember { mutableStateOf<List<ModerationReview>?>(null) }
@@ -98,7 +97,7 @@ private fun SalonReviewsPage(container: AppContainer, data: SalonData, snackbar:
                     fun moderate(status: ReviewStatus) = scope.launch {
                         runCatching { container.api.moderateReview(r.id, ModerateRequest(status)) }
                             .onSuccess { updated -> reviews = list.map { if (it.id == r.id) updated else it } }
-                            .onFailure { snackbar.showSnackbar(persianError(it, "انجام نشد، دوباره تلاش کنید", container.json)) }
+                            .onFailure { Toasts.error(persianError(it, "انجام نشد، دوباره تلاش کنید", container.json)) }
                     }
                     if (r.status != ReviewStatus.APPROVED) TextButton(onClick = { moderate(ReviewStatus.APPROVED) }) { Text("تایید و انتشار") }
                     if (r.status != ReviewStatus.REJECTED) TextButton(onClick = { moderate(ReviewStatus.REJECTED) }) { Text("رد", color = c.danger) }
@@ -113,7 +112,7 @@ private const val SALON_GALLERY_LIMIT = 60
 /** The salon's portfolio (≤ 60). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SalonGalleryPage(container: AppContainer, data: SalonData, snackbar: SnackbarHostState) {
+private fun SalonGalleryPage(container: AppContainer, data: SalonData) {
     val c = LocalAppColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -125,7 +124,7 @@ private fun SalonGalleryPage(container: AppContainer, data: SalonData, snackbar:
             busy = true
             runCatching { container.api.addSalonGalleryImage(NewGalleryImage(uploadPhoto(container, context, uri, "salons"))) }
                 .onSuccess { gallery = listOf(it) + gallery.orEmpty() }
-                .onFailure { snackbar.showSnackbar(persianError(it, "آپلود عکس انجام نشد", container.json)) }
+                .onFailure { Toasts.error(persianError(it, "آپلود عکس انجام نشد", container.json)) }
             busy = false
         }
     }
@@ -143,7 +142,7 @@ private fun SalonGalleryPage(container: AppContainer, data: SalonData, snackbar:
                             scope.launch {
                                 runCatching { container.api.updateGalleryImage(g.id, app.nobatet.data.jsonBody("stylistId" to id)) }
                                     .onSuccess { updated -> gallery = list.map { if (it.id == g.id) updated else it } }
-                                    .onFailure { snackbar.showSnackbar(persianError(it, "ذخیره انجام نشد", container.json)) }
+                                    .onFailure { Toasts.error(persianError(it, "ذخیره انجام نشد", container.json)) }
                             }
                         }.padding(vertical = 12.dp))
                     }
@@ -167,7 +166,7 @@ private fun SalonGalleryPage(container: AppContainer, data: SalonData, snackbar:
                         TextButton(onClick = { crediting = g }) { Text(name) }
                     }
                     TextButton(onClick = {
-                        scope.launch { runCatching { container.api.deleteGalleryImage(g.id) }.onSuccess { gallery = list - g }.onFailure { snackbar.showSnackbar(persianError(it, "حذف عکس انجام نشد", container.json)) } }
+                        scope.launch { runCatching { container.api.deleteGalleryImage(g.id) }.onSuccess { gallery = list - g }.onFailure { Toasts.error(persianError(it, "حذف عکس انجام نشد", container.json)) } }
                     }) { Text("حذف", color = c.danger) }
                 }
             }
@@ -177,7 +176,7 @@ private fun SalonGalleryPage(container: AppContainer, data: SalonData, snackbar:
 
 /** «کیت معرفی» of the salon: nobatet.app/book/@<handle or slug>, QR, share, change the handle. */
 @Composable
-private fun SalonSharePage(container: AppContainer, data: SalonData, snackbar: SnackbarHostState) {
+private fun SalonSharePage(container: AppContainer, data: SalonData) {
     val c = LocalAppColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -195,7 +194,7 @@ private fun SalonSharePage(container: AppContainer, data: SalonData, snackbar: S
         }
         TextButton(onClick = {
             (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("link", url))
-            scope.launch { snackbar.showSnackbar("لینک کپی شد") }
+            scope.launch { Toasts.success("لینک کپی شد") }
         }) { Text("کپی لینک") }
         TextButton(onClick = {
             val subtitle = buildList {
@@ -220,8 +219,8 @@ private fun SalonSharePage(container: AppContainer, data: SalonData, snackbar: S
             PrimaryButton("ذخیره", enabled = draft.isNotBlank() && draft != h) {
                 scope.launch {
                     runCatching { container.api.setSalonHandle(HandleRequest(draft.trim())) }
-                        .onSuccess { data.loadSalon(); snackbar.showSnackbar("نام کاربری ذخیره شد") }
-                        .onFailure { snackbar.showSnackbar(persianError(it, "ذخیره انجام نشد", container.json)) }
+                        .onSuccess { data.loadSalon(); Toasts.success("نام کاربری ذخیره شد") }
+                        .onFailure { Toasts.error(persianError(it, "ذخیره انجام نشد", container.json)) }
                 }
             }
         }

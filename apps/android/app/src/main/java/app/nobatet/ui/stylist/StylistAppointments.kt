@@ -1,5 +1,6 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,8 +22,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -81,7 +80,6 @@ fun StaffAppointment.localDate(tz: String): LocalDate = Instant.parse(startAt).t
  */
 class StaffActions(
     val container: AppContainer,
-    val snackbar: SnackbarHostState,
     val reload: () -> Unit,
 ) {
     var selected by mutableStateOf<StaffAppointment?>(null)
@@ -92,8 +90,7 @@ class StaffActions(
 
 @Composable
 fun rememberStaffActions(container: AppContainer, reload: () -> Unit): StaffActions {
-    val snackbar = remember { SnackbarHostState() }
-    return remember { StaffActions(container, snackbar, reload) }
+    return remember { StaffActions(container, reload) }
 }
 
 /** The sheets of [StaffActions] for a stylist booking themselves. */
@@ -114,7 +111,7 @@ fun StaffSheets(actions: StaffActions, stylist: SelfStylist) {
                         actions.selected = null
                         actions.reload()
                     } catch (e: Exception) {
-                        actions.snackbar.showSnackbar(persianError(e, "تغییر وضعیت نوبت انجام نشد، دوباره تلاش کنید", actions.container.json))
+                        Toasts.error(persianError(e, "تغییر وضعیت نوبت انجام نشد، دوباره تلاش کنید", actions.container.json))
                     } finally {
                         actions.busy = false
                     }
@@ -159,7 +156,6 @@ fun StylistAppointmentsScreen(stylist: SelfStylist, appointments: List<StaffAppo
             onClick = { actions.creating = true }, containerColor = c.accent, contentColor = c.accentInk,
             modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
         ) { Icon(Icons.Outlined.Add, contentDescription = "نوبت تازه") }
-        SnackbarHost(actions.snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 }
 

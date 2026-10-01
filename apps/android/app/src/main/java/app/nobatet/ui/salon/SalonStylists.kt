@@ -1,5 +1,6 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.Toasts
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,8 +26,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -68,7 +67,6 @@ import kotlinx.serialization.json.JsonObject
 @Composable
 fun SalonStylistsScreen(container: AppContainer, data: SalonData) {
     val c = LocalAppColors.current
-    val snackbar = remember { SnackbarHostState() }
     var inviting by remember { mutableStateOf(false) }
     var open by remember { mutableStateOf<OwnerStylist?>(null) }
     var link by remember { mutableStateOf<Pair<String, String>?>(null) } // name, token
@@ -97,14 +95,13 @@ fun SalonStylistsScreen(container: AppContainer, data: SalonData) {
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
     if (inviting) InviteDialog(container, data, onDismiss = { inviting = false }) { st ->
         inviting = false
         data.loadCatalog(); data.loadSubscription()
         st.setupToken?.let { link = st.displayName to it }
     }
-    open?.let { st -> StylistDialog(container, data, st, snackbar, onDismiss = { open = null }, onLink = { token -> open = null; link = st.displayName to token }) }
+    open?.let { st -> StylistDialog(container, data, st, onDismiss = { open = null }, onLink = { token -> open = null; link = st.displayName to token }) }
     link?.let { (name, token) -> SetupLinkDialog(name, token) { link = null } }
 }
 
@@ -169,7 +166,7 @@ private fun InviteDialog(container: AppContainer, data: SalonData, onDismiss: ()
 }
 
 @Composable
-private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerStylist, snackbar: SnackbarHostState, onDismiss: () -> Unit, onLink: (String) -> Unit) {
+private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerStylist, onDismiss: () -> Unit, onLink: (String) -> Unit) {
     val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
     var active by remember { mutableStateOf(st.active) }
@@ -241,7 +238,7 @@ private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerSty
                         container.api.setStylistServices(st.id, JsonObject(mapOf("services" to JsonArray(entries))))
                         data.loadCatalog(); data.loadSubscription()
                         onDismiss()
-                        snackbar.showSnackbar("ذخیره شد")
+                        Toasts.success("ذخیره شد")
                     } catch (e: Exception) {
                         error = persianError(e, "ذخیره تغییرات انجام نشد", container.json)
                     } finally {

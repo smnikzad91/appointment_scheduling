@@ -1,5 +1,6 @@
 package app.nobatet.ui.auth
 
+import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
@@ -40,8 +41,6 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -70,8 +69,7 @@ import app.nobatet.util.toPersianDigits
 fun LoginScreen(container: AppContainer, onSignedIn: (AuthResponse) -> Unit) {
     val vm: LoginViewModel = viewModel(factory = viewModelFactory { initializer { LoginViewModel(container, onSignedIn) } })
     val state by vm.state.collectAsStateWithLifecycle()
-    val snackbar = remember { SnackbarHostState() }
-    LaunchedEffect(vm) { vm.errors.collect { snackbar.showSnackbar(it) } }
+    LaunchedEffect(vm) { vm.errors.collect { Toasts.error(it) } }
 
     // the web's sign-in pages: always dark, coral accent, soft glows behind a frosted card
     NobatetTheme(guest = true) {
@@ -112,7 +110,6 @@ fun LoginScreen(container: AppContainer, onSignedIn: (AuthResponse) -> Unit) {
                     }
                 }
             }
-            SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
         }
     }
 }

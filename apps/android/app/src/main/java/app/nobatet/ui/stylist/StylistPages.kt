@@ -1,5 +1,6 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.components.Toasts
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -32,7 +33,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -92,13 +92,12 @@ import java.time.Instant
 
 @Composable
 fun StylistPageScreen(page: StylistPage, container: AppContainer, stylist: SelfStylist, onBack: () -> Unit) {
-    val snackbar = remember { SnackbarHostState() }
-    PageScaffold(page.title, onBack, snackbar) {
+    PageScaffold(page.title, onBack) {
         when (page) {
             StylistPage.EARNINGS -> EarningsPage(container, stylist)
-            StylistPage.EXPENSES -> ExpensesPage(container, stylist, snackbar)
-            StylistPage.REVIEWS -> ReviewsPage(container, snackbar)
-            StylistPage.SHARE -> SharePage(container, stylist, snackbar)
+            StylistPage.EXPENSES -> ExpensesPage(container, stylist)
+            StylistPage.REVIEWS -> ReviewsPage(container)
+            StylistPage.SHARE -> SharePage(container, stylist)
         }
     }
 }
@@ -163,7 +162,7 @@ private fun EarningsPage(container: AppContainer, stylist: SelfStylist) {
 
 /** «هزینه‌های من»: this month and the 11 before; add/edit/delete with an optional private receipt photo. */
 @Composable
-private fun ExpensesPage(container: AppContainer, stylist: SelfStylist, snackbar: SnackbarHostState) {
+private fun ExpensesPage(container: AppContainer, stylist: SelfStylist) {
     val c = LocalAppColors.current
     val tz = stylist.salon.timezone
     val scope = rememberCoroutineScope()
@@ -198,7 +197,7 @@ private fun ExpensesPage(container: AppContainer, stylist: SelfStylist, snackbar
     if (adding || editing != null) {
         ExpenseDialog(container, tz, editing, onDismiss = { adding = false; editing = null }) { msg ->
             adding = false; editing = null; reload++
-            scope.launch { snackbar.showSnackbar(msg) }
+            scope.launch { Toasts.success(msg) }
         }
     }
 }
@@ -272,7 +271,7 @@ private fun ExpenseDialog(container: AppContainer, tz: String, editing: StylistE
 
 /** «نظرات درباره شما»: approve or reject what customers wrote about you. */
 @Composable
-private fun ReviewsPage(container: AppContainer, snackbar: SnackbarHostState) {
+private fun ReviewsPage(container: AppContainer) {
     val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
     var reviews by remember { mutableStateOf<List<ModerationReview>?>(null) }
@@ -289,7 +288,7 @@ private fun ReviewsPage(container: AppContainer, snackbar: SnackbarHostState) {
                     fun moderate(status: ReviewStatus) = scope.launch {
                         runCatching { container.api.moderateReview(r.id, ModerateRequest(status)) }
                             .onSuccess { updated -> reviews = list.map { if (it.id == r.id) updated else it } }
-                            .onFailure { snackbar.showSnackbar(persianError(it, "انجام نشد، دوباره تلاش کنید", container.json)) }
+                            .onFailure { Toasts.error(persianError(it, "انجام نشد، دوباره تلاش کنید", container.json)) }
                     }
                     if (r.status != ReviewStatus.APPROVED) TextButton(onClick = { moderate(ReviewStatus.APPROVED) }) { Text("تایید و انتشار") }
                     if (r.status != ReviewStatus.REJECTED) TextButton(onClick = { moderate(ReviewStatus.REJECTED) }) { Text("رد", color = c.danger) }
@@ -309,7 +308,7 @@ fun qrBitmap(text: String, size: Int = 720): Bitmap {
 
 /** «کیت معرفی»: the short booking link nobatet.app/book/@handle, copy/share, its QR, and changing the handle. */
 @Composable
-private fun SharePage(container: AppContainer, stylist: SelfStylist, snackbar: SnackbarHostState) {
+private fun SharePage(container: AppContainer, stylist: SelfStylist) {
     val c = LocalAppColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -328,7 +327,7 @@ private fun SharePage(container: AppContainer, stylist: SelfStylist, snackbar: S
         }
         TextButton(onClick = {
             (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("link", url))
-            scope.launch { snackbar.showSnackbar("لینک کپی شد") }
+            scope.launch { Toasts.success("لینک کپی شد") }
         }) { Text("کپی لینک") }
         TextButton(onClick = {
             val poster = app.nobatet.util.drawStoryPoster(
@@ -351,8 +350,8 @@ private fun SharePage(container: AppContainer, stylist: SelfStylist, snackbar: S
             PrimaryButton("ذخیره", enabled = draft.isNotBlank() && draft != h) {
                 scope.launch {
                     runCatching { container.api.setMyHandle(HandleRequest(draft.trim())) }
-                        .onSuccess { handle = it.handle; draft = it.handle; snackbar.showSnackbar("نام کاربری ذخیره شد") }
-                        .onFailure { snackbar.showSnackbar(persianError(it, "ذخیره انجام نشد", container.json)) }
+                        .onSuccess { handle = it.handle; draft = it.handle; Toasts.success("نام کاربری ذخیره شد") }
+                        .onFailure { Toasts.error(persianError(it, "ذخیره انجام نشد", container.json)) }
                 }
             }
         }

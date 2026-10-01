@@ -1,5 +1,6 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,8 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -46,19 +45,17 @@ private const val REBOOK_MAX_DAYS = 365
 /** «خدمات»: the stylist's own price/duration per service (blank = the salon's) and their «وقت نوبت بعدی» SMS. */
 @Composable
 fun StylistServicesScreen(container: AppContainer, stylist: SelfStylist, onChanged: () -> Unit) {
-    val snackbar = remember { SnackbarHostState() }
     Box(Modifier.fillMaxSize()) {
         val services = stylist.services.filter { it.service.active }
         if (services.isEmpty()) Empty("هنوز خدمتی به شما اختصاص داده نشده", "مدیر سالن خدمات شما را مشخص می‌کند.")
         else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(services, key = { it.serviceId }) { ServiceEditor(container, it, snackbar, onChanged) }
+            items(services, key = { it.serviceId }) { ServiceEditor(container, it, onChanged) }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 }
 
 @Composable
-private fun ServiceEditor(container: AppContainer, s: SelfStylistService, snackbar: SnackbarHostState, onChanged: () -> Unit) {
+private fun ServiceEditor(container: AppContainer, s: SelfStylistService, onChanged: () -> Unit) {
     val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
     var price by remember(s) { mutableStateOf(s.overridePriceToman?.toString().orEmpty()) }
@@ -90,7 +87,7 @@ private fun ServiceEditor(container: AppContainer, s: SelfStylistService, snackb
         TextButton(enabled = !saving, onClick = {
             val days = rebookDays.toIntOrNull()
             if (rebookOn && (days == null || days !in 1..REBOOK_MAX_DAYS)) {
-                scope.launch { snackbar.showSnackbar("فاصله یادآوری باید بین ۱ تا ۳۶۵ روز باشد") }
+                scope.launch { Toasts.error("فاصله یادآوری باید بین ۱ تا ۳۶۵ روز باشد") }
                 return@TextButton
             }
             scope.launch {
@@ -106,8 +103,8 @@ private fun ServiceEditor(container: AppContainer, s: SelfStylistService, snackb
                             "overrideRebookReminderDays" to (if (rebookOn) days?.takeIf { it != s.service.rebookReminderDays } else null),
                         ),
                     )
-                }.onSuccess { snackbar.showSnackbar("ذخیره شد"); onChanged() }
-                    .onFailure { snackbar.showSnackbar(persianError(it, "ذخیره تغییرات انجام نشد", container.json)) }
+                }.onSuccess { Toasts.success("ذخیره شد"); onChanged() }
+                    .onFailure { Toasts.error(persianError(it, "ذخیره تغییرات انجام نشد", container.json)) }
                 saving = false
             }
         }) { Text(if (saving) "در حال ذخیره..." else "ذخیره") }

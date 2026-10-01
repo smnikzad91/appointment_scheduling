@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.Toasts
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,8 +32,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,8 +82,7 @@ fun SalonScreen(container: AppContainer, slug: String, onBack: () -> Unit, onSee
 private fun SalonScreenContent(container: AppContainer, vm: SalonViewModel, onBack: () -> Unit, onSeeBookings: () -> Unit, prefill: BookingPrefill?) {
     val s by vm.state.collectAsStateWithLifecycle()
     val c = LocalAppColors.current
-    val snackbar = remember { SnackbarHostState() }
-    LaunchedEffect(vm) { vm.errors.collect { snackbar.showSnackbar(it) } }
+    LaunchedEffect(vm) { vm.errors.collect { Toasts.error(it) } }
     BackHandler(onBack = onBack)
     // a prefilled booking opens once the salon has loaded
     var prefillUsed by rememberSaveable { mutableStateOf(false) }
@@ -114,7 +112,7 @@ private fun SalonScreenContent(container: AppContainer, vm: SalonViewModel, onBa
             IconButton(
                 onClick = {
                     scope.launch {
-                        runCatching { container.favorites.toggle(salon.id) }.onFailure { snackbar.showSnackbar("ذخیره سالن انجام نشد") }
+                        runCatching { container.favorites.toggle(salon.id) }.onFailure { Toasts.error("ذخیره سالن انجام نشد") }
                     }
                 },
                 modifier = Modifier.statusBarsPadding().padding(8.dp).align(Alignment.TopEnd),
@@ -129,7 +127,6 @@ private fun SalonScreenContent(container: AppContainer, vm: SalonViewModel, onBa
         if (s.salon != null && s.booking.open) {
             BookingSheet(vm, s.salon!!, s.booking, onSeeBookings = { vm.closeBooking(); onSeeBookings() })
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(12.dp))
     }
 }
 

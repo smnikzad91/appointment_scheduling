@@ -1,5 +1,6 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.components.Toasts
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -23,8 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,7 +63,6 @@ fun StylistProfileScreen(container: AppContainer, stylist: SelfStylist, onChange
     val c = LocalAppColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
     var bio by remember(stylist) { mutableStateOf(stylist.bio.orEmpty()) }
     var busy by remember { mutableStateOf<String?>(null) }
     var gallery by remember { mutableStateOf<List<GalleryItem>>(emptyList()) }
@@ -76,7 +74,7 @@ fun StylistProfileScreen(container: AppContainer, stylist: SelfStylist, onChange
             try {
                 then(uploadPhoto(container, context, uri, "stylists"))
             } catch (e: Exception) {
-                snackbar.showSnackbar(persianError(e, "آپلود عکس انجام نشد", container.json))
+                Toasts.error(persianError(e, "آپلود عکس انجام نشد", container.json))
             } finally {
                 busy = null
             }
@@ -112,8 +110,8 @@ fun StylistProfileScreen(container: AppContainer, stylist: SelfStylist, onChange
                     PrimaryButton("ذخیره معرفی") {
                         scope.launch {
                             runCatching { container.api.updateMyStylist(StylistProfilePatch(bio = bio.trim())) }
-                                .onSuccess { snackbar.showSnackbar("ذخیره شد"); onChanged() }
-                                .onFailure { snackbar.showSnackbar(persianError(it, "ذخیره تغییرات انجام نشد", container.json)) }
+                                .onSuccess { Toasts.success("ذخیره شد"); onChanged() }
+                                .onFailure { Toasts.error(persianError(it, "ذخیره تغییرات انجام نشد", container.json)) }
                         }
                     }
                 }
@@ -132,7 +130,7 @@ fun StylistProfileScreen(container: AppContainer, stylist: SelfStylist, onChange
                                 TextButton(onClick = {
                                     scope.launch {
                                         runCatching { container.api.deleteGalleryImage(g.id) }.onSuccess { gallery = gallery - g }
-                                            .onFailure { snackbar.showSnackbar(persianError(it, "حذف عکس انجام نشد", container.json)) }
+                                            .onFailure { Toasts.error(persianError(it, "حذف عکس انجام نشد", container.json)) }
                                     }
                                 }) { Text("حذف", color = c.danger) }
                             }
@@ -144,10 +142,9 @@ fun StylistProfileScreen(container: AppContainer, stylist: SelfStylist, onChange
                         Row(verticalAlignment = Alignment.CenterVertically) { Text(page.title, color = c.ink, modifier = Modifier.weight(1f)); Text("›", color = c.muted) }
                     }
                 }
-                app.nobatet.ui.components.PasswordChangeCard(container, snackbar)
-                app.nobatet.ui.components.AccountLinks(container, "stylist", snackbar)
+                app.nobatet.ui.components.PasswordChangeCard(container)
+                app.nobatet.ui.components.AccountLinks(container, "stylist")
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 }

@@ -1,5 +1,6 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,8 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -63,7 +62,6 @@ private data class DayHours(val open: Boolean, val start: Int, val end: Int)
 fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChanged: () -> Unit) {
     val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
     val tz = stylist.salon.timezone
     val hours = remember(stylist) {
         mutableStateListOf(*WEEK.map { (d, _) ->
@@ -98,15 +96,15 @@ fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChang
                 PrimaryButton(if (saving) "در حال ذخیره..." else "ذخیره ساعات کاری", enabled = !saving) {
                     val bad = hours.indexOfFirst { it.open && it.start >= it.end }
                     if (bad >= 0) {
-                        scope.launch { snackbar.showSnackbar("ساعت پایان ${WEEK[bad].second} باید بعد از ساعت شروع باشد") }
+                        scope.launch { Toasts.error("ساعت پایان ${WEEK[bad].second} باید بعد از ساعت شروع باشد") }
                         return@PrimaryButton
                     }
                     scope.launch {
                         saving = true
                         runCatching {
                             container.api.setMyHours(HoursBody(WEEK.mapIndexedNotNull { i, (d, _) -> hours[i].takeIf { it.open }?.let { HoursEntry(d, it.start, it.end) } }))
-                        }.onSuccess { snackbar.showSnackbar("ساعات کاری ذخیره شد"); onChanged() }
-                            .onFailure { snackbar.showSnackbar(persianError(it, "ذخیره ساعات کاری انجام نشد", container.json)) }
+                        }.onSuccess { Toasts.success("ساعات کاری ذخیره شد"); onChanged() }
+                            .onFailure { Toasts.error(persianError(it, "ذخیره ساعات کاری انجام نشد", container.json)) }
                         saving = false
                     }
                 }
@@ -124,7 +122,7 @@ fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChang
                     val from = offFrom
                     val to = offTo
                     if (from == null || to == null) {
-                        scope.launch { snackbar.showSnackbar("روز شروع و پایان مرخصی را انتخاب کنید") }
+                        scope.launch { Toasts.error("روز شروع و پایان مرخصی را انتخاب کنید") }
                         return@PrimaryButton
                     }
                     scope.launch {
@@ -136,8 +134,8 @@ fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChang
                                     offReason.trim().ifEmpty { null },
                                 ),
                             )
-                        }.onSuccess { t -> timeOff = (timeOff + t).sortedBy { it.startAt }; offFrom = null; offTo = null; offReason = ""; snackbar.showSnackbar("مرخصی ثبت شد") }
-                            .onFailure { snackbar.showSnackbar(persianError(it, "ثبت مرخصی انجام نشد", container.json)) }
+                        }.onSuccess { t -> timeOff = (timeOff + t).sortedBy { it.startAt }; offFrom = null; offTo = null; offReason = ""; Toasts.success("مرخصی ثبت شد") }
+                            .onFailure { Toasts.error(persianError(it, "ثبت مرخصی انجام نشد", container.json)) }
                     }
                 }
             }
@@ -153,7 +151,6 @@ fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChang
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 
     picking?.let { (i, isStart) ->

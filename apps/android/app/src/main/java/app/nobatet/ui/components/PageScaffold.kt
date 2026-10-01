@@ -11,8 +11,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -20,10 +18,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import app.nobatet.ui.theme.LocalAppColors
 
-/** A full-screen page over a panel: title, back (also the phone's back), snackbar at the top. */
+/** A full-screen page over a panel: title and back (also the phone's back). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PageScaffold(title: String, onBack: () -> Unit, snackbar: SnackbarHostState? = null, content: @Composable () -> Unit) {
+fun PageScaffold(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
     val c = LocalAppColors.current
     BackHandler(onBack = onBack)
     Scaffold(
@@ -35,6 +33,5 @@ fun PageScaffold(title: String, onBack: () -> Unit, snackbar: SnackbarHostState?
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = c.bg, titleContentColor = c.ink, navigationIconContentColor = c.ink),
             )
         },
-        snackbarHost = { if (snackbar != null) SnackbarHost(snackbar) },
     ) { padding -> Box(Modifier.fillMaxSize().padding(padding)) { content() } }
 }

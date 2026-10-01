@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.Toasts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.nobatet.data.AppContainer
@@ -7,9 +8,7 @@ import app.nobatet.data.AppointmentStatus
 import app.nobatet.data.CustomerBooking
 import app.nobatet.data.StatusUpdate
 import app.nobatet.data.persianError
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -34,8 +33,6 @@ data class BookingsState(
 class BookingsViewModel(private val container: AppContainer) : ViewModel() {
     private val _state = MutableStateFlow(BookingsState())
     val state: StateFlow<BookingsState> = _state
-    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
-    val messages: SharedFlow<String> = _messages
 
     init {
         load()
@@ -64,10 +61,10 @@ class BookingsViewModel(private val container: AppContainer) : ViewModel() {
                 _state.update { s ->
                     s.copy(bookings = s.bookings.map { b -> if (b.id == bookingId) b.copy(reviews = b.reviews.filterNot { it.id == saved.id || it.target == target } + saved) else b })
                 }
-                _messages.tryEmit(if (existingId == null) "نظر شما ثبت شد و پس از تایید نمایش داده می‌شود" else "نظر شما ویرایش شد و پس از تایید دوباره نمایش داده می‌شود")
+                Toasts.success(if (existingId == null) "نظر شما ثبت شد و پس از تایید نمایش داده می‌شود" else "نظر شما ویرایش شد و پس از تایید دوباره نمایش داده می‌شود")
                 onDone()
             } catch (e: Exception) {
-                _messages.tryEmit(persianError(e, "ثبت نظر انجام نشد", container.json))
+                Toasts.error(persianError(e, "ثبت نظر انجام نشد", container.json))
             }
         }
     }
@@ -77,9 +74,9 @@ class BookingsViewModel(private val container: AppContainer) : ViewModel() {
             try {
                 container.api.deleteReview(reviewId)
                 _state.update { s -> s.copy(bookings = s.bookings.map { b -> if (b.id == bookingId) b.copy(reviews = b.reviews.filterNot { it.id == reviewId }) else b }) }
-                _messages.tryEmit("نظر حذف شد")
+                Toasts.success("نظر حذف شد")
             } catch (e: Exception) {
-                _messages.tryEmit(persianError(e, "حذف نظر انجام نشد", container.json))
+                Toasts.error(persianError(e, "حذف نظر انجام نشد", container.json))
             }
         }
     }
@@ -91,10 +88,10 @@ class BookingsViewModel(private val container: AppContainer) : ViewModel() {
             try {
                 container.api.setStatus(id, StatusUpdate(AppointmentStatus.CANCELLED))
                 _state.update { s -> s.copy(cancelling = null, bookings = s.bookings.map { if (it.id == id) it.copy(status = AppointmentStatus.CANCELLED) else it }) }
-                _messages.tryEmit("نوبت لغو شد")
+                Toasts.success("نوبت لغو شد")
             } catch (e: Exception) {
                 _state.update { it.copy(cancelling = null) }
-                _messages.tryEmit(persianError(e, "لغو نوبت انجام نشد", container.json))
+                Toasts.error(persianError(e, "لغو نوبت انجام نشد", container.json))
             }
         }
     }

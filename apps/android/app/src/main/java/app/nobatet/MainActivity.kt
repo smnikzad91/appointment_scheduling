@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import app.nobatet.ui.BrandSplash
+import app.nobatet.ui.components.Toaster
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import app.nobatet.data.ThemeChoice
 import app.nobatet.ui.AppRoot
@@ -49,6 +50,7 @@ class MainActivity : ComponentActivity() {
                         AppRoot(container)
                         // the web's PWA splash, once per launch (not again on rotation)
                         if (showSplash) NobatetTheme(dark = true) { BrandSplash(onDone = { showSplash = false }) }
+                        Toaster()
                     }
                 }
             }

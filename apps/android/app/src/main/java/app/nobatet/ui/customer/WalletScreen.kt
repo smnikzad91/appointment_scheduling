@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.components.Toasts
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -23,8 +24,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -68,7 +67,6 @@ fun WalletScreen(container: AppContainer) {
     val c = LocalAppColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
     var balance by remember { mutableIntStateOf(0) }
     var cards by remember { mutableStateOf<List<BankCard>>(emptyList()) }
     var platform by remember { mutableStateOf<List<BankCard>>(emptyList()) }
@@ -95,7 +93,7 @@ fun WalletScreen(container: AppContainer) {
                 platform.forEach { pc ->
                     Column(Modifier.fillMaxWidth().clickable {
                         (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("card", pc.cardNumber))
-                        scope.launch { snackbar.showSnackbar("شماره کارت کپی شد") }
+                        scope.launch { Toasts.success("شماره کارت کپی شد") }
                     }.padding(vertical = 6.dp)) {
                         Text(formatCardNumber(pc.cardNumber).toPersianDigits(), color = c.ink, style = MaterialTheme.typography.titleMedium)
                         Muted("${pc.bankName}، ${pc.ownerName} — برای کپی بزنید")
@@ -115,7 +113,7 @@ fun WalletScreen(container: AppContainer) {
                             Muted("${card.bankName}، ${card.ownerName}")
                         }
                         TextButton(onClick = {
-                            scope.launch { runCatching { container.web.deleteBankCard(card.id) }.onSuccess { reload++ }.onFailure { snackbar.showSnackbar(persianError(it, "حذف کارت انجام نشد", container.json)) } }
+                            scope.launch { runCatching { container.web.deleteBankCard(card.id) }.onSuccess { reload++ }.onFailure { Toasts.error(persianError(it, "حذف کارت انجام نشد", container.json)) } }
                         }) { Text("حذف", color = c.danger) }
                     }
                 }
@@ -128,17 +126,16 @@ fun WalletScreen(container: AppContainer) {
                     d.interceptionCode?.let { Muted("کد پیگیری: $it") }
                     d.adminNote?.takeIf { it.isNotBlank() }?.let { Muted("پاسخ پشتیبانی: $it") }
                     if (d.status != "approved") TextButton(onClick = {
-                        scope.launch { runCatching { container.web.deleteDeposit(d.id) }.onSuccess { reload++ }.onFailure { snackbar.showSnackbar(persianError(it, "حذف واریز انجام نشد", container.json)) } }
+                        scope.launch { runCatching { container.web.deleteDeposit(d.id) }.onSuccess { reload++ }.onFailure { Toasts.error(persianError(it, "حذف واریز انجام نشد", container.json)) } }
                     }) { Text("حذف", color = c.danger) }
                 }
             }
         }
-        SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
-    if (addingCard) AddCardDialog(container, onDismiss = { addingCard = false }) { addingCard = false; reload++; scope.launch { snackbar.showSnackbar("کارت ثبت شد") } }
+    if (addingCard) AddCardDialog(container, onDismiss = { addingCard = false }) { addingCard = false; reload++; scope.launch { Toasts.success("کارت ثبت شد") } }
     if (depositing) DepositDialog(container, cards, onDismiss = { depositing = false }) {
         depositing = false; reload++
-        scope.launch { snackbar.showSnackbar("واریز ثبت شد و پس از بررسی به موجودی اضافه می‌شود") }
+        scope.launch { Toasts.success("واریز ثبت شد و پس از بررسی به موجودی اضافه می‌شود") }
     }
 }
 

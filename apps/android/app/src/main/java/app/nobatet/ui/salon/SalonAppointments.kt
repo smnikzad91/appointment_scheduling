@@ -1,5 +1,6 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.clickable
@@ -22,8 +23,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -77,7 +76,6 @@ class SalonSheetsState {
     var choosingStylist by mutableStateOf(false)
     var creatingFor by mutableStateOf<String?>(null)
     var busy by mutableStateOf(false)
-    val snackbar = SnackbarHostState()
 
     fun startCreate(data: SalonData) {
         val salon = data.salon ?: return
@@ -101,7 +99,7 @@ fun SalonSheets(container: AppContainer, data: SalonData, sheets: SalonSheetsSta
                     sheets.busy = true
                     runCatching { container.api.setStatus(a.id, StatusUpdate(status)) }
                         .onSuccess { sheets.selected = null; data.loadAppointments() }
-                        .onFailure { sheets.snackbar.showSnackbar(persianError(it, "تغییر وضعیت نوبت انجام نشد، دوباره تلاش کنید", container.json)) }
+                        .onFailure { Toasts.error(persianError(it, "تغییر وضعیت نوبت انجام نشد، دوباره تلاش کنید", container.json)) }
                     sheets.busy = false
                 }
             },
@@ -168,7 +166,6 @@ fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
         FloatingActionButton(onClick = { sheets.startCreate(data) }, containerColor = c.accent, contentColor = c.accentInk, modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)) {
             Icon(Icons.Outlined.Add, contentDescription = "نوبت تازه")
         }
-        SnackbarHost(sheets.snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 }
 
@@ -213,6 +210,5 @@ fun SalonHomeScreen(data: SalonData, sheets: SalonSheetsState, onOpenPage: (Salo
                 }
             }
         }
-        SnackbarHost(sheets.snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
     }
 }
