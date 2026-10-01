@@ -41,8 +41,12 @@ export function fitSms<T extends Record<string, string>>(p: T, trimmable: (keyof
   return build(q);
 }
 
-export const customerReminderText = (p: { time: string; salon: string; stylist: string }) =>
-  fitSms(p, ["salon", "stylist"], (q) => `یادآوری نوبتت: ساعت ${q.time} در ${q.salon} با ${q.stylist}`);
+/**
+ * The customer's 1-hour reminder at a salon: services, salon, the stylist's first name —
+ * «یادآوری نوبتت: ساعت ۰۹:۰۰ کوتاهی مو در سالن رز با مریم». Services are cut first, then the salon.
+ */
+export const customerReminderText = (p: { time: string; services: string; salon: string; stylist: string }) =>
+  fitSms(p, ["services", "salon", "stylist"], (q) => `یادآوری نوبتت: ساعت ${q.time} ${q.services} در ${q.salon} با ${q.stylist}`);
 
 /**
  * An independent stylist's reminder: the services instead of the business name, and the stylist's

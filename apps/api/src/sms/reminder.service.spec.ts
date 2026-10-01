@@ -73,7 +73,7 @@ describe('ReminderService.tick', () => {
 
     const [customer, stylist] = sms.send.mock.calls.map((c) => c[0]);
     expect(customer).toMatchObject({ kind: 'reminder-customer', to: '09120000001', params: { time: '۱۴:۲۵', salon: 'سالن رز', stylist: 'سارا' } });
-    expect(customer.text).toContain('۱۴:۲۵');
+    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ کوتاهی مو، براشینگ در سالن رز با سارا');
     expect(stylist).toMatchObject({ kind: 'reminder-stylist', to: '09120000002', params: { customer: 'نگار رضایی', services: 'کوتاهی مو، براشینگ' } });
 
     const data = updates(prisma);

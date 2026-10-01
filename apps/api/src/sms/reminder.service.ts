@@ -140,12 +140,11 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
 
     const time = clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay);
     const services = a.services.map((s) => s.service.name).join("، ");
-    const customerParams = { time, salon: a.salon.name, stylist: a.stylist.displayName };
-    // An independent stylist: the services instead of the business name, and their first name.
+    const firstName = a.stylist.user.firstName?.trim() || a.stylist.displayName;
+    const customerParams = { time, services, salon: a.salon.name, stylist: firstName };
+    // An independent stylist is the business: no business name, just the services and them.
     const customerText =
-      a.salon.kind === "INDEPENDENT"
-        ? independentReminderText({ time, services, name: a.stylist.user.firstName?.trim() || a.stylist.displayName })
-        : customerReminderText(customerParams);
+      a.salon.kind === "INDEPENDENT" ? independentReminderText({ time, services, name: firstName }) : customerReminderText(customerParams);
     const stylistParams = { time, customer: bookingCustomerFullName(a), services };
     const messages = {
       customer: a.customer.phone && { kind: "reminder-customer" as const, to: a.customer.phone, params: customerParams, text: customerText },
