@@ -70,7 +70,7 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
         onSelectTab = { tab = it; if (it <= 1) data.loadAppointments() },
         actions = { app.nobatet.ui.customer.NotificationBell(container) { showNotifications = true } },
         tabs = listOf(
-            PanelTab("خانه", Icons.Outlined.Home) { SalonHomeScreen(data, sheets) { page = it } },
+            PanelTab("خانه", Icons.Outlined.Home) { SalonHomeScreen(container, data, sheets, onGoToTab = { tab = it }) { page = it } },
             PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth, title = "نوبت‌ها") { SalonAppointmentsScreen(data, sheets) },
             PanelTab("خدمات", Icons.Outlined.ContentCut, title = "خدمات", subtitle = "${data.services.count { it.active }.toString().toPersianDigits()} خدمت فعال") { SalonServicesScreen(container, data) },
             if (independent) PanelTab("ساعات کاری", Icons.Outlined.Schedule, title = "ساعات کاری", subtitle = "مشتری‌ها فقط در همین ساعت‌ها می‌توانند با شما نوبت بگیرند.") {

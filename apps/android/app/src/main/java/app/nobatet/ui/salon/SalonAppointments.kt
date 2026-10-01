@@ -1,5 +1,38 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.staff.TodayTimeline
+import app.nobatet.ui.staff.HomeSectionTitle
+import app.nobatet.ui.staff.NoticeChip
+import app.nobatet.ui.staff.NoticeCard
+import app.nobatet.ui.staff.LinkCard
+import app.nobatet.ui.staff.StatTile
+import app.nobatet.ui.staff.StatusPill
+import app.nobatet.ui.staff.HeroInk
+import app.nobatet.ui.staff.HeroCard
+import app.nobatet.ui.components.Avatar
+import app.nobatet.BuildConfig
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.QrCode2
+import androidx.compose.material.icons.outlined.Calculate
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.RateReview
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import android.net.Uri
+import android.content.Intent
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppDialog
 import app.nobatet.ui.components.Toasts
@@ -177,44 +210,164 @@ fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
 
 enum class SalonPage(val title: String) { ACCOUNTING("حسابداری"), REVIEWS("نظرات مشتری‌ها"), GALLERY("گالری نمونه کارها"), SHARE("کیت معرفی") }
 
-/** The salon home: today, what waits for confirmation, the plan notice, and the other pages. */
+/**
+ * The salon home, as the web's app/salon/page.tsx: the dark hero (logo, status, today's forecast,
+ * «اشتراک لینک رزرو» / «صفحه سالن»), pending/suspended notes, new reviews, stat tiles, accounting
+ * and share-kit cards, unset-share and plan warnings, what waits for confirmation, today's timeline.
+ */
 @Composable
-fun SalonHomeScreen(data: SalonData, sheets: SalonSheetsState, onOpenPage: (SalonPage) -> Unit) {
+fun SalonHomeScreen(container: AppContainer, data: SalonData, sheets: SalonSheetsState, onGoToTab: (Int) -> Unit, onOpenPage: (SalonPage) -> Unit) {
     val c = LocalAppColors.current
+    val context = LocalContext.current
     val salon = data.salon ?: return
     val tz = salon.timezone
+    val independent = salon.independent
+    val stylistName: (StaffAppointment) -> String? = { a -> if (independent) null else a.stylist?.displayName }
+    var pendingReviews by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) { pendingReviews = runCatching { container.api.salonReviews() }.getOrNull()?.count { it.status == app.nobatet.data.ReviewStatus.PENDING } ?: 0 }
+
+    val now = Instant.now()
     val today = salonToday(tz)
-    val list = data.appointments.orEmpty()
-    val todays = list.filter { it.localDate(tz) == today && it.status != AppointmentStatus.CANCELLED }.sortedBy { it.startAt }
-    val pending = list.filter { it.status == AppointmentStatus.PENDING }.sortedBy { it.startAt }
-    Box(Modifier.fillMaxSize()) {
-        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (salon.status == "PENDING") item {
-                AppCard { Text("در انتظار تایید پشتیبانی", color = c.pending, style = MaterialTheme.typography.titleSmall); Muted("پس از تایید، صفحه شما در جستجو نمایش داده می‌شود و نوبت آنلاین می‌گیرید.") }
-            }
-            data.subscription?.takeIf { it.status == "expired" }?.let { item { AppCard { Text("اشتراک سالن به پایان رسیده است", color = c.danger); Muted("پیامک‌ها ارسال نمی‌شوند؛ برای تمدید با پشتیبانی تماس بگیرید.") } } }
-            if (data.appointments == null) item { app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(150.dp)) } else item {
-                AppCard {
-                    Muted("امروز، ${today.persianLabel()}")
-                    Text("${todays.size.toString().toPersianDigits()} نوبت", style = MaterialTheme.typography.headlineSmall, color = c.ink)
-                    Muted("درآمد پیش‌بینی امروز")
-                    Text(formatToman(todays.filter { it.status != AppointmentStatus.NO_SHOW }.sumOf { it.priceToman }), color = c.accent, style = MaterialTheme.typography.titleLarge)
+    val loaded = data.appointments
+    val live = loaded.orEmpty().filter { it.status != AppointmentStatus.CANCELLED }
+    val todays = live.filter { it.localDate(tz) == today }.sortedBy { it.startAt }
+    val upcoming = live.filter { !Instant.parse(it.startAt).isBefore(now) }
+    val needs = upcoming.filter { it.status == AppointmentStatus.PENDING }.sortedBy { it.startAt }
+    val revenue = todays.filter { it.status != AppointmentStatus.NO_SHOW }.sumOf { it.priceToman }
+    // the share kit's short link (book/@handle; the slug until a handle is chosen)
+    val bookingUrl = BuildConfig.WEB_BASE_URL + "book/@" + (salon.handle ?: salon.slug)
+
+    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item(key = "hero") {
+            HeroCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Avatar(salon.name, salon.logoUrl, size = 52.dp)
+                    Column(Modifier.padding(start = 12.dp)) {
+                        Text(salon.name, color = HeroInk, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        when (salon.status) {
+                            "PENDING" -> StatusPill("در انتظار تایید", c.pending)
+                            "SUSPENDED" -> StatusPill("معلق", c.danger)
+                            else -> StatusPill("فعال", c.done)
+                        }
+                    }
+                }
+                Text("درآمد پیش‌بینی امروز", color = HeroInk.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 20.dp))
+                Text(if (loaded == null) "…" else formatToman(revenue), color = HeroInk, fontSize = 26.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold)
+                if (salon.status == "ACTIVE") Row(Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HeroButton("اشتراک لینک رزرو", Icons.Outlined.Share, c.accent, c.accentInk, Modifier.weight(1f)) {
+                        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "رزرو آنلاین نوبت در ${salon.name}\n$bookingUrl")
+                        runCatching { context.startActivity(Intent.createChooser(send, "اشتراک لینک رزرو")) }
+                    }
+                    HeroButton(if (independent) "صفحه رزرو" else "صفحه سالن", Icons.AutoMirrored.Outlined.OpenInNew, Color.White.copy(alpha = 0.1f), HeroInk) {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.WEB_BASE_URL + "s/" + salon.slug))) }
+                    }
                 }
             }
-            if (pending.isNotEmpty()) {
-                item { SectionTitle("منتظر تایید (${pending.size.toString().toPersianDigits()})") }
-                items(pending, key = { "p" + it.id }) { a -> StaffAppointmentCard(a, tz, if (salon.independent) null else a.stylist?.displayName) { sheets.selected = a } }
+        }
+        if (salon.status == "PENDING") item(key = "pending") {
+            TintNote(
+                if (independent) "حساب شما در انتظار تایید پشتیبانی است. تا آن موقع صفحه رزرو برای مشتری‌ها نمایش داده نمی‌شود؛ اما می‌توانید خدمات، ساعات کاری و تنظیمات را آماده کنید."
+                else "سالن شما در انتظار تایید پشتیبانی است. تا آن موقع صفحه رزرو برای مشتری‌ها نمایش داده نمی‌شود؛ اما می‌توانید خدمات، آرایشگرها و تنظیمات را آماده کنید.",
+                c.pending,
+            )
+        }
+        if (salon.status == "SUSPENDED") item(key = "suspended") {
+            TintNote("${if (independent) "صفحه شما" else "سالن شما"} به‌طور موقت معلق شده و برای مشتری‌ها قابل مشاهده نیست. برای اطلاعات بیشتر با پشتیبانی تماس بگیرید.", c.danger)
+        }
+        if (pendingReviews > 0) item(key = "reviews") {
+            LinkCard(Icons.Outlined.RateReview, "نظرهای تازه مشتری‌ها", "${pendingReviews.toString().toPersianDigits()} نظر منتظر تایید شما", badge = pendingReviews) { onOpenPage(SalonPage.REVIEWS) }
+        }
+        item(key = "stats") {
+            if (loaded == null) app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(110.dp))
+            else Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatTile("نوبت امروز", todays.size, Icons.Outlined.EventAvailable, c.accent)
+                StatTile("منتظر تایید", needs.size, Icons.Outlined.HourglassEmpty, if (needs.isNotEmpty()) c.pending else null)
+                StatTile("نوبت‌های آینده", upcoming.size, Icons.Outlined.Schedule)
             }
-            item { SectionTitle("برنامه امروز") }
-            if (data.appointments == null) items(2) { app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(80.dp)) }
-            else if (todays.isEmpty()) item { Muted("امروز نوبتی ندارید.") }
-            items(todays, key = { "t" + it.id }) { a -> StaffAppointmentCard(a, tz, if (salon.independent) null else a.stylist?.displayName) { sheets.selected = a } }
-            item { SectionTitle("بیشتر", Modifier.padding(top = 8.dp)) }
-            items(SalonPage.entries) { page ->
-                AppCard(Modifier.clickable { onOpenPage(page) }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) { Text(page.title, color = c.ink, modifier = Modifier.weight(1f)); Text("›", color = c.muted) }
+        }
+        item(key = "accounting") {
+            LinkCard(Icons.Outlined.Calculate, "حسابداری", if (independent) "درآمد، هزینه‌ها و سود خالص ماه" else "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها") { onOpenPage(SalonPage.ACCOUNTING) }
+        }
+        item(key = "share") { LinkCard(Icons.Outlined.QrCode2, "کیت معرفی", "لینک مستقیم رزرو، کد QR و پوستر برای استوری و چاپ") { onOpenPage(SalonPage.SHARE) } }
+        item(key = "gallery") { LinkCard(Icons.Outlined.PhotoLibrary, "گالری نمونه کارها", "عکس کارهای انجام‌شده برای صفحه رزرو") { onOpenPage(SalonPage.GALLERY) } }
+        // an independent stylist's own 0% is by design: all the money is theirs
+        if (!independent) item(key = "zero") { ZeroCommissionNotice(data.stylists) { onGoToTab(3) } }
+        item(key = "plan") { SubscriptionNotice(data.subscription) { onGoToTab(4) } }
+        if (needs.isNotEmpty()) {
+            item(key = "needsTitle") {
+                HomeSectionTitle("منتظر تایید شما") {
+                    if (needs.size > 3) AppTextButton(onClick = { onGoToTab(1) }) { Text("همه") }
                 }
+            }
+            items(needs.take(3), key = { "p" + it.id }) { a -> StaffAppointmentCard(a, tz, stylistName(a)) { sheets.selected = a } }
+        }
+        item(key = "todayTitle") { HomeSectionTitle("برنامه امروز") }
+        item(key = "today") {
+            when {
+                loaded == null -> app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(160.dp))
+                todays.isEmpty() -> Empty(
+                    "امروز نوبتی ثبت نشده", "لینک رزرو ${if (independent) "خودتان" else "سالن"} را برای مشتری‌ها بفرستید تا خودشان آنلاین نوبت بگیرند.",
+                    icon = Icons.Outlined.AutoAwesome,
+                )
+                else -> TodayTimeline(todays, tz, stylistName) { sheets.selected = it }
             }
         }
     }
 }
+
+/** A button on the hero. */
+@Composable
+private fun HeroButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, bg: Color, fg: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(
+        modifier.height(44.dp).clip(RoundedCornerShape(16.dp)).background(bg).clickable(onClick = onClick).padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(16.dp))
+        Text(label, color = fg, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+/** A tinted note (the web's pending/suspended paragraphs). */
+@Composable
+private fun TintNote(text: String, color: Color) {
+    Text(text, color = color, fontSize = 14.sp, lineHeight = 26.sp, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(color.copy(alpha = 0.12f)).padding(16.dp))
+}
+
+private const val ZERO_OK_KEY = "zeroCommissionOk"
+
+/**
+ * The web's ZeroCommissionNotice: active stylists still at 0% share; «عمداً ۰٪ است» hides them
+ * on this device.
+ */
+@Composable
+private fun ZeroCommissionNotice(stylists: List<app.nobatet.data.OwnerStylist>, onPick: () -> Unit) {
+    val prefs = LocalContext.current.getSharedPreferences("ui", android.content.Context.MODE_PRIVATE)
+    var ok by remember { mutableStateOf(prefs.getStringSet(ZERO_OK_KEY, emptySet()).orEmpty()) }
+    val zero = stylists.filter { it.active && it.commissionPercent == 0.0 && it.id !in ok }
+    if (zero.isEmpty()) return
+    val names = zero.joinToString("، ") { it.displayName }
+    NoticeCard(
+        "تا سهم را تعیین نکنید، کل مبلغ نوبت‌هایشان سهم سالن حساب می‌شود و طلبی برایشان ثبت نمی‌شود.",
+        title = if (zero.size == 1) "سهم $names تعیین نشده (۰٪)" else "سهم این آرایشگرها تعیین نشده (۰٪): $names",
+    ) {
+        NoticeChip("تعیین سهم", onPick)
+        AppTextButton(onClick = {
+            ok = ok + zero.map { it.id }
+            prefs.edit().putStringSet(ZERO_OK_KEY, ok).apply()
+        }) { Text("عمداً ۰٪ است", color = LocalAppColors.current.muted) }
+    }
+}
+
+/** The web's SubscriptionNotice: expired, ending within 7 days, or the plan's stylist seats full. */
+@Composable
+private fun SubscriptionNotice(sub: app.nobatet.data.OwnerSubscription?, onDetails: () -> Unit) {
+    if (sub == null || sub.status == "none") return
+    val left = sub.expiresAt?.let { java.time.Duration.between(Instant.now(), Instant.parse(it)).toHours().let { h -> maxOf(0L, (h + 23) / 24) } }
+    val text = when {
+        sub.status == "expired" -> "اشتراک سالن به پایان رسیده است؛ تا تمدید، افزودن آرایشگر و پیامک یادآوری متوقف است."
+        left != null && left <= 7 -> "${left.toString().toPersianDigits()} روز تا پایان اشتراک سالن مانده است."
+        else -> return
+    }
+    NoticeCard(text, onClick = onDetails)
+}
+

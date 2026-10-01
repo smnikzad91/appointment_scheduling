@@ -78,7 +78,7 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
         onSelectTab = { tab = it; if (it <= 1) loadAppointments() },
         actions = { app.nobatet.ui.customer.NotificationBell(container) { showNotifications = true } },
         tabs = listOf(
-            PanelTab("امروز", Icons.Outlined.Home) { StylistHomeScreen(s, appointments, actions) { page = it } },
+            PanelTab("امروز", Icons.Outlined.Home) { StylistHomeScreen(s, appointments, actions, onGoToTab = { tab = it }) { page = it } },
             PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth, title = "نوبت‌های من") { StylistAppointmentsScreen(s, appointments, actions) },
             PanelTab("ساعات کاری", Icons.Outlined.Schedule, title = "ساعات کاری", subtitle = "مشتری‌ها فقط در همین ساعت‌ها می‌توانند با شما نوبت بگیرند.") { StylistScheduleScreen(container, s) { loadStylist() } },
             PanelTab("خدمات", Icons.Outlined.ContentCut, title = "خدمات من", subtitle = "قیمت، زمان و پیامک یادآوری نوبت بعدیِ هر خدمت را برای خودتان تنظیم کنید؛ خالی یعنی پیش‌فرض سالن.") { StylistServicesScreen(container, s) { loadStylist() } },
