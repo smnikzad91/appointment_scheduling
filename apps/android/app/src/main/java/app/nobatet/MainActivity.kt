@@ -8,7 +8,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import app.nobatet.ui.BrandSplash
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import app.nobatet.data.ThemeChoice
 import app.nobatet.ui.AppRoot
@@ -35,9 +42,14 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             val scope = rememberCoroutineScope()
+            var showSplash by rememberSaveable { mutableStateOf(savedInstanceState == null) }
             CompositionLocalProvider(LocalThemeControl provides ThemeControl(dark) { scope.launch { container.theme.save(!dark) } }) {
                 NobatetTheme(dark = dark) {
-                    AppRoot(container)
+                    Box(Modifier.fillMaxSize()) {
+                        AppRoot(container)
+                        // the web's PWA splash, once per launch (not again on rotation)
+                        if (showSplash) NobatetTheme(dark = true) { BrandSplash(onDone = { showSplash = false }) }
+                    }
                 }
             }
         }

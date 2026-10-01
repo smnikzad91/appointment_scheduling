@@ -14,6 +14,8 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -106,7 +108,16 @@ private val AppShapes = Shapes(
     large = RoundedCornerShape(24.dp), extraLarge = RoundedCornerShape(28.dp),
 )
 
-private val LocalBarsDark = staticCompositionLocalOf<Boolean?> { null }
+private class BarRequest(var dark: Boolean)
+
+private class BarsStack(private val activity: ComponentActivity?) {
+    val entries = mutableListOf<BarRequest>()
+    fun apply() {
+        entries.lastOrNull()?.let { activity?.systemBars(it.dark) }
+    }
+}
+
+private val LocalBarsStack = staticCompositionLocalOf<BarsStack?> { null }
 
 private tailrec fun Context.findActivity(): ComponentActivity? = when (this) {
     is ComponentActivity -> this
@@ -146,16 +157,19 @@ fun NobatetTheme(
         outline = c.line, outlineVariant = c.line,
         error = c.danger, onError = Color.White, errorContainer = c.danger.copy(alpha = 0.12f), onErrorContainer = c.danger,
     )
-    // Status/navigation bar icons follow the innermost theme (a dark salon page or sign-in over a
-    // light app), and go back to the enclosing one when it leaves.
-    val outerDark = LocalBarsDark.current
+    // Status/navigation bar icons follow the newest theme on screen (a dark salon page, sign-in or
+    // the splash over a light app); when it leaves, the one before it takes over again.
     val activity = LocalContext.current.findActivity()
-    DisposableEffect(activity, isDark, outerDark) {
-        activity?.systemBars(isDark)
-        onDispose { if (outerDark != null) activity?.systemBars(outerDark) }
+    val stack = LocalBarsStack.current ?: remember(activity) { BarsStack(activity) }
+    val request = remember(stack) { BarRequest(isDark) }
+    DisposableEffect(stack, request) {
+        stack.entries += request
+        stack.apply()
+        onDispose { stack.entries -= request; stack.apply() }
     }
+    SideEffect { if (request.dark != isDark) { request.dark = isDark; stack.apply() } }
     // The whole UI is Persian: right-to-left whatever the phone's language.
-    CompositionLocalProvider(LocalAppColors provides c, LocalBarsDark provides isDark, LocalLayoutDirection provides LayoutDirection.Rtl) {
+    CompositionLocalProvider(LocalAppColors provides c, LocalBarsStack provides stack, LocalLayoutDirection provides LayoutDirection.Rtl) {
         MaterialTheme(colorScheme = scheme, typography = typography(), shapes = AppShapes, content = content)
     }
 }

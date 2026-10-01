@@ -15,6 +15,8 @@ instead of «آرایشگرها»). The admin panel stays on the website (the ap
   dialogs, sheets, chips), Vazirmatn, always right-to-left. Light/dark follows the phone until the user
   picks «حالت تیره / حالت روشن» in the account sheet (saved in DataStore `prefs`, like the web's `theme`).
   Sign-in uses the web's dark guest look (`NobatetTheme(guest = true)`).
+- Splash: the web's PWA splash (`ui/BrandSplash.kt`, once per launch) over a plain `#121319` system
+  splash — keep it in step with apps/web `components/common/SplashScreen.tsx` / `.app-splash`.
 - Shell: the web's AppShell — logo + «نوبتت» + panel name, bell, avatar → «حساب کاربری» sheet
   (panel links, light/dark, sign out), and its tab bar.
 
