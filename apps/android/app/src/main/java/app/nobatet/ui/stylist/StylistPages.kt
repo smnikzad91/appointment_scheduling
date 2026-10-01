@@ -1,5 +1,14 @@
 package app.nobatet.ui.stylist
 
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.Icons
+import app.nobatet.ui.components.jalaliMonthSlug
+import app.nobatet.ui.components.jalaliDate
+import app.nobatet.ui.components.cell
+import app.nobatet.ui.components.ReportExportSheet
+import app.nobatet.ui.components.ReportSection
+import app.nobatet.ui.components.Report
 import app.nobatet.ui.components.AppChip
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppDialog
@@ -126,9 +135,15 @@ private fun EarningsPage(container: AppContainer, stylist: SelfStylist) {
             container.api.myEarnings(salonWallTimeToInstant(period.start, 0, tz).toString(), salonWallTimeToInstant(period.end, 0, tz).toString())
         }.getOrNull()
     }
+    var exporting by remember { mutableStateOf<Report?>(null) }
+    exporting?.let { ReportExportSheet(it) { exporting = null } }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         MonthSwitcher(period.label, onPrev = { if (offset > -11) offset-- }, onNext = { offset++ }, canNext = offset < 0, canPrev = offset > -11)
         val d = data ?: return@Column Loading()
+        AppTextButton(onClick = { exporting = buildEarningsReport(stylist.displayName, period.label, salonWallTimeToInstant(period.start, 0, tz).toString(), tz, d) }, modifier = Modifier.align(Alignment.End)) {
+            Icon(Icons.Outlined.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text("خروجی گزارش", modifier = Modifier.padding(start = 6.dp))
+        }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
             item {
                 AppCard {
@@ -356,4 +371,46 @@ private fun SharePage(container: AppContainer, stylist: SelfStylist) {
             }
         }
     }
+}
+
+/** The month's earnings as a report (the web's buildEarningsReport). */
+private fun buildEarningsReport(name: String, label: String, from: String, tz: String?, d: StylistEarnings): Report {
+    val t = d.totals
+    return Report(
+        title = "گزارش درآمد $name — $label",
+        subtitle = "${t.appointmentCount.toString().toPersianDigits()} نوبت انجام‌شده، ${d.payouts.size.toString().toPersianDigits()} پرداخت از سالن، ${d.expenses.size.toString().toPersianDigits()} هزینه",
+        fileSlug = "daramad-${jalaliMonthSlug(from, tz)}",
+        sections = listOf(
+            ReportSection(
+                "خلاصه", listOf("شرح", "مبلغ (تومان)"),
+                listOf(
+                    "مبلغ نوبت‌ها (با انعام)" to t.incomeToman, "انعام‌ها" to t.tipsToman, "سهم شما (با انعام) — درآمد ناخالص" to t.shareToman,
+                    "هزینه‌های شما" to t.expensesToman,
+                    (if (t.netIncomeToman < 0) "زیان خالص (سهم − هزینه‌ها)" else "درآمد خالص (سهم − هزینه‌ها)") to kotlin.math.abs(t.netIncomeToman),
+                    "دریافتی از سالن در این ماه" to t.paidInPeriodToman,
+                    (if (d.balanceToman < 0) "پیش‌دریافت (کل)" else "مانده طلب از سالن (کل)") to kotlin.math.abs(d.balanceToman),
+                ).map { (k, v) -> listOf(cell(k), cell(v)) },
+            ),
+            ReportSection(
+                "نوبت‌های انجام‌شده", listOf("تاریخ", "مشتری", "خدمات", "مبلغ دریافتی", "انعام", "درصد سهم", "سهم شما"),
+                d.items.map {
+                    listOf(cell(jalaliDate(it.startAt, tz)), cell(it.customerName), cell(it.services.joinToString("، ")), cell(it.chargedToman), cell(it.tipToman),
+                        cell(Math.round(it.commissionPercent * 10) / 10.0), cell(it.stylistShareToman))
+                },
+                listOf(cell("جمع"), cell(""), cell(""), cell(d.items.sumOf { it.chargedToman }), cell(t.tipsToman), cell(""), cell(t.shareToman)),
+            ),
+            ReportSection(
+                "پرداخت‌های سالن", listOf("تاریخ", "روش", "مبلغ", "توضیح"),
+                d.payouts.map { listOf(cell(jalaliDate(it.paidAt, tz)), cell(PAYOUT_METHOD_LABEL[it.method] ?: it.method), cell(it.amountToman), cell(it.note.orEmpty())) },
+                listOf(cell("جمع"), cell(""), cell(t.paidInPeriodToman), cell("")),
+            ),
+            ReportSection(
+                "هزینه‌های شما", listOf("تاریخ", "دسته", "مبلغ", "توضیح", "رسید"),
+                d.expenses.map {
+                    listOf(cell(jalaliDate(it.spentAt, tz)), cell(STYLIST_EXPENSE_CATEGORIES[it.category] ?: it.category), cell(it.amountToman), cell(it.description), cell(if (it.receiptUrl != null) "دارد" else ""))
+                },
+                listOf(cell("جمع"), cell(""), cell(t.expensesToman), cell(""), cell("")),
+            ),
+        ),
+    )
 }

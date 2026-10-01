@@ -163,6 +163,7 @@ data class StylistEarnings(
     val balanceToman: Int = 0,
     val items: List<IncomeItem> = emptyList(),
     val payouts: List<Payout> = emptyList(),
+    val expenses: List<StylistExpense> = emptyList(),
 )
 
 @Serializable

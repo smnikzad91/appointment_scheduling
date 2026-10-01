@@ -8,6 +8,9 @@ import java.util.Locale
 fun formatToman(amount: Int): String =
     NumberFormat.getIntegerInstance(Locale.US).format(amount).replace(',', '٬').toPersianDigits() + " تومان"
 
+/** 450000 → «۴۵۰٬۰۰۰» (no unit), as the web's formatAmount. */
+fun formatAmount(amount: Long): String = NumberFormat.getIntegerInstance(Locale.US).format(amount).replace(',', '٬').toPersianDigits()
+
 /** Minutes after midnight → «۰۹:۳۰». */
 fun formatClock(minuteOfDay: Int): String = "%02d:%02d".format(minuteOfDay / 60 % 24, minuteOfDay % 60).toPersianDigits()
 

@@ -1,5 +1,16 @@
 package app.nobatet.ui.salon
 
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.Icons
+import app.nobatet.ui.components.jalaliMonthSlug
+import app.nobatet.ui.components.jalaliDate
+import app.nobatet.ui.components.cell
+import app.nobatet.ui.components.ReportExportSheet
+import app.nobatet.ui.components.ReportSection
+import app.nobatet.ui.components.Report
 import app.nobatet.ui.components.AppChip
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppDialog
@@ -101,6 +112,7 @@ fun SalonAccountingPage(container: AppContainer, data: SalonData) {
     var paying by remember { mutableStateOf<StylistAccount?>(null) }
     var expense by remember { mutableStateOf<SalonExpense?>(null) }
     var addingExpense by remember { mutableStateOf(false) }
+    var exporting by remember { mutableStateOf<Report?>(null) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(offset, reload) {
         summary = null
@@ -116,6 +128,12 @@ fun SalonAccountingPage(container: AppContainer, data: SalonData) {
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(horizontal = 16.dp)) {
             MonthSwitcher(period.label, onPrev = { offset-- }, onNext = { offset++ }, canNext = offset < 0)
+            summary?.let { sm ->
+                AppTextButton(onClick = { exporting = buildSalonReport(period.label, from, tz, sm, income, expenses) }, modifier = Modifier.align(Alignment.End)) {
+                    Icon(Icons.Outlined.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text("خروجی گزارش", modifier = Modifier.padding(start = 6.dp))
+                }
+            }
             summary?.let { s ->
                 AppCard {
                     Money("درآمد ماه", s.totals.incomeToman, accent = true)
@@ -181,6 +199,7 @@ fun SalonAccountingPage(container: AppContainer, data: SalonData) {
         }
     }
 
+    exporting?.let { ReportExportSheet(it) { exporting = null } }
     charging?.let { item -> ChargeDialog(container, item, onDismiss = { charging = null }) { charging = null; reload++; scope.launch { Toasts.success("مبلغ اصلاح شد") } } }
     paying?.let { st -> PayoutDialog(container, st, onDismiss = { paying = null }) { paying = null; reload++; scope.launch { Toasts.success("پرداخت ثبت شد") } } }
     if (addingExpense || expense != null) {
@@ -316,5 +335,50 @@ private fun SalonExpenseDialog(container: AppContainer, tz: String, editing: Sal
             }) { Text("ذخیره") }
         },
         dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
+    )
+}
+
+/** The month's accounting as a report (the web's buildSalonReport). */
+private fun buildSalonReport(label: String, from: String, tz: String?, s: SalonSummary, income: List<SalonIncomeItem>, expenses: List<SalonExpense>): Report {
+    val t = s.totals
+    fun r1(d: Double) = Math.round(d * 10) / 10.0
+    return Report(
+        title = "گزارش حسابداری سالن — $label",
+        subtitle = "${t.appointmentCount.toString().toPersianDigits()} نوبت انجام‌شده، ${income.size.toString().toPersianDigits()} ردیف درآمد و ${expenses.size.toString().toPersianDigits()} هزینه",
+        fileSlug = "hesabdari-${jalaliMonthSlug(from, tz)}",
+        sections = listOf(
+            ReportSection(
+                "خلاصه", listOf("شرح", "مبلغ (تومان)"),
+                listOf(
+                    "درآمد کل (با انعام)" to t.incomeToman, "انعام‌ها" to t.tipsToman, "سهم آرایشگرها (با انعام)" to t.stylistShareToman,
+                    "سهم سالن" to t.salonShareToman, "هزینه‌ها" to t.expensesToman,
+                    (if (t.netProfitToman < 0) "زیان خالص" else "سود خالص") to kotlin.math.abs(t.netProfitToman),
+                    "پرداختی به آرایشگرها در این ماه" to t.payoutsToman, "طلب آرایشگرها (کل)" to t.owedToStylistsToman,
+                ).map { (k, v) -> listOf(cell(k), cell(v)) },
+            ),
+            ReportSection(
+                "آرایشگرها", listOf("آرایشگر", "درصد پیش‌فرض", "نوبت", "درآمد", "انعام", "سهم آرایشگر", "پرداختی این ماه", "مانده طلب", "پیش‌پرداخت"),
+                s.stylists.map {
+                    listOf(cell(it.displayName), cell(it.commissionPercent), cell(it.appointmentCount), cell(it.incomeToman), cell(it.tipsToman), cell(it.shareToman),
+                        cell(it.paidInPeriodToman), cell(maxOf(0, it.balanceToman)), cell(maxOf(0, -it.balanceToman)))
+                },
+            ),
+            ReportSection(
+                "درآمدها", listOf("تاریخ", "مشتری", "آرایشگر", "خدمات", "قیمت رزرو", "مبلغ دریافتی", "انعام", "درصد سهم", "سهم آرایشگر", "سهم سالن"),
+                income.map {
+                    listOf(cell(jalaliDate(it.startAt, tz)), cell(it.customerName), cell(it.stylist.displayName), cell(it.services.joinToString("، ")),
+                        cell(it.priceToman), cell(it.chargedToman), cell(it.tipToman), cell(r1(it.commissionPercent)), cell(it.stylistShareToman), cell(it.salonShareToman))
+                },
+                listOf(cell("جمع"), cell(""), cell(""), cell(""), cell(income.sumOf { it.priceToman }), cell(income.sumOf { it.chargedToman }), cell(income.sumOf { it.tipToman }),
+                    cell(""), cell(income.sumOf { it.stylistShareToman }), cell(income.sumOf { it.salonShareToman })),
+            ),
+            ReportSection(
+                "هزینه‌ها", listOf("تاریخ", "دسته", "مبلغ", "توضیح", "رسید"),
+                expenses.map {
+                    listOf(cell(jalaliDate(it.spentAt, tz)), cell(SALON_EXPENSE_CATEGORIES[it.category] ?: it.category), cell(it.amountToman), cell(it.note.orEmpty()), cell(if (it.receiptUrl != null) "دارد" else ""))
+                },
+                listOf(cell("جمع"), cell(""), cell(t.expensesToman), cell(""), cell("")),
+            ),
+        ),
     )
 }

@@ -147,6 +147,8 @@ data class StylistAccount(
     val active: Boolean = true,
     val commissionPercent: Double = 0.0,
     val appointmentCount: Int = 0,
+    val incomeToman: Int = 0,
+    val tipsToman: Int = 0,
     val shareToman: Int = 0,
     val paidInPeriodToman: Int = 0,
     val balanceToman: Int = 0,
@@ -165,10 +167,13 @@ data class SalonIncomeItem(
     val customerName: String,
     val stylist: BookingStylist,
     val services: List<String> = emptyList(),
+    /** The booked price; [chargedToman] is what was actually taken. */
+    val priceToman: Int = 0,
     val chargedToman: Int = 0,
     val tipToman: Int = 0,
     val stylistShareToman: Int = 0,
     val salonShareToman: Int = 0,
+    val commissionPercent: Double = 0.0,
 )
 
 @Serializable
