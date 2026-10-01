@@ -59,5 +59,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.osmdroid)
     implementation(libs.zxing.core)
+    implementation(libs.androidx.work)
+    implementation(libs.play.sms)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

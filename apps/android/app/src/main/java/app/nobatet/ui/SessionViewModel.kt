@@ -38,7 +38,7 @@ class SessionViewModel(private val container: AppContainer) : ViewModel() {
                 return@launch
             }
             _state.value = try {
-                SessionState.SignedIn(container.api.me())
+                SessionState.SignedIn(container.api.me().also { container.tokens.saveRole(it.role) })
             } catch (e: HttpException) {
                 if (e.code() == 401) {
                     container.tokens.clear()
@@ -55,6 +55,8 @@ class SessionViewModel(private val container: AppContainer) : ViewModel() {
     fun signedIn(auth: AuthResponse) {
         viewModelScope.launch {
             container.tokens.save(auth.accessToken)
+            container.tokens.saveRole(auth.user.role)
+            app.nobatet.notify.NotificationWorker.reset(container.appContext)
             _state.value = SessionState.SignedIn(auth.user)
         }
     }
@@ -63,6 +65,7 @@ class SessionViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             container.tokens.clear()
             container.favorites.clear()
+            app.nobatet.notify.NotificationWorker.reset(container.appContext)
             _state.value = SessionState.SignedOut
         }
     }

@@ -70,7 +70,9 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
             return
         }
         CustomerOverlay.Notifications -> {
-            NotificationsScreen(container, onBack = { overlay = null }, onOpenSalon = openSalon, onOpenBookings = { overlay = null; tab = TAB_BOOKINGS })
+            NotificationsScreen(container, app.nobatet.notify.NotificationScope.CUSTOMER, onBack = { overlay = null }) { t ->
+                if (t.target == app.nobatet.notify.NotificationTarget.SALON_PAGE && t.salonSlug != null) openSalon(t.salonSlug) else { overlay = null; tab = TAB_BOOKINGS }
+            }
             return
         }
         CustomerOverlay.Support -> {

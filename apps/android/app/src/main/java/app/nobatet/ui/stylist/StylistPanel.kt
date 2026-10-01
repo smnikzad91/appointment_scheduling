@@ -35,6 +35,7 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
     var error by remember { mutableStateOf<String?>(null) }
     var page by remember { mutableStateOf<StylistPage?>(null) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var showNotifications by remember { mutableStateOf(false) }
 
     fun loadStylist() = scope.launch {
         runCatching { container.api.myStylist() }.onSuccess { stylist = it; error = null }
@@ -51,6 +52,17 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
         error?.let { LoadError(it, { error = null; loadStylist() }) } ?: Loading()
         return
     }
+    if (showNotifications) {
+        app.nobatet.ui.customer.NotificationsScreen(container, app.nobatet.notify.NotificationScope.STYLIST, onBack = { showNotifications = false }) { t ->
+            showNotifications = false
+            when (t.target) {
+                app.nobatet.notify.NotificationTarget.REVIEWS -> page = StylistPage.REVIEWS
+                app.nobatet.notify.NotificationTarget.EARNINGS -> page = StylistPage.EARNINGS
+                else -> { tab = 1; loadAppointments() }
+            }
+        }
+        return
+    }
     page?.let { p ->
         StylistPageScreen(p, container, s, onBack = { page = null })
         return
@@ -60,6 +72,7 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
         onSignOut = onSignOut,
         selectedTab = tab,
         onSelectTab = { tab = it; if (it <= 1) loadAppointments() },
+        actions = { app.nobatet.ui.customer.NotificationBell(container) { showNotifications = true } },
         tabs = listOf(
             PanelTab("امروز", Icons.Outlined.Home) { StylistHomeScreen(s, appointments, actions) { page = it } },
             PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth) { StylistAppointmentsScreen(s, appointments, actions) },

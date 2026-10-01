@@ -24,6 +24,7 @@ class AuthInterceptor(private val tokens: TokenStore) : Interceptor {
 
 /** Hand-made dependency container (one place, no DI framework yet). */
 class AppContainer(context: Context) {
+    val appContext: Context = context.applicationContext
     val tokens = TokenStore(context)
 
     val json = Json {

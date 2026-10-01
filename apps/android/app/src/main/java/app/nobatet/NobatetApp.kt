@@ -10,5 +10,6 @@ class NobatetApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        app.nobatet.notify.NotificationWorker.setUp(this)
     }
 }

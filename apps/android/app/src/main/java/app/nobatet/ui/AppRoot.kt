@@ -32,6 +32,14 @@ fun AppRoot(container: AppContainer) {
     val session: SessionViewModel = viewModel(factory = viewModelFactory { initializer { SessionViewModel(container) } })
     val state by session.state.collectAsStateWithLifecycle()
     val colors = LocalAppColors.current
+    val askNotifications = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    val signedIn = state is SessionState.SignedIn
+    val context = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(signedIn) {
+        if (signedIn && android.os.Build.VERSION.SDK_INT >= 33 &&
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
 
     Box(Modifier.fillMaxSize().background(colors.bg)) {
         when (val s = state) {

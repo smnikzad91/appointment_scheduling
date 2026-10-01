@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- phone notifications for new in-app notifications (Android 13+ asks) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- «نزدیک من» in salon search (asked only when tapped) -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />

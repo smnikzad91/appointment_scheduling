@@ -114,6 +114,8 @@ private fun PasswordForm(state: LoginUiState, vm: LoginViewModel) {
 
 @Composable
 private fun OtpForm(state: LoginUiState, vm: LoginViewModel) {
+    // the code from the SMS, with the user's OK (SMS User Consent)
+    app.nobatet.util.SmsCodeListener(active = state.codeSent, length = OTP_LENGTH) { vm.setCode(it) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (!state.codeSent) {
             OutlinedTextField(

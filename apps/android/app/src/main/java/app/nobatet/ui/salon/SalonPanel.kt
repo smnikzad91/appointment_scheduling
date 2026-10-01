@@ -38,12 +38,20 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
     var page by remember { mutableStateOf<SalonPage?>(null) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var self by remember { mutableStateOf<SelfStylist?>(null) }
+    var showNotifications by remember { mutableStateOf(false) }
     fun loadSelf() = scope.launch { runCatching { container.api.myStylist() }.onSuccess { self = it } }
     LaunchedEffect(Unit) { data.loadAll(); if (independent) loadSelf() }
 
     val salon = data.salon
     if (salon == null) {
         data.error?.let { LoadError(it, { data.error = null; data.loadSalon() }) } ?: Loading()
+        return
+    }
+    if (showNotifications) {
+        app.nobatet.ui.customer.NotificationsScreen(container, app.nobatet.notify.NotificationScope.SALON, onBack = { showNotifications = false }) { t ->
+            showNotifications = false
+            if (t.target == app.nobatet.notify.NotificationTarget.REVIEWS) page = SalonPage.REVIEWS else { tab = 1; data.loadAppointments() }
+        }
         return
     }
     page?.let { p ->
@@ -55,6 +63,7 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
         onSignOut = onSignOut,
         selectedTab = tab,
         onSelectTab = { tab = it; if (it <= 1) data.loadAppointments() },
+        actions = { app.nobatet.ui.customer.NotificationBell(container) { showNotifications = true } },
         tabs = listOf(
             PanelTab("خانه", Icons.Outlined.Home) { SalonHomeScreen(data, sheets) { page = it } },
             PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth) { SalonAppointmentsScreen(data, sheets) },

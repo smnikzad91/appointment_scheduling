@@ -3,6 +3,7 @@ package app.nobatet.ui.customer
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -147,6 +148,10 @@ private fun SalonContent(salon: SalonDetail, onBook: (String?) -> Unit) {
                 }.joinToString("، ")
                 Muted(where)
                 salon.address?.let { Muted(it) }
+                // «مسیریابی»: only for a real address (not an independent stylist's private, rounded pin)
+                if (salon.latitude != null && salon.longitude != null && !salon.approximateLocation && salon.address != null) {
+                    DirectionsButton(salon.latitude, salon.longitude)
+                }
                 salon.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = c.ink, modifier = Modifier.padding(top = 8.dp)) }
             }
         }
@@ -191,5 +196,39 @@ private fun ServiceRow(service: SalonService, onBook: () -> Unit) {
             }
             OutlinedButton(onClick = onBook, shape = RoundedCornerShape(999.dp)) { Text("رزرو") }
         }
+    }
+}
+
+
+/** The web's DirectionsButton: pick Neshan, Balad or Google Maps; their https routing links (an installed app takes them over). */
+@Composable
+private fun DirectionsButton(lat: Double, lng: Double) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var open by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    OutlinedButton(onClick = { open = true }, shape = RoundedCornerShape(999.dp), modifier = Modifier.padding(top = 8.dp)) { Text("مسیریابی") }
+    if (open) {
+        // apps/web src/lib/directions.ts: lat first for Neshan/Google, lng first for Balad; no origin (the app uses the phone's position)
+        val p = "%.7f,%.7f".format(java.util.Locale.US, lat, lng)
+        val balad = "%.7f,%.7f".format(java.util.Locale.US, lng, lat)
+        val apps = listOf(
+            "نشان" to "https://neshan.org/maps/routing/car/destination/$p",
+            "بلد" to "https://balad.ir/directions/driving?destination=$balad",
+            "گوگل مپ" to "https://www.google.com/maps/dir/?api=1&destination=$p&travelmode=driving",
+        )
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text("مسیریابی با") },
+            text = {
+                Column {
+                    apps.forEach { (name, url) ->
+                        Text(name, color = LocalAppColors.current.ink, modifier = Modifier.fillMaxWidth().clickable {
+                            open = false
+                            runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+                        }.padding(vertical = 12.dp))
+                    }
+                }
+            },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { open = false }) { Text("انصراف") } },
+        )
     }
 }

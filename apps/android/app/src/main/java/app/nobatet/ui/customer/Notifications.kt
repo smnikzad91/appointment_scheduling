@@ -36,6 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import app.nobatet.data.AppContainer
 import app.nobatet.data.AppNotification
+import app.nobatet.notify.NotificationScope
+import app.nobatet.notify.NotificationText
+import app.nobatet.notify.describe
 import app.nobatet.ui.components.AppCard
 import app.nobatet.ui.components.Empty
 import app.nobatet.ui.components.Loading
@@ -52,44 +55,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import java.time.Instant
 import java.time.LocalDate
-
-private fun AppNotification.str(key: String): String? = (data[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
-
-/** A customer notification's text — the customer scope of apps/web NotificationBell's describe(). */
-data class NotificationText(val title: String, val detail: String?, val salonSlug: String?)
-
-fun describeForCustomer(n: AppNotification): NotificationText {
-    val salon = n.str("salonName") ?: "سالن"
-    val stylist = n.str("stylistName") ?: ""
-    val services = (n.data["services"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content }.orEmpty()
-    val bookingDetail = listOfNotNull(
-        services.takeIf { it.isNotEmpty() }?.joinToString("، "),
-        n.str("startAt")?.let { runCatching { Instant.parse(it).toSalonDateTime(null).persianDateTime() }.getOrNull() },
-    ).joinToString("، ").ifEmpty { null }
-    return when (n.type) {
-        "NEW_BOOKING" -> NotificationText("$salon برای شما نوبتی با $stylist ثبت کرد", bookingDetail, null)
-        "BOOKING_CANCELLED" -> NotificationText(
-            if (n.str("cancelledBy") == "STYLIST") "$stylist نوبت شما در $salon را لغو کرد" else "$salon نوبت شما را لغو کرد", bookingDetail, null,
-        )
-        "BOOKING_CONFIRMED" -> NotificationText("$salon نوبت شما با $stylist را تایید کرد", bookingDetail, null)
-        "BOOKING_UPDATED" -> NotificationText(
-            if (n.str("updatedBy") == "STYLIST") "$stylist نوبت شما در $salon را تغییر داد" else "$salon نوبت شما با $stylist را تغییر داد", bookingDetail, null,
-        )
-        "SLOT_OPENED" -> {
-            val day = n.str("dateKey")?.let { runCatching { LocalDate.parse(it).persianLabel() }.getOrNull() }
-            NotificationText(
-                "وقت خالی در $salon" + (n.str("stylistName")?.let { " با $it" } ?: ""),
-                listOfNotNull(day, "یک نوبت لغو شد؛ تا کسی دیگر نگرفته رزرو کنید.").joinToString(" — "),
-                n.str("salonSlug"),
-            )
-        }
-        "REVIEW_APPROVED" -> {
-            val about = if (n.str("target") == "SALON") salon else "${n.str("stylistName") ?: "آرایشگر"} ($salon)"
-            NotificationText("نظر شما درباره $about منتشر شد", "حالا در صفحه سالن برای همه نمایش داده می‌شود.", null)
-        }
-        else -> NotificationText("اعلان تازه", null, null)
-    }
-}
 
 /** The app-bar bell: unread count, refreshed every minute while shown (like the web's NotificationBell). */
 @Composable
@@ -110,15 +75,15 @@ fun NotificationBell(container: AppContainer, onOpen: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationsScreen(container: AppContainer, onBack: () -> Unit, onOpenSalon: (String) -> Unit, onOpenBookings: () -> Unit) {
+fun NotificationsScreen(container: AppContainer, scope: NotificationScope, onBack: () -> Unit, onOpen: (NotificationText) -> Unit) {
     val c = LocalAppColors.current
     var items by remember { mutableStateOf<List<AppNotification>?>(null) }
-    val scope = rememberCoroutineScope()
+    val coroutines = rememberCoroutineScope()
     BackHandler(onBack = onBack)
     LaunchedEffect(Unit) {
         items = runCatching { container.api.notifications().items }.getOrDefault(emptyList())
         // opening the list reads them all, as on the web
-        scope.launch { runCatching { container.api.readAllNotifications() } }
+        coroutines.launch { runCatching { container.api.readAllNotifications() } }
     }
     Scaffold(
         containerColor = c.bg,
@@ -137,9 +102,9 @@ fun NotificationsScreen(container: AppContainer, onBack: () -> Unit, onOpenSalon
                 list.isEmpty() -> Empty("اعلانی ندارید")
                 else -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(list, key = { it.id }) { n ->
-                        val t = describeForCustomer(n)
+                        val t = describe(n, scope)
                         AppCard(
-                            Modifier.clickable { if (t.salonSlug != null) onOpenSalon(t.salonSlug) else onOpenBookings() }
+                            Modifier.clickable { onOpen(t) }
                                 .then(if (n.readAt == null) Modifier.background(c.accentSoft.copy(alpha = 0.35f)) else Modifier),
                         ) {
                             Text(t.title, color = c.ink, style = MaterialTheme.typography.titleSmall)
