@@ -38,6 +38,8 @@ data class BookingState(
     val startMinute: Int? = null,
     val place: ServiceLocation? = null,
     val visitAddress: String = "",
+    /** A note for the salon (optional). */
+    val notes: String = "",
     val submitting: Boolean = false,
     val result: CreatedAppointment? = null,
 )
@@ -47,6 +49,7 @@ data class BookingPrefill(val serviceIds: List<String>, val stylistId: String? =
 
 data class SalonUiState(
     val salon: SalonDetail? = null,
+    val reviews: List<app.nobatet.data.PublicReview> = emptyList(),
     val loading: Boolean = true,
     val error: String? = null,
     val booking: BookingState = BookingState(),
@@ -69,6 +72,7 @@ class SalonViewModel(private val container: AppContainer, private val slug: Stri
             try {
                 val salon = container.api.salon(slug)
                 _state.update { it.copy(salon = salon, loading = false) }
+                runCatching { container.api.salonPublicReviews(slug) }.onSuccess { r -> _state.update { it.copy(reviews = r) } }
             } catch (e: Exception) {
                 _state.update { it.copy(loading = false, error = persianError(e, "دریافت اطلاعات سالن انجام نشد", container.json)) }
             }
@@ -119,6 +123,13 @@ class SalonViewModel(private val container: AppContainer, private val slug: Stri
             }
         }
     }
+
+    /** «رزرو با …» on a stylist card: their services only, that stylist chosen. */
+    fun openBookingWithStylist(stylistId: String) {
+        setBooking { BookingState(open = true, stylistId = stylistId, place = if (salon.independent) salon.serviceLocations.singleOrNull() else null) }
+    }
+
+    fun setNotes(v: String) = setBooking { it.copy(notes = v.take(500)) }
 
     fun closeBooking() = setBooking { it.copy(open = false) }
 
@@ -216,6 +227,7 @@ class SalonViewModel(private val container: AppContainer, private val slug: Stri
                         startAt = salonWallTimeToInstant(date, minute, salon.timezone).toString(),
                         serviceLocation = place,
                         visitAddress = if (place == ServiceLocation.CLIENT_HOME) b.visitAddress.trim() else null,
+                        notes = b.notes.trim().ifEmpty { null },
                     ),
                 )
                 setBooking { it.copy(submitting = false, result = created, step = BookingStep.SUCCESS) }

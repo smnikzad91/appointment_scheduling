@@ -172,7 +172,7 @@ data class ExpensePage(val items: List<StylistExpense>, val total: Int, val tota
 data class ExpenseInput(val category: String, val amountToman: Int, val spentAt: String, val description: String, val receiptUrl: String?)
 
 @Serializable
-data class GalleryItem(val id: String, val url: String, val caption: String? = null)
+data class GalleryItem(val id: String, val url: String, val caption: String? = null, val stylistId: String? = null)
 
 @Serializable
 data class NewGalleryImage(val url: String, val caption: String? = null)

@@ -108,6 +108,21 @@ data class SalonDetail(
 data class TimeSlot(val startMinute: Int, val available: Boolean)
 
 @Serializable
+data class ReviewAuthor(val firstName: String = "", val avatarUrl: String? = null)
+
+/** An approved public review (GET /salons/:slug/reviews). */
+@Serializable
+data class PublicReview(
+    val id: String,
+    val target: ReviewTarget,
+    val stylistId: String? = null,
+    val rating: Int? = null,
+    val comment: String? = null,
+    val createdAt: String,
+    val customer: ReviewAuthor = ReviewAuthor(),
+)
+
+@Serializable
 data class CreateAppointmentRequest(
     val salonId: String,
     val stylistId: String? = null,
@@ -116,6 +131,7 @@ data class CreateAppointmentRequest(
     val startAt: String,
     val serviceLocation: ServiceLocation? = null,
     val visitAddress: String? = null,
+    val notes: String? = null,
 )
 
 @Serializable

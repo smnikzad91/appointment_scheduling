@@ -144,6 +144,8 @@ fun StylistProfileScreen(container: AppContainer, stylist: SelfStylist, onChange
                         Row(verticalAlignment = Alignment.CenterVertically) { Text(page.title, color = c.ink, modifier = Modifier.weight(1f)); Text("›", color = c.muted) }
                     }
                 }
+                app.nobatet.ui.components.PasswordChangeCard(container, snackbar)
+                app.nobatet.ui.components.AccountLinks(container, "stylist", snackbar)
             }
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))

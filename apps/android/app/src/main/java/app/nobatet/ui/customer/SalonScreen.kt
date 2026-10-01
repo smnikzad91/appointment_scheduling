@@ -67,11 +67,20 @@ import app.nobatet.ui.components.SectionTitle
 import app.nobatet.ui.theme.LocalAppColors
 import app.nobatet.util.formatDuration
 import app.nobatet.util.formatToman
+import app.nobatet.util.toPersianDigits
 
 /** The public salon page (/s/<slug>) with its booking sheet. */
 @Composable
 fun SalonScreen(container: AppContainer, slug: String, onBack: () -> Unit, onSeeBookings: () -> Unit, prefill: BookingPrefill? = null) {
     val vm: SalonViewModel = viewModel(key = "salon-$slug", factory = viewModelFactory { initializer { SalonViewModel(container, slug) } })
+    val brand = vm.state.collectAsStateWithLifecycle().value.salon?.brandColor
+        ?.let { runCatching { androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(it)) }.getOrNull() }
+    // the public salon page is always dark on the web (guest theme), in the salon's colour
+    app.nobatet.ui.theme.NobatetTheme(dark = true, accent = brand) { SalonScreenContent(container, vm, onBack, onSeeBookings, prefill) }
+}
+
+@Composable
+private fun SalonScreenContent(container: AppContainer, vm: SalonViewModel, onBack: () -> Unit, onSeeBookings: () -> Unit, prefill: BookingPrefill?) {
     val s by vm.state.collectAsStateWithLifecycle()
     val c = LocalAppColors.current
     val snackbar = remember { SnackbarHostState() }
@@ -93,7 +102,7 @@ fun SalonScreen(container: AppContainer, slug: String, onBack: () -> Unit, onSee
         when {
             s.loading -> Loading()
             s.error != null -> LoadError(s.error!!, vm::load)
-            s.salon != null -> SalonContent(s.salon!!, onBook = vm::openBooking)
+            s.salon != null -> SalonContent(s.salon!!, s.reviews, onBook = vm::openBooking, onBookStylist = vm::openBookingWithStylist)
         }
         IconButton(
             onClick = onBack,
@@ -125,7 +134,7 @@ fun SalonScreen(container: AppContainer, slug: String, onBack: () -> Unit, onSee
 }
 
 @Composable
-private fun SalonContent(salon: SalonDetail, onBook: (String?) -> Unit) {
+private fun SalonContent(salon: SalonDetail, reviews: List<app.nobatet.data.PublicReview>, onBook: (String?) -> Unit, onBookStylist: (String) -> Unit) {
     val c = LocalAppColors.current
     val byCategory = salon.activeServices.groupBy { it.categoryId }
     val categories = salon.serviceCategories.sortedBy { it.order }
@@ -149,7 +158,12 @@ private fun SalonContent(salon: SalonDetail, onBook: (String?) -> Unit) {
                 Muted(where)
                 salon.address?.let { Muted(it) }
                 // «مسیریابی»: only for a real address (not an independent stylist's private, rounded pin)
+                SalonContact(salon)
+                averageOf(reviews.filter { it.target == app.nobatet.data.ReviewTarget.SALON })?.let { (avg, n) ->
+                    Text("★ ${"%.1f".format(avg).toPersianDigits()} از ${n.toString().toPersianDigits()} نظر", color = c.pending, style = MaterialTheme.typography.labelLarge)
+                }
                 if (salon.latitude != null && salon.longitude != null && !salon.approximateLocation && salon.address != null) {
+                    SalonMiniMap(salon.latitude, salon.longitude)
                     DirectionsButton(salon.latitude, salon.longitude)
                 }
                 salon.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = c.ink, modifier = Modifier.padding(top = 8.dp)) }
@@ -164,15 +178,17 @@ private fun SalonContent(salon: SalonDetail, onBook: (String?) -> Unit) {
         if (!salon.independent && salon.stylists.isNotEmpty()) {
             item { SectionTitle("متخصصان", Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp)) }
             item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(salon.stylists, key = { it.id }) { st ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(88.dp)) {
-                            RemoteImage(st.avatarUrl, Modifier.size(72.dp).clip(CircleShape))
-                            Text(st.displayName, color = c.ink, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                        }
-                    }
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(salon.stylists, key = { it.id }) { st -> StylistCard(st, salon, reviews) { onBookStylist(st.id) } }
                 }
             }
+        }
+        item { SectionTitle("ساعات کاری", Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp)) }
+        item { Box(Modifier.padding(horizontal = 16.dp)) { SalonHours(salon) } }
+        val salonReviews = reviews.filter { it.target == app.nobatet.data.ReviewTarget.SALON }
+        if (salonReviews.isNotEmpty()) {
+            item { SectionTitle(if (salon.independent) "نظر مشتری‌ها" else "نظرات درباره سالن", Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp)) }
+            items(salonReviews.take(20), key = { "r" + it.id }) { r -> Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { ReviewRow(r) } }
         }
         if (salon.galleryImages.isNotEmpty()) {
             item { SectionTitle("نمونه کارها", Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp)) }

@@ -9,6 +9,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -72,7 +73,7 @@ fun SalonPageScreen(page: SalonPage, container: AppContainer, data: SalonData, o
         when (page) {
             SalonPage.ACCOUNTING -> SalonAccountingPage(container, data, snackbar)
             SalonPage.REVIEWS -> SalonReviewsPage(container, data, snackbar)
-            SalonPage.GALLERY -> SalonGalleryPage(container, snackbar)
+            SalonPage.GALLERY -> SalonGalleryPage(container, data, snackbar)
             SalonPage.SHARE -> SalonSharePage(container, data, snackbar)
         }
     }
@@ -112,7 +113,7 @@ private const val SALON_GALLERY_LIMIT = 60
 /** The salon's portfolio (≤ 60). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SalonGalleryPage(container: AppContainer, snackbar: SnackbarHostState) {
+private fun SalonGalleryPage(container: AppContainer, data: SalonData, snackbar: SnackbarHostState) {
     val c = LocalAppColors.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -128,7 +129,29 @@ private fun SalonGalleryPage(container: AppContainer, snackbar: SnackbarHostStat
             busy = false
         }
     }
+    var crediting by remember { mutableStateOf<GalleryItem?>(null) }
     val list = gallery ?: return Loading()
+    crediting?.let { g ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { crediting = null },
+            title = { Text("کار کدام آرایشگر است؟") },
+            text = {
+                Column {
+                    (listOf<Pair<String?, String>>(null to "سالن (بدون آرایشگر)") + data.stylists.map { it.id to it.displayName }).forEach { (id, name) ->
+                        Text(name, color = c.ink, modifier = Modifier.fillMaxWidth().clickable {
+                            crediting = null
+                            scope.launch {
+                                runCatching { container.api.updateGalleryImage(g.id, app.nobatet.data.jsonBody("stylistId" to id)) }
+                                    .onSuccess { updated -> gallery = list.map { if (it.id == g.id) updated else it } }
+                                    .onFailure { snackbar.showSnackbar(persianError(it, "ذخیره انجام نشد", container.json)) }
+                            }
+                        }.padding(vertical = 12.dp))
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { crediting = null }) { Text("انصراف") } },
+        )
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Muted("${list.size.toString().toPersianDigits()} از ${SALON_GALLERY_LIMIT.toString().toPersianDigits()}")
         PrimaryButton(if (busy) "در حال آپلود..." else "افزودن نمونه کار", enabled = !busy && list.size < SALON_GALLERY_LIMIT) {
@@ -138,6 +161,11 @@ private fun SalonGalleryPage(container: AppContainer, snackbar: SnackbarHostStat
             list.forEach { g ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     RemoteImage(g.url, Modifier.size(104.dp).clip(RoundedCornerShape(14.dp)))
+                    // the owner credits a piece to a stylist (shown on their card on the salon page)
+                    if (data.salon?.independent != true && data.stylists.isNotEmpty()) {
+                        val name = data.stylists.firstOrNull { it.id == g.stylistId }?.displayName ?: "سالن"
+                        TextButton(onClick = { crediting = g }) { Text(name) }
+                    }
                     TextButton(onClick = {
                         scope.launch { runCatching { container.api.deleteGalleryImage(g.id) }.onSuccess { gallery = list - g }.onFailure { snackbar.showSnackbar(persianError(it, "حذف عکس انجام نشد", container.json)) } }
                     }) { Text("حذف", color = c.danger) }

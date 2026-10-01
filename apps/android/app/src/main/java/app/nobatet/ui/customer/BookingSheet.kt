@@ -113,7 +113,15 @@ private fun Choice(selected: Boolean, onClick: () -> Unit, content: @Composable 
 @Composable
 private fun ServicesStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState) {
     val c = LocalAppColors.current
-    salon.activeServices.forEach { s ->
+    // opened from a stylist's card: only what they do (the web's «همه خدمات سالن» clears it)
+    val stylist = salon.stylists.firstOrNull { it.id == b.stylistId }
+    if (stylist != null && !salon.independent) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Muted("خدمات ${stylist.displayName}", Modifier.weight(1f))
+            androidx.compose.material3.TextButton(onClick = { vm.chooseStylist(null) }) { Text("همه خدمات سالن") }
+        }
+    }
+    salon.activeServices.filter { s -> stylist == null || salon.independent || stylist.services.any { it.serviceId == s.id } }.forEach { s ->
         Choice(s.id in b.serviceIds, onClick = { vm.toggleService(s.id) }) {
             Column {
                 Text(s.name, color = c.ink, style = MaterialTheme.typography.titleSmall)
@@ -219,6 +227,7 @@ private fun SummaryStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState)
     if (salon.independent) b.place?.let { SummaryLine("محل", it.label(salon.hostSalonName) + if (it == ServiceLocation.CLIENT_HOME) ": ${b.visitAddress.trim()}" else "") }
     SummaryLine("مدت", formatDuration(vm.totalDuration()))
     SummaryLine("مبلغ", (if (b.stylistId == null && !salon.independent) "از " else "") + formatToman(vm.totalPrice()))
+    OutlinedTextField(b.notes, vm::setNotes, label = { Text("یادداشت برای سالن (اختیاری)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
     Muted("نوبت پس از تایید آرایشگر قطعی می‌شود و پیامک تایید برایتان ارسال می‌شود.")
 }
 

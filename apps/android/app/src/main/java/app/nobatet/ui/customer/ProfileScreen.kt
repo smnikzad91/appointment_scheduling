@@ -170,6 +170,7 @@ fun ProfileScreen(container: AppContainer, user: ApiUser, onOpenSupport: () -> U
                 SectionTitle("پشتیبانی")
                 Muted("سوال یا مشکلی دارید؟ تیکت بفرستید.")
             }
+            app.nobatet.ui.components.AccountLinks(container, "customer", snackbar)
             TextButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("خروج از حساب", color = c.danger) }
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))

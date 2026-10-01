@@ -64,7 +64,12 @@ fun LoginScreen(container: AppContainer, onSignedIn: (AuthResponse) -> Unit) {
             Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (state.signUp) {
+            if (state.signUpSalon) {
+                Text("ثبت‌نام سالن یا آرایشگر مستقل", style = androidx.compose.material3.MaterialTheme.typography.headlineSmall, color = colors.ink)
+                Text("ثبت رایگان؛ پس از تایید پشتیبانی، صفحه رزرو شما آماده است.", color = colors.muted)
+                SignUpSalonForm(container, onSignedIn = vm::signedIn, onError = vm::showError)
+                TextButton(onClick = { vm.setSignUpSalon(false) }) { Text("حساب دارید؟ وارد شوید") }
+            } else if (state.signUp) {
                 Text("ساخت حساب", style = androidx.compose.material3.MaterialTheme.typography.headlineMedium, color = colors.ink)
                 Text("برای رزرو آنلاین و پیگیری نوبت‌ها حساب بسازید.", color = colors.muted)
                 SignUpForm(state, vm)
@@ -83,6 +88,7 @@ fun LoginScreen(container: AppContainer, onSignedIn: (AuthResponse) -> Unit) {
                     LoginTab.OTP -> OtpForm(state, vm)
                 }
                 TextButton(onClick = { vm.setSignUp(true) }) { Text("حساب ندارید؟ ساخت حساب") }
+                TextButton(onClick = { vm.setSignUpSalon(true) }) { Text("صاحب سالن یا آرایشگر مستقل هستید؟ ثبت‌نام کنید") }
             }
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
@@ -109,6 +115,8 @@ private fun PasswordForm(state: LoginUiState, vm: LoginViewModel) {
             },
         )
         PrimaryButton(if (state.busy) "در حال ورود..." else "ورود", enabled = !state.busy, onClick = vm::signInWithPassword)
+        // no reset-by-email: an SMS code signs anyone in, then the password can be changed in the app
+        TextButton(onClick = { vm.setTab(LoginTab.OTP) }) { Text("رمز را فراموش کرده‌اید؟ با کد پیامکی وارد شوید") }
     }
 }
 

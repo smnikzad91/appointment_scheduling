@@ -76,8 +76,10 @@ private fun typography(): Typography {
 }
 
 @Composable
-fun NobatetTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    val c = if (dark) DarkAppColors else LightAppColors
+fun NobatetTheme(dark: Boolean = isSystemInDarkTheme(), accent: Color? = null, content: @Composable () -> Unit) {
+    val base = if (dark) DarkAppColors else LightAppColors
+    // a salon page uses the salon's brand colour (the web's --salon-brand)
+    val c = if (accent == null) base else base.copy(accent = accent, accentStrong = accent, accentSoft = accent.copy(alpha = 0.22f), accentInk = Color.White)
     val scheme = if (dark) {
         darkColorScheme(primary = c.accent, onPrimary = c.accentInk, primaryContainer = c.accentSoft, background = c.bg, onBackground = c.ink,
             surface = c.card, onSurface = c.ink, surfaceVariant = c.card2, onSurfaceVariant = c.muted, outline = c.line, error = c.danger)

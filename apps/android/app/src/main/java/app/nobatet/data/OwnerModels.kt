@@ -195,5 +195,24 @@ val SALON_EXPENSE_CATEGORIES = linkedMapOf(
     "EQUIPMENT" to "تجهیزات", "MARKETING" to "تبلیغات", "OTHER" to "سایر",
 )
 
+/** POST /auth/register-salon-owner — a salon owner, or (kind INDEPENDENT) an independent stylist. */
+@Serializable
+data class RegisterSalonRequest(
+    val firstName: String,
+    val lastName: String,
+    val phone: String,
+    val password: String,
+    val salonName: String,
+    val province: String,
+    val city: String,
+    val address: String,
+    val latitude: Double,
+    val longitude: Double,
+    val kind: SalonKind = SalonKind.SALON,
+    val serviceLocations: List<ServiceLocation>? = null,
+    val hostSalonName: String? = null,
+    val serviceArea: String? = null,
+)
+
 @Serializable
 data class Province(val name: String, val center: List<Double>, val cities: List<String>)

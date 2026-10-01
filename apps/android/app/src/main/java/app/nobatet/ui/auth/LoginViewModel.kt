@@ -33,6 +33,8 @@ data class LoginUiState(
     val busy: Boolean = false,
     /** «ساخت حساب»: a new customer account (POST /auth/register). */
     val signUp: Boolean = false,
+    /** «ثبت‌نام سالن / آرایشگر مستقل». */
+    val signUpSalon: Boolean = false,
     val firstName: String = "",
     val lastName: String = "",
 )
@@ -87,7 +89,10 @@ class LoginViewModel(private val container: AppContainer, private val onSignedIn
 
     fun changePhone() = _state.update { it.copy(codeSent = false, code = "") }
 
-    fun setSignUp(on: Boolean) = _state.update { it.copy(signUp = on) }
+    fun setSignUp(on: Boolean) = _state.update { it.copy(signUp = on, signUpSalon = false) }
+    fun setSignUpSalon(on: Boolean) = _state.update { it.copy(signUpSalon = on, signUp = false) }
+    fun showError(message: String) { _errors.tryEmit(message) }
+    fun signedIn(auth: AuthResponse) = onSignedIn(auth)
     fun setFirstName(v: String) = _state.update { it.copy(firstName = v) }
     fun setLastName(v: String) = _state.update { it.copy(lastName = v) }
 

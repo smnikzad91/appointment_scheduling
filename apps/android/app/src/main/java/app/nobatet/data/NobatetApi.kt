@@ -38,6 +38,9 @@ interface NobatetApi {
     @GET("salons/{slug}")
     suspend fun salon(@Path("slug") slug: String): SalonDetail
 
+    @GET("salons/{slug}/reviews")
+    suspend fun salonPublicReviews(@Path("slug") slug: String): List<PublicReview>
+
     /** Salon-local slots of that day ("YYYY-MM-DD") for these services (comma-separated ids). */
     @GET("salons/{slug}/availability")
     suspend fun availability(
@@ -154,6 +157,13 @@ interface NobatetApi {
 
     @DELETE("gallery/{id}")
     suspend fun deleteGalleryImage(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    /** {stylistId: id | null} — the owner credits a piece to a stylist (null = the salon's). */
+    @PATCH("gallery/{id}")
+    suspend fun updateGalleryImage(@Path("id") id: String, @Body body: kotlinx.serialization.json.JsonObject): GalleryItem
+
+    @POST("auth/register-salon-owner")
+    suspend fun registerSalonOwner(@Body body: RegisterSalonRequest): AuthResponse
 
     @GET("stylists/me/reviews")
     suspend fun myReviews(): List<ModerationReview>

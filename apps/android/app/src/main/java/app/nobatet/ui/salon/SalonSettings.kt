@@ -88,7 +88,7 @@ private fun color(hex: String) = runCatching { Color(android.graphics.Color.pars
 
 /** Iran's provinces and counties (packages/iran-locations, bundled as assets/iran_provinces.json). */
 @Composable
-private fun rememberProvinces(container: AppContainer): List<Province> {
+internal fun rememberProvinces(container: AppContainer): List<Province> {
     val context = LocalContext.current
     return remember {
         runCatching {
@@ -226,6 +226,8 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                         }
                     }
                 }
+                app.nobatet.ui.components.PasswordChangeCard(container, snackbar)
+                app.nobatet.ui.components.AccountLinks(container, if (indie) "independent" else "owner", snackbar)
             }
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).padding(12.dp))
@@ -256,7 +258,7 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
 
 /** A map to drop the salon's pin (OpenStreetMap, like the web's LocationPicker). */
 @Composable
-private fun PinMap(pin: Pair<Double, Double>?, provinceCenter: List<Double>?, onPin: (Pair<Double, Double>) -> Unit) {
+internal fun PinMap(pin: Pair<Double, Double>?, provinceCenter: List<Double>?, onPin: (Pair<Double, Double>) -> Unit) {
     val center = pin?.let { GeoPoint(it.first, it.second) }
         ?: provinceCenter?.takeIf { it.size == 2 }?.let { GeoPoint(it[0], it[1]) }
         ?: GeoPoint(35.6892, 51.389)
