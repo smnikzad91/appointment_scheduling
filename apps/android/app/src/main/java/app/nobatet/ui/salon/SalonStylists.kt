@@ -175,6 +175,10 @@ private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerSty
     var active by remember { mutableStateOf(st.active) }
     var commission by remember { mutableStateOf(st.commissionPercent.toInt().toString()) }
     var chosen by remember { mutableStateOf(st.services.map { it.serviceId }.toSet()) }
+    // per service: this stylist's own price / duration / rate ("" = the salon's / their default)
+    var overrides by remember {
+        mutableStateOf(st.services.associate { it.serviceId to Triple(it.overridePriceToman?.toString().orEmpty(), it.overrideDurationMinutes?.toString().orEmpty(), it.commissionPercent?.toInt()?.toString().orEmpty()) })
+    }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     AlertDialog(
@@ -193,11 +197,23 @@ private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerSty
                 }
                 OutlinedTextField(commission.toPersianDigits(), { commission = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("سهم آرایشگر (٪)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-                Muted("خدماتی که انجام می‌دهد")
+                Muted("خدماتی که انجام می‌دهد (خالی = قیمت و مدت سالن، سهم پیش‌فرض)")
                 data.services.filter { it.active }.forEach { s ->
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { chosen = if (s.id in chosen) chosen - s.id else chosen + s.id }) {
                         Checkbox(checked = s.id in chosen, onCheckedChange = { chosen = if (it) chosen + s.id else chosen - s.id })
                         Text(s.name, color = c.ink)
+                    }
+                    if (s.id in chosen) {
+                        val (price, minutes, rate) = overrides[s.id] ?: Triple("", "", "")
+                        fun set(t: Triple<String, String, String>) { overrides = overrides + (s.id to t) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            OutlinedTextField(price.toPersianDigits(), { set(Triple(it.normalizeDigits().filter(Char::isDigit).take(9), minutes, rate)) }, label = { Text("قیمت") }, singleLine = true,
+                                modifier = Modifier.weight(1.4f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                            OutlinedTextField(minutes.toPersianDigits(), { set(Triple(price, it.normalizeDigits().filter(Char::isDigit).take(3), rate)) }, label = { Text("دقیقه") }, singleLine = true,
+                                modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                            OutlinedTextField(rate.toPersianDigits(), { set(Triple(price, minutes, it.normalizeDigits().filter(Char::isDigit).take(3))) }, label = { Text("سهم ٪") }, singleLine = true,
+                                modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        }
                     }
                 }
                 error?.let { Text(it, color = c.danger) }
@@ -207,23 +223,22 @@ private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerSty
             TextButton(enabled = !busy, onClick = {
                 val pct = commission.toIntOrNull()
                 if (pct == null || pct !in 0..100) { error = "سهم باید بین ۰ تا ۱۰۰ باشد"; return@TextButton }
+                if (overrides.filterKeys { it in chosen }.values.any { (it.third.toIntOrNull() ?: 0) > 100 }) { error = "سهم هر خدمت باید بین ۰ تا ۱۰۰ باشد"; return@TextButton }
                 scope.launch {
                     busy = true
                     try {
                         if (active != st.active || pct.toDouble() != st.commissionPercent) {
                             container.api.updateStylist(st.id, StylistPatch(active = active.takeIf { it != st.active }, commissionPercent = pct.toDouble().takeIf { it != st.commissionPercent }))
                         }
-                        if (chosen != st.services.map { it.serviceId }.toSet()) {
-                            // keep each kept service's own price/duration/rate (nulls on purpose)
-                            val entries = chosen.map { id ->
-                                val old = st.services.firstOrNull { it.serviceId == id }
-                                app.nobatet.data.jsonBody(
-                                    "serviceId" to id, "overridePriceToman" to old?.overridePriceToman,
-                                    "overrideDurationMinutes" to old?.overrideDurationMinutes, "commissionPercent" to old?.commissionPercent,
-                                )
-                            }
-                            container.api.setStylistServices(st.id, JsonObject(mapOf("services" to JsonArray(entries))))
+                        // services and their own price/duration/rate (nulls on purpose: blank = the salon's / the default)
+                        val entries = chosen.map { id ->
+                            val (price, minutes, rate) = overrides[id] ?: Triple("", "", "")
+                            app.nobatet.data.jsonBody(
+                                "serviceId" to id, "overridePriceToman" to price.toIntOrNull(),
+                                "overrideDurationMinutes" to minutes.toIntOrNull()?.takeIf { it > 0 }, "commissionPercent" to rate.toIntOrNull()?.toDouble(),
+                            )
                         }
+                        container.api.setStylistServices(st.id, JsonObject(mapOf("services" to JsonArray(entries))))
                         data.loadCatalog(); data.loadSubscription()
                         onDismiss()
                         snackbar.showSnackbar("ذخیره شد")

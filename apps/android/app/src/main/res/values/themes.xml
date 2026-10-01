@@ -5,5 +5,12 @@
         <item name="android:windowBackground">@color/app_bg</item>
         <item name="android:statusBarColor">@color/app_bg</item>
     </style>
+    <!-- Launch: the brand mark on the terracotta brand colour, then Theme.Nobatet. -->
+    <style name="Theme.Nobatet.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/brand</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Nobatet</item>
+    </style>
     <color name="app_bg">#F6EFE6</color>
+    <color name="brand">#A34A30</color>
 </resources>

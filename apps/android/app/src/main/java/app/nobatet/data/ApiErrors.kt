@@ -73,6 +73,15 @@ private val PERSIAN = mapOf(
     "Send both latitude and longitude" to "محل سالن را روی نقشه مشخص کنید",
     "The map pin must be inside Iran" to "پین نقشه باید داخل ایران باشد",
     "Choose where you work" to "محل ارائه خدمات را انتخاب کنید",
+    "Card number must be exactly 16 digits." to "شماره کارت باید ۱۶ رقم باشد",
+    "Owner name is required." to "نام صاحب کارت را وارد کنید",
+    "Bank name is required." to "نام بانک را وارد کنید",
+    "This card number is already registered." to "این شماره کارت قبلاً ثبت شده است",
+    "Card is required." to "کارت را انتخاب کنید",
+    "Amount must be at least 1,000 IRT." to "مبلغ باید دست‌کم ۱٬۰۰۰ تومان باشد",
+    "Card not found." to "این کارت دیگر وجود ندارد",
+    "Deposit not found." to "این واریز دیگر وجود ندارد",
+    "Approved deposits cannot be deleted." to "واریز تاییدشده قابل حذف نیست",
     "Invalid handle" to "نام کاربری باید ۳ تا ۳۰ حرف انگلیسی کوچک، عدد، نقطه، خط تیره یا زیرخط باشد و با حرف یا عدد شروع و تمام شود",
 )
 
@@ -85,8 +94,9 @@ fun persianError(error: Throwable, fallback: String, json: Json): String = when 
             is JsonArray -> (m.firstOrNull() as? JsonPrimitive)?.content
             else -> null
         }
-        // apps/web's own routes already answer in Persian: {"error": "…"}
-        val webError = (body?.error as? JsonPrimitive)?.content?.takeIf { e -> e.any { it in '\u0600'..'\u06FF' } }
+        // apps/web's own routes: {"error": "…"} — mostly Persian already; the wallet's English ones are translated
+        val rawWebError = (body?.error as? JsonPrimitive)?.content
+        val webError = rawWebError?.let { e -> PERSIAN[e] ?: e.takeIf { s -> s.any { it in '\u0600'..'\u06FF' } } }
         when {
             webError != null -> webError
             message != null && PERSIAN.containsKey(message) -> PERSIAN.getValue(message)

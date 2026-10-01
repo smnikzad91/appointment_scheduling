@@ -24,11 +24,26 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.11.1"
-      - name: Build debug APK
+      # The release key, when the repo has the secrets (base64 keystore + passwords); else unsigned.
+      - name: Release key
         shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.NOBATET_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "NOBATET_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          fi
+      - name: Build debug APK, release APK + bundle
+        shell: bash
+        env:
+          NOBATET_VERSION_CODE: ${{ github.run_number }}
+          NOBATET_KEYSTORE_PASSWORD: ${{ secrets.NOBATET_KEYSTORE_PASSWORD }}
+          NOBATET_KEY_ALIAS: ${{ secrets.NOBATET_KEY_ALIAS }}
+          NOBATET_KEY_PASSWORD: ${{ secrets.NOBATET_KEY_PASSWORD }}
         run: |
           set -o pipefail
-          gradle assembleDebug --stacktrace 2>&1 | tee build.log
+          gradle assembleDebug assembleRelease bundleRelease --stacktrace 2>&1 | tee build.log
       # Compiler errors as annotations (readable on the run page without signing in to the logs).
       - name: Report compile errors
         if: failure()
@@ -41,3 +56,9 @@ jobs:
         with:
           name: nobatet-debug-apk
           path: apps/android/app/build/outputs/apk/debug/*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nobatet-release
+          path: |
+            apps/android/app/build/outputs/apk/release/*.apk
+            apps/android/app/build/outputs/bundle/release/*.aab

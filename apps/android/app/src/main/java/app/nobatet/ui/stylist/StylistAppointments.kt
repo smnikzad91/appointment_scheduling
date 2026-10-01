@@ -130,7 +130,7 @@ fun StylistAppointmentsScreen(stylist: SelfStylist, appointments: List<StaffAppo
     val tz = stylist.salon.timezone
     val today = salonToday(tz)
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    val tabs = listOf("پیش‌رو", "منتظر تایید", "گذشته", "لغوشده", "تقویم ماه")
+    val tabs = listOf("پیش‌رو", "منتظر تایید", "گذشته", "لغوشده", "هفته", "تقویم ماه")
     val now = Instant.now()
 
     Box(Modifier.fillMaxSize()) {
@@ -141,7 +141,8 @@ fun StylistAppointmentsScreen(stylist: SelfStylist, appointments: List<StaffAppo
             val list = appointments
             when {
                 list == null -> app.nobatet.ui.components.Loading()
-                tab == 4 -> MonthCalendar(list, tz, today, Modifier.weight(1f)) { actions.selected = it }
+                tab == 4 -> app.nobatet.ui.staff.WeekGrid(list, tz, today, Modifier.weight(1f)) { actions.selected = it }
+                tab == 5 -> MonthCalendar(list, tz, today, Modifier.weight(1f)) { actions.selected = it }
                 else -> {
                     val filtered = when (tab) {
                         0 -> list.filter { (it.status == AppointmentStatus.PENDING || it.status == AppointmentStatus.CONFIRMED) && Instant.parse(it.endAt).isAfter(now) }.sortedBy { it.startAt }

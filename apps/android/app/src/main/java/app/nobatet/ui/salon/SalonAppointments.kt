@@ -134,7 +134,7 @@ fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             ScrollableTabRow(selectedTabIndex = tab, containerColor = c.bg, contentColor = c.accent, edgePadding = 8.dp) {
-                listOf("پیش‌رو", "منتظر تایید", "گذشته", "لغوشده").forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
+                listOf("پیش‌رو", "منتظر تایید", "گذشته", "لغوشده", "هفته").forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
             }
             if (!salon.independent && data.stylists.size > 1) {
                 Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -143,7 +143,9 @@ fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
                 }
             }
             val list = data.appointments
-            if (list == null) Loading() else {
+            if (list == null) Loading() else if (tab == 4) {
+                app.nobatet.ui.staff.WeekGrid(list.filter { stylistFilter == null || it.stylistId == stylistFilter }, tz, today, Modifier.weight(1f)) { sheets.selected = it }
+            } else {
                 val mine = list.filter { stylistFilter == null || it.stylistId == stylistFilter }
                 val filtered = when (tab) {
                     0 -> mine.filter { (it.status == AppointmentStatus.PENDING || it.status == AppointmentStatus.CONFIRMED) && Instant.parse(it.endAt).isAfter(now) }.sortedBy { it.startAt }

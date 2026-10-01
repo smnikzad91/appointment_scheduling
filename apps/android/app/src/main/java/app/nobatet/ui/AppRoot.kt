@@ -41,6 +41,7 @@ fun AppRoot(container: AppContainer) {
         ) askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
     }
 
+    UpdateCheck(container)
     Box(Modifier.fillMaxSize().background(colors.bg)) {
         when (val s = state) {
             SessionState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = colors.accent)

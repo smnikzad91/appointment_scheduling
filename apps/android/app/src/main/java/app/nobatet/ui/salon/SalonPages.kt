@@ -169,6 +169,22 @@ private fun SalonSharePage(container: AppContainer, data: SalonData, snackbar: S
             (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("link", url))
             scope.launch { snackbar.showSnackbar("لینک کپی شد") }
         }) { Text("کپی لینک") }
+        TextButton(onClick = {
+            val subtitle = buildList {
+                if (salon.independent) add(if (!salon.hostSalonName.isNullOrBlank()) "آرایشگر مستقل در ${salon.hostSalonName}" else "آرایشگر مستقل")
+                add(listOfNotNull(salon.city.takeIf { it.isNotBlank() }, salon.province).joinToString("، "))
+            }.filter { it.isNotBlank() }.joinToString("، ")
+            val poster = app.nobatet.util.drawStoryPoster(
+                context,
+                app.nobatet.util.PosterData(
+                    name = salon.name, subtitle = subtitle, services = data.services.filter { it.active }.map { it.name },
+                    link = "nobatet.app/book/@$h",
+                    brandColor = runCatching { android.graphics.Color.parseColor(salon.brandColor) }.getOrDefault(android.graphics.Color.parseColor("#a34a30")),
+                    qr = qrBitmap(url, 900),
+                ),
+            )
+            app.nobatet.util.sharePoster(context, poster, "nobatet-$h-story.png")
+        }) { Text("پوستر استوری (اینستاگرام)") }
         AppCard {
             SectionTitle("تغییر نام کاربری")
             Muted("با تغییر آن، لینک و کد QR قبلی دیگر کار نمی‌کنند.")

@@ -267,6 +267,34 @@ interface NobatetApi {
 
 /** apps/web's own routes (https://nobatet.app/api/…), with the same apps/api token. */
 interface WebApi {
+    @GET("app-version.json")
+    suspend fun appVersion(): AppVersion
+
+    /** walletBalance (from /api/user/profile). */
+    @GET("api/user/profile")
+    suspend fun walletProfile(): WalletProfile
+
+    @GET("api/user/finance/cards")
+    suspend fun bankCards(): List<BankCard>
+
+    @POST("api/user/finance/cards")
+    suspend fun addBankCard(@Body body: NewBankCard): kotlinx.serialization.json.JsonObject
+
+    @DELETE("api/user/finance/cards/{id}")
+    suspend fun deleteBankCard(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    @GET("api/user/finance/admin-cards")
+    suspend fun platformCards(): List<BankCard>
+
+    @GET("api/user/finance/deposits")
+    suspend fun deposits(): List<Deposit>
+
+    @POST("api/user/finance/deposits")
+    suspend fun addDeposit(@Body body: NewDeposit): kotlinx.serialization.json.JsonObject
+
+    @DELETE("api/user/finance/deposits/{id}")
+    suspend fun deleteDeposit(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
     @GET("api/user/profile")
     suspend fun profile(): Profile
 

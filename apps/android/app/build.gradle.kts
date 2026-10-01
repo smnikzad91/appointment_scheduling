@@ -13,15 +13,30 @@ android {
         applicationId = "app.nobatet"
         minSdk = 26 // java.time without desugaring; Android 8+
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI sets the build number, so every build installs over the previous one
+        versionCode = (System.getenv("NOBATET_VERSION_CODE") ?: "1").toInt()
+        versionName = System.getenv("NOBATET_VERSION_NAME") ?: "0.1.0"
         // apps/api behind nginx (/backend/* → api, prefix stripped) and apps/web on the same origin.
         buildConfigField("String", "API_BASE_URL", "\"https://nobatet.app/backend/\"")
         buildConfigField("String", "WEB_BASE_URL", "\"https://nobatet.app/\"")
     }
 
+    // Release signing from the environment (GitHub secrets) — the key itself never enters the repo.
+    // Without it the release build comes out unsigned (fine for checking; not installable/publishable).
+    val keystore = System.getenv("NOBATET_KEYSTORE_FILE")
+    signingConfigs {
+        if (keystore != null) create("release") {
+            storeFile = file(keystore)
+            storePassword = System.getenv("NOBATET_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("NOBATET_KEY_ALIAS")
+            keyPassword = System.getenv("NOBATET_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
+            if (keystore != null) signingConfig = signingConfigs.getByName("release")
+            isShrinkResources = true
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
@@ -61,5 +76,6 @@ dependencies {
     implementation(libs.zxing.core)
     implementation(libs.androidx.work)
     implementation(libs.play.sms)
+    implementation(libs.androidx.splash)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

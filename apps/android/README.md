@@ -19,6 +19,17 @@ instead of «آرایشگرها»). The admin panel stays on the website (the ap
   `password`, `avatar`, `sms-preferences`, `tickets`): `https://nobatet.app/` with the **same**
   Bearer token (apps/web `lib/requestSession.ts`). The wallet routes don't accept it yet.
 
+## Release
+- CI also builds `assembleRelease` + `bundleRelease` (artifact `nobatet-release`); `versionCode` = the
+  workflow run number, `versionName` from `NOBATET_VERSION_NAME` (default 0.1.0).
+- Signing: add repo secrets `NOBATET_KEYSTORE_BASE64` (`base64 -w0 release.jks`), `NOBATET_KEYSTORE_PASSWORD`,
+  `NOBATET_KEY_ALIAS`, `NOBATET_KEY_PASSWORD` — until then the release APK is unsigned. Keep the keystore safe:
+  losing it means the app can never be updated on the stores.
+- Updates: the app reads apps/web `public/app-version.json` at start (offer above `latestVersionCode`, require
+  below `minVersionCode`) — bump it with each release.
+- Store texts: `store-listing.md`. Provinces: `app/src/main/assets/iran_provinces.json` is generated from
+  packages/iran-locations — regenerate when a county is added.
+
 ## Build
 No Android SDK on the server: GitHub Actions (`.github/workflows/android.yml`) builds a debug APK on
 every push to the `android-app` branch — download it from the run's Artifacts.
