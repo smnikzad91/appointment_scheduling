@@ -126,7 +126,7 @@ fun DiscoverScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
         when {
             s.loading -> Loading()
             s.error != null -> LoadError(s.error!!, vm::retry)
-            s.items.isEmpty() -> Empty("سالنی پیدا نشد", "عبارت دیگری را جستجو کنید.")
+            s.items.isEmpty() -> Empty("سالنی پیدا نشد", "عبارت دیگری را جستجو کنید.", Modifier.padding(horizontal = 16.dp))
             s.showMap -> SalonsMap(s.items, s.near, onOpenSalon)
             else -> LazyColumn(
                 Modifier.fillMaxSize(),

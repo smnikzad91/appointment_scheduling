@@ -99,7 +99,7 @@ fun NotificationsScreen(container: AppContainer, scope: NotificationScope, onBac
             val list = items
             when {
                 list == null -> Loading()
-                list.isEmpty() -> Empty("اعلانی ندارید")
+                list.isEmpty() -> Empty("اعلانی ندارید", modifier = Modifier.padding(16.dp))
                 else -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(list, key = { it.id }) { n ->
                         val t = describe(n, scope)

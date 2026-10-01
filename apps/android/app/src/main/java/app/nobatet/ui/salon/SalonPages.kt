@@ -87,7 +87,7 @@ private fun SalonReviewsPage(container: AppContainer, data: SalonData, snackbar:
     var reviews by remember { mutableStateOf<List<ModerationReview>?>(null) }
     LaunchedEffect(Unit) { reviews = runCatching { container.api.salonReviews() }.getOrDefault(emptyList()) }
     val list = reviews ?: return Loading()
-    if (list.isEmpty()) return Empty("هنوز نظری ثبت نشده")
+    if (list.isEmpty()) return Empty("هنوز نظری ثبت نشده", modifier = Modifier.padding(16.dp))
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items(list.sortedByDescending { it.status == ReviewStatus.PENDING }, key = { it.id }) { r ->
             AppCard {

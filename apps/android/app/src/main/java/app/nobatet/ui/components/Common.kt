@@ -9,7 +9,21 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -82,13 +96,26 @@ fun StatusChip(status: AppointmentStatus) {
     )
 }
 
+/** The web's primary Button: rounded-2xl, 48 high, bold. */
 @Composable
 fun PrimaryButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, color: Color? = null, onClick: () -> Unit) {
     val c = LocalAppColors.current
     Button(
-        onClick = onClick, enabled = enabled, modifier = modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(999.dp),
+        onClick = onClick, enabled = enabled, modifier = modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(containerColor = color ?: c.accent, contentColor = c.accentInk),
-    ) { Text(text) }
+    ) { Text(text, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
+}
+
+/** The web's Avatar: a photo, or the name's first letter on the accent tint; square = salon logo. */
+@Composable
+fun Avatar(name: String, path: String?, size: Dp = 44.dp, square: Boolean = false, modifier: Modifier = Modifier) {
+    val c = LocalAppColors.current
+    val shape = if (square) RoundedCornerShape(size * 0.26f) else CircleShape
+    Box(modifier.size(size).clip(shape).background(c.accentSoft), contentAlignment = Alignment.Center) {
+        val url = mediaUrl(path)
+        if (url != null) AsyncImage(model = url, contentDescription = name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else Text(name.trim().take(1), color = c.accent, fontWeight = FontWeight.Bold, fontSize = (size.value * 0.4f).sp)
+    }
 }
 
 @Composable
@@ -96,21 +123,42 @@ fun Loading(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = LocalAppColors.current.accent) }
 }
 
-/** A screen that failed to load: the message and «تلاش دوباره» (the web's ErrorBanner onRetry). */
+/** A screen that failed to load: the web's ErrorBanner with «تلاش دوباره». */
 @Composable
 fun LoadError(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     val c = LocalAppColors.current
-    Column(modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text(message, color = c.danger, textAlign = TextAlign.Center)
-        TextButton(onClick = onRetry) { Text("تلاش دوباره") }
+    Box(modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopCenter) {
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.danger.copy(alpha = 0.1f)).padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(message, color = c.danger, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            TextButton(onClick = onRetry) { Text("تلاش دوباره", color = c.danger, fontWeight = FontWeight.Bold) }
+        }
     }
 }
 
+/** The web's EmptyState: dashed outline, the icon on the accent tint, title and hint. */
 @Composable
-fun Empty(title: String, line: String? = null, modifier: Modifier = Modifier) {
+fun Empty(title: String, line: String? = null, modifier: Modifier = Modifier, icon: ImageVector = Icons.Outlined.Inbox) {
     val c = LocalAppColors.current
-    Column(modifier.fillMaxWidth().padding(vertical = 48.dp, horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = c.ink, textAlign = TextAlign.Center)
-        if (line != null) Text(line, color = c.muted, textAlign = TextAlign.Center)
+    Column(
+        modifier.fillMaxWidth().padding(vertical = 8.dp)
+            .drawBehind {
+                val r = 24.dp.toPx()
+                drawRoundRect(
+                    c.line, cornerRadius = CornerRadius(r),
+                    style = Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()))),
+                )
+            }
+            .padding(vertical = 48.dp, horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(Modifier.padding(bottom = 12.dp).size(56.dp).clip(CircleShape).background(c.accentSoft), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = c.accent, modifier = Modifier.size(24.dp))
+        }
+        Text(title, fontWeight = FontWeight.Bold, color = c.ink, textAlign = TextAlign.Center)
+        if (line != null) Text(line, color = c.muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
     }
 }

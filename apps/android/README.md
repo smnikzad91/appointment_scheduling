@@ -11,7 +11,12 @@ instead of «آرایشگرها»). The admin panel stays on the website (the ap
 - Session: the apps/api token in DataStore; checked at start with `/auth/me` (401 → sign in again).
 - The web panels' tabs and labels (apps/web `components/app/panels.tsx`); tab screens are
   placeholders to be built one by one.
-- Theme: the web's colour tokens (light and dark), Vazirmatn, always right-to-left.
+- Theme: the web's colour tokens (light and dark) mapped onto every Material role (no default purple in
+  dialogs, sheets, chips), Vazirmatn, always right-to-left. Light/dark follows the phone until the user
+  picks «حالت تیره / حالت روشن» in the account sheet (saved in DataStore `prefs`, like the web's `theme`).
+  Sign-in uses the web's dark guest look (`NobatetTheme(guest = true)`).
+- Shell: the web's AppShell — logo + «نوبتت» + panel name, bell, avatar → «حساب کاربری» sheet
+  (panel links, light/dark, sign out), and its tab bar.
 
 ## Backend
 - apps/api: `https://nobatet.app/backend/` (`BuildConfig.API_BASE_URL`), token as `Authorization: Bearer`.

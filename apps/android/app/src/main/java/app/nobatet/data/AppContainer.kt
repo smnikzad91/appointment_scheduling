@@ -26,6 +26,7 @@ class AuthInterceptor(private val tokens: TokenStore) : Interceptor {
 class AppContainer(context: Context) {
     val appContext: Context = context.applicationContext
     val tokens = TokenStore(context)
+    val theme = ThemeStore(context)
 
     val json = Json {
         ignoreUnknownKeys = true

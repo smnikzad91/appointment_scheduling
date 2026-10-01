@@ -1,5 +1,6 @@
 package app.nobatet.ui.panels
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.SupportAgent
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ContentCut
@@ -52,6 +55,8 @@ private const val TAB_BOOKINGS = 2
 
 private const val TAB_DISCOVER = 1
 
+private const val TAB_PROFILE = 4
+
 /** What's shown over the customer panel: a salon page (maybe with a prefilled booking), notifications, support. */
 private sealed interface CustomerOverlay {
     data class Salon(val slug: String, val prefill: BookingPrefill? = null) : CustomerOverlay
@@ -81,9 +86,16 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
         }
         null -> Unit
     }
+    val context = LocalContext.current
     PanelScaffold(
-        title = "نوبتت",
+        panelName = "حساب مشتری",
+        identity = ShellIdentity("${user.firstName} ${user.lastName}".trim().ifEmpty { "?" }, user.avatarUrl),
         onSignOut = onSignOut,
+        accountLinks = listOf(
+            AccountLink("پشتیبانی", Icons.Outlined.SupportAgent) { overlay = CustomerOverlay.Support },
+            AccountLink("امنیت و رمز عبور", Icons.Outlined.Settings) { tab = TAB_PROFILE },
+            tutorialsLink(context, "customer"),
+        ),
         selectedTab = tab,
         onSelectTab = { tab = it },
         actions = { NotificationBell(container) { overlay = CustomerOverlay.Notifications } },
@@ -101,6 +113,11 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
             },
         ),
     )
+}
+
+/** «راهنمای استفاده»: the web's Help Center for this role. */
+fun tutorialsLink(context: Context, role: String) = AccountLink("راهنمای استفاده", Icons.AutoMirrored.Outlined.MenuBook) {
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.WEB_BASE_URL + "tutorials?role=$role"))) }
 }
 
 /** The admin panel is web-only. */

@@ -103,7 +103,7 @@ private fun TicketList(container: AppContainer, reload: Int, onNew: () -> Unit, 
         val list = tickets
         when {
             list == null -> Loading()
-            list.isEmpty() -> Empty("تیکتی ندارید", "اگر سوال یا مشکلی دارید، تیکت جدید بفرستید.")
+            list.isEmpty() -> Empty("تیکتی ندارید", "اگر سوال یا مشکلی دارید، تیکت جدید بفرستید.", Modifier.padding(horizontal = 16.dp))
             else -> LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(list, key = { it.id }) { t ->
                     AppCard(Modifier.clickable { onOpen(t.id) }) {

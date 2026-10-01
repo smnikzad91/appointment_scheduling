@@ -58,8 +58,12 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
         SalonPageScreen(p, container, data, onBack = { page = null })
         return
     }
+    val context = androidx.compose.ui.platform.LocalContext.current
     PanelScaffold(
-        title = salon.name,
+        panelName = if (independent) "پنل آرایشگر مستقل" else "پنل سالن",
+        identity = app.nobatet.ui.panels.ShellIdentity(salon.name, salon.logoUrl, square = true),
+        accountName = "${user.firstName} ${user.lastName}".trim(),
+        accountLinks = listOf(app.nobatet.ui.panels.tutorialsLink(context, if (independent) "independent" else "owner")),
         onSignOut = onSignOut,
         selectedTab = tab,
         onSelectTab = { tab = it; if (it <= 1) data.loadAppointments() },
