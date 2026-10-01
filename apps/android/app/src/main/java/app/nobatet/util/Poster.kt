@@ -61,7 +61,7 @@ data class PosterData(
     val qr: Bitmap,
 )
 
-private val BG = Color.parseColor("#121319")
+private val BG = Color.parseColor("#19121a") // the panels' dark background (warm plum), not the navy brand dark
 private val INK = Color.parseColor("#f8f1e9")
 private val MUTED = Color.argb((0.66 * 255).toInt(), 248, 241, 233)
 private val ACCENT = Color.parseColor("#f2876a")
@@ -151,7 +151,7 @@ private class PosterPainter(context: Context, val format: PosterFormat, val d: P
     fun background() {
         c.drawColor(BG)
         // Fade to the same colour at zero alpha, not to Color.TRANSPARENT (transparent *black*): Android
-        // blends gradients unpremultiplied, so fading to black greys the glow out and the navy
+        // blends gradients unpremultiplied, so fading to black greys the glow out and the dark
         // background takes over; the browser's canvas keeps the colour all the way out.
         fun glow(x: Float, y: Float, r: Float, color: Int) {
             val p = Paint().apply { shader = RadialGradient(x, y, r, color, withAlpha(color, 0f), Shader.TileMode.CLAMP) }
@@ -229,7 +229,7 @@ private class PosterPainter(context: Context, val format: PosterFormat, val d: P
     fun drawSquare(subtitle: String) {
         cover?.let {
             drawCover(it, 0f, 0f, w, h, alpha = (0.28 * 255).toInt())
-            val shade = Paint().apply { shader = LinearGradient(0f, 0f, 0f, h, Color.argb(140, 18, 19, 25), Color.argb(235, 18, 19, 25), Shader.TileMode.CLAMP) }
+            val shade = Paint().apply { shader = LinearGradient(0f, 0f, 0f, h, Color.argb(140, 25, 18, 26), Color.argb(235, 25, 18, 26), Shader.TileMode.CLAMP) }
             c.drawRect(0f, 0f, w, h, shade)
         }
         header(u * 6)
@@ -273,7 +273,7 @@ private class PosterPainter(context: Context, val format: PosterFormat, val d: P
             shader = LinearGradient(coverX, y, coverX + coverW, y + coverH, withAlpha(d.brandColor, 0.9f), Color.argb(140, 242, 135, 106), Shader.TileMode.CLAMP)
         })
         c.drawRect(coverX, y, coverX + coverW, y + coverH, Paint().apply {
-            shader = LinearGradient(0f, y + coverH * 0.45f, 0f, y + coverH, Color.argb(0, 18, 19, 25), Color.argb(190, 18, 19, 25), Shader.TileMode.CLAMP)
+            shader = LinearGradient(0f, y + coverH * 0.45f, 0f, y + coverH, Color.argb(0, 25, 18, 26), Color.argb(190, 25, 18, 26), Shader.TileMode.CLAMP)
         })
         c.restore()
 
