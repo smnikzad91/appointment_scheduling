@@ -54,15 +54,20 @@ jobs:
           done
       # The signing certificates' SHA-256 (public, not secret) as notices on the run page: the
       # release one goes into ANDROID_CERT_SHA256 (apps/web/.env.production) for app links.
+      # An unsigned APK (no keystore secrets) is reported as such, not an error.
       - name: Signing certificate fingerprints
-        shell: bash
+        continue-on-error: true
+        shell: bash {0}
         run: |
           signer=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           for apk in app/build/outputs/apk/release/*.apk app/build/outputs/apk/debug/*.apk; do
             [ -f "$apk" ] || continue
             sha=$("$signer" verify --print-certs "$apk" 2>/dev/null | grep -m1 "SHA-256 digest" | awk '{print $NF}' | sed 's/../&:/g; s/:$//' | tr a-f A-F)
-            [ -n "$sha" ] && echo "::notice title=$(basename "$apk") SHA-256::$sha" && echo "- \`$(basename "$apk")\`: \`$sha\`" >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$sha" ]; then msg="$sha"; else msg="unsigned (no NOBATET_KEYSTORE_* secrets in the repo)"; fi
+            echo "::notice title=$(basename "$apk") SHA-256::$msg"
+            echo "- \`$(basename "$apk")\`: \`$msg\`" >> "$GITHUB_STEP_SUMMARY"
           done
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
           name: nobatet-debug-apk
