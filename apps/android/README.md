@@ -40,13 +40,17 @@ website» buttons go through `openInBrowser` so they don't loop back into the ap
 - Signing: add repo secrets `NOBATET_KEYSTORE_BASE64` (`base64 -w0 release.jks`), `NOBATET_KEYSTORE_PASSWORD`,
   `NOBATET_KEY_ALIAS`, `NOBATET_KEY_PASSWORD` — until then the release APK is unsigned. Keep the keystore safe:
   losing it means the app can never be updated on the stores.
+- Flavors (`distribution`): `direct` (APK on nobatet.app, in-app download + install, the only one with
+  `REQUEST_INSTALL_PACKAGES`), `bazaar`, `myket` (update button opens the store page). `BuildConfig.DISTRIBUTION`.
+  Local builds: `assembleDirectDebug`, tests `testDirectDebugUnitTest`.
 - Updates: the app reads apps/web `public/app-version.json` at start (offer above `latestVersionCode`, require
-  below `minVersionCode`) — bump it with each release.
+  below `minVersionCode`; `apkSha256`/`apkSize` for the in-app install). Publishing steps and signing rules:
+  `RELEASING.md` (`scripts/publish-apk.sh`).
 - Store texts: `store-listing.md`. Provinces: `app/src/main/assets/iran_provinces.json` is generated from
   packages/iran-locations — regenerate when a county is added.
 
 ## Build
-No Android SDK on the server: GitHub Actions (`.github/workflows/android.yml`) builds a debug APK on
+No Android SDK on the server: GitHub Actions (`.github/workflows/android.yml`) builds a (direct) debug APK on
 every push to the `android-app` branch — download it from the run's Artifacts.
 Locally: Android Studio (open `apps/android`), or `gradle assembleDebug` with JDK 17 + Android SDK 35.
 Add the Gradle wrapper once from a machine with Gradle: `gradle wrapper --gradle-version 8.11.1`.

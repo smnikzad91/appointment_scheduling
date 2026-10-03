@@ -27,6 +27,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -180,9 +182,17 @@ fun AppDialog(
     dismissButton: (@Composable () -> Unit)? = null,
     title: (@Composable () -> Unit)? = null,
     text: (@Composable () -> Unit)? = null,
+    // false: swipe, scrim tap and back can't close it (a required step, e.g. a mandatory update)
+    dismissible: Boolean = true,
 ) {
     val c = LocalAppColors.current
-    ModalBottomSheet(onDismissRequest = onDismissRequest, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.bg) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { dismissible || it != SheetValue.Hidden })
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        containerColor = c.bg,
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = dismissible),
+    ) {
         Column(modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 16.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (title != null) ProvideTextStyle(LocalTextStyle.current.copy(fontSize = 18.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, color = c.ink)) { title() }
             if (text != null) ProvideTextStyle(LocalTextStyle.current.copy(fontSize = 15.sp, lineHeight = 26.sp, color = c.ink)) { text() }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- In-app updates (update/ApkUpdater.kt) hand the downloaded APK to the system installer; without
+         this permission (targetSdk ≥ 26) the installer silently refuses. Direct builds only — the stores
+         (bazaar/myket flavors) forbid self-updates. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+</manifest>

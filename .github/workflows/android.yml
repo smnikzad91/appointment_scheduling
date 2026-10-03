@@ -34,7 +34,9 @@ jobs:
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
             echo "NOBATET_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
           fi
-      - name: Build debug APK, release APK + bundle
+      # Flavors (app/build.gradle.kts): `direct` = the APK on nobatet.app (in-app updates),
+      # `bazaar` / `myket` = the store builds (no self-update, no install permission).
+      - name: Build direct debug APK, release APKs + store bundles, update tests
         shell: bash
         env:
           NOBATET_VERSION_CODE: ${{ github.run_number }}
@@ -43,7 +45,27 @@ jobs:
           NOBATET_KEY_PASSWORD: ${{ secrets.NOBATET_KEY_PASSWORD }}
         run: |
           set -o pipefail
-          gradle assembleDebug assembleRelease bundleRelease --stacktrace 2>&1 | tee build.log
+          gradle assembleDirectDebug assembleRelease bundleBazaarRelease bundleMyketRelease \
+            testDirectDebugUnitTest --tests 'app.nobatet.update.*' --stacktrace 2>&1 | tee build.log
+      # One clearly named file per channel: nobatet-<flavor>-<run number>[-unsigned].apk / .aab, plus
+      # SHA256SUMS. The direct APK is what scripts/publish-apk.sh puts on nobatet.app.
+      - name: Collect release files
+        shell: bash
+        env:
+          CODE: ${{ github.run_number }}
+        run: |
+          set -e
+          mkdir -p dist
+          for f in direct bazaar myket; do
+            apk=$(ls app/build/outputs/apk/$f/release/*.apk | head -1)
+            suffix=""; [[ "$apk" == *unsigned* ]] && suffix="-unsigned"
+            cp "$apk" "dist/nobatet-$f-$CODE$suffix.apk"
+          done
+          for f in bazaar myket; do
+            cp app/build/outputs/bundle/${f}Release/*.aab "dist/nobatet-$f-$CODE.aab"
+          done
+          (cd dist && sha256sum * > SHA256SUMS)
+          cat dist/SHA256SUMS
       # Compiler errors as annotations (readable on the run page without signing in to the logs).
       - name: Report compile errors
         if: failure()
@@ -60,7 +82,7 @@ jobs:
         shell: bash {0}
         run: |
           signer=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          for apk in app/build/outputs/apk/release/*.apk app/build/outputs/apk/debug/*.apk; do
+          for apk in dist/*.apk app/build/outputs/apk/direct/debug/*.apk; do
             [ -f "$apk" ] || continue
             sha=$("$signer" verify --print-certs "$apk" 2>/dev/null | grep -m1 "SHA-256 digest" | awk '{print $NF}' | sed 's/../&:/g; s/:$//' | tr a-f A-F)
             if [ -n "$sha" ]; then msg="$sha"; else msg="unsigned (no NOBATET_KEYSTORE_* secrets in the repo)"; fi
@@ -71,10 +93,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: nobatet-debug-apk
-          path: apps/android/app/build/outputs/apk/debug/*.apk
+          path: apps/android/app/build/outputs/apk/direct/debug/*.apk
       - uses: actions/upload-artifact@v4
         with:
           name: nobatet-release
-          path: |
-            apps/android/app/build/outputs/apk/release/*.apk
-            apps/android/app/build/outputs/bundle/release/*.aab
+          path: apps/android/dist/*

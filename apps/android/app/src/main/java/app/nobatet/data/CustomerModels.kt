@@ -93,9 +93,21 @@ data class TicketClose(val status: String = "closed")
 @Serializable
 data class Created(val id: String)
 
-/** apps/web public/app-version.json: offer an update above this build, require one below the minimum. */
+/**
+ * apps/web public/app-version.json: offer an update above this build, require one below the minimum.
+ * `apkSha256` (lowercase hex) / `apkSize` describe the APK at `downloadUrl`; without the hash the
+ * direct build won't install in-app and opens `downloadUrl` in the browser instead.
+ */
 @Serializable
-data class AppVersion(val latestVersionCode: Int, val latestVersionName: String = "", val minVersionCode: Int = 0, val downloadUrl: String, val notes: String? = null)
+data class AppVersion(
+    val latestVersionCode: Int,
+    val latestVersionName: String = "",
+    val minVersionCode: Int = 0,
+    val downloadUrl: String,
+    val notes: String? = null,
+    val apkSha256: String? = null,
+    val apkSize: Long? = null,
+)
 
 /** «باز» / «پاسخ داده شده» / «بسته», as the web's support page. */
 fun ticketStatusLabel(status: String): String = when (status) {

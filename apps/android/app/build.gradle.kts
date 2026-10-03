@@ -33,6 +33,17 @@ android {
         }
     }
 
+    // Where the build is published. `direct` (the APK on nobatet.app) downloads and installs its own
+    // updates; Cafe Bazaar and Myket forbid that, so their builds send the user to the store page and
+    // don't declare REQUEST_INSTALL_PACKAGES (src/direct/AndroidManifest.xml). Same applicationId.
+    flavorDimensions += "distribution"
+    productFlavors {
+        for (name in listOf("direct", "bazaar", "myket")) create(name) {
+            dimension = "distribution"
+            buildConfigField("String", "DISTRIBUTION", "\"$name\"")
+        }
+    }
+
     buildTypes {
         release {
             if (keystore != null) signingConfig = signingConfigs.getByName("release")
