@@ -81,6 +81,8 @@ enum NotificationType {
   REVIEW_APPROVED
   SLOT_OPENED
   BOOKING_UPDATED
+  BALANCE_REQUESTED
+  BALANCE_PAID
 }
 
 enum PayoutMethod {
@@ -401,6 +403,19 @@ enum WalletTxKind {
   PLAN_PURCHASE
   /// switching to another plan: the unused part of the running bought plan, back to the wallet
   PLAN_CREDIT
+  /// the rest of a completed booking's price, paid by the customer from their wallet (apps/api wallet/balance.ts)
+  BALANCE_PAYMENT
+  BALANCE_INCOME
+  BALANCE_INCOME_REVERSAL
+  BALANCE_REFUND
+}
+
+/// How the stylist takes the rest of a completed booking's price (chosen when marking it done).
+enum BalanceMethod {
+  /// cash / card at the salon, outside the platform
+  ON_SITE
+  /// requested from the customer's wallet; the customer pays it in their panel
+  WALLET
 }
 
 /// Every change to User.walletBalance, written in the same transaction as the change (apps/web
@@ -764,6 +779,15 @@ model Appointment {
   prepaymentStatus         PrepaymentStatus?
   /// Of a SETTLED pre-payment, the part paid to a salon's stylist (their commission share); the rest went to the owner.
   prepaymentStylistToman   Int               @default(0)
+  /// The rest of the price after the pre-payment, set when marked COMPLETED (apps/api wallet/balance.ts):
+  /// ON_SITE = received directly; WALLET = balanceDueToman requested from the customer's wallet,
+  /// paid when balancePaidAt is set (the salon stylist's commission share as the WALLET payout
+  /// balancePayoutId). Leaving COMPLETED undoes it (refund if paid).
+  balanceMethod            BalanceMethod?
+  balanceDueToman          Int               @default(0)
+  balancePaidAt            DateTime?
+  balanceStylistToman      Int               @default(0)
+  balancePayoutId          String?           @unique
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 

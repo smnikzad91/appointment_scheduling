@@ -18,8 +18,9 @@ import { NotificationsService, type BookingData } from "../notifications/notific
 import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { clock, customerBookingText, independentBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
+import { balanceRequestText, clock, customerBookingText, faMoney, independentBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
 import { applyPrepayment, prepaymentFor, refundExcessPrepayment, takePrepayment } from "../wallet/prepayment.js";
+import { balanceOnCompletion, payBalance, undoBalance } from "../wallet/balance.js";
 
 type CustomerSmsKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
 
@@ -299,7 +300,7 @@ export class AppointmentsService {
     return rows.map(withBookingCustomerName);
   }
 
-  async updateStatus(user: JwtPayload, appointmentId: string, status: UpdatableAppointmentStatus) {
+  async updateStatus(user: JwtPayload, appointmentId: string, status: UpdatableAppointmentStatus, balanceMethod?: "ON_SITE" | "WALLET") {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: { services: { select: { serviceId: true, priceToman: true } } },
@@ -308,17 +309,31 @@ export class AppointmentsService {
 
     await this.assertCanSetStatus(user, appointment, status);
 
-    const data = { status, ...(await this.accountingFor(appointment, status)) };
-    // A prepaid booking: the status and where its pre-payment sits change together (refund on
-    // cancel, the owner's wallet on completion / no-show — wallet/prepayment.ts).
-    const updated = appointment.prepaymentStatus
+    const completing = status === AppointmentStatus.COMPLETED && appointment.status !== AppointmentStatus.COMPLETED;
+    const leavingCompleted = status !== AppointmentStatus.COMPLETED && appointment.status === AppointmentStatus.COMPLETED;
+    const data = {
+      status,
+      ...(await this.accountingFor(appointment, status)),
+      // the rest of the price: on site, or requested from the customer's wallet (wallet/balance.ts)
+      ...(completing && balanceOnCompletion(appointment, balanceMethod)),
+    };
+    // Money moves with the status: a prepaid booking's pre-payment (refund on cancel, the owner's
+    // wallet on completion / no-show — wallet/prepayment.ts), and a paid balance given back when
+    // the booking leaves COMPLETED.
+    const moneyMoves = appointment.prepaymentStatus || (leavingCompleted && appointment.balanceMethod);
+    const updated = moneyMoves
       ? await this.prisma.$transaction(async (tx) => {
           const { ownerId } = await tx.salon.findUniqueOrThrow({ where: { id: appointment.salonId }, select: { ownerId: true } });
           const { userId: stylistUserId } = await tx.stylist.findUniqueOrThrow({ where: { id: appointment.stylistId }, select: { userId: true } });
+          if (leavingCompleted) await undoBalance(tx, appointment, ownerId, stylistUserId);
           await applyPrepayment(tx, { ...appointment, ownerId, stylistUserId }, status, data.stylistCommissionPercent ?? 0);
           return tx.appointment.update({ where: { id: appointmentId }, data });
         })
       : await this.prisma.appointment.update({ where: { id: appointmentId }, data });
+    if (completing && updated.balanceMethod === "WALLET" && updated.balanceDueToman > 0) {
+      await this.notifyBooking(appointmentId, NotificationType.BALANCE_REQUESTED, { amountToman: updated.balanceDueToman }, user.sub, "customer");
+      void this.smsBalanceRequest(appointmentId);
+    }
     if (status === AppointmentStatus.CANCELLED && appointment.status !== AppointmentStatus.CANCELLED) {
       const cancelledBy = user.role === Role.CUSTOMER ? "CUSTOMER" : user.role === Role.STYLIST ? "STYLIST" : "SALON";
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CANCELLED, { cancelledBy }, user.sub);
@@ -332,6 +347,31 @@ export class AppointmentsService {
       if (appointment.startAt > new Date()) void this.smsCustomer(appointmentId, "confirmed-customer");
     }
     return updated;
+  }
+
+  /** The customer pays the rest of a completed booking from their wallet; owner and stylist are told. */
+  async payBalance(customerId: string, appointmentId: string) {
+    const paid = await this.prisma.$transaction((tx) => payBalance(tx, customerId, appointmentId));
+    await this.notifyBooking(appointmentId, NotificationType.BALANCE_PAID, { amountToman: paid.paidToman }, customerId);
+    const a = await this.prisma.appointment.findUnique({ where: { id: appointmentId }, include: { ...APPOINTMENT_INCLUDE, stylist: true } });
+    return a && forCustomer(a);
+  }
+
+  /** «باقی‌مانده نوبتت در … : … تومان؛ در پنل از کیف پول پرداخت کنید» — always sent (a payment), counted when there's allowance. */
+  private async smsBalanceRequest(appointmentId: string) {
+    try {
+      const a = await this.prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { salonId: true, balanceDueToman: true, salon: { select: { name: true } }, customer: { select: { phone: true } } },
+      });
+      if (!a?.customer.phone || a.balanceDueToman <= 0) return;
+      const params = { amount: faMoney(a.balanceDueToman), salon: a.salon.name };
+      const text = balanceRequestText(params);
+      await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text));
+      await this.sms.send({ kind: "balance-request-customer", to: a.customer.phone, params, text });
+    } catch (err) {
+      this.logger.warn(`balance-request SMS for ${appointmentId} failed: ${(err as Error).message}`);
+    }
   }
 
   /**
@@ -490,7 +530,7 @@ export class AppointmentsService {
   private async notifyBooking(
     appointmentId: string,
     type: NotificationType,
-    extra: Pick<BookingData, "bySalon" | "cancelledBy" | "updatedBy" | "previousStartAt">,
+    extra: Pick<BookingData, "bySalon" | "cancelledBy" | "updatedBy" | "previousStartAt" | "amountToman">,
     exceptUserId: string,
     audience: "everyone" | "customer" = "everyone",
   ) {

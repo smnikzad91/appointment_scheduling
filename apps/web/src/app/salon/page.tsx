@@ -50,7 +50,7 @@ export default function SalonOverviewPage() {
   useEffect(reload, [reload]);
 
   const actions = useAppointmentActions(
-    useCallback((id, status) => updateAppointmentStatus(token!, id, status), [token]),
+    useCallback((id, status, balanceMethod) => updateAppointmentStatus(token!, id, status, balanceMethod), [token]),
     reload,
   );
 

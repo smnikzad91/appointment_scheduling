@@ -52,7 +52,7 @@ export default function StylistOverviewPage() {
   useEffect(reload, [reload]);
 
   const actions = useAppointmentActions(
-    useCallback((id, status) => updateMyAppointmentStatus(token!, id, status), [token]),
+    useCallback((id, status, balanceMethod) => updateMyAppointmentStatus(token!, id, status, balanceMethod), [token]),
     reload,
   );
 

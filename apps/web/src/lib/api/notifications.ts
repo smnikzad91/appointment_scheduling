@@ -30,6 +30,8 @@ export interface BookingData {
   /** BOOKING_UPDATED: who changed it, and the start time before the change. */
   updatedBy?: "SALON" | "STYLIST";
   previousStartAt?: string;
+  /** BALANCE_REQUESTED / BALANCE_PAID: the rest of the price, from the customer's wallet. */
+  amountToman?: number;
 }
 
 export interface PayoutData {
@@ -67,6 +69,8 @@ export type AppNotification = {
   | { type: "PAYOUT_RECORDED"; data: PayoutData }
   | { type: "BOOKING_CONFIRMED"; data: BookingData }
   | { type: "BOOKING_UPDATED"; data: BookingData }
+  | { type: "BALANCE_REQUESTED"; data: BookingData }
+  | { type: "BALANCE_PAID"; data: BookingData }
   | { type: "REVIEW_APPROVED"; data: ReviewApprovedData }
   | { type: "SLOT_OPENED"; data: SlotOpenedData }
 );

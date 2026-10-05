@@ -313,6 +313,11 @@ export interface OwnerAppointment {
   priceToman: number;
   notes: string | null;
   stylistShareToman: number | null;
+  prepaidToman?: number;
+  /** The rest after the pre-payment, once COMPLETED: ON_SITE (received directly) or WALLET (requested from the customer's wallet). */
+  balanceMethod?: "ON_SITE" | "WALLET" | null;
+  balanceDueToman?: number;
+  balancePaidAt?: string | null;
   services: { serviceId: string; priceToman: number; service: { name: string } }[];
   stylist: { displayName: string };
   customer: { firstName: string; lastName: string; phone: string | null };
@@ -322,11 +327,12 @@ export function listMySalonAppointments(token: string) {
   return salonApiFetch<OwnerAppointment[]>("/appointments/salon/mine", { headers: authHeaders(token) });
 }
 
-export function updateAppointmentStatus(token: string, id: string, status: OwnerAppointment["status"]) {
+/** `balanceMethod` (COMPLETED only): how the rest of the price is received — on site or from the customer's wallet. */
+export function updateAppointmentStatus(token: string, id: string, status: OwnerAppointment["status"], balanceMethod?: "ON_SITE" | "WALLET") {
   return salonApiFetch<OwnerAppointment>(`/appointments/${id}/status`, {
     method: "PATCH",
     headers: authHeaders(token),
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, ...(balanceMethod && { balanceMethod }) }),
   });
 }
 

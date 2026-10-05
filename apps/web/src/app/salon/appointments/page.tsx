@@ -25,7 +25,10 @@ export default function SalonAppointmentsPage() {
       .then((s) => setIndependent(isIndependent(s)))
       .catch(() => {});
   }, [token]);
-  const updateStatus = useCallback((id: string, status: Parameters<typeof updateAppointmentStatus>[2]) => updateAppointmentStatus(token!, id, status), [token]);
+  const updateStatus = useCallback(
+    (id: string, status: Parameters<typeof updateAppointmentStatus>[2], balanceMethod?: "ON_SITE" | "WALLET") => updateAppointmentStatus(token!, id, status, balanceMethod),
+    [token],
+  );
 
   if (!token) return <ListSkeleton />;
   return (

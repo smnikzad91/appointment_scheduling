@@ -10,7 +10,7 @@ import WalletWithdraw from "./WalletWithdraw";
 // Wallet balance and its movements (GET /api/user/finance/wallet): top-ups, booking pre-payments
 // and refunds for a customer; pre-payments received (and any taken back) for a salon owner.
 
-export type WalletTxKind = "top_up" | "prepayment" | "prepayment_refund" | "prepayment_income" | "prepayment_income_reversal" | "withdrawal" | "withdrawal_reversal" | "payout_sent" | "payout_received" | "plan_purchase" | "plan_credit";
+export type WalletTxKind = "top_up" | "prepayment" | "prepayment_refund" | "prepayment_income" | "prepayment_income_reversal" | "withdrawal" | "withdrawal_reversal" | "payout_sent" | "payout_received" | "plan_purchase" | "plan_credit" | "balance_payment" | "balance_income" | "balance_income_reversal" | "balance_refund";
 
 interface WalletTx {
   id: string;
@@ -35,6 +35,10 @@ const KIND_LABEL: Record<WalletTxKind, string> = {
   payout_received: "پرداخت سالن",
   plan_purchase: "خرید پلن",
   plan_credit: "اعتبار پلن قبلی (تغییر پلن)",
+  balance_payment: "پرداخت باقی‌مانده نوبت",
+  balance_income: "باقی‌مانده نوبت (از کیف پول مشتری)",
+  balance_income_reversal: "برگشت باقی‌مانده دریافتی",
+  balance_refund: "بازگشت باقی‌مانده پرداختی",
 };
 
 const fa = (n: number) => toPersianDigits(Math.abs(n).toLocaleString("en-US").replace(/,/g, "٬"));

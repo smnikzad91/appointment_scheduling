@@ -2,6 +2,7 @@ import { bookingCustomerFullName } from "../appointments/booking-customer-name.u
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { AppointmentStatus, NotificationType, PayoutMethod, Prisma, SalonKind, WalletTxKind } from "@appointment-scheduling/database";
 import { InsufficientWalletError, moveWallet } from "../wallet/prepayment.js";
+import { balanceDue } from "../wallet/balance.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
@@ -233,6 +234,10 @@ export class AccountingService {
         // An independent stylist is the business: the whole amount, tip included, is its income,
         // with no share set aside for a stylist (and so no balance to pay out).
         stylistShareToman: salon.kind === SalonKind.INDEPENDENT ? 0 : stylistTake(dto.chargedToman, percent, tipToman),
+        // an unpaid request from the customer's wallet follows the corrected amount (wallet/balance.ts)
+        ...(appointment.balanceMethod === "WALLET" && !appointment.balancePaidAt && {
+          balanceDueToman: balanceDue({ priceToman: appointment.priceToman, chargedToman: dto.chargedToman, prepaidToman: appointment.prepaidToman }),
+        }),
       },
       select: INCOME_SELECT,
     });

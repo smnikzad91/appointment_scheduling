@@ -88,6 +88,24 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
           : `${who} ${whose} را لغو کرد`;
       return { icon: CalendarX, tone: "text-app-danger", title, detail: bookingDetail(n.data), href: appointmentsHref };
     }
+    // the stylist asked for the rest of a completed booking from the customer's wallet (customer)
+    case "BALANCE_REQUESTED":
+      return {
+        icon: Wallet,
+        tone: "text-app-accent",
+        title: `${salon}: باقی‌مانده نوبت ${formatToman(n.data.amountToman ?? 0)}؛ از کیف پول پرداخت کنید`,
+        detail: bookingDetail(n.data),
+        href: appointmentsHref,
+      };
+    // …and the customer paid it (owner, stylist)
+    case "BALANCE_PAID":
+      return {
+        icon: Wallet,
+        tone: "text-app-done",
+        title: `${n.data.customerName} باقی‌مانده نوبت را از کیف پول پرداخت کرد (${formatToman(n.data.amountToman ?? 0)})`,
+        detail: bookingDetail(n.data),
+        href: scope === "stylist" ? "/stylist/wallet" : "/salon/wallet",
+      };
     case "BOOKING_CONFIRMED":
       return {
         icon: CalendarCheck2,

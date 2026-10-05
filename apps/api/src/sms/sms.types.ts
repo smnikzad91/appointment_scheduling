@@ -53,6 +53,13 @@ export type SmsMessage =
       to: string;
       params: { amount: string; trackingCode: string };
       text: string;
+    }
+  | {
+      /** The stylist asked for the rest of a completed booking from the customer's wallet. */
+      kind: "balance-request-customer";
+      to: string;
+      params: { amount: string; salon: string };
+      text: string;
     };
 
 export type SmsKind = SmsMessage["kind"];

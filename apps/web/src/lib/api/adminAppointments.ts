@@ -18,6 +18,9 @@ export interface AdminAppointment {
   prepaidToman: number;
   prepaymentStatus: "HELD" | "SETTLED" | "REFUNDED" | null;
   prepaymentStylistToman: number;
+  balanceMethod: "ON_SITE" | "WALLET" | null;
+  balanceDueToman: number;
+  balancePaidAt: string | null;
   notes: string | null;
   serviceLocation: ServiceLocation | null;
   visitAddress: string | null;

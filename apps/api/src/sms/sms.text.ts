@@ -40,6 +40,10 @@ export const withdrawalText = (kind: "withdrawal-paid" | "withdrawal-rejected", 
   return p.trackingCode && withCode.length <= SMS_SEGMENT ? withCode : base;
 };
 
+/** «باقی‌مانده نوبتت در سالن رز: ۱۹۰٬۰۰۰ تومان؛ در پنل از کیف پول پرداخت کنید» (the salon name is cut first). */
+export const balanceRequestText = (p: { amount: string; salon: string }) =>
+  fitSms(p, ["salon"], (q) => `باقی‌مانده نوبتت در ${q.salon}: ${q.amount} تومان؛ در پنل از کیف پول پرداخت کنید`);
+
 /** One Unicode SMS segment; longer texts go out in parts (some phones show them as separate messages). */
 export const SMS_SEGMENT = 70;
 

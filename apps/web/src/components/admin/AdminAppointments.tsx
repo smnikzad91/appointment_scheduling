@@ -232,6 +232,13 @@ export default function AdminAppointments() {
             <dl className="divide-y divide-gray-100 rounded-xl border border-gray-200 text-sm dark:divide-gray-800 dark:border-gray-800">
               <Row label={t("aptColPrepaid")}>{prepayLabel(open)}</Row>
               {open.prepaymentStylistToman > 0 && <Row label={t("aptPrepayStylistPart")}>{money(open.prepaymentStylistToman)} {toman}</Row>}
+              {open.balanceMethod && (
+                <Row label={t("aptBalance")}>
+                  {open.balanceMethod === "ON_SITE"
+                    ? t("aptBalanceOnSite")
+                    : `${money(open.balanceDueToman)} ${toman}، ${t(open.balancePaidAt ? "aptBalancePaid" : "aptBalanceWaiting")}`}
+                </Row>
+              )}
               {open.chargedToman !== null && <Row label={t("aptCharged")}>{money(open.chargedToman)} {toman}</Row>}
               {!!open.tipToman && <Row label={t("aptTip")}>{money(open.tipToman)} {toman}</Row>}
               {open.stylistShareToman !== null && <Row label={t("aptStylistShare")}>{money(open.stylistShareToman)} {toman}</Row>}

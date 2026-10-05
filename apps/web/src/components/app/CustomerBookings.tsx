@@ -21,6 +21,7 @@ import { formatMinutesAsClock, formatToman } from "@/lib/persian";
 import { toSalonWallTime } from "@/lib/salonTime";
 import { StatusChip, relativeDayLabel } from "./appointments";
 import Sheet from "./Sheet";
+import PayBalanceSheet from "./PayBalanceSheet";
 import { Button, ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader, TextArea, cx, riseStyle } from "./ui";
 import Sep from "@/components/common/Sep";
 import { toastError } from "@/lib/toastError";
@@ -74,6 +75,8 @@ export default function CustomerBookings({
   const [tab, setTab] = useState<Tab>("upcoming");
 
   const [cancelTarget, setCancelTarget] = useState<CustomerBooking | null>(null);
+  // the rest of a completed booking, requested by the stylist from the wallet
+  const [payTarget, setPayTarget] = useState<CustomerBooking | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<CustomerBooking | null>(null);
   const [drafts, setDrafts] = useState<Record<ReviewTarget, Draft>>(EMPTY_DRAFTS);
@@ -264,6 +267,20 @@ export default function CustomerBookings({
                   </span>
                   <span className="text-app-muted">{formatToman(b.priceToman)}</span>
                 </div>
+                {b.status === "COMPLETED" && b.balanceMethod === "WALLET" && !!b.balanceDueToman && (
+                  b.balancePaidAt ? (
+                    <p className="mt-2 text-[12px] leading-5 text-app-done">باقی‌مانده {formatToman(b.balanceDueToman)} از کیف پول پرداخت شد.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPayTarget(b)}
+                      className="mt-2 flex w-full items-center justify-between gap-2 rounded-2xl bg-app-accent px-4 py-3 text-sm font-bold text-app-accent-ink active:scale-[0.99]"
+                    >
+                      <span>پرداخت باقی‌مانده از کیف پول</span>
+                      <span>{formatToman(b.balanceDueToman)}</span>
+                    </button>
+                  )
+                )}
                 {!!b.prepaidToman && (
                   <p className="mt-2 text-[12px] leading-5 text-app-muted">
                     پیش‌پرداخت {formatToman(b.prepaidToman)} از کیف پول
@@ -458,6 +475,7 @@ export default function CustomerBookings({
           </div>
         )}
       </Sheet>
+      {payTarget && token && <PayBalanceSheet token={token} booking={payTarget} onClose={() => setPayTarget(null)} onPaid={reload} />}
     </>
   );
 }

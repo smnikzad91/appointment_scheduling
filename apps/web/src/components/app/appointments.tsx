@@ -175,12 +175,19 @@ export function AppointmentSheet({
   onClose: () => void;
   /** Opens the edit form; offered while the appointment is still open. */
   onEdit?: (a: AppAppointment) => void;
-  onSetStatus: (a: AppAppointment, status: AppointmentStatus) => void;
+  onSetStatus: (a: AppAppointment, status: AppointmentStatus, balanceMethod?: BalanceMethod) => void;
   busyStatus: AppointmentStatus | null;
 }) {
+  // «انجام شد» with something left to pay: first ask how it's received (wallet/balance.ts in apps/api)
+  const [choosingBalance, setChoosingBalance] = useState<string | null>(null);
   if (!a) return null;
   const { start, end, duration } = wall(a);
   const actions = NEXT_ACTIONS[a.status];
+  const remaining = Math.max(0, a.priceToman - (a.prepaymentStatus === "REFUNDED" ? 0 : a.prepaidToman ?? 0));
+  const choose = (status: AppointmentStatus) => {
+    if (status === "COMPLETED" && remaining > 0) setChoosingBalance(a.id);
+    else onSetStatus(a, status);
+  };
 
   return (
     <Sheet open onClose={onClose} title="جزئیات نوبت">
@@ -231,7 +238,29 @@ export function AppointmentSheet({
         </Button>
       )}
 
-      {actions.length > 0 ? (
+      {a.status === "COMPLETED" && a.balanceMethod && (
+        <p className="mb-3 rounded-2xl bg-app-card-2 px-4 py-3 text-sm leading-6 text-app-ink">
+          {a.balanceMethod === "ON_SITE"
+            ? "باقی‌مبلغ در محل دریافت شد."
+            : a.balancePaidAt
+              ? `باقی‌مانده ${formatToman(a.balanceDueToman ?? 0)} از کیف پول مشتری پرداخت شد.`
+              : `باقی‌مانده ${formatToman(a.balanceDueToman ?? 0)} از کیف پول مشتری درخواست شده؛ در انتظار پرداخت مشتری.`}
+        </p>
+      )}
+
+      {choosingBalance === a.id ? (
+        <div className="flex flex-col gap-2.5">
+          <p className="text-sm font-bold text-app-ink">باقی‌مانده {formatToman(remaining)} را چطور دریافت می‌کنید؟</p>
+          <Button block busy={busyStatus === "COMPLETED"} disabled={busyStatus !== null} onClick={() => onSetStatus(a, "COMPLETED", "ON_SITE")}>
+            در محل دریافت کردم (نقد / کارت)
+          </Button>
+          <Button variant="secondary" block disabled={busyStatus !== null} onClick={() => onSetStatus(a, "COMPLETED", "WALLET")}>
+            درخواست از کیف پول مشتری
+          </Button>
+          <p className="text-xs leading-5 text-app-muted">با «کیف پول»، به مشتری پیامک می‌رود تا باقی‌مانده را در پنل خودش از کیف پول پرداخت کند.</p>
+          <button type="button" onClick={() => setChoosingBalance(null)} className="text-sm text-app-muted">انصراف</button>
+        </div>
+      ) : actions.length > 0 ? (
         <div className="grid grid-cols-2 gap-2.5">
           {actions.map((action, i) => (
             <Button
@@ -240,7 +269,7 @@ export function AppointmentSheet({
               icon={action.icon}
               busy={busyStatus === action.status}
               disabled={busyStatus !== null}
-              onClick={() => onSetStatus(a, action.status)}
+              onClick={() => choose(action.status)}
               className={i === 0 ? "col-span-2" : undefined}
             >
               {action.label}
@@ -344,8 +373,10 @@ function NowMarker({ minute }: { minute: number }) {
 }
 
 /** Selection, status-change and edit state for AppointmentSheet, shared by the salon and stylist pages. */
+export type BalanceMethod = "ON_SITE" | "WALLET";
+
 export function useAppointmentActions(
-  updateStatus: (id: string, status: AppointmentStatus) => Promise<unknown>,
+  updateStatus: (id: string, status: AppointmentStatus, balanceMethod?: BalanceMethod) => Promise<unknown>,
   onChanged: () => void,
 ) {
   const [selected, setSelected] = useState<AppAppointment | null>(null);
@@ -364,10 +395,10 @@ export function useAppointmentActions(
   const closeEdit = useCallback(() => setEditing(null), []);
 
   const setStatus = useCallback(
-    async (a: AppAppointment, status: AppointmentStatus) => {
+    async (a: AppAppointment, status: AppointmentStatus, balanceMethod?: BalanceMethod) => {
       setBusyStatus(status);
       try {
-        await updateStatus(a.id, status);
+        await updateStatus(a.id, status, balanceMethod);
         setSelected(null);
         onChanged();
       } catch {
