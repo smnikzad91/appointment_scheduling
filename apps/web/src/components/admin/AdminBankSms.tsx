@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useT } from "@/i18n/useT";
 import { useLocaleFormat } from "@/i18n/useLocaleFormat";
+import AdminTopUpsTable from "./AdminTopUpsTable";
 
 // /admin/bank-sms: the bank-SMS device (apps/bank-sms-agent) — its heartbeat, the SMS from the cards'
 // bank senders and what they matched (all other SMS: /admin/received-sms), and the automatic wallet top-ups. An SMS that didn't match by itself (paid
@@ -128,27 +129,7 @@ export default function AdminBankSms() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 p-5 dark:border-gray-700">
-        <h2 className="mb-3 font-semibold text-gray-900 dark:text-white">{t("bankSmsTopUps")}</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <tbody>
-              {data?.topUps.map((tu) => {
-                const [label, cls] = topUpStatus[tu.status];
-                return (
-                  <tr key={tu.id} className="border-b border-gray-100 dark:border-gray-800">
-                    <td className="py-2 text-gray-900 dark:text-white">{name(tu.user)}</td>
-                    <td className="py-2 font-medium">{rial(tu.payableRial)} ریال</td>
-                    <td className="py-2"><span className={`rounded-lg px-2 py-0.5 text-xs ${cls}`}>{label}</span></td>
-                    <td className="py-2 text-gray-500">{date(tu.createdAt)}</td>
-                    <td dir="ltr" className="py-2 font-mono text-xs text-gray-500">…{tu.cardNumber.slice(-4)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <AdminTopUpsTable rows={data?.topUps} />
     </div>
   );
 }
