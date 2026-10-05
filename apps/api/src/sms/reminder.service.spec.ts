@@ -213,6 +213,14 @@ describe('ReminderService quiet hours (22:00–08:00 Tehran)', () => {
     expect(sms.send).toHaveBeenCalledTimes(1);
   });
 
+  it('a prepaid booking at 02:00 texts the stylist right away (and says it is prepaid)', async () => {
+    const paid = nightBooking({ prepaidToman: 190_000 });
+    const { service, sms } = setup([], 1, Infinity, [], [paid]);
+    expect(await service.tick(at('02:00'))).toBe(1);
+    expect(sms.send.mock.calls[0][0].kind).toBe('new-booking-stylist');
+    expect(sms.send.mock.calls[0][0].text).toContain('پیش‌پرداخت');
+  });
+
   it('holds the nudge back overnight too', async () => {
     const pendingNudge = nightBooking({ newBookingTextedAt: at('20:30', '2026-10-05') });
     const { service, sms } = setup([], 1, Infinity, [pendingNudge]);

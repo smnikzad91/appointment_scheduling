@@ -197,7 +197,9 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
     });
     let sent = 0;
     for (const a of due) {
-      if (!maySendNow(now, a.salon.timezone, a.startAt, this.quiet)) continue; // after quiet hours
+      // A prepaid booking texts the stylist right away, night or day (the owner's choice, 2026-10-05):
+      // the customer has paid and is waiting. Unpaid ones wait for quiet hours to end.
+      if (!(a.prepaidToman > 0) && !maySendNow(now, a.salon.timezone, a.startAt, this.quiet)) continue;
       const claimed = await this.prisma.appointment.updateMany({ where: { id: a.id, newBookingTextedAt: null }, data: { newBookingTextedAt: now } });
       if (claimed.count !== 1 || !a.stylist.user.phone) continue;
       const params = {
