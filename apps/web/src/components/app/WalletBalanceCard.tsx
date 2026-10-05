@@ -7,7 +7,7 @@ import { formatToman } from "@/lib/persian";
 import { cx } from "./ui";
 
 // Home-screen shortcut to the wallet with its balance (GET /api/user/profile → walletBalance) —
-// salon, stylist and customer homes. A negative balance (an undone completion after the money was
+// salon and stylist homes (the customer home has its own wallet card). A negative balance (an undone completion after the money was
 // spent) is shown as a debt that the next income pays off.
 export default function WalletBalanceCard({ href, className }: { href: string; className?: string }) {
   const [balance, setBalance] = useState<number | null>(null);
