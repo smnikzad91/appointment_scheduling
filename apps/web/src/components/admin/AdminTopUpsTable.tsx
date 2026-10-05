@@ -56,8 +56,8 @@ export default function AdminTopUpsTable({ rows }: { rows: TopUpRow[] | undefine
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      {/* the tab above names it (AdminFinanceRequests) */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-semibold text-gray-900 dark:text-white">{t("bankSmsTopUps")}</h2>
         <div className="flex flex-wrap gap-1.5">
           {(["", "pending", "paid", "expired", "cancelled"] as const).map((s) => (
             <button

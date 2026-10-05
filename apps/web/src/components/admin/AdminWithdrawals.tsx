@@ -47,8 +47,8 @@ export default function AdminWithdrawals() {
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white">{t("withdrawalsTitle")}</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t("withdrawalsDesc")}</p>
+        {/* the tab above names it (AdminFinanceRequests) */}
+        <p className="text-xs text-gray-500 dark:text-gray-400">{t("withdrawalsDesc")}</p>
       </div>
       {!data ? (
         <p className="text-sm text-gray-400">{t("loading")}</p>
