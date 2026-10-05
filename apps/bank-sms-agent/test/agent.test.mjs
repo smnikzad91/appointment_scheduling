@@ -101,3 +101,14 @@ test("reads +CMGL / +CMGR responses", () => {
   assert.deepEqual(parseStoredMessages(lines), [{ index: 3, pdu: "0011AA" }, { index: 5, pdu: "0022BB" }]);
   assert.deepEqual(parseStoredMessages(["+CMGR: 1,,30", "00CC"], 8), [{ index: 8, pdu: "00CC" }]);
 });
+
+test("Bank Pasargad's alphanumeric sender (with a dot) and its deposit text", () => {
+  const body = "777.888.23862333.1\n+300,450\n07/12_12:39\nمانده: 610,400";
+  const pdu = deliver({ sender: "B.Pasargad", alnum: true, ucs2Text: body });
+  const m = decodePdu(pdu);
+  assert.equal(m.sender, "B.Pasargad");
+  assert.equal(m.text, body);
+  // some networks give the exact semi-octet count (70 bits → 18) — same here — others round down to 17
+  const odd = pdu.replace(/^0004(..)D0/, (_, n) => "0004" + (parseInt(n, 16) - 1).toString(16).padStart(2, "0").toUpperCase() + "D0");
+  assert.equal(decodePdu(odd).sender, "B.Pasargad");
+});

@@ -68,3 +68,19 @@ test("account-number / signed-amount / date_time / مانده format (the platfo
   // Persian digits and bidi marks from the phone/modem still match
   assert.equal(parseSms(template, "‏۷۷۷.۸۸۸.۲۳۸۶۲۳۳۳.۱\n‎+۳۰۰,۴۵۰\n۰۷/۱۲_۱۲:۳۹\nمانده: ۶۱۰,۴۰۰")?.amountRial, BigInt(300450));
 });
+
+test("B.Pasargad end to end: what the agent decodes is matched by sender and template", async () => {
+  const { decodePdu } = await import("../../../../bank-sms-agent/src/pdu.mjs");
+  const body = "777.888.23862333.1\n+300,450\n07/12_12:39\nمانده: 610,400";
+  // SMS-DELIVER from alphanumeric "B.Pasargad" (17 semi-octets, as some networks round), UCS2 text
+  const septets = [..."B.Pasargad"].map((c) => c.charCodeAt(0));
+  const packed: number[] = [];
+  let acc = 0, bits = 0;
+  for (const s of septets) { acc |= s << bits; bits += 7; while (bits >= 8) { packed.push(acc & 0xff); acc >>= 8; bits -= 8; } }
+  if (bits > 0) packed.push(acc & 0xff);
+  const ud = [...Buffer.from(body, "utf16le").swap16()];
+  const bytes = [0x00, 0x04, 17, 0xd0, ...packed, 0x00, 0x08, 0x62, 0x01, 0x50, 0x41, 0x52, 0x03, 0x41, ud.length, ...ud];
+  const sms = decodePdu(Buffer.from(bytes).toString("hex"));
+  assert.equal(normalizeSender(sms.sender), normalizeSender("B.Pasargad"));
+  assert.equal(parseSms("{*}\n+{amount}\n{date}_{time}\nمانده: {balance}", sms.text)?.amountRial, BigInt(300450));
+});

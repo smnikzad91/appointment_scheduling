@@ -60,8 +60,10 @@ function decodeAddress(bytes, pos) {
   const data = bytes.subarray(pos + 2, pos + 2 + octets);
   let address;
   if ((toa & 0x70) === 0x50) {
-    // alphanumeric (GSM 7-bit packed): the length counts semi-octets
-    address = gsm7ToString(unpackSeptets(data, Math.floor((digits * 4) / 7))).replace(/@+$/, "").trim();
+    // alphanumeric (GSM 7-bit packed): the length counts semi-octets, but networks round it either
+    // way (10 chars = 70 bits → 18 or 17), so read every septet the octets hold; zero-bit padding
+    // decodes as trailing "@", which is dropped
+    address = gsm7ToString(unpackSeptets(data, Math.floor((octets * 8) / 7))).replace(/@+$/, "").trim();
   } else {
     address = "";
     for (const b of data) address += (b & 0x0f).toString(16) + (b >> 4).toString(16);
