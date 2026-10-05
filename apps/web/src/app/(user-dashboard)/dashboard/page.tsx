@@ -13,6 +13,7 @@ import { relativeDayLabel } from "@/components/app/appointments";
 import { ListGroup, SectionTitle } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
 import CustomerDiscoverySections from "@/components/discovery/CustomerDiscoverySections";
+import WalletBalanceCard from "@/components/app/WalletBalanceCard";
 
 export default function CustomerHomePage() {
   const { data: session } = useSession();
@@ -76,6 +77,8 @@ export default function CustomerHomePage() {
           </div>
         )}
       </section>
+
+      <WalletBalanceCard href="/dashboard/finance" className="mt-3" />
 
       {/* Wallet */}
       <Link

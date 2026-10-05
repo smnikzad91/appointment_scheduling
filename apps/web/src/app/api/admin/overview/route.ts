@@ -12,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const [salons, users, customers, openTickets, unmatchedBankSms, pendingWithdrawals] = await Promise.all([
+  const [salons, users, customers, openTickets, unmatchedBankSms, pendingWithdrawals, negativeWallets] = await Promise.all([
     listAdminSalons(session.apiAccessToken).catch(async (error) => {
       await logError({ error, method: "GET", path: "/api/admin/overview", context: { step: "listAdminSalons" } });
       return null;
@@ -22,6 +22,8 @@ export async function GET() {
     prisma.ticket.count({ where: { status: "OPEN" } }),
     prisma.bankSms.count({ where: { status: "UNMATCHED" } }),
     prisma.withdrawalRequest.count({ where: { status: "PENDING" } }),
+    // owners whose completed booking was undone after they spent the money (paid off by later income)
+    prisma.user.count({ where: { walletBalance: { lt: 0 } } }),
   ]);
 
   return NextResponse.json({
@@ -35,5 +37,6 @@ export async function GET() {
     openTickets,
     unmatchedBankSms,
     pendingWithdrawals,
+    negativeWallets,
   });
 }

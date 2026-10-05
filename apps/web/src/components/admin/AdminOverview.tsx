@@ -12,6 +12,7 @@ interface Overview {
   openTickets: number;
   unmatchedBankSms: number;
   pendingWithdrawals: number;
+  negativeWallets: number;
 }
 
 /** Platform-wide counts at the top of /admin; tiles that need action link to the page that handles it. */
@@ -37,6 +38,7 @@ export default function AdminOverview() {
     { label: t("overviewOpenTickets"), value: data?.openTickets, href: "/admin/tickets", alert: !!data?.openTickets },
     { label: t("overviewUnmatchedBankSms"), value: data?.unmatchedBankSms, href: "/admin/bank-sms", alert: !!data?.unmatchedBankSms },
     { label: t("overviewPendingWithdrawals"), value: data?.pendingWithdrawals, href: "/admin/finance#withdrawals", alert: !!data?.pendingWithdrawals },
+    { label: t("overviewNegativeWallets"), value: data?.negativeWallets, href: "/admin/users", alert: !!data?.negativeWallets },
   ];
 
   return (

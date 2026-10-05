@@ -65,7 +65,11 @@ export default function WalletHistory({ reloadKey = 0, title = "کیف پول" }
           <p className={`mt-1 text-2xl font-black ${negative ? "text-app-danger" : "text-app-ink"}`}>
             {fa(data.balanceToman)} <span className="text-sm font-normal text-app-muted">تومان</span>
           </p>
-          {negative && <p className="text-xs text-app-danger">بدهی به کیف پول</p>}
+          {negative && (
+            <p className="mt-1 text-xs leading-5 text-app-danger">
+              بدهی به کیف پول (برگشت درآمدی که قبلاً دریافت شده بود)؛ از درآمدهای بعدی کم می‌شود یا با شارژ کیف پول صاف می‌شود. تا آن موقع برداشت و پرداخت از کیف پول ممکن نیست.
+            </p>
+          )}
         </div>
         <Wallet className="h-8 w-8 text-app-accent" />
       </Card>
