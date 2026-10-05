@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { useT } from "@/i18n/useT";
 import { useLocaleFormat } from "@/i18n/useLocaleFormat";
 
-// /admin/bank-sms: the bank-SMS device (apps/bank-sms-agent) — its heartbeat, every SMS it forwarded
-// and what it matched, and the automatic wallet top-ups. An SMS that didn't match by itself (paid
+// /admin/bank-sms: the bank-SMS device (apps/bank-sms-agent) — its heartbeat, the SMS from the cards'
+// bank senders and what they matched (all other SMS: /admin/received-sms), and the automatic wallet top-ups. An SMS that didn't match by itself (paid
 // after expiry, a typo in the amount…) is matched to its top-up by hand here, or set aside.
 
 interface Person { firstName: string; lastName: string; phone: string | null }

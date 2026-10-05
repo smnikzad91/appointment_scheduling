@@ -3,15 +3,17 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { expireStale } from "@/lib/bankSms/topUps";
 
-// The bank-SMS log for the admin: recent SMS (matched, unmatched, other), recent top-ups and the
-// device's last heartbeat.
+// The bank-SMS log for the admin: recent SMS from the cards' bank senders (matched, unmatched,
+// not a deposit), recent top-ups and the device's last heartbeat. An SMS is linked to a card
+// (adminCardId) only when its sender is one of that card's senders (lib/bankSms/topUps.ts
+// ingestSms); everything else is listed on /admin/received-sms.
 
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "PLATFORM_ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await expireStale();
   const [sms, topUps, devices] = await Promise.all([
-    prisma.bankSms.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { adminCard: { select: { cardNumber: true, bankName: true } }, topUp: { select: { id: true, user: { select: { firstName: true, lastName: true, phone: true } } } } } }),
+    prisma.bankSms.findMany({ where: { adminCardId: { not: null } }, orderBy: { createdAt: "desc" }, take: 100, include: { adminCard: { select: { cardNumber: true, bankName: true } }, topUp: { select: { id: true, user: { select: { firstName: true, lastName: true, phone: true } } } } } }),
     prisma.walletTopUp.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { user: { select: { firstName: true, lastName: true, phone: true } }, adminCard: { select: { cardNumber: true } } } }),
     prisma.bankSmsDevice.findMany({ orderBy: { lastSeenAt: "desc" } }),
   ]);
