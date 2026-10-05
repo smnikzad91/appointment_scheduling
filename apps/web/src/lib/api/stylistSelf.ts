@@ -133,6 +133,10 @@ export interface StylistAppointment {
   endAt: string;
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   priceToman: number;
+  /** Paid in advance from the customer's wallet (online bookings); 0 = none. */
+  prepaidToman?: number;
+  /** HELD while open, SETTLED to the owner's wallet (completed / no-show), REFUNDED to the customer (cancelled). */
+  prepaymentStatus?: "HELD" | "SETTLED" | "REFUNDED" | null;
   notes: string | null;
   /** Independent stylists: where it happens (null = not specified / a salon) and a home visit's address. */
   serviceLocation?: ServiceLocation | null;

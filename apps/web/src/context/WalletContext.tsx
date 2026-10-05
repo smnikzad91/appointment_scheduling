@@ -15,6 +15,9 @@ export const useWallet = () => {
   return context;
 };
 
+/** The wallet context where there is one (panels); null elsewhere, e.g. the public booking sheet. */
+export const useOptionalWallet = () => useContext(WalletContext) ?? null;
+
 export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [balance, setBalance] = useState<number | null>(null);
 

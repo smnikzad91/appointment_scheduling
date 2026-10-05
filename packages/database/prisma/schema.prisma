@@ -141,24 +141,25 @@ enum SocialPlatform {
 }
 
 model User {
-  id              String        @id @default(cuid())
-  phone           String?       @unique
-  email           String?       @unique
-  passwordHash    String
-  firstName       String
-  lastName        String
-  avatarUrl       String?
-  role            Role
-  walletBalance   Int           @default(0)
-  walletTopUps    WalletTopUp[]
+  id                 String              @id @default(cuid())
+  phone              String?             @unique
+  email              String?             @unique
+  passwordHash       String
+  firstName          String
+  lastName           String
+  avatarUrl          String?
+  role               Role
+  walletBalance      Int                 @default(0)
+  walletTopUps       WalletTopUp[]
+  walletTransactions WalletTransaction[]
   /// True for an invited stylist until they choose a password via their one-time link (their
   /// passwordHash until then is random and unknown to anyone).
-  mustSetPassword Boolean       @default(false)
+  mustSetPassword    Boolean             @default(false)
   /// Promotional SMS ("time to book again") stopped by the customer — via the link in the text
   /// (/r/<code>) or their dashboard. Transactional texts (codes, reminders, booking changes) still go.
-  promoSmsOptOut  Boolean       @default(false)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  promoSmsOptOut     Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   ownedSalons         Salon[]              @relation("SalonOwner")
   stylist             Stylist?
@@ -379,24 +380,60 @@ enum TopUpStatus {
 /// A wallet top-up by card-to-card, confirmed by the bank's deposit SMS: the customer pays
 /// amountToman×10 + offsetRial (1–1000 rial) — that exact rial amount identifies them while pending.
 model WalletTopUp {
-  id            String      @id @default(cuid())
+  id            String             @id @default(cuid())
   userId        String
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   adminCardId   String
-  adminCard     AdminCard   @relation(fields: [adminCardId], references: [id])
+  adminCard     AdminCard          @relation(fields: [adminCardId], references: [id])
   amountToman   Int
   offsetRial    Int
   payableRial   BigInt
-  status        TopUpStatus @default(PENDING)
+  status        TopUpStatus        @default(PENDING)
   expiresAt     DateTime
   paidAt        DateTime?
   creditedToman Int?
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime           @default(now())
   bankSms       BankSms?
+  transaction   WalletTransaction?
 
   @@index([adminCardId, status, payableRial])
   @@index([userId, createdAt])
   @@map("wallet_top_ups")
+}
+
+enum WalletTxKind {
+  TOP_UP
+  PREPAYMENT
+  PREPAYMENT_REFUND
+  PREPAYMENT_INCOME
+  PREPAYMENT_INCOME_REVERSAL
+}
+
+/// Every change to User.walletBalance, written in the same transaction as the change (apps/web
+/// lib/wallet.ts for top-ups, apps/api wallet/ for booking pre-payments). amountToman is signed;
+/// balanceAfter is the balance right after it.
+model WalletTransaction {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind          WalletTxKind
+  amountToman   Int
+  balanceAfter  Int
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  topUpId       String?      @unique
+  topUp         WalletTopUp? @relation(fields: [topUpId], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
+
+  @@index([userId, createdAt])
+  @@index([appointmentId])
+  @@map("wallet_transactions")
+}
+
+enum PrepaymentStatus {
+  HELD
+  SETTLED
+  REFUNDED
 }
 
 enum BankSmsStatus {
@@ -682,11 +719,17 @@ model Appointment {
   rebookReminderAttempts   Int               @default(0)
   // The short code in that SMS's link (/r/<code>): book again, or stop these texts.
   rebookCode               String?           @unique
+  /// Online bookings: half the price, taken from the customer's wallet when booked (apps/api
+  /// wallet/prepayment.ts). HELD by the platform while open; SETTLED = credited to the salon
+  /// owner's wallet (COMPLETED / NO_SHOW); REFUNDED = back to the customer (CANCELLED). Null = none.
+  prepaidToman             Int               @default(0)
+  prepaymentStatus         PrepaymentStatus?
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 
-  services AppointmentService[]
-  reviews  Review[]
+  services           AppointmentService[]
+  reviews            Review[]
+  walletTransactions WalletTransaction[]
 
   @@index([salonId, startAt])
   @@index([stylistId, startAt])

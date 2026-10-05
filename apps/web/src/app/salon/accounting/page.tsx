@@ -38,10 +38,11 @@ import { ReceiptField, useReceipt } from "@/components/app/ReceiptField";
 import Sheet from "@/components/app/Sheet";
 import Sep from "@/components/common/Sep";
 import { BalanceChip, DaySelect, HeroAmount, MoneyFigure, PeriodSwitcher, dayKeyToInstant, formatPercent, instantToDayKey, shortDate } from "@/components/app/accounting";
+import WalletHistory from "@/components/app/WalletHistory";
 import { Avatar, Button, ChipTabs, EmptyState, ErrorBanner, Field, IconButton, ListSkeleton, PageHeader, TextInput, cx, riseStyle } from "@/components/app/ui";
 import { toastError } from "@/lib/toastError";
 
-type Tab = "stylists" | "income" | "expenses" | "services";
+type Tab = "stylists" | "income" | "expenses" | "services" | "wallet";
 const METHODS = Object.keys(PAYOUT_METHOD_LABEL) as PayoutMethod[];
 const CATEGORIES = Object.keys(EXPENSE_CATEGORY_LABEL) as ExpenseCategory[];
 
@@ -173,6 +174,8 @@ export default function SalonAccountingPage() {
                 ...(independent ? [] : [{ value: "stylists" as const, label: "آرایشگرها" }]),
                 { value: "income", label: "درآمدها", count: income?.items.length },
                 { value: "expenses", label: "هزینه‌ها", count: expenses?.items.length },
+                // pre-payments of completed / no-show online bookings land in the owner's wallet
+                { value: "wallet" as const, label: "کیف پول" },
                 { value: "services", label: "خدمات" },
               ]}
             />
@@ -274,6 +277,11 @@ export default function SalonAccountingPage() {
               </div>
             ))}
 
+          {tab === "wallet" && (
+            <div className="mt-4">
+              <WalletHistory title="موجودی کیف پول (پیش‌پرداخت‌های دریافتی)" />
+            </div>
+          )}
           {tab === "expenses" && (
             <>
               <div className="mb-3 flex items-center justify-between px-1">

@@ -2,7 +2,7 @@ import { bookingCustomerFullName, withBookingCustomerName } from "./booking-cust
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
-import { AppointmentStatus, NotificationType, Role, SalonKind, ServiceLocation } from "@appointment-scheduling/database";
+import { AppointmentStatus, NotificationType, PrepaymentStatus, Role, SalonKind, ServiceLocation } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { JwtPayload } from "../auth/auth.service.js";
 import { findEligibleStylists } from "../salons/eligible-stylists.util.js";
@@ -19,6 +19,7 @@ import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
 import { clock, customerBookingText, independentBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
+import { applyPrepayment, prepaymentFor, takePrepayment } from "../wallet/prepayment.js";
 
 type CustomerSmsKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
 
@@ -215,17 +216,21 @@ export class AppointmentsService {
         ]);
         if (timeOff || conflict) return null;
 
-        return tx.appointment.create({
+        const priceToman = pricing.reduce((sum, p) => sum + p.priceToman, 0);
+        // Online bookings pre-pay half from the wallet (wallet/prepayment.ts); staff bookings don't.
+        const prepaidToman = bySalon ? 0 : prepaymentFor(priceToman);
+        const created = await tx.appointment.create({
           data: {
             salonId: dto.salonId,
             stylistId: candidate.id,
             customerId,
             startAt,
             endAt,
-            priceToman: pricing.reduce((sum, p) => sum + p.priceToman, 0),
+            priceToman,
             notes: dto.notes,
             ...place,
             ...(bySalon && { status: AppointmentStatus.CONFIRMED }),
+            ...(prepaidToman > 0 && { prepaidToman, prepaymentStatus: PrepaymentStatus.HELD }),
             services: {
               create: pricing.map((p) => ({
                 serviceId: p.serviceId,
@@ -236,6 +241,9 @@ export class AppointmentsService {
           },
           include: APPOINTMENT_INCLUDE,
         });
+        // Not enough balance throws (402) and rolls the booking back.
+        await takePrepayment(tx, customerId, created.id, prepaidToman);
+        return created;
       });
 
       if (appointment) {
@@ -300,10 +308,16 @@ export class AppointmentsService {
 
     await this.assertCanSetStatus(user, appointment, status);
 
-    const updated = await this.prisma.appointment.update({
-      where: { id: appointmentId },
-      data: { status, ...(await this.accountingFor(appointment, status)) },
-    });
+    const data = { status, ...(await this.accountingFor(appointment, status)) };
+    // A prepaid booking: the status and where its pre-payment sits change together (refund on
+    // cancel, the owner's wallet on completion / no-show — wallet/prepayment.ts).
+    const updated = appointment.prepaymentStatus
+      ? await this.prisma.$transaction(async (tx) => {
+          const { ownerId } = await tx.salon.findUniqueOrThrow({ where: { id: appointment.salonId }, select: { ownerId: true } });
+          await applyPrepayment(tx, { ...appointment, ownerId }, status);
+          return tx.appointment.update({ where: { id: appointmentId }, data });
+        })
+      : await this.prisma.appointment.update({ where: { id: appointmentId }, data });
     if (status === AppointmentStatus.CANCELLED && appointment.status !== AppointmentStatus.CANCELLED) {
       const cancelledBy = user.role === Role.CUSTOMER ? "CUSTOMER" : user.role === Role.STYLIST ? "STYLIST" : "SALON";
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CANCELLED, { cancelledBy }, user.sub);

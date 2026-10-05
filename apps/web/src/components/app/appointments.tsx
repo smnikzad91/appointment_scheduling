@@ -201,6 +201,12 @@ export function AppointmentSheet({
         {showStylist && a.stylist && <Row label="آرایشگر" value={a.stylist.displayName} />}
         <Row label="مدت" value={`${toPersianDigits(duration)} دقیقه`} />
         <Row label="مبلغ" value={formatToman(a.priceToman)} />
+        {!!a.prepaidToman && (
+          <Row
+            label="پیش‌پرداخت (کیف پول)"
+            value={`${formatToman(a.prepaidToman)}${a.prepaymentStatus === "REFUNDED" ? "، به مشتری برگشت" : a.prepaymentStatus === "SETTLED" ? "، به کیف پول سالن واریز شد" : `؛ دریافت در محل ${formatToman(a.priceToman - a.prepaidToman)}`}`}
+          />
+        )}
         {a.serviceLocation && <Row label="محل" value={PLACE_LABEL[a.serviceLocation]} />}
         {a.visitAddress && <Row label="نشانی مشتری" value={a.visitAddress} />}
         {a.notes && <Row label="یادداشت" value={a.notes} />}

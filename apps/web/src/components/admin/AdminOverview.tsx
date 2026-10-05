@@ -10,7 +10,7 @@ interface Overview {
   users: number;
   customers: number;
   openTickets: number;
-  pendingDeposits: number;
+  unmatchedBankSms: number;
 }
 
 /** Platform-wide counts at the top of /admin; tiles that need action link to the page that handles it. */
@@ -34,7 +34,7 @@ export default function AdminOverview() {
     { label: t("overviewActiveSalons"), value: data?.salons?.active, href: "/admin/salons" },
     { label: t("overviewCustomers"), value: data?.customers, href: "/admin/users" },
     { label: t("overviewOpenTickets"), value: data?.openTickets, href: "/admin/tickets", alert: !!data?.openTickets },
-    { label: t("overviewPendingDeposits"), value: data?.pendingDeposits, href: "/admin/finance", alert: !!data?.pendingDeposits },
+    { label: t("overviewUnmatchedBankSms"), value: data?.unmatchedBankSms, href: "/admin/bank-sms", alert: !!data?.unmatchedBankSms },
   ];
 
   return (

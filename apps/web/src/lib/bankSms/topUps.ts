@@ -148,7 +148,9 @@ export async function payTopUp(topUpId: string, sms: SmsRow | { existingSmsId: s
       data: { status: "PAID", paidAt: new Date(), creditedToman: creditOf(topUp.payableRial) },
     });
     if (claimed.count !== 1) return false;
-    await tx.user.update({ where: { id: topUp.userId }, data: { walletBalance: { increment: creditOf(topUp.payableRial) } } });
+    const credited = creditOf(topUp.payableRial);
+    const user = await tx.user.update({ where: { id: topUp.userId }, data: { walletBalance: { increment: credited } }, select: { walletBalance: true } });
+    await tx.walletTransaction.create({ data: { userId: topUp.userId, kind: "TOP_UP", amountToman: credited, balanceAfter: user.walletBalance, topUpId } });
     if ("existingSmsId" in sms) {
       await tx.bankSms.update({ where: { id: sms.existingSmsId }, data: { status: "MATCHED", topUpId } });
     } else {

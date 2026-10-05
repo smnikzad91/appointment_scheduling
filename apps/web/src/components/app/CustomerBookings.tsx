@@ -264,6 +264,12 @@ export default function CustomerBookings({
                   </span>
                   <span className="text-app-muted">{formatToman(b.priceToman)}</span>
                 </div>
+                {!!b.prepaidToman && (
+                  <p className="mt-2 text-[12px] leading-5 text-app-muted">
+                    پیش‌پرداخت {formatToman(b.prepaidToman)} از کیف پول
+                    {b.prepaymentStatus === "REFUNDED" ? "؛ به کیف پول شما برگشت" : b.prepaymentStatus === "HELD" ? `؛ ${formatToman(b.priceToman - b.prepaidToman)} در محل` : ""}
+                  </p>
+                )}
 
                 {b.reviews.length > 0 && (
                   <div className="mt-3 flex flex-col gap-2">

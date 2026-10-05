@@ -1,16 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, Field, TextInput } from "./ui";
-import { useWallet } from "@/context/WalletContext";
+import { useOptionalWallet } from "@/context/WalletContext";
 import { normalizeDigits, toPersianDigits } from "@/lib/persian";
 import { toastError } from "@/lib/toastError";
 
 // «افزایش خودکار موجودی»: card-to-card to the platform's card, confirmed by the bank's SMS
 // (apps/bank-sms-agent). The customer pays the requested amount plus 1–1000 rial — that exact rial
 // amount identifies them — so both the card number and the amount must be copied before «واریز کردم».
+// This is the only way to add money to a wallet. In the public booking sheet (no NextAuth session)
+// it's given the customer's apps/api token, which these routes accept too (requestSession).
 
 interface TopUp {
   id: string;
@@ -25,18 +27,22 @@ interface TopUp {
 const QUICK = [100_000, 200_000, 500_000, 1_000_000];
 const fa = (n: number | string) => toPersianDigits(Number(n).toLocaleString("en-US").replace(/,/g, "٬"));
 
-export default function WalletTopUp() {
-  const { refresh } = useWallet();
+export default function WalletTopUp({ accessToken, suggestedToman, onPaid }: { accessToken?: string; suggestedToman?: number; onPaid?: () => void } = {}) {
+  const wallet = useOptionalWallet();
+  const auth: Record<string, string> = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+  // in a ref: an inline callback from the parent must not restart the polling timers every render
+  const onPaidRef = useRef(onPaid);
+  useEffect(() => { onPaidRef.current = onPaid; });
   const [available, setAvailable] = useState<boolean | null>(null);
   const [topUp, setTopUp] = useState<TopUp | null>(null);
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(suggestedToman ? String(suggestedToman) : "");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState({ card: false, amount: false });
   const [paidClicked, setPaidClicked] = useState(false);
   const [now, setNow] = useState(0);
 
   useEffect(() => {
-    fetch("/api/user/finance/top-ups")
+    fetch("/api/user/finance/top-ups", { headers: auth })
       .then((r) => r.json())
       .then((d) => {
         setAvailable(!!d.available);
@@ -47,19 +53,22 @@ export default function WalletTopUp() {
         }
       })
       .catch(() => setAvailable(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken]);
 
   // while one is pending: poll its status and tick the countdown
   const poll = useCallback(async (id: string) => {
-    const r = await fetch(`/api/user/finance/top-ups/${id}`).catch(() => null);
+    const r = await fetch(`/api/user/finance/top-ups/${id}`, { headers: auth }).catch(() => null);
     if (!r?.ok) return;
     const t = (await r.json()) as TopUp;
     setTopUp(t);
     if (t.status === "paid") {
       toast.success(`${fa(t.creditedToman ?? 0)} تومان به کیف پول شما اضافه شد`);
-      refresh();
+      wallet?.refresh();
+      onPaidRef.current?.();
     }
-  }, [refresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallet?.refresh, accessToken]);
   useEffect(() => {
     if (topUp?.status !== "pending") return;
     const tick = setInterval(() => setNow(Date.now()), 1000);
@@ -69,7 +78,7 @@ export default function WalletTopUp() {
 
   async function start(amountToman: number) {
     setBusy(true);
-    const r = await fetch("/api/user/finance/top-ups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amountToman }) });
+    const r = await fetch("/api/user/finance/top-ups", { method: "POST", headers: { "Content-Type": "application/json", ...auth }, body: JSON.stringify({ amountToman }) });
     const d = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) return toastError(d.error ?? "ساخت درخواست انجام نشد");
@@ -81,7 +90,7 @@ export default function WalletTopUp() {
 
   async function cancel() {
     if (!topUp) return;
-    await fetch(`/api/user/finance/top-ups/${topUp.id}`, { method: "DELETE" }).catch(() => null);
+    await fetch(`/api/user/finance/top-ups/${topUp.id}`, { method: "DELETE", headers: auth }).catch(() => null);
     setTopUp(null);
   }
 
@@ -96,7 +105,14 @@ export default function WalletTopUp() {
   }
 
   if (available === null) return null;
-  if (!available) return null; // no platform card with a deposit SMS template yet: the receipt flow below stays
+  if (!available) {
+    // no platform card with a deposit SMS template yet
+    return (
+      <Card className="p-5">
+        <p className="text-sm leading-7 text-app-muted">شارژ کیف پول فعلاً در دسترس نیست؛ کمی بعد دوباره سر بزنید.</p>
+      </Card>
+    );
+  }
 
   // the payment instructions
   if (topUp && topUp.status === "pending" && topUp.card) {

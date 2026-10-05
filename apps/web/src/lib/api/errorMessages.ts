@@ -3,6 +3,9 @@
 
 const BY_API_MESSAGE: Record<string, string> = {
   "This time slot is no longer available": "این زمان همین حالا پر شد؛ لطفاً زمان دیگری انتخاب کنید",
+  "Not enough wallet balance for the pre-payment": "موجودی کیف پول برای پیش‌پرداخت این نوبت کافی نیست",
+  "A cancelled prepaid booking can't be reopened": "این نوبت لغو و پیش‌پرداختش به مشتری برگشته است؛ نوبت تازه ثبت کنید",
+  "This appointment just changed — reload and try again": "این نوبت همین حالا تغییر کرد؛ صفحه را تازه کنید و دوباره امتحان کنید",
   "This time is in the past": "این زمان گذشته است؛ لطفاً زمان دیگری انتخاب کنید",
   "Salon not found": "این سالن در حال حاضر نوبت نمی‌پذیرد",
   "This stylist can't perform all the selected services": "این متخصص همه خدمات انتخاب‌شده را انجام نمی‌دهد",

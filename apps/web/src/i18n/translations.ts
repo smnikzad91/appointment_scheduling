@@ -692,7 +692,7 @@ const translations = {
     overviewActiveSalons: "Active salons",
     overviewCustomers: "Customers",
     overviewOpenTickets: "Open tickets",
-    overviewPendingDeposits: "Deposits to review",
+    overviewUnmatchedBankSms: "Unmatched bank SMS",
     overviewLoadFailed: "Could not load platform numbers.",
     // Error log (admin dashboard)
     errorsTitle: "Error Log",
@@ -1563,7 +1563,7 @@ const translations = {
     overviewActiveSalons: "سالن‌های فعال",
     overviewCustomers: "مشتری‌ها",
     overviewOpenTickets: "تیکت‌های باز",
-    overviewPendingDeposits: "واریزهای منتظر بررسی",
+    overviewUnmatchedBankSms: "پیامک‌های بانکی تطبیق‌نیافته",
     overviewLoadFailed: "دریافت آمار پلتفرم ممکن نشد.",
     // Error log (admin dashboard)
     errorsTitle: "گزارش خطاها",

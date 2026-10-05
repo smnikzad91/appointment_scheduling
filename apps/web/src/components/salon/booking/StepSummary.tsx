@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useBooking } from "./BookingProvider";
 import { formatToman, formatMinutesAsClock, toPersianDigits } from "@/lib/persian";
 import { formatJalaliFull, dateKeyToDate } from "@/lib/jalali";
@@ -8,6 +8,13 @@ import { createBooking } from "@/lib/api/bookings";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { placeLabel } from "@/lib/independent";
 import { toastError } from "@/lib/toastError";
+import { SalonApiError } from "@/lib/api/salonApiClient";
+import { getWallet, prepaymentOf, type WalletInfo } from "@/lib/api/wallet";
+import WalletTopUp from "@/components/app/WalletTopUp";
+
+// Online bookings pre-pay part of the price (50%) from the customer's wallet — the only way to pay.
+// Short of balance, the sheet offers a top-up of the difference right here and waits for it.
+const MIN_TOP_UP_TOMAN = 10_000;
 
 export default function StepSummary() {
   const { salon, state, updateState, setResult, goNext } = useBooking();
@@ -31,6 +38,19 @@ export default function StepSummary() {
   const totalPrice = services.reduce((sum, s) => sum + s.priceToman, 0);
   const totalDuration = services.reduce((sum, s) => sum + s.durationMinutes, 0);
 
+  const [wallet, setWallet] = useState<WalletInfo | null>(null);
+  // couldn't read it: let the booking go — the server checks the balance itself (402)
+  const [walletFailed, setWalletFailed] = useState(false);
+  const loadWallet = useCallback(() => {
+    if (!state.accessToken) return;
+    getWallet(state.accessToken)
+      .then((w) => { setWallet(w); setWalletFailed(false); })
+      .catch(() => setWalletFailed(true));
+  }, [state.accessToken]);
+  useEffect(() => { queueMicrotask(loadWallet); }, [loadWallet]);
+  const prepay = wallet ? prepaymentOf(totalPrice, wallet.prepaymentPercent) : 0;
+  const short = wallet ? Math.max(0, prepay - wallet.balanceToman) : 0;
+
   async function handleConfirm() {
     if (!state.dateKey || state.startMinute === null || !state.accessToken) return;
     if (places.length > 1 && !state.serviceLocation) return toastError("محل انجام نوبت را انتخاب کنید");
@@ -50,6 +70,8 @@ export default function StepSummary() {
       setResult(booking);
       goNext();
     } catch (err) {
+      // 402: the actual price (an auto-assigned stylist's) needs more than the balance — show the top-up
+      if (err instanceof SalonApiError && err.status === 402) loadWallet();
       toastError(persianApiError(err));
     } finally {
       setConfirming(false);
@@ -99,10 +121,37 @@ export default function StepSummary() {
         </div>
 
         <div className="flex justify-between border-t border-g-line pt-3 font-bold">
-          <span>مبلغ قابل پرداخت</span>
+          <span>مبلغ کل</span>
           <span>{formatToman(totalPrice)}</span>
         </div>
+        {wallet && prepay > 0 && (
+          <>
+            <div className="flex justify-between font-bold">
+              <span>پیش‌پرداخت از کیف پول ({toPersianDigits(wallet.prepaymentPercent)}٪)</span>
+              <span>{formatToman(prepay)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-xs text-g-muted">پرداخت در محل</span>
+              <span>{formatToman(totalPrice - prepay)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-xs text-g-muted">موجودی کیف پول</span>
+              <span>{formatToman(wallet.balanceToman)}</span>
+            </div>
+            <p className="text-xs leading-6 text-g-faint">
+              {!stylist && "مبلغ نهایی با آرایشگری که تعیین می‌شود قطعی می‌شود. "}
+              اگر نوبت لغو شود، پیش‌پرداخت کامل به کیف پول شما برمی‌گردد.
+            </p>
+          </>
+        )}
       </div>
+
+      {short > 0 && state.accessToken && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-bold text-g-ink">موجودی کیف پول برای پیش‌پرداخت کافی نیست؛ حداقل {formatToman(short)} شارژ کنید.</p>
+          <WalletTopUp accessToken={state.accessToken} suggestedToman={Math.max(MIN_TOP_UP_TOMAN, Math.ceil(short / 1000) * 1000)} onPaid={loadWallet} />
+        </div>
+      )}
 
       {places.length > 1 && (
         <div className="flex flex-col gap-2">
@@ -147,11 +196,11 @@ export default function StepSummary() {
       <button
         type="button"
         onClick={handleConfirm}
-        disabled={confirming}
+        disabled={confirming || (!wallet && !walletFailed) || short > 0}
         className="rounded-full py-3 text-sm font-bold text-white transition disabled:opacity-60"
         style={{ backgroundColor: "var(--salon-brand)" }}
       >
-        {confirming ? "در حال ثبت..." : "تایید نهایی رزرو"}
+        {confirming ? "در حال ثبت..." : !wallet && !walletFailed ? "در حال بررسی کیف پول..." : short > 0 ? "اول کیف پول را شارژ کنید" : prepay > 0 ? `پرداخت ${formatToman(prepay)} از کیف پول و ثبت رزرو` : "تایید نهایی رزرو"}
       </button>
     </div>
   );

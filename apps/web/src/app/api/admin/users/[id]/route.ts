@@ -79,7 +79,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     await prisma.user.deleteMany({ where: { id } });
   } catch (err: unknown) {
-    // A salon, stylist profile, bookings, cards or deposits still point at this user.
+    // A salon, stylist profile, bookings or wallet top-ups still point at this user.
     if (prismaCode(err) === "P2003") {
       return NextResponse.json({ error: "This user has a salon, bookings or payments and can't be deleted" }, { status: 409 });
     }

@@ -12,6 +12,10 @@ export interface CustomerBooking {
   startAt: string;
   endAt: string;
   priceToman: number;
+  /** Paid in advance from the customer's wallet (online bookings); 0 = none. */
+  prepaidToman?: number;
+  /** HELD while open, SETTLED to the owner's wallet (completed / no-show), REFUNDED to the customer (cancelled). */
+  prepaymentStatus?: "HELD" | "SETTLED" | "REFUNDED" | null;
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   /** The customer booked here: the full address, except an independent stylist's private (home) one unless the appointment is there (then null). */
   salon: { name: string; slug: string; kind?: SalonKind; address?: string | null; hostSalonName?: string | null };
