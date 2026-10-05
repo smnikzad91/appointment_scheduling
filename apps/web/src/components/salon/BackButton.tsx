@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
+import { canGoBackInApp } from "@/lib/inAppHistory";
 
 // Back from a salon page (over the cover, opposite the favourite heart): to the page the visitor
 // came from on this site (landing showcase, /salons, the customer panel…), else to /salons — a
@@ -10,8 +11,7 @@ export default function BackButton({ className = "" }: { className?: string }) {
   const router = useRouter();
 
   function back() {
-    const sameSite = document.referrer && new URL(document.referrer).origin === window.location.origin;
-    if (sameSite && window.history.length > 1) router.back();
+    if (canGoBackInApp()) router.back();
     else router.push("/salons");
   }
 
