@@ -1099,3 +1099,42 @@ model SalonSmsUsage {
   @@id([salonId, period])
   @@map("salon_sms_usage")
 }
+
+enum VisitKind {
+  VIEW
+  BOOKING_OPEN
+  BOOKING_DONE
+  DOWNLOAD
+}
+
+/// Public-site analytics (apps/web lib/analytics, /admin/analytics): one row per page view on a
+/// public page, booking-sheet open / finished booking on a salon page, or Android APK download.
+/// The raw IP is never stored — visitorHash is a salted one-way hash of IP + User-Agent, enough to
+/// count unique visitors. Deleted after 120 days (daily sweep in apps/web instrumentation.ts).
+model PageVisit {
+  id             String    @id @default(cuid())
+  kind           VisitKind @default(VIEW)
+  path           String
+  /// /s/<slug> pages and booking events: which salon
+  salonSlug      String?
+  visitorHash    String
+  /// direct | search | internal | external | social; DOWNLOAD: website | app (the in-app updater)
+  referrerType   String
+  referrerSource String?
+  referrerRaw    String?
+  browser        String
+  os             String
+  /// desktop | mobile | tablet
+  device         String
+  /// Cloudflare's CF-IPCountry / CF-IPCity headers ("Unknown" when absent)
+  country        String
+  city           String
+  createdAt      DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([kind, createdAt])
+  @@index([path, createdAt])
+  @@index([visitorHash, createdAt])
+  @@index([salonSlug, createdAt])
+  @@map("page_visits")
+}

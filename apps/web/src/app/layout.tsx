@@ -9,6 +9,7 @@ import ToastProvider from "@/components/common/ToastProvider";
 import AgGridSetup from "@/components/common/AgGridSetup";
 import ClientErrorReporter from "@/components/common/ClientErrorReporter";
 import { InAppHistoryTracker } from "@/lib/inAppHistory";
+import { VisitTracker } from "@/lib/analytics/client";
 import SplashScreen from "@/components/common/SplashScreen";
 import FormDraftKeeper from "@/components/common/FormDraftKeeper";
 import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
@@ -86,6 +87,7 @@ export default function RootLayout({
         <AgGridSetup />
         <ClientErrorReporter />
         <InAppHistoryTracker />
+        <VisitTracker />
         <ServiceWorkerRegister />
         <FormDraftKeeper />
         <SessionWrapper>

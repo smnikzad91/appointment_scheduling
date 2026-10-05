@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import type { Salon, Booking } from "@/types/salon";
 import type { ServiceLocation } from "@/lib/independent";
 import { useBackgroundDraft } from "@/lib/useBackgroundDraft";
+import { trackBookingEvent } from "@/lib/analytics/client";
 
 export type BookingStep = "services" | "stylist" | "datetime" | "contact" | "otp" | "summary" | "success";
 
@@ -109,6 +110,7 @@ export function BookingProvider({ salon, prefill, children }: { salon: Salon; pr
   const open = useCallback(() => {
     reset();
     setIsOpen(true);
+    trackBookingEvent("booking_open");
   }, [reset]);
 
   const openWithService = useCallback(
@@ -116,6 +118,7 @@ export function BookingProvider({ salon, prefill, children }: { salon: Salon; pr
       reset();
       setState((s) => ({ ...s, serviceIds: [serviceId], stylistId: stylistId ?? null }));
       setIsOpen(true);
+      trackBookingEvent("booking_open");
     },
     [reset],
   );

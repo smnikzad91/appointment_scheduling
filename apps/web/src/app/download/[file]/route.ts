@@ -3,6 +3,7 @@ import { stat } from "fs/promises";
 import { join, resolve } from "path";
 import { Readable } from "stream";
 import { NextResponse } from "next/server";
+import { recordVisit } from "@/lib/analytics/record";
 
 // The Android app's APKs (the `direct` build; the store builds update through Bazaar/Myket) for the
 // in-app updater and anyone downloading from the site. They live outside the repo in APK_DIR
@@ -88,6 +89,14 @@ async function serve(req: Request, ctx: RouteContext<"/download/[file]">, head: 
   if (range) headers["Content-Range"] = `bytes ${start}-${end}/${size}`;
   const status = range ? 206 : 200;
   if (head || length === 0) return new NextResponse(null, { status, headers });
+
+  // Analytics: a new download (not a resumed range) — the app's updater downloads through Android's
+  // DownloadManager, anyone else from the website. Not awaited.
+  if (start === 0) {
+    const ua = req.headers.get("user-agent") ?? "";
+    const fromApp = /AndroidDownloadManager|Dalvik/i.test(ua);
+    void recordVisit({ kind: "DOWNLOAD", path: `/download/${file}`, referrerType: fromApp ? "app" : "website", headers: req.headers });
+  }
 
   const body = Readable.toWeb(createReadStream(path, { start, end })) as ReadableStream<Uint8Array>;
   return new NextResponse(body, { status, headers });

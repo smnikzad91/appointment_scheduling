@@ -24,11 +24,16 @@ export async function register() {
         const { logError } = await import("@/lib/errorLog");
         await logError({ error, path: "instrumentation:pruneForeignSms" });
       });
+  // …and public-site analytics older than 120 days (lib/analytics/record.ts)
+  const { pruneOldVisits } = await import("@/lib/analytics/record");
+  const visitSweep = () => pruneOldVisits().catch(() => 0);
   void sweep();
   void smsSweep();
+  void visitSweep();
   setInterval(() => {
     void sweep();
     void smsSweep();
+    void visitSweep();
   }, DAY_MS).unref();
 }
 
