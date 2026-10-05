@@ -84,13 +84,21 @@ export const jalaliDay = (instant: Date, timeZone: string) =>
   new Intl.DateTimeFormat("fa-IR-u-ca-persian", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(instant);
 
 type BookingParams = { day: string; time: string; salon: string; stylist: string };
+
+/** A prepaid booking cancelled by the salon or stylist — day and time identify it; no name, so the
+ * refund line always fits one segment: «نوبتت سه‌شنبه ۱۴ مهر ۰۸:۰۰ لغو شد؛ پیش‌پرداخت به کیف پول برگشت». */
+const prepaidCancelledText = (p: { day: string; time: string }) => `نوبتت ${p.day} ${p.time} لغو شد؛ پیش‌پرداخت به کیف پول برگشت`;
 type CustomerBookingKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
 
 /**
  * An independent stylist is the business, so the text names only them (first name) — no
  * «در {salon} با {stylist}» naming the same person twice: «نوبتت: {day} ساعت {time} با سارا ثبت شد».
  */
-export const independentBookingText = (kind: CustomerBookingKind, p: { day: string; time: string; name: string }) => {
+export const independentBookingText = (kind: CustomerBookingKind, p: { day: string; time: string; name: string }, opts: { refunded?: boolean } = {}) => {
+  // a cancelled prepaid booking: the pre-payment is back in the wallet (wallet/prepayment.ts)
+  if (kind === "cancelled-customer" && opts.refunded) {
+    return prepaidCancelledText(p);
+  }
   const verb = { "booked-customer": "ثبت شد", "confirmed-customer": "تایید شد", "cancelled-customer": "لغو شد", "rescheduled-customer": "منتقل شد" }[kind];
   const lead = kind === "rescheduled-customer" ? "نوبتت: به " : "نوبتت: ";
   return fitSms(p, ["name"], (q) => `${lead}${q.day} ساعت ${q.time} با ${q.name} ${verb}`);
@@ -98,7 +106,7 @@ export const independentBookingText = (kind: CustomerBookingKind, p: { day: stri
 
 /** Texts for the customer when staff book, move or cancel their appointment. When both names
  * don't fit, the stylist is left out rather than cutting the salon's name short. */
-export const customerBookingText = (kind: CustomerBookingKind, p: BookingParams) => {
+export const customerBookingText = (kind: CustomerBookingKind, p: BookingParams, opts: { refunded?: boolean } = {}) => {
   const withStylist = (build: (q: BookingParams, by: string) => string) => {
     const text = fitSms(p, ["salon", "stylist"], (q) => build(q, ` با ${q.stylist}`));
     return text.includes(p.salon) ? text : fitSms(p, ["salon"], (q) => build(q, ""));
@@ -111,7 +119,9 @@ export const customerBookingText = (kind: CustomerBookingKind, p: BookingParams)
     case "confirmed-customer":
       return withStylist((q, by) => `نوبتت: ${q.day} ساعت ${q.time} در ${q.salon}${by} تایید شد`);
     case "cancelled-customer":
-      return fitSms(p, ["salon"], (q) => `نوبتت: ${q.day} ساعت ${q.time} در ${q.salon} لغو شد`);
+      return opts.refunded
+        ? prepaidCancelledText(p)
+        : fitSms(p, ["salon"], (q) => `نوبتت: ${q.day} ساعت ${q.time} در ${q.salon} لغو شد`);
   }
 };
 
@@ -122,8 +132,14 @@ export const stylistReminderText = (p: { time: string; customer: string; service
  * To the stylist when a customer books online: the booking waits for their confirmation. A home
  * visit says «نوبت در منزل …» (the address itself is in the panel — it wouldn't fit one segment).
  */
-export const stylistNewBookingText = (p: { day: string; time: string; customer: string; homeVisit?: boolean }) => {
-  const { homeVisit, ...rest } = p;
+export const stylistNewBookingText = (p: { day: string; time: string; customer: string; homeVisit?: boolean; prepaid?: boolean }) => {
+  const { homeVisit, prepaid, ...rest } = p;
+  // the customer already paid half from their wallet: say so, so the stylist checks it promptly
+  if (prepaid) {
+    return homeVisit
+      ? fitSms(rest, ["customer"], (q) => `منزل ${q.customer} پیش‌پرداخت‌شده، ${q.day} ${q.time}؛ تایید کنید`)
+      : fitSms(rest, ["customer"], (q) => `نوبت پیش‌پرداخت‌شده ${q.customer}، ${q.day} ${q.time}؛ تایید کنید`);
+  }
   // A home visit has its own, shorter wording so it always fits one segment (the name is cut first).
   if (homeVisit) return fitSms(rest, ["customer"], (q) => `نوبت در منزل ${q.customer}، ${q.day} ${q.time}؛ در پنل تایید کنید`);
   return fitSms(rest, ["customer"], (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتت تایید کنید`);

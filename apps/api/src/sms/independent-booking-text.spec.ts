@@ -42,3 +42,26 @@ describe('independentBookingText', () => {
     );
   });
 });
+
+describe('prepaid bookings', () => {
+  it('the stylist hears it is prepaid, in one segment', async () => {
+    const { stylistNewBookingText, smsParts } = await import('./sms.text.js');
+    const t = stylistNewBookingText({ day: 'سه‌شنبه ۱۴ مهر', time: '۰۸:۰۰', customer: 'سارا احمدی', prepaid: true });
+    expect(t).toBe('نوبت پیش‌پرداخت‌شده سارا احمدی، سه‌شنبه ۱۴ مهر ۰۸:۰۰؛ تایید کنید');
+    expect(smsParts(t)).toBe(1);
+    const home = stylistNewBookingText({ day: 'چهارشنبه ۲۹ اسفند', time: '۱۶:۳۰', customer: 'فاطمه‌زهرا حسین‌زاده خراسانی', homeVisit: true, prepaid: true });
+    expect(home.startsWith('منزل ')).toBe(true);
+    expect(smsParts(home)).toBe(1);
+  });
+
+  it('a cancelled prepaid booking tells the customer the money is back, in one segment', () => {
+    const p = { day: 'چهارشنبه ۲۹ اسفند', time: '۱۶:۳۰' };
+    const salon = customerBookingText('cancelled-customer', { ...p, salon: 'سالن زیبایی رز سفید شمال تهران', stylist: 'مریم' }, { refunded: true });
+    expect(salon).toContain('پیش‌پرداخت به کیف پول برگشت');
+    expect(smsParts(salon)).toBe(1);
+    const indie = independentBookingText('cancelled-customer', { ...p, name: 'سارا' }, { refunded: true });
+    expect(indie).toContain('پیش‌پرداخت به کیف پول برگشت');
+    expect(smsParts(indie)).toBe(1);
+    expect(customerBookingText('cancelled-customer', { ...p, salon: 'رز', stylist: 'مریم' })).not.toContain('پیش‌پرداخت');
+  });
+});

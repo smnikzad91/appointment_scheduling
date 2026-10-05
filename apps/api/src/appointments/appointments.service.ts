@@ -455,6 +455,8 @@ export class AppointmentsService {
         select: {
           salonId: true,
           startAt: true,
+          prepaidToman: true,
+          prepaymentStatus: true,
           salon: { select: { name: true, timezone: true, kind: true } },
           stylist: { select: { displayName: true, user: { select: { firstName: true } } } },
           customer: { select: { phone: true } },
@@ -469,11 +471,15 @@ export class AppointmentsService {
       };
       // An independent stylist: only their first name, the business being them (sms.text.ts).
       const firstName = a.stylist.user.firstName.trim() || a.stylist.displayName;
+      const prepaid = a.prepaidToman > 0;
+      const refunded = a.prepaymentStatus === PrepaymentStatus.REFUNDED;
       const text =
         a.salon.kind === SalonKind.INDEPENDENT
-          ? independentBookingText(kind, { day: params.day, time: params.time, name: firstName })
-          : customerBookingText(kind, params);
-      if (!(await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text)))) return;
+          ? independentBookingText(kind, { day: params.day, time: params.time, name: firstName }, { refunded })
+          : customerBookingText(kind, params, { refunded });
+      // A prepaid booking's confirmation / cancellation always reaches the customer (they paid):
+      // counted against the salon's allowance when there is some, sent anyway when there isn't.
+      if (!(await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text))) && !prepaid) return;
       await this.sms.send({ kind, to: a.customer.phone, params, text });
     } catch (err) {
       this.logger.warn(`${kind} SMS for ${appointmentId} failed: ${(err as Error).message}`);
