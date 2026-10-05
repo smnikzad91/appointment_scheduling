@@ -94,6 +94,20 @@ export function normalizeSender(s: string): string {
   return t;
 }
 
+/**
+ * A card's senders: banks send deposit SMS from several numbers/names, so the admin may list them
+ * separated by commas, «،», semicolons («؛») or new lines. Normalised and de-duplicated.
+ */
+export function senderList(stored: string): string[] {
+  return [...new Set(stored.split(/[,،;؛\n]+/).map(normalizeSender).filter(Boolean))];
+}
+
+/** Whether an incoming SMS's sender is one of the card's. */
+export function senderMatches(stored: string, incoming: string): boolean {
+  const s = normalizeSender(incoming);
+  return s !== "" && senderList(stored).includes(s);
+}
+
 /** A random 1–1000 rial on top of the amount that no pending top-up on the card uses yet. */
 export function pickOffsetRial(baseRial: bigint, taken: Set<bigint>, random: () => number = Math.random): number {
   const free: number[] = [];

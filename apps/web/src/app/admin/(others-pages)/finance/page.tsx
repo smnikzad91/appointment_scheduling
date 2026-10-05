@@ -220,11 +220,12 @@ export default function AdminFinancePage() {
             </>)}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{t("smsSender")}</label>
-              <input
+              <textarea
                 dir="ltr"
+                rows={2}
                 value={cardForm.smsSender}
                 onChange={(e) => setCardForm((f) => ({ ...f, smsSender: e.target.value }))}
-                placeholder="BankMellat"
+                placeholder={"B.Pasargad\n+98999…"}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-500 focus:bg-white dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("smsSenderHint")}</p>

@@ -1,7 +1,7 @@
 // node --test apps/web/src/lib/bankSms/*.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { compileTemplate, normalizeSender, parseAmount, parseSms, pickOffsetRial } from "./template.ts";
+import { compileTemplate, normalizeSender, parseAmount, parseSms, pickOffsetRial, senderList, senderMatches } from "./template.ts";
 import { sign, verify } from "./signature.ts";
 
 const TEMPLATE = "بانک ملت\nواریز: {amount} ریال\nکارت: {card}\nمانده: {balance}\n{date}-{time}";
@@ -83,4 +83,15 @@ test("B.Pasargad end to end: what the agent decodes is matched by sender and tem
   const sms = decodePdu(Buffer.from(bytes).toString("hex"));
   assert.equal(normalizeSender(sms.sender), normalizeSender("B.Pasargad"));
   assert.equal(parseSms("{*}\n+{amount}\n{date}_{time}\nمانده: {balance}", sms.text)?.amountRial, BigInt(300450));
+});
+
+test("a card can list several senders (commas, «،», semicolons, new lines)", () => {
+  const stored = "B.Pasargad, +98 9999 123\n0999 456 ؛ 0999456،9821";
+  assert.deepEqual(senderList("B.Pasargad, +98 9999 123\n0999456;0999456،9821"), ["b.pasargad", "9999123", "999456", "21"]);
+  assert.equal(senderMatches(stored, "0999456"), true); // after «؛»
+  assert.equal(senderMatches(stored, "b.pasargad"), true);
+  assert.equal(senderMatches(stored, "+989999123"), true);
+  assert.equal(senderMatches(stored, "00989999123"), true);
+  assert.equal(senderMatches(stored, "+989999124"), false);
+  assert.equal(senderMatches(stored, ""), false);
 });

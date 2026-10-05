@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { Prisma } from "@appointment-scheduling/database";
 import { prisma } from "@/lib/prisma";
-import { compileTemplate, normalizeSender, parseSms, pickOffsetRial } from "./template";
+import { compileTemplate, parseSms, pickOffsetRial, senderMatches } from "./template";
 
 // Wallet top-ups confirmed by the bank's deposit SMS (apps/bank-sms-agent on the BeagleBone
 // forwards every SMS to /api/bank-sms/messages). The customer pays amountToman×10 + 1–1000 rial to
@@ -82,8 +82,8 @@ export async function ingestSms(sms: IncomingSms): Promise<IngestResult> {
   const hash = createHash("sha256").update([sms.deviceId, sms.sender, sms.receivedAt.toISOString(), sms.body].join("\u0000")).digest("hex");
   if (await prisma.bankSms.findUnique({ where: { hash }, select: { id: true } })) return { duplicate: true };
 
-  const sender = normalizeSender(sms.sender);
-  const cards = (await autoCards()).filter((c) => normalizeSender(c.smsSender!) === sender);
+  // a card may list several senders (senderList)
+  const cards = (await autoCards()).filter((c) => senderMatches(c.smsSender!, sms.sender));
   let card: (typeof cards)[number] | undefined;
   let parsed: ReturnType<typeof parseSms> = null;
   for (const c of cards) {
