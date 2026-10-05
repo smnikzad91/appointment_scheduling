@@ -383,21 +383,25 @@ enum TopUpStatus {
 /// A wallet top-up by card-to-card, confirmed by the bank's deposit SMS: the customer pays
 /// amountToman×10 + offsetRial (1–1000 rial) — that exact rial amount identifies them while pending.
 model WalletTopUp {
-  id            String             @id @default(cuid())
-  userId        String
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  adminCardId   String
-  adminCard     AdminCard          @relation(fields: [adminCardId], references: [id])
-  amountToman   Int
-  offsetRial    Int
-  payableRial   BigInt
-  status        TopUpStatus        @default(PENDING)
-  expiresAt     DateTime
-  paidAt        DateTime?
-  creditedToman Int?
-  createdAt     DateTime           @default(now())
-  bankSms       BankSms?
-  transaction   WalletTransaction?
+  id              String             @id @default(cuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminCardId     String
+  adminCard       AdminCard          @relation(fields: [adminCardId], references: [id])
+  amountToman     Int
+  offsetRial      Int
+  payableRial     BigInt
+  status          TopUpStatus        @default(PENDING)
+  expiresAt       DateTime
+  paidAt          DateTime?
+  creditedToman   Int?
+  /// The "wallet topped up" SMS to the customer (apps/api wallet/top-up-sms.service): set when
+  /// claimed/sent, or given up after paidSmsAttempts failures.
+  paidSmsAt       DateTime?
+  paidSmsAttempts Int                @default(0)
+  createdAt       DateTime           @default(now())
+  bankSms         BankSms?
+  transaction     WalletTransaction?
 
   @@index([adminCardId, status, payableRial])
   @@index([userId, createdAt])

@@ -23,6 +23,12 @@ export const otpText = (code: string) => {
   return domain ? `${text}\n\n@${domain} #${code}` : text;
 };
 
+/** "۱٬۲۵۰٬۰۰۰" — toman amounts in SMS texts. */
+export const faMoney = (n: number) => faDigits(Math.round(n).toLocaleString("en-US").replace(/,/g, "٬"));
+
+/** «کیف پول نوبتت ۳۰۰٬۰۰۰ تومان شارژ شد\nموجودی: ۶۱۰٬۴۰۰ تومان» — one segment for any real amount. */
+export const topUpPaidText = (p: { amount: string; balance: string }) => `کیف پول نوبتت ${p.amount} تومان شارژ شد\nموجودی: ${p.balance} تومان`;
+
 /** One Unicode SMS segment; longer texts go out in parts (some phones show them as separate messages). */
 export const SMS_SEGMENT = 70;
 

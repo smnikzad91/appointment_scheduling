@@ -39,6 +39,13 @@ export type SmsMessage =
       to: string;
       params: { customer: string; days: string; service: string; salon: string; link: string };
       text: string;
+    }
+  | {
+      /** A wallet top-up was confirmed by the bank SMS (or matched by the admin) — wallet/top-up-sms. */
+      kind: "topup-paid";
+      to: string;
+      params: { amount: string; balance: string };
+      text: string;
     };
 
 export type SmsKind = SmsMessage["kind"];
