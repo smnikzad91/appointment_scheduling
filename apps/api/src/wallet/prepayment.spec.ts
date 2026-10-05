@@ -1,4 +1,4 @@
-import { applyPrepayment, prepaymentFor, prepaymentStateFor, stylistShareOfPrepayment, takePrepayment, InsufficientWalletError } from './prepayment.js';
+import { applyPrepayment, prepaymentFor, prepaymentStateFor, refundExcessPrepayment, stylistShareOfPrepayment, takePrepayment, InsufficientWalletError } from './prepayment.js';
 
 // A fake transaction: wallets in a map, the conditional UPDATE emulated from the SQL's parameters.
 function fakeTx(wallets: Record<string, number>, prepaymentStatus: string | null = 'HELD') {
@@ -128,5 +128,35 @@ describe("a salon stylist's share of the pre-payment", () => {
     await applyPrepayment(tx, appt('SETTLED', { stylistUserId: 'sty', prepaymentStylistToman: 15_000 }), 'CANCELLED' as never);
     expect(wallets).toEqual({ cust: 50_000, owner: 0, sty: 0 });
     expect(payouts).toEqual([]);
+  });
+});
+
+describe('pre-payment when staff change the services', () => {
+  const held = { id: 'a1', customerId: 'cust', prepaidToman: 200_000, prepaymentStatus: 'HELD' as const };
+  const withAmount = (wallets: Record<string, number>) => {
+    const f = fakeTx(wallets);
+    const updateMany = vi.fn(({ where, data }) =>
+      Promise.resolve({ count: where.prepaidToman === 200_000 ? (Object.assign(f.state, data), 1) : 0 }),
+    );
+    (f.tx as unknown as { appointment: { updateMany: typeof updateMany } }).appointment.updateMany = updateMany;
+    return f;
+  };
+
+  it('refunds down to half a lower price', async () => {
+    const wallets = { cust: 0 };
+    const { tx, state, ledger } = withAmount(wallets);
+    expect(await refundExcessPrepayment(tx, held, 150_000)).toBe(125_000);
+    expect(wallets.cust).toBe(125_000);
+    expect(state).toMatchObject({ prepaidToman: 75_000 });
+    expect(ledger[0]).toMatchObject({ kind: 'PREPAYMENT_REFUND', amountToman: 125_000 });
+  });
+
+  it('takes nothing more for a higher price, and leaves settled or refunded bookings alone', async () => {
+    const wallets = { cust: 0 };
+    const { tx } = withAmount(wallets);
+    expect(await refundExcessPrepayment(tx, held, 600_000)).toBe(0);
+    expect(await refundExcessPrepayment(tx, held, 400_000)).toBe(0);
+    expect(await refundExcessPrepayment(tx, { ...held, prepaymentStatus: 'REFUNDED' as never }, 100_000)).toBe(0);
+    expect(wallets.cust).toBe(0);
   });
 });

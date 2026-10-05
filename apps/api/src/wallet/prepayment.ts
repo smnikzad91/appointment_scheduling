@@ -72,6 +72,30 @@ export function prepaymentStateFor(status: AppointmentStatus): PrepaymentStatus 
   return PrepaymentStatus.HELD;
 }
 
+/**
+ * Staff changed an open prepaid booking's services and the price went down: the pre-payment must
+ * not stay above half the new price, so the excess goes back to the customer's wallet (inside the
+ * edit's transaction). A higher price takes nothing more — the customer didn't agree to it; they
+ * pay the rest on site. Conditional on the stored amount, so two edits can't both refund it.
+ */
+export async function refundExcessPrepayment(
+  tx: Prisma.TransactionClient,
+  a: { id: string; customerId: string; prepaidToman: number; prepaymentStatus: PrepaymentStatus | null },
+  newPriceToman: number,
+) {
+  if (a.prepaymentStatus !== PrepaymentStatus.HELD) return 0;
+  const target = Math.min(a.prepaidToman, prepaymentFor(newPriceToman));
+  const excess = a.prepaidToman - target;
+  if (excess <= 0) return 0;
+  const switched = await tx.appointment.updateMany({
+    where: { id: a.id, prepaymentStatus: PrepaymentStatus.HELD, prepaidToman: a.prepaidToman },
+    data: { prepaidToman: target },
+  });
+  if (switched.count !== 1) throw new ConflictException("This appointment just changed — reload and try again");
+  await moveWallet(tx, a.customerId, excess, WalletTxKind.PREPAYMENT_REFUND, { appointmentId: a.id });
+  return excess;
+}
+
 /** A salon stylist's commission share of a completed booking's pre-payment (whole toman, rounded down). */
 export function stylistShareOfPrepayment(prepaidToman: number, commissionPercent: number): number {
   return Math.max(0, Math.min(prepaidToman, Math.floor((prepaidToman * commissionPercent) / 100)));

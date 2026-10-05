@@ -19,7 +19,7 @@ import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
 import { clock, customerBookingText, independentBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
-import { applyPrepayment, prepaymentFor, takePrepayment } from "../wallet/prepayment.js";
+import { applyPrepayment, prepaymentFor, refundExcessPrepayment, takePrepayment } from "../wallet/prepayment.js";
 
 type CustomerSmsKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
 
@@ -406,6 +406,8 @@ export class AppointmentsService {
       if (servicesChanged) {
         await tx.appointmentService.deleteMany({ where: { appointmentId: appointment.id } });
         await tx.appointmentService.createMany({ data: pricing.map((p) => ({ appointmentId: appointment.id, ...p })) });
+        // cheaper now: a pre-payment above half the new price goes back to the customer
+        await refundExcessPrepayment(tx, appointment, pricing.reduce((sum, p) => sum + p.priceToman, 0));
       }
       return tx.appointment.update({
         where: { id: appointment.id },
