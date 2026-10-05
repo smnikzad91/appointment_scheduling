@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { checkSmsSettings } from "@/lib/bankSms/cards";
+
 
 export async function GET() {
   const session = await auth();
@@ -15,6 +17,8 @@ export async function GET() {
     cardNumber: c.cardNumber,
     ownerName:  c.ownerName,
     bankName:   c.bankName,
+    smsSender:   c.smsSender,
+    smsTemplate: c.smsTemplate,
     createdAt:  c.createdAt,
   })));
 }
@@ -29,6 +33,9 @@ export async function POST(req: NextRequest) {
   const cardNumber = ((body.cardNumber ?? "") as string).replace(/\s/g, "");
   const ownerName  = ((body.ownerName  ?? "") as string).trim();
   const bankName   = ((body.bankName   ?? "") as string).trim();
+  // optional: the bank's deposit SMS (sender + template) — then top-ups to this card confirm themselves
+  const smsSender   = ((body.smsSender   ?? "") as string).trim() || null;
+  const smsTemplate = ((body.smsTemplate ?? "") as string).trim() || null;
 
   if (!/^\d{16}$/.test(cardNumber))
     return NextResponse.json({ error: "Card number must be exactly 16 digits." }, { status: 400 });
@@ -37,8 +44,11 @@ export async function POST(req: NextRequest) {
   if (!bankName)
     return NextResponse.json({ error: "Bank name is required." }, { status: 400 });
 
+  const smsProblem = checkSmsSettings(smsSender, smsTemplate);
+  if (smsProblem) return NextResponse.json({ error: smsProblem }, { status: 400 });
+
   try {
-    const card = await prisma.adminCard.create({ data: { cardNumber, ownerName, bankName } });
+    const card = await prisma.adminCard.create({ data: { cardNumber, ownerName, bankName, smsSender, smsTemplate } });
     return NextResponse.json({ id: card.id }, { status: 201 });
   } catch (err: unknown) {
     if ((err as { code?: string }).code === "P2002")

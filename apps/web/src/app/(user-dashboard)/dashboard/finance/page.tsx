@@ -10,6 +10,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { Modal } from "@/components/ui/modal";
 import { toPersianDigits } from "@/lib/persian";
 import PickerSelect from "@/components/app/PickerSelect";
+import WalletTopUp from "@/components/app/WalletTopUp";
 
 type Card = {
   id: string;
@@ -372,6 +373,9 @@ export default function FinancePage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t("financeTitle")}</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t("financeDesc")}</p>
       </div>
+
+      {/* automatic top-up (bank SMS); the receipt flow below stays for anything else */}
+      <WalletTopUp />
 
       {/* ── Cards section ──────────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-5">

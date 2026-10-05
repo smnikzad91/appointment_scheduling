@@ -204,7 +204,7 @@ function ActionCell({ data, context }: { data: Deposit; context: ActionCtx }) {
   );
 }
 
-type AdminCard = { id: string; cardNumber: string; ownerName: string; bankName: string };
+type AdminCard = { id: string; cardNumber: string; ownerName: string; bankName: string; smsSender?: string | null; smsTemplate?: string | null };
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function AdminFinancePage() {
@@ -225,7 +225,11 @@ export default function AdminFinancePage() {
   // Destination cards
   const [adminCards, setAdminCards]         = useState<AdminCard[]>([]);
   const [showCardModal, setShowCardModal]   = useState(false);
-  const [cardForm, setCardForm]             = useState({ cardNumber: "", ownerName: "", bankName: "" });
+  const [cardForm, setCardForm]             = useState({ cardNumber: "", ownerName: "", bankName: "", smsSender: "", smsTemplate: "" });
+  // editing an existing card's deposit SMS (null = adding a new card)
+  const [smsCardId, setSmsCardId]           = useState<string | null>(null);
+  const [smsSample, setSmsSample]           = useState("");
+  const [smsTest, setSmsTest]               = useState<string | null>(null);
   const [addingCard, setAddingCard]         = useState(false);
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
   const [copiedId, setCopiedId]             = useState<string | null>(null);
@@ -237,19 +241,43 @@ export default function AdminFinancePage() {
       .catch(() => {});
   };
 
-  const openCardModal = () => { setCardForm({ cardNumber: "", ownerName: "", bankName: "" }); setShowCardModal(true); };
+  const openCardModal = () => {
+    setCardForm({ cardNumber: "", ownerName: "", bankName: "", smsSender: "", smsTemplate: "" });
+    setSmsCardId(null); setSmsSample(""); setSmsTest(null); setShowCardModal(true);
+  };
+  const openSmsModal = (card: AdminCard) => {
+    setCardForm({ cardNumber: card.cardNumber, ownerName: card.ownerName, bankName: card.bankName, smsSender: card.smsSender ?? "", smsTemplate: card.smsTemplate ?? "" });
+    setSmsCardId(card.id); setSmsSample(""); setSmsTest(null); setShowCardModal(true);
+  };
+
+  /** Try the template on the pasted SMS (the server parses it the same way as the device's SMS). */
+  const handleTestTemplate = async () => {
+    const res = await fetch("/api/admin/finance/cards/test", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ template: cardForm.smsTemplate, sms: smsSample }),
+    });
+    const d = await res.json();
+    setSmsTest(d.ok
+      ? `✓ ${t("templateMatches")}: ${Number(d.amountRial).toLocaleString()} rial` + (d.balanceRial ? ` · ${Number(d.balanceRial).toLocaleString()}` : "") + (d.card ? ` · ${d.card}` : "") + (d.date ? ` · ${d.date}` : "") + (d.time ? ` ${d.time}` : "")
+      : `✗ ${d.error}`);
+  };
 
   const handleAddCard = async () => {
     setAddingCard(true);
-    const res = await fetch("/api/admin/finance/cards", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cardForm),
-    });
+    const res = smsCardId
+      ? await fetch(`/api/admin/finance/cards/${smsCardId}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ smsSender: cardForm.smsSender, smsTemplate: cardForm.smsTemplate }),
+        })
+      : await fetch("/api/admin/finance/cards", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cardForm),
+        });
     const data = await res.json();
     setAddingCard(false);
     if (res.ok) {
-      toast.success(t("adminCardAdded"));
+      toast.success(smsCardId ? t("smsSettingsSaved") : t("adminCardAdded"));
       setShowCardModal(false);
       loadAdminCards();
     } else {
@@ -410,6 +438,14 @@ export default function AdminFinancePage() {
                   </button>
                 </div>
                 <div dir="ltr" className="font-mono text-lg tracking-widest">{formatCardNumber(card.cardNumber)}</div>
+                <div className="flex items-center gap-2">
+                  {card.smsSender && card.smsTemplate && (
+                    <span className="rounded-lg bg-white/25 px-2 py-0.5 text-[11px] font-medium">{t("autoConfirmOn")}</span>
+                  )}
+                  <button onClick={() => openSmsModal(card)} className="rounded-lg bg-white/20 hover:bg-white/30 px-2 py-0.5 text-[11px] font-medium transition-colors">
+                    {t("editSmsSettings")}
+                  </button>
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs opacity-75">{card.ownerName}</span>
                   <button
@@ -514,6 +550,9 @@ export default function AdminFinancePage() {
             </div>
           </div>
           <div className="space-y-3">
+            {smsCardId ? (
+              <p dir="ltr" className="font-mono text-sm text-gray-600 dark:text-gray-300">{formatCardNumber(cardForm.cardNumber)} · {cardForm.bankName}</p>
+            ) : (<>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{t("cardNumber")}</label>
               <input
@@ -540,16 +579,56 @@ export default function AdminFinancePage() {
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:border-brand-500 dark:focus:bg-gray-800 transition-colors"
               />
             </div>
+            </>)}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{t("smsSender")}</label>
+              <input
+                dir="ltr"
+                value={cardForm.smsSender}
+                onChange={(e) => setCardForm((f) => ({ ...f, smsSender: e.target.value }))}
+                placeholder="BankMellat"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-500 focus:bg-white dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("smsSenderHint")}</p>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{t("smsTemplate")}</label>
+              <textarea
+                rows={5}
+                value={cardForm.smsTemplate}
+                onChange={(e) => { setCardForm((f) => ({ ...f, smsTemplate: e.target.value })); setSmsTest(null); }}
+                placeholder={"بانک ملت\nواریز: {amount} ریال\nمانده: {balance}\n{date}-{time}"}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-500 focus:bg-white dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("smsTemplateHint")}</p>
+            </div>
+            {cardForm.smsTemplate && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{t("smsSample")}</label>
+                <textarea
+                  rows={4}
+                  value={smsSample}
+                  onChange={(e) => { setSmsSample(e.target.value); setSmsTest(null); }}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none focus:border-brand-500 focus:bg-white dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
+                />
+                <div className="mt-2 flex items-center gap-3">
+                  <button onClick={handleTestTemplate} disabled={!smsSample} className="rounded-xl border border-gray-200 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300">
+                    {t("testTemplate")}
+                  </button>
+                  {smsTest && <span className={`text-xs ${smsTest.startsWith("✓") ? "text-success-600" : "text-error-500"}`}>{smsTest}</span>}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex gap-3">
             <button
               onClick={handleAddCard}
-              disabled={addingCard || cardForm.cardNumber.length !== 16 || !cardForm.ownerName || !cardForm.bankName}
+              disabled={addingCard || (!smsCardId && (cardForm.cardNumber.length !== 16 || !cardForm.ownerName || !cardForm.bankName))}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50 transition-colors"
             >
               {addingCard ? (
                 <><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>{t("submitting")}</>
-              ) : t("addAdminCard")}
+              ) : smsCardId ? t("saveSmsSettings") : t("addAdminCard")}
             </button>
             <button
               onClick={() => !addingCard && setShowCardModal(false)}

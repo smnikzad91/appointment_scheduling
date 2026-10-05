@@ -141,23 +141,24 @@ enum SocialPlatform {
 }
 
 model User {
-  id              String   @id @default(cuid())
-  phone           String?  @unique
-  email           String?  @unique
+  id              String        @id @default(cuid())
+  phone           String?       @unique
+  email           String?       @unique
   passwordHash    String
   firstName       String
   lastName        String
   avatarUrl       String?
   role            Role
-  walletBalance   Int      @default(0)
+  walletBalance   Int           @default(0)
+  walletTopUps    WalletTopUp[]
   /// True for an invited stylist until they choose a password via their one-time link (their
   /// passwordHash until then is random and unknown to anyone).
-  mustSetPassword Boolean  @default(false)
+  mustSetPassword Boolean       @default(false)
   /// Promotional SMS ("time to book again") stopped by the customer — via the link in the text
   /// (/r/<code>) or their dashboard. Transactional texts (codes, reminders, booking changes) still go.
-  promoSmsOptOut  Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  promoSmsOptOut  Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   ownedSalons         Salon[]              @relation("SalonOwner")
   stylist             Stylist?
@@ -351,13 +352,91 @@ model Card {
 }
 
 model AdminCard {
-  id         String   @id @default(cuid())
-  cardNumber String   @unique
-  ownerName  String
-  bankName   String
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  cardNumber  String   @unique
+  ownerName   String
+  bankName    String
+  /// Bank SMS sender of this card's account (e.g. "BankMellat" or a number); with smsTemplate,
+  /// deposits are confirmed automatically from the SMS (apps/bank-sms-agent → /api/bank-sms).
+  smsSender   String?
+  /// The deposit SMS with {amount} (rial), optional {balance}, {card}, {date}, {time}, {*}.
+  smsTemplate String?
+  createdAt   DateTime @default(now())
+
+  topUps  WalletTopUp[]
+  bankSms BankSms[]
 
   @@map("admin_cards")
+}
+
+enum TopUpStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+/// A wallet top-up by card-to-card, confirmed by the bank's deposit SMS: the customer pays
+/// amountToman×10 + offsetRial (1–1000 rial) — that exact rial amount identifies them while pending.
+model WalletTopUp {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminCardId   String
+  adminCard     AdminCard   @relation(fields: [adminCardId], references: [id])
+  amountToman   Int
+  offsetRial    Int
+  payableRial   BigInt
+  status        TopUpStatus @default(PENDING)
+  expiresAt     DateTime
+  paidAt        DateTime?
+  creditedToman Int?
+  createdAt     DateTime    @default(now())
+  bankSms       BankSms?
+
+  @@index([adminCardId, status, payableRial])
+  @@index([userId, createdAt])
+  @@map("wallet_top_ups")
+}
+
+enum BankSmsStatus {
+  MATCHED
+  UNMATCHED
+  NOT_DEPOSIT
+  IGNORED
+}
+
+/// Every SMS the bank-SMS device forwarded, kept raw for audit; `hash` makes resends idempotent.
+model BankSms {
+  id          String        @id @default(cuid())
+  hash        String        @unique
+  deviceId    String
+  sender      String
+  body        String
+  receivedAt  DateTime
+  adminCardId String?
+  adminCard   AdminCard?    @relation(fields: [adminCardId], references: [id], onDelete: SetNull)
+  amountRial  BigInt?
+  balanceRial BigInt?
+  status      BankSmsStatus
+  note        String        @default("")
+  topUpId     String?       @unique
+  topUp       WalletTopUp?  @relation(fields: [topUpId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+
+  @@index([status, createdAt])
+  @@map("bank_sms")
+}
+
+/// The bank-SMS device's last heartbeat (signal, SIM, queue), for the admin page and alerts.
+model BankSmsDevice {
+  id         String   @id
+  lastSeenAt DateTime
+  signal     Int?
+  info       Json?
+  updatedAt  DateTime @updatedAt
+
+  @@map("bank_sms_devices")
 }
 
 model Deposit {

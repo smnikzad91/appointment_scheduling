@@ -19,6 +19,9 @@
      api/                 npm workspace "api" — NestJS backend, source of truth for the
                            salon domain (salons, stylists, services, appointments).
                            Owns auth (JWT). Postgres via @appointment-scheduling/database.
+     bank-sms-agent/      Node 18 script (no deps, not a workspace) for a BeagleBone Black + SIM800C that
+                           forwards the bank card's deposit SMS to apps/web → automatic wallet top-ups
+                           (see its README and apps/web/CLAUDE.md «Automatic top-ups»)
      android-customer/    (not yet scaffolded) Kotlin/Gradle, customer-facing app
      android-stylist/     (not yet scaffolded) Kotlin/Gradle, stylist-facing app
    packages/
