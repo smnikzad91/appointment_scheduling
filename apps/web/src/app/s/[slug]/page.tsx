@@ -7,6 +7,7 @@ import { addDaysToDateKey, toSalonWallTime } from "@/lib/salonTime";
 import type { Salon } from "@/types/salon";
 import BookingSheet from "@/components/salon/booking/BookingSheet";
 import StickyBookButton from "@/components/salon/StickyBookButton";
+import GuestTabBar from "@/components/guest/GuestTabBar";
 import SalonJsonLd from "@/components/salon/SalonJsonLd";
 import Hero from "@/components/salon/Hero";
 import ServiceCategoryGroup from "@/components/salon/ServiceCategoryGroup";
@@ -75,6 +76,7 @@ export default async function SalonPage({ params, searchParams }: PageProps) {
       <BookingProvider salon={salon} prefill={prefill}>
         <SalonJsonLd salon={salon} url={`${SITE_URL}/s/${slug}`} />
 
+        {/* room for the floating «رزرو نوبت» bar; GuestTabBar adds its own spacer */}
         <div className="pb-20 sm:pb-8">
           <Hero salon={salon} />
           <div className="divide-y divide-g-line">
@@ -88,6 +90,7 @@ export default async function SalonPage({ params, searchParams }: PageProps) {
         </div>
 
         <StickyBookButton />
+        <GuestTabBar />
         <BookingSheet />
       </BookingProvider>
     </SalonBrandProvider>

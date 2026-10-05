@@ -9,7 +9,8 @@ export default function StickyBookButton() {
   if (isOpen) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-app-line bg-app-bg/95 p-3 backdrop-blur sm:hidden">
+    // floats just above the guest tab bar (62px + safe area, phones only)
+    <div className="fixed inset-x-0 bottom-[calc(62px+env(safe-area-inset-bottom))] z-30 border-t border-app-line bg-app-bg/95 p-3 backdrop-blur sm:hidden">
       <button
         type="button"
         onClick={open}

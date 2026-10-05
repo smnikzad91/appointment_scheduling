@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { CalendarCheck, Home, LifeBuoy, Search, UserRound } from "lucide-react";
 
 // Phone bottom bar for the public site — same shape as the panels' tab bar (AppShell), in the
-// guest theme. Not on /s/[slug] (its sticky «رزرو نوبت» bar sits there) or the auth screens.
+// guest theme. Also on /s/[slug], where the sticky «رزرو نوبت» bar floats just above it; not on the
+// auth screens.
 // «حساب من» goes through /launch: signed-in users land in their own panel, others at sign-in.
 const TABS = [
   { href: "/", label: "خانه", icon: Home, exact: true },
