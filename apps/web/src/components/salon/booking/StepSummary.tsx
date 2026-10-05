@@ -144,7 +144,7 @@ export default function StepSummary() {
               <span>{formatToman(wallet.balanceToman)}</span>
             </div>
             <p className="text-xs leading-6 text-g-faint">
-              {!stylist && "مبلغ نهایی با آرایشگری که تعیین می‌شود قطعی می‌شود. "}
+              {!stylist && salon.kind !== "INDEPENDENT" && "مبلغ نهایی با آرایشگری که تعیین می‌شود قطعی می‌شود. "}
               اگر نوبت لغو شود، پیش‌پرداخت کامل به کیف پول شما برمی‌گردد.
             </p>
           </>
