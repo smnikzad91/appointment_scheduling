@@ -14,6 +14,21 @@ import { toast } from "sonner";
 import SelectField from "@/components/admin/SelectField";
 import type { UserRole } from "@/types/content";
 import type { TranslationKey } from "@/i18n/translations";
+import { normalizeDigits } from "@/lib/persian";
+
+/** Lowercase, Latin digits, Persian ی/ک, no half-spaces — so «علي» finds «علی» and «۰۹۱۲» finds 0912. */
+function normalizeSearch(s: string): string {
+  return normalizeDigits(s).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\u200c/g, " ").toLowerCase().trim();
+}
+
+/** Name, email or phone contains every word of the query; a phone also matches as +98… / 0098…. */
+function matchesUser(u: UserRow, query: string): boolean {
+  const words = normalizeSearch(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+  const phone = u.phone ?? "";
+  const haystack = normalizeSearch(`${u.firstName} ${u.lastName} ${u.email ?? ""} ${phone} ${phone.replace(/^0/, "98")} ${phone.replace(/^0/, "+98")}`);
+  return words.every((w) => haystack.includes(w));
+}
 
 interface UserRow {
   id: string;
@@ -188,6 +203,8 @@ export default function AdminUsersList() {
   const { theme } = useTheme();
 
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [search, setSearch] = useState("");
+  const shownUsers = useMemo(() => users.filter((u) => matchesUser(u, search)), [users, search]);
   const [loading, setLoading] = useState(true);
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -334,7 +351,22 @@ export default function AdminUsersList() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t("allUsers")}</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{users.length} {isRTL ? "کاربر" : "users"}</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {search.trim() ? `${shownUsers.length} / ${users.length}` : users.length} {isRTL ? "کاربر" : "users"}
+          </p>
+        </div>
+        <div className="relative w-full sm:w-80">
+          <svg className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 start-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" />
+          </svg>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("userSearchPlaceholder")}
+            aria-label={t("userSearchPlaceholder")}
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pe-3 ps-9 text-sm text-gray-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          />
         </div>
       </div>
 
@@ -344,10 +376,12 @@ export default function AdminUsersList() {
           <div className="p-10 text-center text-sm text-gray-400">{t("userLoading")}</div>
         ) : users.length === 0 ? (
           <div className="p-10 text-center text-sm text-gray-400">{t("userEmpty")}</div>
+        ) : shownUsers.length === 0 ? (
+          <div className="p-10 text-center text-sm text-gray-400">{t("userSearchNone")}</div>
         ) : (
           <div className="ag-blog-table">
             <AgGridReact<UserRow>
-              rowData={users}
+              rowData={shownUsers}
               columnDefs={colDefs}
               theme={theme === "dark" ? agDark : agLight}
               domLayout="autoHeight"

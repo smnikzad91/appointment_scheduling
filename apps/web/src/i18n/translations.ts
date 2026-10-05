@@ -243,6 +243,8 @@ const translations = {
 
     // UsersTable / AdminUsersList
     colUser: "User",
+    userSearchPlaceholder: "Search name, email or phone…",
+    userSearchNone: "No user matches this search",
     colEmail: "Email",
     colRole: "Role",
     colPhone: "Phone",
@@ -1144,6 +1146,8 @@ const translations = {
 
     // UsersTable / AdminUsersList
     colUser: "کاربر",
+    userSearchPlaceholder: "جستجوی نام، ایمیل یا شماره موبایل…",
+    userSearchNone: "کاربری با این جستجو پیدا نشد",
     colEmail: "ایمیل",
     colRole: "نقش",
     colPhone: "تلفن",
