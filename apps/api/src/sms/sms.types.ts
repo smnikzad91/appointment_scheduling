@@ -14,7 +14,7 @@ export type SmsMessage =
   | {
       kind: "reminder-stylist";
       to: string;
-      params: { time: string; customer: string; services: string };
+      params: { time: string; customer: string };
       text: string;
     }
   | {

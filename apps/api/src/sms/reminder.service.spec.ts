@@ -58,13 +58,13 @@ const updates = (prisma: ReturnType<typeof setup>['prisma'], id = 'a1') =>
   prisma.appointment.update.mock.calls.filter((c) => c[0].where.id === id).map((c) => c[0].data);
 
 describe('ReminderService.tick', () => {
-  it("reminds an independent stylist's customer of the services and the stylist's first name, not the business", async () => {
+  it("reminds an independent stylist's customer of the stylist's first name only — no business, no services", async () => {
     const { service, sms } = setup([
       appt({ salon: { name: 'Nail artist', timezone: 'Asia/Tehran', kind: 'INDEPENDENT' }, stylist: { displayName: 'سارا', user: { phone: '09120000002', firstName: 'سارا' } } }),
     ]);
     await service.tick(NOW);
     const customer = sms.send.mock.calls.map((c) => c[0]).find((m) => m.kind === 'reminder-customer');
-    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ کوتاهی مو و ۱ خدمت دیگر با سارا');
+    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ با سارا');
   });
 
   it('texts both the customer and the stylist, in salon-local time, then marks the booking done', async () => {
@@ -73,8 +73,9 @@ describe('ReminderService.tick', () => {
 
     const [customer, stylist] = sms.send.mock.calls.map((c) => c[0]);
     expect(customer).toMatchObject({ kind: 'reminder-customer', to: '09120000001', params: { time: '۱۴:۲۵', salon: 'سالن رز', stylist: 'سارا' } });
-    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ کوتاهی مو و ۱ خدمت دیگر در سالن رز با سارا');
-    expect(stylist).toMatchObject({ kind: 'reminder-stylist', to: '09120000002', params: { customer: 'نگار رضایی', services: 'کوتاهی مو، براشینگ' } });
+    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ در سالن رز با سارا');
+    expect(stylist).toMatchObject({ kind: 'reminder-stylist', to: '09120000002', params: { customer: 'نگار رضایی' } });
+    expect(stylist.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ نوبت نگار رضایی');
 
     const data = updates(prisma);
     expect(data).toContainEqual({ customerReminderSentAt: NOW });

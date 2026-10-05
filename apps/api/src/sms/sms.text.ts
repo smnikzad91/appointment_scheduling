@@ -63,25 +63,15 @@ export function fitSms<T extends Record<string, string>>(p: T, trimmable: (keyof
 }
 
 /**
- * Services for a one-segment customer text: the first by name, the rest counted —
- * «کوتاهی مو»، «کوتاهی مو و ۲ خدمت دیگر». A list would get cut mid-word.
+ * The customer's 1-hour reminder at a salon: salon and the stylist's first name, no services (owner's
+ * choice, 2026-10-05) — «یادآوری نوبتت: ساعت ۰۹:۰۰ در سالن رز با مریم». The salon name is cut first.
  */
-export const servicesSummary = (names: string[]) =>
-  names.length <= 1 ? (names[0] ?? "") : `${names[0]} و ${faDigits(names.length - 1)} خدمت دیگر`;
+export const customerReminderText = (p: { time: string; salon: string; stylist: string }) =>
+  fitSms(p, ["salon", "stylist"], (q) => `یادآوری نوبتت: ساعت ${q.time} در ${q.salon} با ${q.stylist}`);
 
-/**
- * The customer's 1-hour reminder at a salon: services, salon, the stylist's first name —
- * «یادآوری نوبتت: ساعت ۰۹:۰۰ کوتاهی مو در سالن رز با مریم». Services are cut first, then the salon.
- */
-export const customerReminderText = (p: { time: string; services: string; salon: string; stylist: string }) =>
-  fitSms(p, ["services", "salon", "stylist"], (q) => `یادآوری نوبتت: ساعت ${q.time} ${q.services} در ${q.salon} با ${q.stylist}`);
-
-/**
- * An independent stylist's reminder: the services instead of the business name, and the stylist's
- * first name — «یادآوری نوبتت: ساعت ۰۹:۰۰ ترمیم ناخن ژل با سارا». Services are cut first.
- */
-export const independentReminderText = (p: { time: string; services: string; name: string }) =>
-  fitSms(p, ["services", "name"], (q) => `یادآوری نوبتت: ساعت ${q.time} ${q.services} با ${q.name}`);
+/** An independent stylist's reminder: just them — «یادآوری نوبتت: ساعت ۰۹:۰۰ با سارا». */
+export const independentReminderText = (p: { time: string; name: string }) =>
+  fitSms(p, ["name"], (q) => `یادآوری نوبتت: ساعت ${q.time} با ${q.name}`);
 
 /** "سه‌شنبه ۷ مهر" — weekday and Jalali date of an instant, in the salon's time zone. */
 export const jalaliDay = (instant: Date, timeZone: string) =>
@@ -129,8 +119,9 @@ export const customerBookingText = (kind: CustomerBookingKind, p: BookingParams,
   }
 };
 
-export const stylistReminderText = (p: { time: string; customer: string; services: string }) =>
-  fitSms(p, ["customer", "services"], (q) => `یادآوری نوبتت: ساعت ${q.time} نوبت ${q.customer} (${q.services})`);
+/** The stylist's 1-hour reminder: who, no services — «یادآوری نوبتت: ساعت ۰۹:۰۰ نوبت نگار رضایی». */
+export const stylistReminderText = (p: { time: string; customer: string }) =>
+  fitSms(p, ["customer"], (q) => `یادآوری نوبتت: ساعت ${q.time} نوبت ${q.customer}`);
 
 /**
  * To the stylist when a customer books online: the booking waits for their confirmation. A home

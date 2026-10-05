@@ -1,21 +1,15 @@
-import { customerBookingText, independentBookingText, independentReminderText, servicesSummary, smsParts } from './sms.text.js';
+import { customerBookingText, customerReminderText, independentBookingText, independentReminderText, smsParts, stylistReminderText } from './sms.text.js';
 
-describe('servicesSummary', () => {
-  it('names the first service and counts the rest', () => {
-    expect(servicesSummary(['کوتاهی مو'])).toBe('کوتاهی مو');
-    expect(servicesSummary(['کوتاهی مو', 'براشینگ', 'رنگ مو'])).toBe('کوتاهی مو و ۲ خدمت دیگر');
-    expect(servicesSummary([])).toBe('');
+describe('1-hour reminders: no service names', () => {
+  it('independent stylist: time and their first name', () => {
+    expect(independentReminderText({ time: '۰۹:۰۰', name: 'سارا' })).toBe('یادآوری نوبتت: ساعت ۰۹:۰۰ با سارا');
   });
-});
-
-describe('independentReminderText', () => {
-  it('names the services and the first name, never the business', () => {
-    expect(independentReminderText({ time: '۰۹:۰۰', services: 'ترمیم ناخن ژل(کوتاه)', name: 'سارا' })).toBe('یادآوری نوبتت: ساعت ۰۹:۰۰ ترمیم ناخن ژل(کوتاه) با سارا');
+  it('salon: time, salon and stylist; a long salon name is cut to one segment', () => {
+    expect(customerReminderText({ time: '۰۹:۰۰', salon: 'سالن رز', stylist: 'مریم' })).toBe('یادآوری نوبتت: ساعت ۰۹:۰۰ در سالن رز با مریم');
+    expect(smsParts(customerReminderText({ time: '۰۹:۰۰', salon: 'سالن زیبایی و آرایشی بانوان رز سفید شعبه شمال تهران', stylist: 'فاطمه‌زهرا' }))).toBe(1);
   });
-  it('cuts the services, not the time, to fit one segment', () => {
-    const t = independentReminderText({ time: '۰۹:۰۰', services: 'ژلیش ناخن پا، ژلیش ناخن (کوتاه)، کاشت ناخن، طراحی ناخن', name: 'سارا' });
-    expect(smsParts(t)).toBe(1);
-    expect(t).toMatch(/^یادآوری نوبتت: ساعت ۰۹:۰۰ .+… با سارا$/);
+  it('stylist: time and the customer', () => {
+    expect(stylistReminderText({ time: '۰۹:۰۰', customer: 'نگار رضایی' })).toBe('یادآوری نوبتت: ساعت ۰۹:۰۰ نوبت نگار رضایی');
   });
 });
 

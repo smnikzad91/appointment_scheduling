@@ -6,7 +6,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { instantToSalonWallTime } from "../availability/salon-time.util.js";
 import { SmsService } from "./sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { clock, customerReminderText, independentReminderText, jalaliDay, servicesSummary, smsParts, stylistConfirmNudgeText, stylistNewBookingText, stylistReminderText } from "./sms.text.js";
+import { clock, customerReminderText, independentReminderText, jalaliDay, smsParts, stylistConfirmNudgeText, stylistNewBookingText, stylistReminderText } from "./sms.text.js";
 import { maySendNow, parseQuietHours, type QuietWindow } from "./quiet-hours.util.js";
 import { runsBackgroundJobs } from "./job-runner.js";
 
@@ -139,15 +139,12 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
     }
 
     const time = clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay);
-    const services = a.services.map((s) => s.service.name).join("، ");
     const firstName = a.stylist.user.firstName?.trim() || a.stylist.displayName;
-    // The customer gets the first service by name and the rest counted («… و ۲ خدمت دیگر»).
-    const summary = servicesSummary(a.services.map((s) => s.service.name));
-    const customerParams = { time, services: summary, salon: a.salon.name, stylist: firstName };
-    // An independent stylist is the business: no business name, just the services and them.
-    const customerText =
-      a.salon.kind === "INDEPENDENT" ? independentReminderText({ time, services: summary, name: firstName }) : customerReminderText(customerParams);
-    const stylistParams = { time, customer: bookingCustomerFullName(a), services };
+    // No service names in either reminder (owner's choice, 2026-10-05): time, place and who.
+    const customerParams = { time, salon: a.salon.name, stylist: firstName };
+    // An independent stylist is the business: no business name, just them.
+    const customerText = a.salon.kind === "INDEPENDENT" ? independentReminderText({ time, name: firstName }) : customerReminderText(customerParams);
+    const stylistParams = { time, customer: bookingCustomerFullName(a) };
     const messages = {
       customer: a.customer.phone && { kind: "reminder-customer" as const, to: a.customer.phone, params: customerParams, text: customerText },
       stylist: a.stylist.user.phone && { kind: "reminder-stylist" as const, to: a.stylist.user.phone, params: stylistParams, text: stylistReminderText(stylistParams) },
