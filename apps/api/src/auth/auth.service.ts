@@ -377,7 +377,7 @@ export class AuthService {
    */
   async me(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new UnauthorizedException("Account not found");
+    if (!user || user.deletedAt) throw new UnauthorizedException("Account not found");
     return this.publicUser(user);
   }
 

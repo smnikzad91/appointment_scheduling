@@ -17,8 +17,8 @@ export async function GET() {
       await logError({ error, method: "GET", path: "/api/admin/overview", context: { step: "listAdminSalons" } });
       return null;
     }),
-    prisma.user.count(),
-    prisma.user.count({ where: { role: "CUSTOMER" } }),
+    prisma.user.count({ where: { deletedAt: null } }),
+    prisma.user.count({ where: { role: "CUSTOMER", deletedAt: null } }),
     prisma.ticket.count({ where: { status: "OPEN" } }),
     prisma.bankSms.count({ where: { status: "UNMATCHED" } }),
     prisma.withdrawalRequest.count({ where: { status: "PENDING" } }),

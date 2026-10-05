@@ -125,7 +125,10 @@ const API_ERRORS: Record<string, TranslationKey> = {
   "You can't change your own role": "userErrSelfRole",
   "Salon owner and stylist roles can't be changed": "userRoleLocked",
   "This phone number belongs to another user": "userErrPhoneTaken",
-  "This user has a salon, bookings or payments and can't be deleted": "userErrHasRecords",
+  "This user has upcoming bookings; cancel them first": "userErrUpcoming",
+  "This user's wallet isn't empty; settle it first": "userErrWallet",
+  "This user has a pending withdrawal; pay or reject it first": "userErrWithdrawal",
+  "This account is already deleted": "userErrAlreadyDeleted",
 };
 
 function RoleCell({ data, context }: { data: UserRow; context: GridCtx }) {
@@ -289,7 +292,9 @@ export default function AdminUsersList() {
       setDeleteTarget(null);
       return;
     }
-    toast.success(t("userDeleted"));
+    const done = await res.json().catch(() => ({}));
+    // "closed": history kept, personal data wiped (lib/userDeletion.ts)
+    toast.success(t(done.mode === "closed" ? "userClosed" : "userDeleted"));
     setDeleteTarget(null);
     fetchUsers();
   };

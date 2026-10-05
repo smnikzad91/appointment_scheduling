@@ -9,7 +9,8 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
+  // closed accounts (lib/userDeletion.ts) are gone from the admin's point of view
+  const users = await prisma.user.findMany({ where: { deletedAt: null }, orderBy: { createdAt: "desc" } });
 
   return NextResponse.json(
     users.map((u) => ({

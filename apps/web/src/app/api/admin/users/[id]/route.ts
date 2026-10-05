@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { deleteOrCloseUser, UserDeletionError } from "@/lib/userDeletion";
 import { auth } from "@/auth";
 import { isPrismaNotFound, prisma } from "@/lib/prisma";
 import { Role } from "@appointment-scheduling/database";
@@ -76,15 +77,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 });
   }
 
+  // Deleted for good when nothing points at it; otherwise closed and anonymised (lib/userDeletion.ts).
   try {
-    await prisma.user.deleteMany({ where: { id } });
-  } catch (err: unknown) {
-    // A salon, stylist profile, bookings or wallet top-ups still point at this user.
-    if (prismaCode(err) === "P2003") {
-      return NextResponse.json({ error: "This user has a salon, bookings or payments and can't be deleted" }, { status: 409 });
+    const result = await deleteOrCloseUser(id);
+    return NextResponse.json({ ok: true, ...result });
+  } catch (err) {
+    if (err instanceof UserDeletionError) {
+      return NextResponse.json({ error: err.message }, { status: err.message === "User not found" ? 404 : 409 });
     }
     throw err;
   }
-
-  return NextResponse.json({ ok: true });
 }
