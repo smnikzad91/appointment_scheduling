@@ -35,3 +35,19 @@ export function purchaseStart(salon: { planId: string | null; planExpiresAt: Dat
 export function purchaseEnd(start: Date, months: number): Date {
   return new Date(start.getTime() + months * PURCHASE_MONTH_DAYS * DAY_MS);
 }
+
+/**
+ * Switching plans: what's unused of the running plan's bought periods, pro rata by time (whole
+ * toman, rounded down). Periods already over, or not started (a renewal queued after the current
+ * one), count in full or not at all accordingly.
+ */
+export function unusedPurchaseCredit(purchases: { amountToman: number; startsAt: Date; endsAt: Date }[], now = new Date()): number {
+  let credit = 0;
+  for (const p of purchases) {
+    const length = p.endsAt.getTime() - p.startsAt.getTime();
+    if (length <= 0 || p.endsAt <= now) continue;
+    const unused = p.endsAt.getTime() - Math.max(now.getTime(), p.startsAt.getTime());
+    credit += Math.floor((p.amountToman * unused) / length);
+  }
+  return credit;
+}

@@ -61,12 +61,6 @@ enum ContactStatus {
   REPLIED
 }
 
-enum DepositStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
 enum ReviewTarget {
   SALON
   STYLIST
@@ -168,8 +162,6 @@ model User {
   stylist             Stylist?
   appointments        Appointment[]        @relation("CustomerAppointments")
   tickets             Ticket[]
-  cards               Card[]
-  deposits            Deposit[]
   notifications       Notification[]
   favoriteSalons      FavoriteSalon[]
   waitlistEntries     WaitlistEntry[]
@@ -340,21 +332,6 @@ model TicketReply {
   @@map("ticket_replies")
 }
 
-model Card {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
-  cardNumber String   @unique
-  ownerName  String
-  bankName   String
-  createdAt  DateTime @default(now())
-
-  deposits Deposit[]
-
-  @@index([userId])
-  @@map("cards")
-}
-
 model AdminCard {
   id          String   @id @default(cuid())
   cardNumber  String   @unique
@@ -419,6 +396,8 @@ enum WalletTxKind {
   PAYOUT_SENT
   PAYOUT_RECEIVED
   PLAN_PURCHASE
+  /// switching to another plan: the unused part of the running bought plan, back to the wallet
+  PLAN_CREDIT
 }
 
 /// Every change to User.walletBalance, written in the same transaction as the change (apps/web
@@ -459,18 +438,22 @@ enum WithdrawalStatus {
 /// balance when requested (WITHDRAWAL), paid by the platform admin by bank transfer to the Sheba and
 /// marked PAID with its tracking code; REJECTED / CANCELLED put it back (WITHDRAWAL_REVERSAL).
 model WithdrawalRequest {
-  id            String              @id @default(cuid())
-  userId        String
-  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amountToman   Int
-  sheba         String
-  accountHolder String
-  status        WithdrawalStatus    @default(PENDING)
-  adminNote     String              @default("")
-  trackingCode  String?
-  createdAt     DateTime            @default(now())
-  decidedAt     DateTime?
-  transactions  WalletTransaction[]
+  id                 String              @id @default(cuid())
+  userId             String
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountToman        Int
+  sheba              String
+  accountHolder      String
+  status             WithdrawalStatus    @default(PENDING)
+  adminNote          String              @default("")
+  trackingCode       String?
+  createdAt          DateTime            @default(now())
+  decidedAt          DateTime?
+  /// "your withdrawal was paid / rejected" SMS (apps/api wallet/withdrawal-sms.service): set when
+  /// claimed/sent, or given up after decidedSmsAttempts failures
+  decidedSmsAt       DateTime?
+  decidedSmsAttempts Int                 @default(0)
+  transactions       WalletTransaction[]
 
   @@index([status, createdAt])
   @@index([userId, createdAt])
@@ -479,19 +462,22 @@ model WithdrawalRequest {
 
 /// A plan bought (or renewed) by the salon owner from their wallet (apps/api subscriptions).
 model PlanPurchase {
-  id           String              @id @default(cuid())
-  salonId      String
-  salon        Salon               @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  id            String              @id @default(cuid())
+  salonId       String
+  salon         Salon               @relation(fields: [salonId], references: [id], onDelete: Cascade)
   /// null once the plan is deleted; planName keeps what was bought
-  planId       String?
-  plan         PricingPlan?        @relation(fields: [planId], references: [id], onDelete: SetNull)
-  planName     String
-  months       Int
-  amountToman  Int
-  startsAt     DateTime
-  endsAt       DateTime
-  createdAt    DateTime            @default(now())
-  transactions WalletTransaction[]
+  planId        String?
+  plan          PricingPlan?        @relation(fields: [planId], references: [id], onDelete: SetNull)
+  planName      String
+  months        Int
+  amountToman   Int
+  startsAt      DateTime
+  endsAt        DateTime
+  /// set when the salon switched to another plan before this ended: the unused part credited back
+  endedAt       DateTime?
+  creditedToman Int?
+  createdAt     DateTime            @default(now())
+  transactions  WalletTransaction[]
 
   @@index([salonId, createdAt])
   @@map("plan_purchases")
@@ -541,25 +527,6 @@ model BankSmsDevice {
   updatedAt  DateTime @updatedAt
 
   @@map("bank_sms_devices")
-}
-
-model Deposit {
-  id               String        @id @default(cuid())
-  userId           String
-  user             User          @relation(fields: [userId], references: [id])
-  cardId           String
-  card             Card          @relation(fields: [cardId], references: [id])
-  amount           Int
-  description      String        @default("")
-  receiptImage     String        @default("")
-  status           DepositStatus @default(PENDING)
-  adminNote        String        @default("")
-  interceptionCode String        @unique
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-
-  @@index([userId])
-  @@map("deposits")
 }
 
 model Salon {

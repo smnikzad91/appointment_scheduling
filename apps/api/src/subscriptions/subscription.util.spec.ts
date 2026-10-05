@@ -1,4 +1,4 @@
-import { jalaliPeriod, purchaseEnd, purchaseStart, subscriptionStatus, trialEnd } from './subscription.util.js';
+import { jalaliPeriod, purchaseEnd, purchaseStart, subscriptionStatus, trialEnd, unusedPurchaseCredit } from './subscription.util.js';
 
 describe('jalaliPeriod', () => {
   it('uses the Jalali month in the salon timezone', () => {
@@ -44,5 +44,19 @@ describe('buying a plan from the wallet', () => {
   });
   it('a month is 30 days', () => {
     expect(purchaseEnd(now, 3).toISOString()).toBe('2027-01-03T00:00:00.000Z');
+  });
+});
+
+describe('switching plans: unused credit', () => {
+  const day = 86_400_000;
+  const now = new Date('2026-10-20T00:00:00Z');
+  it('credits the unused part pro rata, and later queued renewals in full', () => {
+    const p1 = { amountToman: 300_000, startsAt: new Date(now.getTime() - 10 * day), endsAt: new Date(now.getTime() + 20 * day) };
+    const p2 = { amountToman: 300_000, startsAt: p1.endsAt, endsAt: new Date(p1.endsAt.getTime() + 30 * day) };
+    expect(unusedPurchaseCredit([p1], now)).toBe(200_000);
+    expect(unusedPurchaseCredit([p1, p2], now)).toBe(500_000);
+  });
+  it('nothing for a period already over', () => {
+    expect(unusedPurchaseCredit([{ amountToman: 300_000, startsAt: new Date(now.getTime() - 40 * day), endsAt: new Date(now.getTime() - day) }], now)).toBe(0);
   });
 });

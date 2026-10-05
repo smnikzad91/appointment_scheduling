@@ -16,7 +16,6 @@ export type TicketStatus = "open" | "answered" | "closed";
 
 export type TicketReplySender = "user" | "admin";
 
-export type DepositStatus = "pending" | "approved" | "rejected";
 
 /** User.role on the admin users API — Postgres's Role enum, lowercased. */
 export type UserRole = "platform_admin" | "salon_owner" | "stylist" | "customer" | "independent_stylist";

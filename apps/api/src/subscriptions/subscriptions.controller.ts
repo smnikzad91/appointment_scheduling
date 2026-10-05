@@ -22,8 +22,8 @@ export class SubscriptionsController {
 
   @Get("salons/mine/subscription/plans")
   @Roles(Role.SALON_OWNER)
-  plans() {
-    return this.subscriptions.purchasablePlans();
+  plans(@Req() req: Request) {
+    return this.subscriptions.purchasablePlans((req.user as JwtPayload).sub);
   }
 
   /** Buy or renew a plan from the owner's wallet. */

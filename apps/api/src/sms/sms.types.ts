@@ -46,6 +46,13 @@ export type SmsMessage =
       to: string;
       params: { amount: string; balance: string };
       text: string;
+    }
+  | {
+      /** The admin paid or rejected a wallet withdrawal (apps/web) — wallet/withdrawal-sms. */
+      kind: "withdrawal-paid" | "withdrawal-rejected";
+      to: string;
+      params: { amount: string; trackingCode: string };
+      text: string;
     };
 
 export type SmsKind = SmsMessage["kind"];

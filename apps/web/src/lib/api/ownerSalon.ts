@@ -62,14 +62,17 @@ export interface PurchasablePlan {
   recommended: boolean;
 }
 
-/** Plans the owner can buy from their wallet (visible, with a set price). */
+/** Plans the owner can buy from their wallet (visible, with a set price), and the credit for
+ * switching away from the running bought plan (its unused part, back to the wallet). */
 export function getPurchasablePlans(token: string) {
-  return salonApiFetch<PurchasablePlan[]>("/salons/mine/subscription/plans", { headers: authHeaders(token) });
+  return salonApiFetch<{ plans: PurchasablePlan[]; currentPlanId: string | null; switchCreditToman: number }>("/salons/mine/subscription/plans", {
+    headers: authHeaders(token),
+  });
 }
 
 /** Buy or renew `months` of a plan from the owner's wallet (402 when the balance is short). */
 export function purchasePlan(token: string, planId: string, months: number) {
-  return salonApiFetch<{ planName: string; months: number; amountToman: number; expiresAt: string }>("/salons/mine/subscription/purchase", {
+  return salonApiFetch<{ planName: string; months: number; amountToman: number; creditToman: number; expiresAt: string }>("/salons/mine/subscription/purchase", {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify({ planId, months }),

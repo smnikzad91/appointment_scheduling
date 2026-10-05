@@ -29,6 +29,17 @@ export const faMoney = (n: number) => faDigits(Math.round(n).toLocaleString("en-
 /** «کیف پول نوبتت ۳۰۰٬۰۰۰ تومان شارژ شد\nموجودی: ۶۱۰٬۴۰۰ تومان» — one segment for any real amount. */
 export const topUpPaidText = (p: { amount: string; balance: string }) => `کیف پول نوبتت ${p.amount} تومان شارژ شد\nموجودی: ${p.balance} تومان`;
 
+/**
+ * «برداشت ۵۰۰٬۰۰۰ تومان به حسابتان واریز شد\nپیگیری: 1402…» — the tracking line is left out when it
+ * would push the text past one segment; «درخواست برداشت … تومان رد شد؛ مبلغ به کیف پول برگشت».
+ */
+export const withdrawalText = (kind: "withdrawal-paid" | "withdrawal-rejected", p: { amount: string; trackingCode: string }) => {
+  if (kind === "withdrawal-rejected") return `درخواست برداشت ${p.amount} تومان رد شد؛ مبلغ به کیف پول برگشت`;
+  const base = `برداشت ${p.amount} تومان به حسابتان واریز شد`;
+  const withCode = `${base}\nپیگیری: ${p.trackingCode}`;
+  return p.trackingCode && withCode.length <= SMS_SEGMENT ? withCode : base;
+};
+
 /** One Unicode SMS segment; longer texts go out in parts (some phones show them as separate messages). */
 export const SMS_SEGMENT = 70;
 

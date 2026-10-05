@@ -31,6 +31,7 @@ export async function GET() {
       detail:
         t.kind === "PAYOUT_SENT" ? t.payout?.stylist.displayName ?? null
         : t.kind === "PAYOUT_RECEIVED" ? t.payout?.salon.name ?? null
+        : t.planPurchase && t.kind === "PLAN_CREDIT" ? t.planPurchase.planName
         : t.planPurchase ? `${t.planPurchase.planName}، ${t.planPurchase.months.toLocaleString("fa-IR")} ماه`
         : null,
       appointment: t.appointment && { startAt: t.appointment.startAt, salonName: t.appointment.salon.name, timezone: t.appointment.salon.timezone },

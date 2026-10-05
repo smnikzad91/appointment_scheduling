@@ -3,7 +3,7 @@ import { WalletTxKind, type Prisma } from "@appointment-scheduling/database";
 import { InsufficientWalletError, moveWallet } from "../wallet/prepayment.js";
 import { PurchasePlanDto } from "./dto/purchase-plan.dto.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { jalaliPeriod, purchaseEnd, purchaseStart, subscriptionStatus, trialEnd } from "./subscription.util.js";
+import { jalaliPeriod, purchaseEnd, purchaseStart, subscriptionStatus, trialEnd, unusedPurchaseCredit } from "./subscription.util.js";
 import { SetSalonSubscriptionDto } from "./dto/set-salon-subscription.dto.js";
 
 type Db = PrismaService | Prisma.TransactionClient;
@@ -97,13 +97,26 @@ export class SubscriptionsService {
     };
   }
 
-  /** Plans the owner can buy: visible ones with a set price (null = «توافقی», arranged with the admin). */
-  async purchasablePlans() {
-    return this.prisma.pricingPlan.findMany({
-      where: { active: true, monthlyPriceToman: { not: null } },
-      orderBy: { sortOrder: "asc" },
-      select: { ...PLAN_SUMMARY, recommended: true },
-    });
+  /**
+   * Plans the owner can buy (visible ones with a set price; null = «توافقی», arranged with the admin),
+   * and what switching away from their running plan would credit back (switchCreditToman).
+   */
+  async purchasablePlans(userId: string, now = new Date()) {
+    const salon = await this.prisma.salon.findFirst({ where: { ownerId: userId }, select: { id: true, planId: true } });
+    const [plans, running] = await Promise.all([
+      this.prisma.pricingPlan.findMany({
+        where: { active: true, monthlyPriceToman: { not: null } },
+        orderBy: { sortOrder: "asc" },
+        select: { ...PLAN_SUMMARY, recommended: true },
+      }),
+      salon?.planId ? this.runningPurchases(this.prisma, salon.id, salon.planId, now) : Promise.resolve([]),
+    ]);
+    return { plans, currentPlanId: salon?.planId ?? null, switchCreditToman: unusedPurchaseCredit(running, now) };
+  }
+
+  /** The current plan's bought periods that haven't ended or been credited back yet. */
+  private runningPurchases(db: Db, salonId: string, planId: string, now: Date) {
+    return db.planPurchase.findMany({ where: { salonId, planId, endedAt: null, endsAt: { gt: now } } });
   }
 
   /**
@@ -122,6 +135,18 @@ export class SubscriptionsService {
       if (plan.monthlyPriceToman === null) throw new BadRequestException("This plan's price is arranged with the platform");
       if (salon.planId === plan.id && salon.planExpiresAt === null) throw new BadRequestException("Your plan has no end date");
 
+      // Switching from a running bought plan: its unused part goes back to the wallet first.
+      let creditToman = 0;
+      if (salon.planId && salon.planId !== plan.id) {
+        const running = await this.runningPurchases(tx, salon.id, salon.planId, now);
+        for (const p of running) {
+          const credit = unusedPurchaseCredit([p], now);
+          await tx.planPurchase.update({ where: { id: p.id }, data: { endedAt: now, creditedToman: credit } });
+          if (credit > 0) await moveWallet(tx, salon.ownerId, credit, WalletTxKind.PLAN_CREDIT, { planPurchaseId: p.id });
+          creditToman += credit;
+        }
+      }
+
       const startsAt = purchaseStart(salon, plan.id, now);
       const endsAt = purchaseEnd(startsAt, dto.months);
       const amountToman = plan.monthlyPriceToman * dto.months;
@@ -136,7 +161,7 @@ export class SubscriptionsService {
         }
       }
       await tx.salon.update({ where: { id: salon.id }, data: { planId: plan.id, planExpiresAt: endsAt } });
-      return { planId: plan.id, planName: plan.name, months: dto.months, amountToman, startsAt, expiresAt: endsAt };
+      return { planId: plan.id, planName: plan.name, months: dto.months, amountToman, creditToman, startsAt, expiresAt: endsAt };
     });
   }
 
