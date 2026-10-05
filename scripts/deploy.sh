@@ -36,6 +36,9 @@ rm -rf "apps/api/$api_next"
 test -f "apps/api/$api_next/main.js" && test -f "apps/api/$api_next/app.module.js"
 
 # Web: next build writes to NEXT_DIST_DIR (next.config distDir) and cleans only that folder.
+# tsconfig includes both folders' generated route types, so the live folder's stale ones would fail
+# the type check after a route is deleted. They're only for tsc — `next start` never reads them.
+[ -n "$web_live" ] && rm -rf "apps/web/$web_live/types" "apps/web/$web_live/dev/types"
 (cd apps/web && NEXT_DIST_DIR="$web_next" npx next build --turbopack)
 test -f "apps/web/$web_next/BUILD_ID"
 
