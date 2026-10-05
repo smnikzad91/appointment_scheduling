@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
 import { Modal } from "@/components/ui/modal";
+import AdminWithdrawals from "@/components/admin/AdminWithdrawals";
 
 // The platform's bank cards for wallet top-ups. Each needs the bank's deposit SMS sender and
 // template: payments are confirmed only by that SMS (apps/bank-sms-agent → /admin/bank-sms), never
@@ -169,6 +170,8 @@ export default function AdminFinancePage() {
           </div>
         )}
       </div>
+
+      <AdminWithdrawals />
 
       {/* Add destination card modal */}
       <Modal isOpen={showCardModal} onClose={() => !addingCard && setShowCardModal(false)} className="max-w-md mx-4 w-full" showCloseButton={false}>

@@ -3,6 +3,8 @@
 
 const BY_API_MESSAGE: Record<string, string> = {
   "This time slot is no longer available": "این زمان همین حالا پر شد؛ لطفاً زمان دیگری انتخاب کنید",
+  "Enter the bank transfer's tracking code": "کد پیگیری واریز بانکی را وارد کنید",
+  "This request is no longer pending": "این درخواست دیگر در انتظار نیست",
   "Not enough wallet balance for the pre-payment": "موجودی کیف پول برای پیش‌پرداخت این نوبت کافی نیست",
   "A cancelled prepaid booking can't be reopened": "این نوبت لغو و پیش‌پرداختش به مشتری برگشته است؛ نوبت تازه ثبت کنید",
   "This appointment just changed — reload and try again": "این نوبت همین حالا تغییر کرد؛ صفحه را تازه کنید و دوباره امتحان کنید",

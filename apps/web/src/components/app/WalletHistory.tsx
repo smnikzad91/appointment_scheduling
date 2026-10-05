@@ -5,11 +5,12 @@ import { ArrowDownLeft, ArrowUpRight, Wallet } from "lucide-react";
 import { Card, EmptyState, ErrorBanner, ListGroup, ListSkeleton, SectionTitle } from "./ui";
 import { formatSalonDate, formatSalonDateTime } from "@/lib/salonTime";
 import { toPersianDigits } from "@/lib/persian";
+import WalletWithdraw from "./WalletWithdraw";
 
 // Wallet balance and its movements (GET /api/user/finance/wallet): top-ups, booking pre-payments
 // and refunds for a customer; pre-payments received (and any taken back) for a salon owner.
 
-export type WalletTxKind = "top_up" | "prepayment" | "prepayment_refund" | "prepayment_income" | "prepayment_income_reversal";
+export type WalletTxKind = "top_up" | "prepayment" | "prepayment_refund" | "prepayment_income" | "prepayment_income_reversal" | "withdrawal" | "withdrawal_reversal";
 
 interface WalletTx {
   id: string;
@@ -26,6 +27,8 @@ const KIND_LABEL: Record<WalletTxKind, string> = {
   prepayment_refund: "بازگشت پیش‌پرداخت (لغو نوبت)",
   prepayment_income: "پیش‌پرداخت دریافتی نوبت",
   prepayment_income_reversal: "برگشت پیش‌پرداخت دریافتی",
+  withdrawal: "برداشت به حساب بانکی",
+  withdrawal_reversal: "بازگشت برداشت (رد یا لغو)",
 };
 
 const fa = (n: number) => toPersianDigits(Math.abs(n).toLocaleString("en-US").replace(/,/g, "٬"));
@@ -60,6 +63,8 @@ export default function WalletHistory({ reloadKey = 0, title = "کیف پول" }
         </div>
         <Wallet className="h-8 w-8 text-app-accent" />
       </Card>
+
+      <WalletWithdraw balanceToman={data.balanceToman} onChange={load} />
 
       <SectionTitle>گردش کیف پول</SectionTitle>
       {data.items.length === 0 ? (

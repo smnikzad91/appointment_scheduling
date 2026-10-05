@@ -12,7 +12,7 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const [salons, users, customers, openTickets, unmatchedBankSms] = await Promise.all([
+  const [salons, users, customers, openTickets, unmatchedBankSms, pendingWithdrawals] = await Promise.all([
     listAdminSalons(session.apiAccessToken).catch(async (error) => {
       await logError({ error, method: "GET", path: "/api/admin/overview", context: { step: "listAdminSalons" } });
       return null;
@@ -21,6 +21,7 @@ export async function GET() {
     prisma.user.count({ where: { role: "CUSTOMER" } }),
     prisma.ticket.count({ where: { status: "OPEN" } }),
     prisma.bankSms.count({ where: { status: "UNMATCHED" } }),
+    prisma.withdrawalRequest.count({ where: { status: "PENDING" } }),
   ]);
 
   return NextResponse.json({
@@ -33,5 +34,6 @@ export async function GET() {
     customers,
     openTickets,
     unmatchedBankSms,
+    pendingWithdrawals,
   });
 }
