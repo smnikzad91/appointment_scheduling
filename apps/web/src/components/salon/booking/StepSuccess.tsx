@@ -11,10 +11,11 @@ import { salonWallTimeToInstant } from "@/lib/salonTime";
 import { saveCustomerSession } from "@/lib/customerSession";
 
 export default function StepSuccess() {
-  const { salon, state, result, close } = useBooking();
+  const { salon, state, result, close, signedIn } = useBooking();
 
   useEffect(() => {
-    if (state.accessToken) {
+    // signed in on the site: their bookings are in the panel, nothing to remember here
+    if (state.accessToken && !signedIn) {
       saveCustomerSession({ token: state.accessToken, firstName: state.customerFirstName.trim() });
     }
     // Only ever needs to run once, right when the success screen mounts with a fresh token.

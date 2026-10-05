@@ -17,7 +17,7 @@ import WalletTopUp from "@/components/app/WalletTopUp";
 const MIN_TOP_UP_TOMAN = 10_000;
 
 export default function StepSummary() {
-  const { salon, state, updateState, setResult, goNext } = useBooking();
+  const { salon, state, updateState, setResult, goNext, signedIn, dropSignedIn } = useBooking();
   // An independent stylist working in more than one place: the customer picks where.
   const places = salon.kind === "INDEPENDENT" ? salon.serviceLocations : [];
   const homeVisit = state.serviceLocation === "CLIENT_HOME";
@@ -72,6 +72,11 @@ export default function StepSummary() {
     } catch (err) {
       // 402: the actual price (an auto-assigned stylist's) needs more than the balance — show the top-up
       if (err instanceof SalonApiError && err.status === 402) loadWallet();
+      // the site login's token expired: confirm the phone by code instead
+      if (err instanceof SalonApiError && err.status === 401 && signedIn) {
+        dropSignedIn();
+        return toastError("برای ثبت نوبت، شماره موبایل خود را تایید کنید");
+      }
       toastError(persianApiError(err));
     } finally {
       setConfirming(false);

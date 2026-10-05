@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import type { Salon, Booking } from "@/types/salon";
 import type { ServiceLocation } from "@/lib/independent";
 import { useBackgroundDraft } from "@/lib/useBackgroundDraft";
@@ -43,8 +44,13 @@ interface BookingContextValue {
   salon: Salon;
   isOpen: boolean;
   step: BookingStep;
-  /** This salon's steps (an independent stylist has no "choose a stylist" step). */
+  /** This salon's steps (an independent stylist has no "choose a stylist" step; a signed-in
+   * customer has no name/phone/code steps). */
   steps: BookingStep[];
+  /** Booking with the signed-in customer's own account (NextAuth session token). */
+  signedIn: boolean;
+  /** Their token was refused (expired): ask for name, phone and code after all. */
+  dropSignedIn: () => void;
   state: BookingState;
   result: Booking | null;
   open: () => void;
@@ -69,8 +75,18 @@ export interface BookingPrefill {
 
 export function BookingProvider({ salon, prefill, children }: { salon: Salon; prefill?: BookingPrefill | null; children: React.ReactNode }) {
   const independent = salon.kind === "INDEPENDENT";
+  // A customer signed in on the site books with their own account: no name, phone or SMS code.
+  // (Staff accounts can't book online — they keep the form and book with a customer number.)
+  const { data: session } = useSession();
+  const [signedInRefused, setSignedInRefused] = useState(false);
+  const signedInToken = !signedInRefused && session?.user?.role === "CUSTOMER" ? session.apiAccessToken ?? null : null;
+  const signedIn = !!signedInToken;
   // An independent stylist is the only stylist: nothing to choose.
-  const steps = useMemo(() => (independent ? BOOKING_STEPS.filter((s) => s !== "stylist") : BOOKING_STEPS), [independent]);
+  const steps = useMemo(
+    () =>
+      BOOKING_STEPS.filter((s) => !(independent && s === "stylist") && !(signedIn && (s === "contact" || s === "otp"))),
+    [independent, signedIn],
+  );
   // The only place they work needs no choice either.
   const initialState = useMemo<BookingState>(
     () => ({ ...INITIAL_STATE, serviceLocation: independent && salon.serviceLocations.length === 1 ? salon.serviceLocations[0] : null }),
@@ -126,14 +142,25 @@ export function BookingProvider({ salon, prefill, children }: { salon: Salon; pr
     () => (isOpen && step !== "success" ? { step, state } : null),
     (draft) => {
       if (!steps.includes(draft.step)) return;
-      const afterOtp = steps.indexOf(draft.step) > steps.indexOf("otp");
+      const afterOtp = steps.includes("otp") && steps.indexOf(draft.step) > steps.indexOf("otp");
       setState({ ...initialState, ...draft.state });
       setStep(afterOtp && !draft.state.accessToken ? "contact" : draft.step);
       setIsOpen(true);
     },
   );
 
-  const stepIndex = steps.indexOf(step);
+  // The session arrived (or its token was refused) while on a step that no longer exists.
+  const currentStep: BookingStep = steps.includes(step) ? step : signedIn ? "summary" : "contact";
+  const stepIndex = steps.indexOf(currentStep);
+
+  const dropSignedIn = useCallback(() => {
+    setSignedInRefused(true);
+    setState((s) => ({ ...s, accessToken: null }));
+    setStep("contact");
+  }, []);
+
+  // the signed-in customer's token stands in for the one the code step would give
+  const effectiveState = useMemo(() => (signedInToken && !state.accessToken ? { ...state, accessToken: signedInToken } : state), [state, signedInToken]);
 
   const goNext = useCallback(() => {
     const nextIndex = Math.min(stepIndex + 1, steps.length - 1);
@@ -149,21 +176,23 @@ export function BookingProvider({ salon, prefill, children }: { salon: Salon; pr
     () => ({
       salon,
       isOpen,
-      step,
+      step: currentStep,
       steps,
-      state,
+      signedIn,
+      dropSignedIn,
+      state: effectiveState,
       result,
       open,
       openWithService,
       close,
       goNext,
       goBack,
-      canGoBack: stepIndex > 0 && step !== "success",
+      canGoBack: stepIndex > 0 && currentStep !== "success",
       updateState,
       setResult,
       toggleService,
     }),
-    [salon, isOpen, step, steps, state, result, open, openWithService, close, goNext, goBack, stepIndex, updateState, toggleService],
+    [salon, isOpen, currentStep, steps, signedIn, dropSignedIn, effectiveState, result, open, openWithService, close, goNext, goBack, stepIndex, updateState, toggleService],
   );
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;
