@@ -75,6 +75,11 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
       const { customerName, stylistName, cancelledBy } = n.data;
       const who = cancelledBy === "CUSTOMER" ? customerName : cancelledBy === "STYLIST" ? stylistName : "سالن";
       const whose = scope === "stylist" ? `نوبت ${customerName}` : `نوبت ${customerName} با ${stylistName}`;
+      // SYSTEM: an online booking nobody confirmed, cancelled a day after its time; pre-payment refunded
+      if (cancelledBy === "SYSTEM") {
+        const title = scope === "customer" ? `نوبت شما در ${salon} تایید نشد؛ پیش‌پرداخت به کیف پولتان برگشت` : `${whose} تایید نشد و خودکار لغو شد`;
+        return { icon: CalendarX, tone: "text-app-danger", title, detail: bookingDetail(n.data), href: appointmentsHref };
+      }
       const title =
         scope === "customer"
           ? cancelledBy === "STYLIST"

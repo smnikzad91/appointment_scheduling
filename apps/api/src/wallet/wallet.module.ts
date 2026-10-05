@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
+import { NotificationsModule } from "../notifications/notifications.module.js";
 import { WalletController } from "./wallet.controller.js";
+import { StalePrepaymentService } from "./stale-prepayment.service.js";
 
-@Module({ controllers: [WalletController] })
+@Module({ imports: [NotificationsModule], controllers: [WalletController], providers: [StalePrepaymentService] })
 export class WalletModule {}

@@ -26,7 +26,7 @@ export interface BookingData {
   /** NEW_BOOKING: made by the salon rather than online. */
   bySalon?: boolean;
   /** BOOKING_CANCELLED: who cancelled. */
-  cancelledBy?: "CUSTOMER" | "SALON" | "STYLIST";
+  cancelledBy?: "CUSTOMER" | "SALON" | "STYLIST" | "SYSTEM";
   /** BOOKING_UPDATED: who changed it, and the start time before the change. */
   updatedBy?: "SALON" | "STYLIST";
   previousStartAt?: string;
