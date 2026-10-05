@@ -8,7 +8,7 @@ const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 
 export async function POST(req: NextRequest) {
   try {
-    const { firstName, lastName, email, phone, password } = await req.json();
+    const { firstName, lastName, email, phone, password, code } = await req.json();
 
     if (!firstName || !lastName || !email || !phone || !password) {
       return NextResponse.json({ error: "همه فیلدها الزامی هستند" }, { status: 400 });
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "رمز عبور باید حداقل ۸ کاراکتر باشد" }, { status: 400 });
     }
 
-    await apiRegister({ firstName, lastName, email, phone, password });
+    await apiRegister({ firstName, lastName, email, phone, password, code: String(code ?? "") });
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {
@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
         : "این شماره موبایل قبلاً ثبت شده است";
       return NextResponse.json({ error: message }, { status: 409 });
     }
-    if (err instanceof ApiError && err.status === 400) {
+    // wrong / expired SMS code (401), or no code (400): say so, the form stays on the code step
+    if (err instanceof ApiError && (err.status === 400 || err.status === 401)) {
       return NextResponse.json({ error: persianApiError(err) }, { status: 400 });
     }
 

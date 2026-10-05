@@ -35,6 +35,8 @@ export function apiVerifyOtp(phone: string, code: string) {
 
 export function apiRegister(input: {
   phone: string;
+  /** SMS code confirming the phone (requestOtp purpose "register") */
+  code: string;
   email?: string;
   password: string;
   firstName: string;
@@ -48,6 +50,8 @@ export function apiRegister(input: {
 
 export function apiRegisterSalonOwner(input: {
   phone: string;
+  /** SMS code confirming the phone (requestOtp purpose "register") */
+  code: string;
   email?: string;
   password: string;
   firstName: string;

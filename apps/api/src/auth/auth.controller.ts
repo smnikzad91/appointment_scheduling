@@ -41,6 +41,12 @@ export class AuthController {
     return this.authService.getPasswordSetup(token);
   }
 
+  /** Sends the SMS code that confirms the link's phone (required to complete the setup). */
+  @Post("password-setup/:token/code")
+  passwordSetupCode(@Param("token") token: string) {
+    return this.authService.sendPasswordSetupCode(token);
+  }
+
   @Post("password-setup")
   completePasswordSetup(@Body() dto: CompletePasswordSetupDto) {
     return this.authService.completePasswordSetup(dto);
@@ -48,7 +54,7 @@ export class AuthController {
 
   @Post("otp/request")
   requestOtp(@Body() dto: RequestOtpDto) {
-    return this.authService.requestOtp(dto.phone);
+    return this.authService.requestOtp(dto.phone, dto.purpose);
   }
 
   @Post("otp/verify")

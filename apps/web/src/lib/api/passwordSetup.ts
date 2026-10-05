@@ -16,10 +16,15 @@ export function getPasswordSetup(token: string) {
   return salonApiFetch<PasswordSetupInfo>(`/auth/password-setup/${encodeURIComponent(token)}`, { cache: "no-store" });
 }
 
-export function completePasswordSetup(token: string, password: string) {
+/** Texts the link's account an SMS code (needed to complete the setup when it has a phone). */
+export function sendPasswordSetupCode(token: string) {
+  return salonApiFetch<{ success: true; devCode?: string }>(`/auth/password-setup/${encodeURIComponent(token)}/code`, { method: "POST" });
+}
+
+export function completePasswordSetup(token: string, password: string, code?: string) {
   return salonApiFetch<{ phone: string | null }>("/auth/password-setup", {
     method: "POST",
-    body: JSON.stringify({ token, password }),
+    body: JSON.stringify({ token, password, ...(code && { code }) }),
   });
 }
 

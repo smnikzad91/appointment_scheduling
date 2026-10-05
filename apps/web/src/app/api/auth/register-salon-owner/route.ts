@@ -9,7 +9,7 @@ const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 export async function POST(req: NextRequest) {
   try {
     const {
-      firstName, lastName, email, phone, password, salonName, province, city, address, latitude, longitude, planId,
+      firstName, lastName, email, phone, password, code, salonName, province, city, address, latitude, longitude, planId,
       kind, serviceLocations, serviceArea, hostSalonName,
     } = await req.json();
     // kind INDEPENDENT = an independent stylist signing up their own business (apps/api validates the rest).
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     }
 
     await apiRegisterSalonOwner({
-      firstName, lastName, email, phone, password, salonName, province, city, address, latitude, longitude,
+      firstName, lastName, email, phone, password, code: String(code ?? ""), salonName, province, city, address, latitude, longitude,
       planId: typeof planId === "string" && planId ? planId : undefined,
       ...(independent && {
         kind: "INDEPENDENT" as const,
@@ -53,7 +53,8 @@ export async function POST(req: NextRequest) {
         : "این شماره موبایل قبلاً ثبت شده است";
       return NextResponse.json({ error: message }, { status: 409 });
     }
-    if (err instanceof ApiError && err.status === 400) {
+    // wrong / expired SMS code (401), or no code (400): say so, the form stays on the code step
+    if (err instanceof ApiError && (err.status === 400 || err.status === 401)) {
       return NextResponse.json({ error: persianApiError(err) }, { status: 400 });
     }
 

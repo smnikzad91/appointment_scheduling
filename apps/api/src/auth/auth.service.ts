@@ -64,8 +64,13 @@ export class AuthService {
     private readonly subscriptions: SubscriptionsService,
   ) {}
 
+  // Every new account proves its phone first: the sign-up forms ask for an SMS code
+  // (requestOtp purpose "register") and send it with the rest; it's checked and used up right
+  // before the account is created. Accounts made by signing in with a code are verified already.
+
   async register(dto: RegisterDto) {
     await this.assertIdentifierAvailable(dto.phone, dto.email);
+    await this.useOtp(dto.phone, dto.code);
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
@@ -91,6 +96,7 @@ export class AuthService {
     const independent = dto.kind === SalonKind.INDEPENDENT;
     if (independent && !dto.serviceLocations?.length) throw new BadRequestException("Choose where you work");
 
+    await this.useOtp(dto.phone, dto.code);
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const slug = await generateUniqueSlug(this.prisma, dto.salonName);
     const subscription = await this.subscriptions.initialFor(dto.planId);
@@ -195,11 +201,24 @@ export class AuthService {
   }
 
   /**
-   * Sets the password through a one-time link and burns the link. Returns the phone number so
-   * the web app can sign the stylist straight in with it.
+   * The SMS code for a one-time link: sent to the account's own phone (the number the owner
+   * entered), so whoever opened the link must also hold that phone. Staff numbers included — the
+   * link already identifies the account. Same throttle as every code.
+   */
+  async sendPasswordSetupCode(token: string) {
+    const setup = await this.findUsableSetupToken(token);
+    if (!setup.user.phone) throw new BadRequestException("This account has no phone number");
+    return this.sendOtp(setup.user.phone, false);
+  }
+
+  /**
+   * Sets the password through a one-time link and burns the link. The account's phone must be
+   * confirmed with an SMS code first (sendPasswordSetupCode). Returns the phone number so the web
+   * app can sign the stylist straight in with it.
    */
   async completePasswordSetup(dto: CompletePasswordSetupDto) {
     const setup = await this.findUsableSetupToken(dto.token);
+    if (setup.user.phone) await this.useOtp(setup.user.phone, dto.code ?? "");
     const passwordHash = await bcrypt.hash(dto.password, 10);
     await this.prisma.$transaction(async (tx) => {
       // Claim the link atomically: if two requests race, only one sees usedAt still null.
@@ -230,9 +249,19 @@ export class AuthService {
    * while the bypass is on; it ends by itself once SMS_DRIVER=provider. Because the code is handed
    * to whoever asks, the bypass only ever signs in customers (or creates new ones): staff and admin
    * accounts sign in with their password until codes really go out by SMS. */
-  async requestOtp(phone: string) {
+  async requestOtp(phone: string, purpose: "login" | "register" = "login") {
+    if (purpose === "register") {
+      // verifying a phone for a new account: say now if it's taken, before spending an SMS
+      if (await this.prisma.user.findUnique({ where: { phone }, select: { id: true } })) throw new ConflictException("Phone number already registered");
+      return this.sendOtp(phone, false);
+    }
+    return this.sendOtp(phone, true);
+  }
+
+  /** `customersOnly`: under the bypass the code is handed back, so it may only sign in customers. */
+  private async sendOtp(phone: string, customersOnly: boolean) {
     const bypass = this.otpBypass();
-    if (bypass) await this.assertCustomerOrNew(phone);
+    if (bypass && customersOnly) await this.assertCustomerOrNew(phone);
     await this.assertOtpNotThrottled(phone);
 
     const code = randomOtpCode();
@@ -298,6 +327,22 @@ export class AuthService {
     }
 
     return this.buildAuthResponse(user);
+  }
+
+  /**
+   * Checks the phone's latest code and uses it up (sign-up, password links). Same rules as sign-in:
+   * 5 tries per code, counted atomically, and a code works once.
+   */
+  private async useOtp(phone: string, code: string) {
+    const otp = await this.prisma.otpCode.findFirst({
+      where: { phone, consumed: false, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!otp) throw new UnauthorizedException("Invalid or expired code");
+    const tried = await this.prisma.otpCode.updateMany({ where: { id: otp.id, attempts: { lt: OTP_MAX_ATTEMPTS } }, data: { attempts: { increment: 1 } } });
+    if (tried.count === 0 || otp.code !== code) throw new UnauthorizedException("Invalid or expired code");
+    const claimed = await this.prisma.otpCode.updateMany({ where: { id: otp.id, consumed: false }, data: { consumed: true } });
+    if (claimed.count === 0) throw new UnauthorizedException("Invalid or expired code");
   }
 
   private async assertOtpNotThrottled(phone: string) {

@@ -3,8 +3,9 @@ import type { ServiceLocation } from "@/lib/independent";
 import { salonApiFetch } from "./salonApiClient";
 import { salonWallTimeToInstant } from "@/lib/salonTime";
 
-export async function requestOtp(phone: string): Promise<{ success: true; devCode?: string }> {
-  return salonApiFetch("/auth/otp/request", { method: "POST", body: JSON.stringify({ phone }) });
+/** `purpose: "register"` = confirming the phone of an account about to be created (refused if taken). */
+export async function requestOtp(phone: string, purpose?: "register"): Promise<{ success: true; devCode?: string }> {
+  return salonApiFetch("/auth/otp/request", { method: "POST", body: JSON.stringify({ phone, ...(purpose && { purpose }) }) });
 }
 
 export interface VerifyOtpResult {

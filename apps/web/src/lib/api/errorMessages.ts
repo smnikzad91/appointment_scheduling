@@ -11,6 +11,8 @@ const BY_API_MESSAGE: Record<string, string> = {
   "This plan's price is arranged with the platform": "قیمت این پلن توافقی است؛ با پشتیبانی تماس بگیرید",
   "Your plan has no end date": "پلن شما تاریخ پایان ندارد و تمدید لازم نیست",
   "Not enough wallet balance for this plan": "موجودی کیف پول برای خرید این پلن کافی نیست",
+  "This account has no phone number": "برای این حساب شماره موبایلی ثبت نشده است؛ از مدیر سالن بخواهید آن را اضافه کند",
+  "Enter the 5-digit code sent to your phone": "کد ۵ رقمی پیامک‌شده به موبایلتان را وارد کنید",
   "Not enough wallet balance for the pre-payment": "موجودی کیف پول برای پیش‌پرداخت این نوبت کافی نیست",
   "A cancelled prepaid booking can't be reopened": "این نوبت لغو و پیش‌پرداختش به مشتری برگشته است؛ نوبت تازه ثبت کنید",
   "This appointment just changed — reload and try again": "این نوبت همین حالا تغییر کرد؛ صفحه را تازه کنید و دوباره امتحان کنید",
