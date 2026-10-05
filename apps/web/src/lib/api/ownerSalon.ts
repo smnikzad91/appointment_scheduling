@@ -53,6 +53,29 @@ export function getMySubscription(token: string) {
   return salonApiFetch<OwnerSubscription>("/salons/mine/subscription", { headers: authHeaders(token) });
 }
 
+export interface PurchasablePlan {
+  id: string;
+  name: string;
+  monthlyPriceToman: number;
+  maxStylists: number | null;
+  smsPerMonth: number | null;
+  recommended: boolean;
+}
+
+/** Plans the owner can buy from their wallet (visible, with a set price). */
+export function getPurchasablePlans(token: string) {
+  return salonApiFetch<PurchasablePlan[]>("/salons/mine/subscription/plans", { headers: authHeaders(token) });
+}
+
+/** Buy or renew `months` of a plan from the owner's wallet (402 when the balance is short). */
+export function purchasePlan(token: string, planId: string, months: number) {
+  return salonApiFetch<{ planName: string; months: number; amountToman: number; expiresAt: string }>("/salons/mine/subscription/purchase", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ planId, months }),
+  });
+}
+
 /** Fired on window after the salon's name or logo changes, so the app bar can refresh. */
 export const SALON_UPDATED_EVENT = "salon:updated";
 

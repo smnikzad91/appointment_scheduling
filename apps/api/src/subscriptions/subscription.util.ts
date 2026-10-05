@@ -19,3 +19,19 @@ const DAY_MS = 86_400_000;
 export function trialEnd(trialDays: number, now = new Date()): Date | null {
   return trialDays > 0 ? new Date(now.getTime() + trialDays * DAY_MS) : null;
 }
+
+/** A bought month is 30 days. */
+export const PURCHASE_MONTH_DAYS = 30;
+
+/**
+ * When a bought period starts: renewing the plan the salon is on extends it from its current end
+ * (if still running); a new or different plan, or an expired one, starts now — the rest of a
+ * different plan isn't carried over.
+ */
+export function purchaseStart(salon: { planId: string | null; planExpiresAt: Date | null }, planId: string, now = new Date()): Date {
+  return salon.planId === planId && salon.planExpiresAt && salon.planExpiresAt > now ? salon.planExpiresAt : now;
+}
+
+export function purchaseEnd(start: Date, months: number): Date {
+  return new Date(start.getTime() + months * PURCHASE_MONTH_DAYS * DAY_MS);
+}

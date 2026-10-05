@@ -94,6 +94,8 @@ enum PayoutMethod {
   CARD_TO_CARD
   BANK_TRANSFER
   OTHER
+  /// From the owner's platform wallet to the stylist's (or the stylist's share of a pre-payment)
+  WALLET
 }
 
 enum ExpenseCategory {
@@ -410,25 +412,32 @@ enum WalletTxKind {
   PREPAYMENT_INCOME_REVERSAL
   WITHDRAWAL
   WITHDRAWAL_REVERSAL
+  PAYOUT_SENT
+  PAYOUT_RECEIVED
+  PLAN_PURCHASE
 }
 
 /// Every change to User.walletBalance, written in the same transaction as the change (apps/web
 /// lib/wallet.ts for top-ups, apps/api wallet/ for booking pre-payments). amountToman is signed;
 /// balanceAfter is the balance right after it.
 model WalletTransaction {
-  id            String             @id @default(cuid())
-  userId        String
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kind          WalletTxKind
-  amountToman   Int
-  balanceAfter  Int
-  appointmentId String?
-  appointment   Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
-  topUpId       String?            @unique
-  topUp         WalletTopUp?       @relation(fields: [topUpId], references: [id], onDelete: SetNull)
-  withdrawalId  String?
-  withdrawal    WithdrawalRequest? @relation(fields: [withdrawalId], references: [id], onDelete: SetNull)
-  createdAt     DateTime           @default(now())
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind           WalletTxKind
+  amountToman    Int
+  balanceAfter   Int
+  appointmentId  String?
+  appointment    Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  topUpId        String?            @unique
+  topUp          WalletTopUp?       @relation(fields: [topUpId], references: [id], onDelete: SetNull)
+  withdrawalId   String?
+  withdrawal     WithdrawalRequest? @relation(fields: [withdrawalId], references: [id], onDelete: SetNull)
+  payoutId       String?
+  payout         StylistPayout?     @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  planPurchaseId String?
+  planPurchase   PlanPurchase?      @relation(fields: [planPurchaseId], references: [id], onDelete: SetNull)
+  createdAt      DateTime           @default(now())
 
   @@index([userId, createdAt])
   @@index([appointmentId])
@@ -462,6 +471,26 @@ model WithdrawalRequest {
   @@index([status, createdAt])
   @@index([userId, createdAt])
   @@map("withdrawal_requests")
+}
+
+/// A plan bought (or renewed) by the salon owner from their wallet (apps/api subscriptions).
+model PlanPurchase {
+  id           String              @id @default(cuid())
+  salonId      String
+  salon        Salon               @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  /// null once the plan is deleted; planName keeps what was bought
+  planId       String?
+  plan         PricingPlan?        @relation(fields: [planId], references: [id], onDelete: SetNull)
+  planName     String
+  months       Int
+  amountToman  Int
+  startsAt     DateTime
+  endsAt       DateTime
+  createdAt    DateTime            @default(now())
+  transactions WalletTransaction[]
+
+  @@index([salonId, createdAt])
+  @@map("plan_purchases")
 }
 
 enum PrepaymentStatus {
@@ -580,6 +609,7 @@ model Salon {
   featured          FeaturedSalon?
   favoritedBy       FavoriteSalon[]
   waitlist          WaitlistEntry[]
+  planPurchases     PlanPurchase[]
 
   @@index([province, city])
   @@index([kind, status])
@@ -758,12 +788,15 @@ model Appointment {
   /// owner's wallet (COMPLETED / NO_SHOW); REFUNDED = back to the customer (CANCELLED). Null = none.
   prepaidToman             Int               @default(0)
   prepaymentStatus         PrepaymentStatus?
+  /// Of a SETTLED pre-payment, the part paid to a salon's stylist (their commission share); the rest went to the owner.
+  prepaymentStylistToman   Int               @default(0)
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 
   services           AppointmentService[]
   reviews            Review[]
   walletTransactions WalletTransaction[]
+  prepaymentPayout   StylistPayout?
 
   @@index([salonId, startAt])
   @@index([stylistId, startAt])
@@ -898,16 +931,21 @@ model Notification {
 // Money the salon paid a stylist (settling their commission, or an advance). A stylist's balance
 // is their commission from completed appointments minus these payouts.
 model StylistPayout {
-  id          String       @id @default(cuid())
-  salonId     String
-  salon       Salon        @relation(fields: [salonId], references: [id], onDelete: Cascade)
-  stylistId   String
-  stylist     Stylist      @relation(fields: [stylistId], references: [id], onDelete: Cascade)
-  amountToman Int
-  method      PayoutMethod
-  paidAt      DateTime
-  note        String?
-  createdAt   DateTime     @default(now())
+  id                 String              @id @default(cuid())
+  salonId            String
+  salon              Salon               @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  stylistId          String
+  stylist            Stylist             @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  amountToman        Int
+  method             PayoutMethod
+  paidAt             DateTime
+  note               String?
+  /// Set on the automatic payout of the stylist's commission share of a completed booking's
+  /// pre-payment (apps/api wallet/prepayment.ts); removed with it if the completion is undone.
+  appointmentId      String?             @unique
+  appointment        Appointment?        @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  createdAt          DateTime            @default(now())
+  walletTransactions WalletTransaction[]
 
   @@index([salonId, paidAt])
   @@index([stylistId, paidAt])
@@ -1060,7 +1098,8 @@ model PricingPlan {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  salons Salon[]
+  salons    Salon[]
+  purchases PlanPurchase[]
 
   @@index([active, sortOrder])
   @@map("pricing_plans")

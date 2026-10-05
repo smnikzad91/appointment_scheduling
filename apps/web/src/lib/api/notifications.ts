@@ -35,7 +35,7 @@ export interface BookingData {
 export interface PayoutData {
   payoutId: string;
   amountToman: number;
-  method: "CASH" | "CARD_TO_CARD" | "BANK_TRANSFER" | "OTHER";
+  method: "CASH" | "CARD_TO_CARD" | "BANK_TRANSFER" | "OTHER" | "WALLET";
   paidAt: string;
   note: string | null;
 }

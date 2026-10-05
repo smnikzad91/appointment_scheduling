@@ -136,7 +136,7 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
         tone: "text-app-done",
         title: `سالن ${formatToman(n.data.amountToman)} به شما پرداخت کرد`,
         detail: [PAYOUT_METHOD_LABEL[n.data.method], n.data.note].filter(Boolean).join("، "),
-        href: "/stylist/earnings",
+        href: n.data.method === "WALLET" ? "/stylist/wallet" : "/stylist/earnings",
       };
   }
 }

@@ -13,7 +13,11 @@ export async function GET() {
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
       take: 50,
-      include: { appointment: { select: { startAt: true, salon: { select: { name: true, timezone: true } } } } },
+      include: {
+        appointment: { select: { startAt: true, salon: { select: { name: true, timezone: true } } } },
+        payout: { select: { stylist: { select: { displayName: true } }, salon: { select: { name: true } } } },
+        planPurchase: { select: { planName: true, months: true } },
+      },
     }),
   ]);
   return NextResponse.json({
@@ -24,6 +28,11 @@ export async function GET() {
       amountToman: t.amountToman,
       balanceAfter: t.balanceAfter,
       createdAt: t.createdAt,
+      detail:
+        t.kind === "PAYOUT_SENT" ? t.payout?.stylist.displayName ?? null
+        : t.kind === "PAYOUT_RECEIVED" ? t.payout?.salon.name ?? null
+        : t.planPurchase ? `${t.planPurchase.planName}، ${t.planPurchase.months.toLocaleString("fa-IR")} ماه`
+        : null,
       appointment: t.appointment && { startAt: t.appointment.startAt, salonName: t.appointment.salon.name, timezone: t.appointment.salon.timezone },
     })),
   });

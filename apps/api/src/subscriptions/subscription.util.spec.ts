@@ -1,4 +1,4 @@
-import { jalaliPeriod, subscriptionStatus, trialEnd } from './subscription.util.js';
+import { jalaliPeriod, purchaseEnd, purchaseStart, subscriptionStatus, trialEnd } from './subscription.util.js';
 
 describe('jalaliPeriod', () => {
   it('uses the Jalali month in the salon timezone', () => {
@@ -28,5 +28,21 @@ describe('trialEnd', () => {
     const now = new Date('2026-10-01T08:00:00Z');
     expect(trialEnd(14, now)).toEqual(new Date('2026-10-15T08:00:00Z'));
     expect(trialEnd(0, now)).toBeNull();
+  });
+});
+
+describe('buying a plan from the wallet', () => {
+  const now = new Date('2026-10-05T00:00:00Z');
+  const later = new Date('2026-10-20T00:00:00Z');
+  it('renewing the running plan extends it from its end', () => {
+    expect(purchaseStart({ planId: 'p1', planExpiresAt: later }, 'p1', now)).toBe(later);
+  });
+  it('another plan, an expired one or none starts now', () => {
+    expect(purchaseStart({ planId: 'p2', planExpiresAt: later }, 'p1', now)).toBe(now);
+    expect(purchaseStart({ planId: 'p1', planExpiresAt: new Date('2026-10-01T00:00:00Z') }, 'p1', now)).toBe(now);
+    expect(purchaseStart({ planId: null, planExpiresAt: null }, 'p1', now)).toBe(now);
+  });
+  it('a month is 30 days', () => {
+    expect(purchaseEnd(now, 3).toISOString()).toBe('2027-01-03T00:00:00.000Z');
   });
 });

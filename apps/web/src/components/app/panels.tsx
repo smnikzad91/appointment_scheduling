@@ -91,7 +91,10 @@ export function SalonShell({ children }: { children: React.ReactNode }) {
           : { href: "/salon/stylists", label: "آرایشگرها", icon: Users },
         { href: "/salon/settings", label: "تنظیمات", icon: Settings },
       ]}
-      accountLinks={[{ href: independent ? "/tutorials?role=independent" : "/tutorials?role=owner", label: "راهنمای استفاده", icon: BookOpen }]}
+      accountLinks={[
+        { href: "/salon/wallet", label: "کیف پول", icon: Wallet },
+        { href: independent ? "/tutorials?role=independent" : "/tutorials?role=owner", label: "راهنمای استفاده", icon: BookOpen },
+      ]}
     >
       {children}
     </AppShell>
@@ -113,7 +116,10 @@ export function StylistShell({ children }: { children: React.ReactNode }) {
         { href: "/stylist/services", label: "خدمات", icon: Scissors },
         { href: "/stylist/profile", label: "پروفایل", icon: UserRound },
       ]}
-      accountLinks={[{ href: "/tutorials?role=stylist", label: "راهنمای استفاده", icon: BookOpen }]}
+      accountLinks={[
+        { href: "/stylist/wallet", label: "کیف پول", icon: Wallet },
+        { href: "/tutorials?role=stylist", label: "راهنمای استفاده", icon: BookOpen },
+      ]}
     >
       {children}
     </AppShell>

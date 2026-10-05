@@ -10,7 +10,7 @@ import WalletWithdraw from "./WalletWithdraw";
 // Wallet balance and its movements (GET /api/user/finance/wallet): top-ups, booking pre-payments
 // and refunds for a customer; pre-payments received (and any taken back) for a salon owner.
 
-export type WalletTxKind = "top_up" | "prepayment" | "prepayment_refund" | "prepayment_income" | "prepayment_income_reversal" | "withdrawal" | "withdrawal_reversal";
+export type WalletTxKind = "top_up" | "prepayment" | "prepayment_refund" | "prepayment_income" | "prepayment_income_reversal" | "withdrawal" | "withdrawal_reversal" | "payout_sent" | "payout_received" | "plan_purchase";
 
 interface WalletTx {
   id: string;
@@ -19,6 +19,8 @@ interface WalletTx {
   balanceAfter: number;
   createdAt: string;
   appointment: { startAt: string; salonName: string; timezone: string } | null;
+  /** payouts: the stylist / salon on the other side; plan purchases: plan and months */
+  detail: string | null;
 }
 
 const KIND_LABEL: Record<WalletTxKind, string> = {
@@ -29,6 +31,9 @@ const KIND_LABEL: Record<WalletTxKind, string> = {
   prepayment_income_reversal: "برگشت پیش‌پرداخت دریافتی",
   withdrawal: "برداشت به حساب بانکی",
   withdrawal_reversal: "بازگشت برداشت (رد یا لغو)",
+  payout_sent: "پرداخت به آرایشگر",
+  payout_received: "پرداخت سالن",
+  plan_purchase: "خرید پلن",
 };
 
 const fa = (n: number) => toPersianDigits(Math.abs(n).toLocaleString("en-US").replace(/,/g, "٬"));
@@ -81,7 +86,9 @@ export default function WalletHistory({ reloadKey = 0, title = "کیف پول" }
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-app-ink">{KIND_LABEL[t.kind] ?? t.kind}</p>
                   <p className="text-xs text-app-muted">
-                    {t.appointment ? `${t.appointment.salonName}، نوبت ${formatSalonDateTime(t.appointment.startAt, t.appointment.timezone)}` : formatSalonDate(t.createdAt)}
+                    {t.appointment
+                      ? `${t.appointment.salonName}، نوبت ${formatSalonDateTime(t.appointment.startAt, t.appointment.timezone)}`
+                      : [t.detail, formatSalonDate(t.createdAt)].filter(Boolean).join("، ")}
                   </p>
                 </div>
                 <div className="text-end">

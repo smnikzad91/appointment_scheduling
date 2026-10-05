@@ -314,7 +314,8 @@ export class AppointmentsService {
     const updated = appointment.prepaymentStatus
       ? await this.prisma.$transaction(async (tx) => {
           const { ownerId } = await tx.salon.findUniqueOrThrow({ where: { id: appointment.salonId }, select: { ownerId: true } });
-          await applyPrepayment(tx, { ...appointment, ownerId }, status);
+          const { userId: stylistUserId } = await tx.stylist.findUniqueOrThrow({ where: { id: appointment.stylistId }, select: { userId: true } });
+          await applyPrepayment(tx, { ...appointment, ownerId, stylistUserId }, status, data.stylistCommissionPercent ?? 0);
           return tx.appointment.update({ where: { id: appointmentId }, data });
         })
       : await this.prisma.appointment.update({ where: { id: appointmentId }, data });

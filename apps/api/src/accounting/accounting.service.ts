@@ -1,6 +1,7 @@
 import { bookingCustomerFullName } from "../appointments/booking-customer-name.util.js";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { AppointmentStatus, NotificationType, Prisma, SalonKind } from "@appointment-scheduling/database";
+import { AppointmentStatus, NotificationType, PayoutMethod, Prisma, SalonKind, WalletTxKind } from "@appointment-scheduling/database";
+import { InsufficientWalletError, moveWallet } from "../wallet/prepayment.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
@@ -259,17 +260,30 @@ export class AccountingService {
     const salon = await this.salonsService.findMine(userId);
     const stylist = await this.prisma.stylist.findFirst({ where: { id: dto.stylistId, salonId: salon.id }, select: { id: true, userId: true } });
     if (!stylist) throw new BadRequestException("Stylist does not belong to this salon");
-    const payout = await this.prisma.stylistPayout.create({
-      data: {
-        salonId: salon.id,
-        stylistId: stylist.id,
-        amountToman: dto.amountToman,
-        method: dto.method,
-        paidAt: dto.paidAt ? new Date(dto.paidAt) : new Date(),
-        note: dto.note?.trim() || null,
-      },
-      include: { stylist: { select: { id: true, displayName: true } } },
-    });
+    const data = {
+      salonId: salon.id,
+      stylistId: stylist.id,
+      amountToman: dto.amountToman,
+      method: dto.method,
+      paidAt: dto.paidAt ? new Date(dto.paidAt) : new Date(),
+      note: dto.note?.trim() || null,
+    };
+    const include = { stylist: { select: { id: true, displayName: true } } } as const;
+    // WALLET: the money really moves, owner's wallet → stylist's, in the same transaction.
+    const payout =
+      dto.method === PayoutMethod.WALLET
+        ? await this.prisma.$transaction(async (tx) => {
+            if (stylist.userId === salon.ownerId) throw new BadRequestException("You can't pay yourself");
+            const created = await tx.stylistPayout.create({ data: { ...data, paidAt: new Date() }, include });
+            const after = await moveWallet(tx, salon.ownerId, -dto.amountToman, WalletTxKind.PAYOUT_SENT, { payoutId: created.id });
+            if (after === null) {
+              const owner = await tx.user.findUnique({ where: { id: salon.ownerId }, select: { walletBalance: true } });
+              throw new InsufficientWalletError(dto.amountToman, owner?.walletBalance ?? 0, "Not enough wallet balance for this payout");
+            }
+            await moveWallet(tx, stylist.userId, dto.amountToman, WalletTxKind.PAYOUT_RECEIVED, { payoutId: created.id });
+            return created;
+          })
+        : await this.prisma.stylistPayout.create({ data, include });
     await this.notifications.notify([stylist.userId], NotificationType.PAYOUT_RECORDED, {
       payoutId: payout.id,
       amountToman: payout.amountToman,
@@ -282,6 +296,9 @@ export class AccountingService {
 
   async removePayout(userId: string, payoutId: string) {
     const salon = await this.salonsService.findMine(userId);
+    // Wallet payouts moved real money (and pre-payment shares follow their booking): not deletable.
+    const existing = await this.prisma.stylistPayout.findFirst({ where: { id: payoutId, salonId: salon.id }, select: { method: true } });
+    if (existing?.method === PayoutMethod.WALLET) throw new BadRequestException("A wallet payout can't be deleted");
     const { count } = await this.prisma.stylistPayout.deleteMany({ where: { id: payoutId, salonId: salon.id } });
     if (count === 0) throw new NotFoundException("Payout not found");
     return { ok: true };

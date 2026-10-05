@@ -46,9 +46,12 @@ export class StalePrepaymentService implements OnApplicationBootstrap, OnModuleD
       take: BATCH,
       select: {
         id: true,
+        salonId: true,
+        stylistId: true,
         customerId: true,
         prepaidToman: true,
         prepaymentStatus: true,
+        prepaymentStylistToman: true,
         startAt: true,
         customerFirstName: true,
         customerLastName: true,
@@ -64,7 +67,7 @@ export class StalePrepaymentService implements OnApplicationBootstrap, OnModuleD
       const cancelled = await this.prisma.$transaction(async (tx) => {
         const claimed = await tx.appointment.updateMany({ where: { id: a.id, status: AppointmentStatus.PENDING }, data: { status: AppointmentStatus.CANCELLED } });
         if (claimed.count !== 1) return false; // staff changed it meanwhile
-        await applyPrepayment(tx, { ...a, ownerId: a.salon.ownerId }, AppointmentStatus.CANCELLED);
+        await applyPrepayment(tx, { ...a, ownerId: a.salon.ownerId, stylistUserId: a.stylist.userId }, AppointmentStatus.CANCELLED);
         return true;
       });
       if (!cancelled) continue;

@@ -26,7 +26,8 @@ const BRAND_SWATCHES = ["#a34a30", "#c2185b", "#8e44ad", "#1f6f78", "#2e7d32", "
 
 export default function SalonSettingsPage() {
   const token = useApiAccessToken();
-  const subscription = useMySubscription(token);
+  const [subReload, setSubReload] = useState(0);
+  const subscription = useMySubscription(token, subReload);
   const [salon, setSalon] = useState<OwnerSalon | null>(null);
   const [form, setForm] = useState<UpdateSalonInput>({});
   const [dirty, setDirty] = useState(false);
@@ -155,7 +156,7 @@ export default function SalonSettingsPage() {
       {subscription && (
         <div id="subscription" className="scroll-mt-20">
           <SectionTitle>اشتراک</SectionTitle>
-          <SubscriptionCard sub={subscription} />
+          <SubscriptionCard sub={subscription} token={token} onChanged={() => setSubReload((k) => k + 1)} />
         </div>
       )}
 

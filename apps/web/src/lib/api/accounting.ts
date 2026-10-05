@@ -4,7 +4,7 @@ import { salonApiFetch } from "./salonApiClient";
 // with the stylist's commission frozen at that moment; payouts settle what stylists are owed;
 // expenses are the salon's running costs. Periods are [from, to) instants (see lib/accountingPeriod).
 
-export type PayoutMethod = "CASH" | "CARD_TO_CARD" | "BANK_TRANSFER" | "OTHER";
+export type PayoutMethod = "CASH" | "CARD_TO_CARD" | "BANK_TRANSFER" | "OTHER" | "WALLET";
 export type ExpenseCategory = "RENT" | "SUPPLIES" | "SALARIES" | "UTILITIES" | "EQUIPMENT" | "MARKETING" | "OTHER";
 
 export const PAYOUT_METHOD_LABEL: Record<PayoutMethod, string> = {
@@ -12,6 +12,8 @@ export const PAYOUT_METHOD_LABEL: Record<PayoutMethod, string> = {
   CARD_TO_CARD: "کارت به کارت",
   BANK_TRANSFER: "واریز بانکی",
   OTHER: "سایر",
+  // owner's platform wallet → stylist's (also the stylist's automatic share of a pre-payment)
+  WALLET: "کیف پول",
 };
 
 export const EXPENSE_CATEGORY_LABEL: Record<ExpenseCategory, string> = {
