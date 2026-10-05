@@ -40,6 +40,17 @@ sudo cp /opt/bank-sms-agent/deploy/bank-sms-agent.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now bank-sms-agent
 journalctl -u bank-sms-agent -f
 ```
+### Without systemd (plain node)
+```sh
+cd /opt/bank-sms-agent
+cp deploy/bank-sms-agent.env.example .env && chmod 600 .env && nano .env   # DATA_DIR=/opt/bank-sms-agent/data is fine
+sudo usermod -aG dialout $USER                                              # serial port access (log in again)
+nohup ./deploy/run.sh >> agent.log 2>&1 &                                   # loads .env, restarts after every exit
+tail -f agent.log
+```
+At boot: `crontab -e` → `@reboot /opt/bank-sms-agent/deploy/run.sh >> /opt/bank-sms-agent/agent.log 2>&1`.
+Stop: `pkill -f deploy/run.sh; pkill -f src/index.mjs`.
+
 Manual check of the modem: `sudo systemctl stop bank-sms-agent; screen /dev/ttyS1 115200`, type `AT`.
 
 ## Tests
