@@ -19,6 +19,7 @@
     "autoprefixer": "^10.4.22",
     "bcryptjs": "^3.0.3",
     "framer-motion": "^12.42.2",
+    "geoip-lite": "^2.0.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.24.0",
     "next": "^16.1.6",

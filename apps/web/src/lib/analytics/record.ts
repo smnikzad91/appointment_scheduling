@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
 import type { VisitKind } from "@appointment-scheduling/database";
 import { prisma } from "@/lib/prisma";
 import { classifyReferrer, isBot, parseUserAgent, salonSlugOf, type ReferrerType } from "./parse";
@@ -7,6 +8,22 @@ import { classifyReferrer, isBot, parseUserAgent, salonSlugOf, type ReferrerType
 // never stores the IP: visitorHash = sha256(salt | ip | user agent) — enough to count unique visitors.
 
 const VISITOR_SALT = "nobatet-visit-2026";
+
+// Country / city: Cloudflare's headers when the site is proxied by it, otherwise an offline lookup of
+// the IP (geoip-lite, the same as tradebot; loaded on the first visit, ~120 MB per process). City in
+// Iran is approximate — mobile operators often resolve to Tehran.
+type GeoLookup = (ip: string) => { country?: string; city?: string } | null;
+let geoip: GeoLookup | null | undefined;
+function lookupGeo(ip: string) {
+  if (geoip === undefined) {
+    try {
+      geoip = (createRequire(import.meta.url)("geoip-lite") as { lookup: GeoLookup }).lookup;
+    } catch {
+      geoip = null; // missing package: locations stay "Unknown"
+    }
+  }
+  return ip && geoip ? geoip(ip) : null;
+}
 export const VISIT_RETENTION_DAYS = 120;
 
 export interface VisitInput {
@@ -28,7 +45,9 @@ export async function recordVisit(input: VisitInput): Promise<boolean> {
     const host = (input.headers.get("host") ?? "").split(":")[0];
     const ref = input.referrerType ? { type: input.referrerType, source: null, raw: null } : classifyReferrer(input.referrer, host);
     const { browser, os, device } = parseUserAgent(ua);
-    const city = input.headers.get("cf-ipcity");
+    const cfCountry = input.headers.get("cf-ipcountry");
+    const cfCity = input.headers.get("cf-ipcity");
+    const geo = cfCountry ? null : lookupGeo(ip);
     await prisma.pageVisit.create({
       data: {
         kind: input.kind,
@@ -41,8 +60,8 @@ export async function recordVisit(input: VisitInput): Promise<boolean> {
         browser,
         os,
         device,
-        country: (input.headers.get("cf-ipcountry") ?? "").toUpperCase().slice(0, 2) || "Unknown",
-        city: city ? decodeURIComponent(city).slice(0, 80) : "Unknown",
+        country: (cfCountry ?? geo?.country ?? "").toUpperCase().slice(0, 2) || "Unknown",
+        city: (cfCity ? decodeURIComponent(cfCity) : geo?.city ?? "").slice(0, 80) || "Unknown",
       },
     });
     return true;
