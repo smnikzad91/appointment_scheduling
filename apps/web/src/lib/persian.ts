@@ -20,6 +20,17 @@ export function formatToman(amount: number): string {
 
 const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 
+/**
+ * An Iranian mobile as typed — «09121234567», «+989121234567», «00989121234567», «989121234567»,
+ * Persian digits, spaces or dashes — as the stored form «09121234567». Anything else comes back
+ * digits-normalized and unchanged, for the caller's validation to reject.
+ */
+export function normalizeIranianMobile(input: string): string {
+  const s = normalizeDigits(input).replace(/[\s\-()]/g, "");
+  const m = /^(?:\+98|0098|98)(9\d{9})$/.exec(s);
+  return m ? `0${m[1]}` : s;
+}
+
 /** Validates a normalized (English-digit) Iranian mobile number: 09xxxxxxxxx */
 export function isValidIranianMobile(phone: string): boolean {
   return IRANIAN_MOBILE.test(normalizeDigits(phone));

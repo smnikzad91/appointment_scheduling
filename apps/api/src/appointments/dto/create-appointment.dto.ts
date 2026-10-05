@@ -1,5 +1,6 @@
 import { ArrayMinSize, IsArray, IsDateString, IsEnum, IsOptional, IsString, Matches, MaxLength } from "class-validator";
 import { ServiceLocation } from "@appointment-scheduling/database";
+import { ToIranianMobile } from "../../common/iran-mobile.js";
 
 export class CreateAppointmentDto {
   @IsString()
@@ -35,6 +36,8 @@ export class CreateAppointmentDto {
 
 /** The salon booking a customer (phone call or walk-in) with a specific stylist. */
 export class CreateSalonAppointmentDto {
+  // «+989…» / «0098…» / Persian digits arrive as «09…» — stored and texted that way
+  @ToIranianMobile()
   @Matches(/^09\d{9}$/, { message: "Invalid phone number" })
   customerPhone!: string;
 
@@ -77,6 +80,7 @@ export class CreateSalonAppointmentDto {
 }
 
 export class CustomerLookupQueryDto {
+  @ToIranianMobile()
   @Matches(/^09\d{9}$/, { message: "Invalid phone number" })
   phone!: string;
 }
