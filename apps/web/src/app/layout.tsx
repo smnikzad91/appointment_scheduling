@@ -80,6 +80,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        {/* Google Search Console ownership of nobatet.app — must stay in <head> (not metadata, which streams into <body>) */}
+        <meta name="google-site-verification" content="wxv6MrsgaSDIs550uwXxWHMgB0eOkih6SE2E9k_vu_E" />
       </head>
       <body className="dark:bg-gray-900">
         {/* Once per session; hidden before paint on later loads (theme-init.js). */}
