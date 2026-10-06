@@ -6,6 +6,7 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
+import { clearAllDrafts } from "@/lib/formDrafts";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -158,7 +159,10 @@ export default function UserDropdown() {
         </ul>
 
         <button
-          onClick={() => signOut({ callbackUrl: "/signin" })}
+          onClick={() => {
+              clearAllDrafts();
+              signOut({ callbackUrl: "/signin" });
+            }}
           className="flex w-full items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
         >
           <svg className={`fill-gray-500 group-hover:fill-gray-700 dark:group-hover:fill-gray-300 ${lang === "fa" ? "scale-x-[-1]" : ""}`} width="24" height="24" viewBox="0 0 24 24" fill="none">

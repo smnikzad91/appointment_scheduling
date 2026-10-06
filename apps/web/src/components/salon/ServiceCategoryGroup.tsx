@@ -13,7 +13,7 @@ export default function ServiceCategoryGroup({ salon }: { salon: Salon }) {
     return (
       <section id="services" className="mx-auto max-w-3xl px-4 py-8">
         <h2 className="mb-4 text-lg font-bold">خدمات</h2>
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-g-line py-10 text-center text-sm text-g-muted">
           <Sparkles className="h-6 w-6" aria-hidden />
           هنوز خدمتی ثبت نشده است.
         </div>
@@ -33,7 +33,7 @@ export default function ServiceCategoryGroup({ salon }: { salon: Salon }) {
 
           return (
             <div key={category.id}>
-              <h3 className="mb-3 text-sm font-semibold text-gray-500 dark:text-gray-400">{category.name}</h3>
+              <h3 className="mb-3 text-sm font-semibold text-g-muted">{category.name}</h3>
               <div className="flex flex-col gap-2">
                 {services.map((service) => (
                   <ServiceCard key={service.id} service={service} onBook={openWithService} />

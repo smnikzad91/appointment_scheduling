@@ -3,34 +3,35 @@
 import { useState } from "react";
 import { useBooking } from "./BookingProvider";
 import { normalizeDigits, isValidIranianMobile } from "@/lib/persian";
+import { persianApiError } from "@/lib/api/errorMessages";
 import { requestOtp } from "@/lib/api/bookings";
+import { toastError } from "@/lib/toastError";
 
 export default function StepContact() {
   const { state, updateState, goNext } = useBooking();
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const phone = normalizeDigits(state.customerPhone);
 
-    if (!state.customerName.trim()) {
-      setError("لطفاً نام خود را وارد کنید");
+    if (!state.customerFirstName.trim() || !state.customerLastName.trim()) {
+      toastError("لطفاً نام و نام خانوادگی خود را وارد کنید");
       return;
     }
     if (!isValidIranianMobile(phone)) {
-      setError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
+      toastError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
       return;
     }
 
-    setError(null);
     setSubmitting(true);
     updateState({ customerPhone: phone });
     try {
-      await requestOtp(phone);
+      const { devCode } = await requestOtp(phone);
+      updateState({ devCode: devCode ?? null });
       goNext();
-    } catch {
-      setError("ارسال کد تایید ممکن نشد، دوباره تلاش کنید");
+    } catch (err) {
+      toastError(persianApiError(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
     } finally {
       setSubmitting(false);
     }
@@ -38,17 +39,32 @@ export default function StepContact() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1.5 text-sm">
-        نام و نام خانوادگی
-        <input
-          type="text"
-          value={state.customerName}
-          onChange={(e) => updateState({ customerName: e.target.value })}
-          className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus-visible:ring-2 dark:border-gray-800 dark:bg-gray-900"
-          style={{ "--tw-ring-color": "var(--salon-brand)" } as React.CSSProperties}
-          placeholder="مثلاً سارا احمدی"
-        />
-      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
+          نام
+          <input
+            type="text"
+            autoComplete="given-name"
+            value={state.customerFirstName}
+            onChange={(e) => updateState({ customerFirstName: e.target.value })}
+            className="w-full rounded-lg border border-g-line px-3 py-2.5 text-sm focus:outline-none focus-visible:ring-2"
+            style={{ "--tw-ring-color": "var(--salon-brand)" } as React.CSSProperties}
+            placeholder="مثلاً سارا"
+          />
+        </label>
+        <label className="flex min-w-0 flex-col gap-1.5 text-sm">
+          نام خانوادگی
+          <input
+            type="text"
+            autoComplete="family-name"
+            value={state.customerLastName}
+            onChange={(e) => updateState({ customerLastName: e.target.value })}
+            className="w-full rounded-lg border border-g-line px-3 py-2.5 text-sm focus:outline-none focus-visible:ring-2"
+            style={{ "--tw-ring-color": "var(--salon-brand)" } as React.CSSProperties}
+            placeholder="مثلاً احمدی"
+          />
+        </label>
+      </div>
 
       <label className="flex flex-col gap-1.5 text-sm">
         شماره موبایل
@@ -58,14 +74,13 @@ export default function StepContact() {
           dir="ltr"
           value={state.customerPhone}
           onChange={(e) => updateState({ customerPhone: normalizeDigits(e.target.value) })}
-          className="rounded-lg border border-gray-200 px-3 py-2.5 text-end text-sm focus:outline-none focus-visible:ring-2 dark:border-gray-800 dark:bg-gray-900"
+          className="rounded-lg border border-g-line px-3 py-2.5 text-end text-sm focus:outline-none focus-visible:ring-2"
           style={{ "--tw-ring-color": "var(--salon-brand)" } as React.CSSProperties}
           placeholder="۰۹۱۲۳۴۵۶۷۸۹"
           maxLength={11}
         />
       </label>
 
-      {error && <p className="text-xs text-rose-500">{error}</p>}
 
       <button
         type="submit"

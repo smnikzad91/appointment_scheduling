@@ -1,56 +1,70 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import PhoneMockup from "./PhoneMockup";
+import { rise } from "@/components/guest/motion";
 
 const CHECKS = ["تقویم شمسی", "ورود با شماره موبایل", "پرداخت بیعانه با درگاه داخلی"];
 
 export default function Hero() {
   return (
-    <section className="bg-[#f7f0e8]">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
-        <div className="order-2 md:order-1">
-          <PhoneMockup />
-        </div>
-
-        <div className="order-1 text-center md:order-2 md:text-start">
-          <span className="inline-block rounded-full bg-[#ede6d4] px-4 py-1.5 text-xs font-medium text-[#2a1d26]">
+    <section className="relative">
+      <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-14 md:grid-cols-2 md:pb-28 md:pt-24">
+        <div className="text-center md:text-start">
+          {/* Full brand logo (medal + arched text + wordmark), branding/logo_vertical_with_text.png */}
+          <Image
+            src="/images/logo/logo_vertical_with_text.png"
+            alt="نوبتت — سامانه نوبت دهی آنلاین زیبایی"
+            width={554}
+            height={610}
+            priority
+            sizes="176px"
+            className="g-rise mx-auto mb-7 h-auto w-40 rounded-3xl shadow-[0_24px_60px_-24px_rgb(0_0_0/0.8)] ring-1 ring-white/5 sm:w-44 md:mx-0"
+            style={rise(0)}
+          />
+          <span className="g-kicker g-rise" style={rise(0)}>
             سامانه نوبت‌دهی آنلاین مخصوص سالن‌های زیبایی
           </span>
 
-          <h1 className="mt-6 text-4xl font-extrabold leading-tight text-[#2a1d26] sm:text-5xl">
+          <h1 className="g-rise mt-6 text-[40px] font-black leading-[1.25] text-g-ink sm:text-6xl sm:leading-[1.2]" style={rise(1)}>
             نوبت بگیرید،
             <br />
-            بدون تماس و بدون انتظار
+            <span className="g-gradient-text">بدون تماس و انتظار</span>
           </h1>
 
-          <p className="mt-6 text-lg leading-relaxed text-gray-600">
-            مشتری‌ها در هر ساعت از شبانه‌روز خدمت، آرایشگر و زمان دلخواه را انتخاب می‌کنند. شما تقویم را مدیریت
-            می‌کنید و پیامک یادآوری خودکار ارسال می‌شود.
+          <p className="g-rise mx-auto mt-6 max-w-lg text-[17px] leading-9 text-g-muted md:mx-0" style={rise(2)}>
+            مشتری‌ها در هر ساعت از شبانه‌روز خدمت، آرایشگر و زمان دلخواه را انتخاب می‌کنند. شما تقویم را مدیریت می‌کنید و
+            پیامک یادآوری خودکار ارسال می‌شود.
           </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center md:justify-start">
-            <Link
-              href="/signup-salon"
-              className="rounded-lg bg-[#a34a30] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#8f3f28]"
-            >
+          <div className="g-rise mt-9 flex flex-col gap-3 sm:flex-row sm:justify-center md:justify-start" style={rise(3)}>
+            <Link href="/signup-salon" className="g-btn g-btn-primary h-14 px-7 text-[15px]">
               شروع رایگان برای سالن
+              <ArrowLeft className="h-4 w-4" aria-hidden />
             </Link>
-            <Link
-              href="/salons"
-              className="rounded-lg border border-[#2a1d26]/15 bg-white px-6 py-3 text-sm font-bold text-[#2a1d26] transition hover:border-[#2a1d26]/30"
-            >
+            <Link href="/salons" className="g-btn g-btn-ghost h-14 px-7 text-[15px]">
               پیدا کردن سالن و رزرو نوبت
             </Link>
           </div>
+          <p className="g-rise mt-4 text-sm text-g-muted" style={rise(3)}>
+            آرایشگر مستقل هستید و با نام خودتان کار می‌کنید؟{" "}
+            <Link href="/signup-salon?type=independent" className="font-bold text-g-accent underline-offset-4 hover:underline">
+              ثبت‌نام آرایشگر مستقل
+            </Link>
+          </p>
 
-          <ul className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-600 md:justify-start">
+          <ul className="g-rise mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-g-muted md:justify-start" style={rise(4)}>
             {CHECKS.map((item) => (
               <li key={item} className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-emerald-600" aria-hidden />
+                <Check className="h-4 w-4 text-g-success" aria-hidden />
                 {item}
               </li>
             ))}
           </ul>
+        </div>
+
+        <div className="g-rise" style={rise(3)}>
+          <PhoneMockup />
         </div>
       </div>
     </section>

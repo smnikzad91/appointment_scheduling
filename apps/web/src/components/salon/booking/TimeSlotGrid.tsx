@@ -21,12 +21,12 @@ export default function TimeSlotGrid({
   const hasAvailableSlot = slots.some((s) => s.available);
 
   if (!hasAnySlot) {
-    return <p className="rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">این روز تعطیل است.</p>;
+    return <p className="rounded-lg bg-white/5 p-4 text-center text-sm text-g-muted">این روز تعطیل است.</p>;
   }
 
   if (!hasAvailableSlot) {
     return (
-      <div className="rounded-lg bg-gray-50 p-4 text-center text-sm text-gray-500 dark:bg-gray-800/50 dark:text-gray-400">
+      <div className="rounded-lg bg-white/5 p-4 text-center text-sm text-g-muted">
         برای این روز زمان خالی وجود ندارد. روز دیگری را انتخاب کنید.
         {fullDayAction}
       </div>
@@ -39,7 +39,7 @@ export default function TimeSlotGrid({
         if (groups[part].length === 0) return null;
         return (
           <div key={part}>
-            <h4 className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">{PART_OF_DAY_LABEL[part]}</h4>
+            <h4 className="mb-2 text-xs font-semibold text-g-muted">{PART_OF_DAY_LABEL[part]}</h4>
             <div className="grid grid-cols-4 gap-2">
               {groups[part].map((slot) => {
                 const isSelected = slot.startMinute === selectedMinute;
@@ -51,7 +51,7 @@ export default function TimeSlotGrid({
                     onClick={() => onSelect(slot.startMinute)}
                     aria-pressed={isSelected}
                     className={`rounded-lg border py-2 text-xs transition disabled:cursor-not-allowed disabled:opacity-30 ${
-                      isSelected ? "border-transparent text-white" : "border-gray-200 dark:border-gray-800"
+                      isSelected ? "border-transparent text-white" : "border-g-line"
                     }`}
                     style={isSelected ? { backgroundColor: "var(--salon-brand)" } : undefined}
                   >

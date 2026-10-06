@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { auth } from "@/auth";
+import { requestSession } from "@/lib/requestSession";
 import { prisma } from "@/lib/prisma";
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
@@ -9,7 +9,7 @@ const ALLOWED  = ["image/jpeg", "image/png", "image/webp"];
 const UPLOAD_DIR = path.join(process.cwd(), "public", "images", "uploads", "avatars");
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
+  const session = await requestSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

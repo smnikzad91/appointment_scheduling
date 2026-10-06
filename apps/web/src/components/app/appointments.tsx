@@ -1,13 +1,15 @@
 "use client";
 
+import { PLACE_LABEL } from "@/lib/independent";
 import { useCallback, useEffect, useState } from "react";
-import { Check, CheckCheck, Phone, UserX, X, type LucideIcon } from "lucide-react";
+import { Check, CheckCheck, Pencil, Phone, UserX, X, type LucideIcon } from "lucide-react";
 import type { StylistAppointment } from "@/lib/api/stylistSelf";
 import { formatMinutesAsClock, formatToman, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, formatSalonDate, toSalonWallTime } from "@/lib/salonTime";
 import Sheet from "./Sheet";
 import { Button, Card, cx, riseStyle } from "./ui";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 // Shared by the salon-owner and stylist panels. Owner rows also carry the stylist's name.
 export type AppAppointment = StylistAppointment & { stylist?: { displayName: string } };
@@ -111,21 +113,26 @@ export function AppointmentList({
   showStylist,
   onOpen,
   order = "asc",
+  hideDayHeaders,
 }: {
   appointments: AppAppointment[];
   showStylist?: boolean;
   onOpen: (a: AppAppointment) => void;
   order?: "asc" | "desc";
+  /** For a single day whose heading is already shown (the calendar view). */
+  hideDayHeaders?: boolean;
 }) {
   let index = 0;
   return (
     <div className="flex flex-col gap-5">
       {groupByDay(appointments, order).map((group) => (
         <section key={group.dateKey}>
-          <h3 className="sticky top-[calc(56px+env(safe-area-inset-top))] z-10 -mx-4 mb-2 bg-app-bg/90 px-5 py-1.5 text-[13px] font-black text-app-ink backdrop-blur">
-            {relativeDayLabel(group.dateKey)}
-            <span className="ms-2 font-medium text-app-muted">{toPersianDigits(group.items.length)} نوبت</span>
-          </h3>
+          {!hideDayHeaders && (
+            <h3 className="sticky top-[calc(56px+env(safe-area-inset-top))] z-10 -mx-4 mb-2 bg-app-bg/90 px-5 py-1.5 text-[13px] font-black text-app-ink backdrop-blur">
+              {relativeDayLabel(group.dateKey)}
+              <span className="ms-2 font-medium text-app-muted">{toPersianDigits(group.items.length)} نوبت</span>
+            </h3>
+          )}
           <div className="flex flex-col gap-2.5">
             {group.items.map((a) => (
               <AppointmentCard key={a.id} appointment={a} showStylist={showStylist} onOpen={onOpen} index={index++} />
@@ -160,15 +167,16 @@ export function AppointmentSheet({
   showStylist,
   onClose,
   onSetStatus,
+  onEdit,
   busyStatus,
-  error,
 }: {
   appointment: AppAppointment | null;
   showStylist?: boolean;
   onClose: () => void;
+  /** Opens the edit form; offered while the appointment is still open. */
+  onEdit?: (a: AppAppointment) => void;
   onSetStatus: (a: AppAppointment, status: AppointmentStatus) => void;
   busyStatus: AppointmentStatus | null;
-  error?: string | null;
 }) {
   if (!a) return null;
   const { start, end, duration } = wall(a);
@@ -193,6 +201,8 @@ export function AppointmentSheet({
         {showStylist && a.stylist && <Row label="آرایشگر" value={a.stylist.displayName} />}
         <Row label="مدت" value={`${toPersianDigits(duration)} دقیقه`} />
         <Row label="مبلغ" value={formatToman(a.priceToman)} />
+        {a.serviceLocation && <Row label="محل" value={PLACE_LABEL[a.serviceLocation]} />}
+        {a.visitAddress && <Row label="نشانی مشتری" value={a.visitAddress} />}
         {a.notes && <Row label="یادداشت" value={a.notes} />}
       </Card>
 
@@ -209,7 +219,11 @@ export function AppointmentSheet({
         </a>
       )}
 
-      {error && <p className="mb-3 rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{error}</p>}
+      {onEdit && actions.length > 0 && (
+        <Button variant="secondary" block icon={Pencil} disabled={busyStatus !== null} onClick={() => onEdit(a)} className="mb-2.5">
+          ویرایش نوبت
+        </Button>
+      )}
 
       {actions.length > 0 ? (
         <div className="grid grid-cols-2 gap-2.5">
@@ -323,31 +337,35 @@ function NowMarker({ minute }: { minute: number }) {
   );
 }
 
-/** Selection + status-change state for AppointmentSheet, shared by the salon and stylist pages. */
+/** Selection, status-change and edit state for AppointmentSheet, shared by the salon and stylist pages. */
 export function useAppointmentActions(
   updateStatus: (id: string, status: AppointmentStatus) => Promise<unknown>,
   onChanged: () => void,
 ) {
   const [selected, setSelected] = useState<AppAppointment | null>(null);
+  // The appointment open in the edit form (SalonBookingSheet), which replaces the detail sheet.
+  const [editing, setEditing] = useState<AppAppointment | null>(null);
   const [busyStatus, setBusyStatus] = useState<AppointmentStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const open = useCallback((a: AppAppointment) => {
-    setError(null);
     setSelected(a);
   }, []);
   const close = useCallback(() => setSelected(null), []);
+  const edit = useCallback((a: AppAppointment) => {
+    setSelected(null);
+    setEditing(a);
+  }, []);
+  const closeEdit = useCallback(() => setEditing(null), []);
 
   const setStatus = useCallback(
     async (a: AppAppointment, status: AppointmentStatus) => {
       setBusyStatus(status);
-      setError(null);
       try {
         await updateStatus(a.id, status);
         setSelected(null);
         onChanged();
       } catch {
-        setError("تغییر وضعیت نوبت انجام نشد، دوباره تلاش کنید");
+        toastError("تغییر وضعیت نوبت انجام نشد، دوباره تلاش کنید");
       } finally {
         setBusyStatus(null);
       }
@@ -355,5 +373,5 @@ export function useAppointmentActions(
     [updateStatus, onChanged],
   );
 
-  return { selected, open, close, setStatus, busyStatus, error };
+  return { selected, open, close, setStatus, busyStatus, editing, edit, closeEdit };
 }

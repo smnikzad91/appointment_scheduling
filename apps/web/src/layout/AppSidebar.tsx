@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
@@ -10,7 +11,6 @@ import {
   EnvelopeIcon,
   ShieldIcon,
   BoxCubeIcon,
-  CalenderIcon,
   ChatIcon,
   ChevronDownIcon,
   DocsIcon,
@@ -20,14 +20,10 @@ import {
   HorizontaLDots,
   ListIcon,
   PageIcon,
-  PieChartIcon,
   PlugInIcon,
-  TableIcon,
   UserCircleIcon,
   ShootingStarIcon,
 } from "../icons/index";
-import MarkIcon from "@/brand/mark.svg";
-import MarkWhiteIcon from "@/brand/mark-white.svg";
 import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -48,11 +44,11 @@ const AppSidebar: React.FC = () => {
 
   const navItems = useMemo<NavItem[]>(() => [
     { icon: <GridIcon />,       name: t("navDashboard"),    path: "/admin" },
-    { icon: <CalenderIcon />,   name: t("navCalendar"),     path: "/admin/calendar" },
     { icon: <UserCircleIcon />, name: t("navUserProfile"),  path: "/admin/profile" },
     { icon: <GroupIcon />,      name: t("navUsers"),        path: "/admin/users" },
     { icon: <ListIcon />,       name: t("navSalons"),       path: "/admin/salons" },
     { icon: <ShootingStarIcon />, name: t("navHomepage"),   path: "/admin/homepage" },
+    { icon: <BoxCubeIcon />,    name: t("navPricing"),      path: "/admin/pricing" },
     { icon: <PlugInIcon />,     name: t("navSocialLinks"),    path: "/admin/social-links" },
     { icon: <MegaphoneIcon />,  name: t("navAnnouncements"),  path: "/admin/announcements" },
     { icon: <FaqIcon />,        name: t("navFaq"),             path: "/admin/faqs" },
@@ -81,58 +77,9 @@ const AppSidebar: React.FC = () => {
         { name: t("navNewsPublic"), path: "/news" },
       ],
     },
-    {
-      icon: <ListIcon />,
-      name: t("navForms"),
-      subItems: [{ name: t("navFormElements"), path: "/admin/form-elements" }],
-    },
-    {
-      icon: <TableIcon />,
-      name: t("navTables"),
-      subItems: [{ name: t("navBasicTables"), path: "/admin/basic-tables" }],
-    },
-    {
-      icon: <PageIcon />,
-      name: t("navPages"),
-      subItems: [
-        { name: t("navBlankPage"), path: "/admin/blank" },
-        { name: t("nav404Error"),  path: "/error-404" },
-      ],
-    },
   ], [t]);
 
-  const othersItems = useMemo<NavItem[]>(() => [
-    {
-      icon: <PieChartIcon />,
-      name: t("navCharts"),
-      subItems: [
-        { name: t("navLineChart"), path: "/admin/line-chart" },
-        { name: t("navBarChart"),  path: "/admin/bar-chart" },
-      ],
-    },
-    {
-      icon: <BoxCubeIcon />,
-      name: t("navUIElements"),
-      subItems: [
-        { name: t("navAlerts"),  path: "/admin/alerts" },
-        { name: t("navAvatar"),  path: "/admin/avatars" },
-        { name: t("navBadge"),   path: "/admin/badge" },
-        { name: t("navButtons"), path: "/admin/buttons" },
-        { name: t("navImages"),  path: "/admin/images" },
-        { name: t("navVideos"),  path: "/admin/videos" },
-      ],
-    },
-    {
-      icon: <PlugInIcon />,
-      name: t("navAuthentication"),
-      subItems: [
-        { name: t("navSignIn"), path: "/signin" },
-        { name: t("navSignUp"), path: "/signup" },
-      ],
-    },
-  ], [t]);
-
-  const [openSubmenu, setOpenSubmenu] = useState<{ type: "main" | "others"; index: number } | null>(null);
+  const [openSubmenu, setOpenSubmenu] = useState<{ type: "main"; index: number } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -141,20 +88,17 @@ const AppSidebar: React.FC = () => {
   useEffect(() => {
     queueMicrotask(() => {
       let matched = false;
-      (["main", "others"] as const).forEach((menuType) => {
-        const items = menuType === "main" ? navItems : othersItems;
-        items.forEach((nav, index) => {
-          nav.subItems?.forEach((sub) => {
-            if (isActive(sub.path)) {
-              setOpenSubmenu({ type: menuType, index });
-              matched = true;
-            }
-          });
+      navItems.forEach((nav, index) => {
+        nav.subItems?.forEach((sub) => {
+          if (isActive(sub.path)) {
+            setOpenSubmenu({ type: "main", index });
+            matched = true;
+          }
         });
       });
       if (!matched) setOpenSubmenu(null);
     });
-  }, [pathname, isActive, navItems, othersItems]);
+  }, [pathname, isActive, navItems]);
 
   useEffect(() => {
     if (openSubmenu) {
@@ -168,13 +112,13 @@ const AppSidebar: React.FC = () => {
     }
   }, [openSubmenu]);
 
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
+  const handleSubmenuToggle = (index: number, menuType: "main") => {
     setOpenSubmenu((prev) =>
       prev?.type === menuType && prev?.index === index ? null : { type: menuType, index }
     );
   };
 
-  const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
+  const renderMenuItems = (items: NavItem[], menuType: "main") => (
     <ul className="flex flex-col gap-1">
       {items.map((nav, index) => {
         const isOpen = openSubmenu?.type === menuType && openSubmenu?.index === index;
@@ -281,11 +225,10 @@ const AppSidebar: React.FC = () => {
     >
       {/* Logo */}
       <div className={`flex h-16 shrink-0 items-center border-b border-gray-100 px-4 dark:border-gray-800 ${expanded ? "justify-start gap-2.5" : "justify-center"}`}>
-        <MarkIcon viewBox="6 12 36 36" className="shrink-0 dark:hidden" width={36} height={36} />
-        <MarkWhiteIcon viewBox="6 12 36 36" className="shrink-0 hidden dark:block" width={36} height={36} />
+        <Image src="/images/logo/logo_symbol_transparent.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
         {expanded && (
           <Link href="/admin" className="text-base font-bold tracking-tight text-gray-900 dark:text-white">
-            نوبتا
+            نوبتت
           </Link>
         )}
       </div>
@@ -300,14 +243,6 @@ const AppSidebar: React.FC = () => {
               {expanded ? t("sidebarMenu") : <HorizontaLDots />}
             </h2>
             {renderMenuItems(navItems, "main")}
-          </div>
-
-          {/* Others */}
-          <div>
-            <h2 className={`mb-3 flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600 ${!expanded ? "lg:justify-center" : ""}`}>
-              {expanded ? t("sidebarOthers") : <HorizontaLDots />}
-            </h2>
-            {renderMenuItems(othersItems, "others")}
           </div>
 
         </nav>

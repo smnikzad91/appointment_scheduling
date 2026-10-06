@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { SalonKind, ServiceLocation } from "@/lib/independent";
 import type { GalleryImage, Salon, Stylist, WorkingHours, Review, WeekDay } from "@/types/salon";
 import { salonApiFetch, SalonApiError } from "./salonApiClient";
 
@@ -40,7 +42,12 @@ interface RawSalon {
   description: string | null;
   province: string | null;
   city: string;
-  address: string;
+  address: string | null;
+  approximateLocation?: boolean;
+  kind?: SalonKind;
+  serviceLocations?: ServiceLocation[];
+  serviceArea?: string | null;
+  hostSalonName?: string | null;
   phone: string;
   instagram: string | null;
   logoUrl: string | null;
@@ -145,14 +152,16 @@ function mapReview(raw: RawReview): Review {
   };
 }
 
-export async function getSalonBySlug(slug: string): Promise<Salon | null> {
+/** Wrapped in React `cache()` so generateMetadata and the page share one fetch per request. */
+export const getSalonBySlug = cache(async (slug: string): Promise<Salon | null> => {
+  const path = `/salons/${encodeURIComponent(slug)}`;
   let raw: RawSalon;
   let rawReviews: RawReview[];
 
   try {
     [raw, rawReviews] = await Promise.all([
-      salonApiFetch<RawSalon>(`/salons/${slug}`),
-      salonApiFetch<RawReview[]>(`/salons/${slug}/reviews`),
+      salonApiFetch<RawSalon>(path),
+      salonApiFetch<RawReview[]>(`${path}/reviews`),
     ]);
   } catch (err) {
     if (err instanceof SalonApiError && err.status === 404) return null;
@@ -191,6 +200,11 @@ export async function getSalonBySlug(slug: string): Promise<Salon | null> {
     city: raw.city,
     address: raw.address,
     location: raw.latitude !== null && raw.longitude !== null ? { lat: raw.latitude, lng: raw.longitude } : null,
+    approximateLocation: raw.approximateLocation ?? false,
+    kind: raw.kind ?? "SALON",
+    serviceLocations: raw.serviceLocations ?? [],
+    serviceArea: raw.serviceArea ?? null,
+    hostSalonName: raw.hostSalonName ?? null,
     phone: raw.phone,
     instagram: raw.instagram,
     workingHours: deriveSalonWorkingHours(raw.stylists),
@@ -202,4 +216,4 @@ export async function getSalonBySlug(slug: string): Promise<Salon | null> {
     ratingAverage,
     ratingCount,
   };
-}
+});

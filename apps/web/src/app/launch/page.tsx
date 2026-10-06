@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 // Start URL of the installed app: send each role straight to its own panel.
 const HOME_BY_ROLE: Record<string, string> = {
   SALON_OWNER: "/salon",
+  INDEPENDENT_STYLIST: "/salon",
   STYLIST: "/stylist",
   PLATFORM_ADMIN: "/admin",
   CUSTOMER: "/dashboard",

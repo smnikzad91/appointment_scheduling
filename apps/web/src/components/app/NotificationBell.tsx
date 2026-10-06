@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Bell, BellRing, CalendarCheck2, CalendarPlus, CalendarX, CheckCheck, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Bell, BellRing, CalendarCheck2, CalendarClock, CalendarPlus, CalendarX, CheckCheck, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -44,8 +44,8 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
   const salon = "salonName" in n.data && n.data.salonName ? n.data.salonName : "سالن";
   switch (n.type) {
     case "NEW_REVIEW": {
-      const { customerName, target, stylistName, edited } = n.data;
-      const about = target === "SALON" ? "سالن" : scope === "stylist" ? "شما" : stylistName ?? "آرایشگر";
+      const { customerName, target, stylistName, edited, independent } = n.data;
+      const about = target === "SALON" ? (independent ? "شما" : "سالن") : scope === "stylist" ? "شما" : stylistName ?? "آرایشگر";
       return {
         icon: MessageSquareText,
         tone: "text-app-accent",
@@ -91,6 +91,19 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
         detail: bookingDetail(n.data),
         href: appointmentsHref,
       };
+    case "BOOKING_UPDATED": {
+      const { customerName, stylistName, updatedBy, previousStartAt, startAt } = n.data;
+      const title =
+        scope === "customer"
+          ? updatedBy === "STYLIST"
+            ? `${stylistName} نوبت شما در ${salon} را تغییر داد`
+            : `${salon} نوبت شما با ${stylistName} را تغییر داد`
+          : scope === "stylist"
+          ? `سالن نوبت ${customerName} را تغییر داد`
+          : `${stylistName} نوبت ${customerName} را تغییر داد`;
+      const moved = previousStartAt && previousStartAt !== startAt ? ` (پیش‌تر ${formatSalonDateTime(previousStartAt)})` : "";
+      return { icon: CalendarClock, tone: "text-app-accent", title, detail: bookingDetail(n.data) + moved, href: appointmentsHref };
+    }
     case "SLOT_OPENED": {
       const d = n.data;
       const params = new URLSearchParams({ book: "1", services: d.serviceIds.join(","), date: d.dateKey, ...(d.stylistId && { stylist: d.stylistId }) });

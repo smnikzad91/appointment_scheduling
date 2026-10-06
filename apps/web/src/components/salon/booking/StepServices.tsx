@@ -7,8 +7,11 @@ import { getTotalDurationMinutes } from "@/lib/api/slots";
 import Sep from "@/components/common/Sep";
 
 export default function StepServices() {
-  const { salon, state, toggleService, goNext } = useBooking();
-  const activeServices = salon.services.filter((s) => s.active);
+  const { salon, state, toggleService, updateState, goNext } = useBooking();
+  // Opened from a stylist's own link (/book/@handle): only what that stylist does, until cleared.
+  const chosenStylist = salon.kind !== "INDEPENDENT" && state.stylistId ? salon.stylists.find((s) => s.id === state.stylistId) : undefined;
+  const offered = chosenStylist ? new Set(chosenStylist.services.map((s) => s.serviceId)) : null;
+  const activeServices = salon.services.filter((s) => s.active && (!offered || offered.has(s.id)));
 
   const selected = activeServices.filter((s) => state.serviceIds.includes(s.id));
   const totalPrice = selected.reduce((sum, s) => sum + s.priceToman, 0);
@@ -16,6 +19,21 @@ export default function StepServices() {
 
   return (
     <div className="flex flex-col gap-4">
+      {chosenStylist && (
+        <p className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2 text-xs text-g-muted">
+          <span>
+            خدمات <span className="font-bold text-g-ink">{chosenStylist.displayName}</span>
+          </span>
+          <button
+            type="button"
+            className="font-bold"
+            style={{ color: "var(--salon-brand-ink)" }}
+            onClick={() => updateState({ stylistId: null, serviceIds: [] })}
+          >
+            همه خدمات سالن
+          </button>
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         {salon.serviceCategories.map((category) => {
           const services = activeServices.filter((s) => s.categoryId === category.id);
@@ -23,7 +41,7 @@ export default function StepServices() {
 
           return (
             <div key={category.id}>
-              <h3 className="mb-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">{category.name}</h3>
+              <h3 className="mb-1.5 text-xs font-semibold text-g-muted">{category.name}</h3>
               <div className="flex flex-col gap-1.5">
                 {services.map((service) => {
                   const isSelected = state.serviceIds.includes(service.id);
@@ -34,13 +52,13 @@ export default function StepServices() {
                       onClick={() => toggleService(service.id)}
                       aria-pressed={isSelected}
                       className={`flex items-center justify-between gap-3 rounded-lg border p-3 text-start transition ${
-                        isSelected ? "border-transparent" : "border-gray-200 dark:border-gray-800"
+                        isSelected ? "border-transparent" : "border-g-line"
                       }`}
                       style={isSelected ? { backgroundColor: "var(--salon-brand-soft)", borderColor: "var(--salon-brand)" } : undefined}
                     >
                       <span>
                         <span className="block text-sm font-medium">{service.name}</span>
-                        <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        <span className="block text-xs text-g-muted">
                           {toPersianDigits(service.durationMinutes)} دقیقه<Sep />{formatToman(service.priceToman)}
                         </span>
                       </span>
@@ -49,7 +67,7 @@ export default function StepServices() {
                         style={
                           isSelected
                             ? { backgroundColor: "var(--salon-brand)", borderColor: "var(--salon-brand)" }
-                            : { borderColor: "var(--color-gray-300, #d1d5db)" }
+                            : { borderColor: "var(--g-line-strong)" }
                         }
                       >
                         {isSelected && <Check className="h-3 w-3 text-white" aria-hidden />}
@@ -64,8 +82,8 @@ export default function StepServices() {
       </div>
 
       {selected.length > 0 && (
-        <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800/50">
-          <span className="text-gray-500 dark:text-gray-400">
+        <div className="flex items-center justify-between rounded-lg bg-white/5 p-3 text-sm">
+          <span className="text-g-muted">
             {toPersianDigits(selected.length)} خدمت<Sep />{toPersianDigits(totalDuration)} دقیقه
           </span>
           <span className="font-bold">{formatToman(totalPrice)}</span>

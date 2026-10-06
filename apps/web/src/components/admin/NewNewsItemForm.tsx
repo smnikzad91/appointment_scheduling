@@ -6,6 +6,7 @@ import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
 import SelectField from "@/components/admin/SelectField";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toastError";
 
 export default function NewNewsItemForm() {
   const t = useT();
@@ -20,7 +21,6 @@ export default function NewNewsItemForm() {
       .then((r) => r.json())
       .then((data) => setCategories(Array.isArray(data) ? data.map((t: { name: string }) => (t.name || "").replace(/^#/, "")) : []));
   }, []);
-  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     category: "",
@@ -87,7 +87,6 @@ export default function NewNewsItemForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setSaving(true);
 
     const res = await fetch("/api/admin/news", {
@@ -99,7 +98,7 @@ export default function NewNewsItemForm() {
     const data = await res.json();
     setSaving(false);
 
-    if (!res.ok) { setError(data.error ?? "Failed to save"); return; }
+    if (!res.ok) { toastError(data.error ?? "Failed to save"); return; }
     toast.success(t("newsSaved"));
     setTimeout(() => router.push("/admin/news"), 800);
   };
@@ -127,11 +126,6 @@ export default function NewNewsItemForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400">
-            {error}
-          </div>
-        )}
 
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -161,6 +155,7 @@ export default function NewNewsItemForm() {
             {coverUploading && <p className="mt-1 text-xs text-gray-400">{t("newsFieldCoverImageUploading")}</p>}
             {coverImage && !coverUploading && (
               <div className="mt-2 relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element -- admin-only preview of an arbitrary-size image that may be on any host (admin-entered URL); next/image needs fixed dimensions and allowed remote hosts, and optimizing it gains nothing here */}
                 <img src={coverImage} alt="" className="h-32 w-auto rounded-xl border border-gray-200 object-cover dark:border-gray-700" />
                 <button type="button" onClick={() => setCoverImage("")}
                   className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white hover:bg-red-600">
@@ -182,6 +177,7 @@ export default function NewNewsItemForm() {
             {imageUploading && <p className="mt-1 text-xs text-gray-400">{t("newsFieldImageUploading")}</p>}
             {image && !imageUploading && (
               <div className="mt-2 relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element -- admin-only preview of an arbitrary-size image that may be on any host (admin-entered URL); next/image needs fixed dimensions and allowed remote hosts, and optimizing it gains nothing here */}
                 <img src={image} alt="" className="h-32 w-auto rounded-xl border border-gray-200 object-cover dark:border-gray-700" />
                 <button type="button" onClick={() => setImage("")}
                   className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white hover:bg-red-600">

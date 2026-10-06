@@ -5,6 +5,7 @@ import { Camera, ImagePlus, Trash2 } from "lucide-react";
 import { releaseUploads, uploadImage } from "@/lib/uploadImage";
 import Sheet from "./Sheet";
 import { Avatar, Button, Card, cx } from "./ui";
+import { toastError } from "@/lib/toastError";
 
 type Kind = "cover" | "avatar";
 
@@ -41,7 +42,6 @@ export default function ProfilePhotos({
   const [open, setOpen] = useState<Kind | null>(null);
   const [busy, setBusy] = useState<"upload" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const current = open === "cover" ? coverUrl : avatarUrl;
@@ -49,7 +49,6 @@ export default function ProfilePhotos({
   const field = open === "cover" ? "coverImageUrl" : "avatarUrl";
 
   function show(kind: Kind) {
-    setError(null);
     setConfirmDelete(false);
     setOpen(kind);
   }
@@ -59,7 +58,6 @@ export default function ProfilePhotos({
     e.target.value = "";
     if (!file || !open) return;
     setBusy("upload");
-    setError(null);
     const previous = current;
     let url: string | null = null;
     try {
@@ -69,7 +67,7 @@ export default function ProfilePhotos({
       setOpen(null);
     } catch {
       releaseUploads([url]); // uploaded but not saved
-      setError("آپلود عکس انجام نشد، دوباره تلاش کنید");
+      toastError("آپلود عکس انجام نشد، دوباره تلاش کنید");
     } finally {
       setBusy(null);
     }
@@ -81,14 +79,13 @@ export default function ProfilePhotos({
       return;
     }
     setBusy("delete");
-    setError(null);
     const previous = current;
     try {
       await onSave({ [field]: null });
       releaseUploads([previous]);
       setOpen(null);
     } catch {
-      setError("حذف عکس انجام نشد، دوباره تلاش کنید");
+      toastError("حذف عکس انجام نشد، دوباره تلاش کنید");
     } finally {
       setBusy(null);
     }
@@ -148,7 +145,6 @@ export default function ProfilePhotos({
           )}
         </div>
 
-        {error && <p className="mb-3 rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{error}</p>}
 
         <div className="flex flex-col gap-2.5">
           <Button block icon={ImagePlus} busy={busy === "upload"} disabled={busy !== null} onClick={() => fileRef.current?.click()}>

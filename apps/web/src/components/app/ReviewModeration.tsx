@@ -9,6 +9,7 @@ import { formatSalonDate } from "@/lib/salonTime";
 import { Stars } from "@/components/common/StarRating";
 import { Button, ChipTabs, EmptyState, ErrorBanner, ListSkeleton, StatTile, cx, riseStyle } from "./ui";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 const EMPTY: Record<ReviewStatus, { title: string; hint: string }> = {
   PENDING: { title: "نظر تازه‌ای منتظر تایید نیست", hint: "نظرهای جدید مشتری‌ها پیش از نمایش در صفحه سالن اینجا می‌آیند." },
@@ -20,12 +21,20 @@ const EMPTY: Record<ReviewStatus, { title: string; hint: string }> = {
  * Approve / hide customer reviews. scope="salon" (owner): every review of the salon, about the
  * salon or any of its stylists. scope="stylist": the reviews about the signed-in stylist.
  */
-export default function ReviewModeration({ token, scope }: { token: string; scope: ReviewScope }) {
+export default function ReviewModeration({
+  token,
+  scope,
+  independent = false,
+}: {
+  token: string;
+  scope: ReviewScope;
+  /** An independent stylist's business: every review is about them, so no "about the salon" tag. */
+  independent?: boolean;
+}) {
   const [reviews, setReviews] = useState<ModerationReview[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<ReviewStatus>("PENDING");
   const [busy, setBusy] = useState<string | null>(null); // `${id}:${status}`
-  const [itemError, setItemError] = useState<{ id: string; message: string } | null>(null);
 
   const reload = useCallback(() => {
     listReviewsForModeration(token, scope)
@@ -40,12 +49,11 @@ export default function ReviewModeration({ token, scope }: { token: string; scop
 
   async function setStatus(review: ModerationReview, status: "APPROVED" | "REJECTED") {
     setBusy(`${review.id}:${status}`);
-    setItemError(null);
     try {
       const updated = await moderateReview(token, review.id, status);
       setReviews((list) => list?.map((r) => (r.id === updated.id ? updated : r)) ?? list);
     } catch (err) {
-      setItemError({ id: review.id, message: persianApiError(err, "انجام نشد، دوباره تلاش کنید") });
+      toastError(persianApiError(err, "انجام نشد، دوباره تلاش کنید"));
     } finally {
       setBusy(null);
     }
@@ -108,7 +116,7 @@ export default function ReviewModeration({ token, scope }: { token: string; scop
                 )}
               </div>
 
-              {scope === "salon" && (
+              {scope === "salon" && !independent && (
                 <span
                   className={cx(
                     "mt-2.5 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold",
@@ -125,7 +133,6 @@ export default function ReviewModeration({ token, scope }: { token: string; scop
                 <p className="mt-2.5 text-sm text-app-muted">بدون متن — فقط امتیاز</p>
               )}
 
-              {itemError?.id === r.id && <p className="mt-2 text-sm font-medium text-app-danger">{itemError.message}</p>}
 
               <div className="mt-3 flex gap-2">
                 {r.status !== "APPROVED" && (

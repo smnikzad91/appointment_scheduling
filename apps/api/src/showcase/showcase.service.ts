@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { Prisma, ReviewStatus, ReviewTarget, SalonStatus } from "@appointment-scheduling/database";
+import { Prisma, ReviewStatus, ReviewTarget, SalonKind, SalonStatus } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { averageRating, rankByRating, type RatingStats } from "./rating.util.js";
 import { UpdateBannerDto } from "./dto/showcase.dto.js";
@@ -18,7 +18,7 @@ const STYLIST_CARD = {
   avatarUrl: true,
   coverImageUrl: true,
   active: true,
-  salon: { select: { id: true, name: true, slug: true, city: true, status: true } },
+  salon: { select: { id: true, name: true, slug: true, city: true, status: true, kind: true, logoUrl: true } },
 } as const;
 
 type SalonRow = Prisma.SalonGetPayload<{ select: typeof SALON_CARD }>;
@@ -51,7 +51,8 @@ export class ShowcaseService {
         orderBy: { priority: "asc" },
         select: { stylist: { select: STYLIST_CARD } },
       }),
-      this.salonRatingStats({ status: SalonStatus.ACTIVE }),
+      // Top salons are salons; independent stylists are ranked among the stylists.
+      this.salonRatingStats({ status: SalonStatus.ACTIVE, kind: SalonKind.SALON }),
       this.stylistRatingStats({ active: true, salon: { status: SalonStatus.ACTIVE } }),
       this.minRatings(),
     ]);
@@ -205,16 +206,36 @@ export class ShowcaseService {
     return new Map<string, RatingStats>(rows.map((r) => [r.salonId, { ratingSum: r._sum.rating ?? 0, ratingCount: r._count.rating }]));
   }
 
+  /**
+   * Reviews about each stylist. An independent stylist's reviews are their business's (one review
+   * per booking, target SALON), so those count as theirs.
+   */
   private async stylistRatingStats(stylistWhere: Prisma.StylistWhereInput) {
-    const rows = await this.prisma.review.groupBy({
-      by: ["stylistId"],
-      where: { ...RATED, target: ReviewTarget.STYLIST, stylist: stylistWhere },
-      _sum: { rating: true },
-      _count: { rating: true },
-    });
-    return new Map<string, RatingStats>(
+    const [rows, independents] = await Promise.all([
+      this.prisma.review.groupBy({
+        by: ["stylistId"],
+        where: { ...RATED, target: ReviewTarget.STYLIST, stylist: stylistWhere },
+        _sum: { rating: true },
+        _count: { rating: true },
+      }),
+      this.prisma.stylist.findMany({
+        where: { AND: [stylistWhere, { salon: { kind: SalonKind.INDEPENDENT } }] },
+        select: { id: true, salonId: true },
+      }),
+    ]);
+    const stats = new Map<string, RatingStats>(
       rows.filter((r) => r.stylistId).map((r) => [r.stylistId as string, { ratingSum: r._sum.rating ?? 0, ratingCount: r._count.rating }]),
     );
+    if (independents.length > 0) {
+      const business = await this.salonRatingStats({ id: { in: independents.map((s) => s.salonId) } });
+      for (const s of independents) {
+        const b = business.get(s.salonId);
+        if (!b) continue;
+        const own = stats.get(s.id) ?? { ratingSum: 0, ratingCount: 0 };
+        stats.set(s.id, { ratingSum: own.ratingSum + b.ratingSum, ratingCount: own.ratingCount + b.ratingCount });
+      }
+    }
+    return stats;
   }
 
   private salonCard(s: SalonRow, stats: Map<string, RatingStats>) {
@@ -239,6 +260,8 @@ export class ShowcaseService {
       avatarUrl: s.avatarUrl,
       coverImageUrl: s.coverImageUrl,
       salon: { name: s.salon.name, slug: s.salon.slug, city: s.salon.city },
+      // An independent stylist's photo usually lives on their business (settings «عکس شما»).
+      ...(s.salon.kind === SalonKind.INDEPENDENT && { independent: true, avatarUrl: s.avatarUrl ?? s.salon.logoUrl }),
       rating: averageRating(st),
       ratingCount: st.ratingCount,
     };

@@ -3,7 +3,7 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "ثبت‌نام",
-  description: "در نوبتا حساب بسازید و نوبت‌های سالن‌های زیبایی را آنلاین رزرو و پیگیری کنید.",
+  description: "در نوبتت حساب بسازید و نوبت‌های سالن‌های زیبایی را آنلاین رزرو و پیگیری کنید.",
 };
 
 export default function SignUp() {

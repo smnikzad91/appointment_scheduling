@@ -21,6 +21,8 @@ export interface ShowcaseStylist {
   avatarUrl: string | null;
   coverImageUrl: string | null;
   salon: { name: string; slug: string; city: string };
+  /** Works independently (no salon): `salon` is their own business. */
+  independent?: boolean;
   rating: number | null;
   ratingCount: number;
 }

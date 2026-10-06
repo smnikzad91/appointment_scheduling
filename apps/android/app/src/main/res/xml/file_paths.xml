@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- share-kit posters, written to the cache to hand to the share sheet -->
+    <cache-path name="posters" path="posters/" />
+    <!-- accounting reports (CSV) for the share sheet -->
+    <cache-path name="exports" path="exports/" />
+    <!-- in-app update APKs (update/ApkUpdater.kt, direct builds) handed to the system installer -->
+    <external-files-path name="updates" path="Download/updates/" />
+</paths>

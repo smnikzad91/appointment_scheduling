@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Clock, FolderCog, Plus, Scissors, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BellOff, BellRing, Clock, FolderCog, Plus, Scissors, Trash2 } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyCategories,
@@ -25,13 +25,14 @@ import {
   ListGroup,
   ListSkeleton,
   PageHeader,
-  Select,
   TextInput,
   Toggle,
   cx,
   riseStyle,
 } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
+import PickerSelect from "@/components/app/PickerSelect";
+import { toastError } from "@/lib/toastError";
 
 interface ServiceDraft {
   id: string | null; // null = new service
@@ -39,9 +40,23 @@ interface ServiceDraft {
   categoryId: string;
   durationMinutes: string;
   priceToman: string;
+  rebookEnabled: boolean;
+  rebookDays: string;
 }
 
-const EMPTY_DRAFT: ServiceDraft = { id: null, name: "", categoryId: "", durationMinutes: "", priceToman: "" };
+/** "Time to book again" SMS defaults for a new service. */
+const REBOOK_DEFAULT_DAYS = 30;
+const REBOOK_MAX_DAYS = 365;
+
+const EMPTY_DRAFT: ServiceDraft = {
+  id: null,
+  name: "",
+  categoryId: "",
+  durationMinutes: "",
+  priceToman: "",
+  rebookEnabled: true,
+  rebookDays: String(REBOOK_DEFAULT_DAYS),
+};
 
 export default function SalonServicesPage() {
   const token = useApiAccessToken();
@@ -51,38 +66,52 @@ export default function SalonServicesPage() {
   const [filter, setFilter] = useState<string>("all");
 
   const [draft, setDraft] = useState<ServiceDraft | null>(null);
-  const [draftError, setDraftError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [categoryError, setCategoryError] = useState<string | null>(null);
+
+  // Services whose on/off switch is being saved (locked until the server answers).
+  const [pendingActive, setPendingActive] = useState<Set<string>>(() => new Set());
+  // Only the newest load may write the list: a reload started before a later change (a switch
+  // tapped while it was in flight) would otherwise put the old state back on screen.
+  const loadSeq = useRef(0);
 
   const reload = useCallback(() => {
     if (!token) return;
+    const seq = ++loadSeq.current;
     Promise.all([listMyCategories(token), listMyServices(token)])
       .then(([c, s]) => {
+        if (seq !== loadSeq.current) return;
         setCategories(c);
         setServices(s);
       })
-      .catch(() => setError("خطا در دریافت اطلاعات"));
+      .catch(() => {
+        if (seq === loadSeq.current) setError("خطا در دریافت اطلاعات");
+      });
   }, [token]);
+
+  /** Put the server's copy of a saved service in the list (and drop any older load still in flight). */
+  function applySaved(saved: OwnerService) {
+    loadSeq.current++;
+    setServices((list) => list?.map((s) => (s.id === saved.id ? saved : s)) ?? list);
+  }
 
   useEffect(reload, [reload]);
 
   function openNew() {
-    setDraftError(null);
     setDraft({ ...EMPTY_DRAFT, categoryId: filter !== "all" && filter !== "none" ? filter : "" });
   }
 
   function openEdit(service: OwnerService) {
-    setDraftError(null);
     setDraft({
       id: service.id,
       name: service.name,
       categoryId: service.categoryId ?? "",
       durationMinutes: String(service.durationMinutes),
       priceToman: String(service.priceToman),
+      rebookEnabled: service.rebookReminderEnabled,
+      rebookDays: String(service.rebookReminderDays),
     });
   }
 
@@ -91,71 +120,89 @@ export default function SalonServicesPage() {
     const duration = Number(normalizeDigits(draft.durationMinutes));
     const price = Number(normalizeDigits(draft.priceToman));
     if (!draft.name.trim() || !duration || !price) {
-      setDraftError("نام، مدت و قیمت خدمت را کامل کنید");
+      toastError("نام، مدت و قیمت خدمت را کامل کنید");
       return;
     }
+    const rebookDays = Number(normalizeDigits(draft.rebookDays));
+    if (draft.rebookEnabled && !(rebookDays >= 1 && rebookDays <= REBOOK_MAX_DAYS)) {
+      toastError(`فاصله یادآوری باید بین ۱ تا ${toPersianDigits(REBOOK_MAX_DAYS)} روز باشد`);
+      return;
+    }
+    const rebook = {
+      rebookReminderEnabled: draft.rebookEnabled,
+      ...(rebookDays >= 1 && rebookDays <= REBOOK_MAX_DAYS && { rebookReminderDays: rebookDays }),
+    };
     setSaving(true);
-    setDraftError(null);
     try {
       if (draft.id) {
-        await updateService(token, draft.id, {
+        const saved = await updateService(token, draft.id, {
           name: draft.name.trim(),
           categoryId: draft.categoryId || null,
           durationMinutes: duration,
           priceToman: price,
+          ...rebook,
         });
+        applySaved(saved);
       } else {
         await createService(token, {
           name: draft.name.trim(),
           categoryId: draft.categoryId || undefined,
           durationMinutes: duration,
           priceToman: price,
+          ...rebook,
         });
       }
       setDraft(null);
       reload();
     } catch {
-      setDraftError("ذخیره خدمت انجام نشد، دوباره تلاش کنید");
+      toastError("ذخیره خدمت انجام نشد، دوباره تلاش کنید");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleToggleActive(service: OwnerService) {
-    if (!token) return;
+    if (!token || pendingActive.has(service.id)) return;
+    const active = !service.active;
     setError(null);
-    // Optimistic — the switch should feel instant.
-    setServices((list) => list?.map((s) => (s.id === service.id ? { ...s, active: !s.active } : s)) ?? list);
+    setPendingActive((ids) => new Set(ids).add(service.id));
+    // Optimistic — the switch should feel instant; the server's answer then settles it.
+    loadSeq.current++;
+    setServices((list) => list?.map((s) => (s.id === service.id ? { ...s, active } : s)) ?? list);
     try {
-      await updateService(token, service.id, { active: !service.active });
+      applySaved(await updateService(token, service.id, { active }));
     } catch {
-      setError("تغییر وضعیت خدمت انجام نشد");
+      toastError("تغییر وضعیت خدمت انجام نشد");
       reload();
+    } finally {
+      setPendingActive((ids) => {
+        const next = new Set(ids);
+        next.delete(service.id);
+        return next;
+      });
     }
   }
 
   async function handleAddCategory(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !newCategoryName.trim()) return;
-    setCategoryError(null);
     try {
       await createCategory(token, { name: newCategoryName.trim(), order: categories?.length ?? 0 });
       setNewCategoryName("");
       reload();
     } catch {
-      setCategoryError("افزودن دسته‌بندی انجام نشد");
+      toastError("افزودن دسته‌بندی انجام نشد");
     }
   }
 
   async function handleDeleteCategory(category: OwnerCategory) {
     if (!token || !confirm(`دسته «${category.name}» حذف شود؟ خدمات آن بدون دسته می‌مانند.`)) return;
-    setCategoryError(null);
     try {
       await deleteCategory(token, category.id);
       if (filter === category.id) setFilter("all");
       reload();
     } catch {
-      setCategoryError("حذف دسته‌بندی انجام نشد");
+      toastError("حذف دسته‌بندی انجام نشد");
     }
   }
 
@@ -206,7 +253,7 @@ export default function SalonServicesPage() {
         <EmptyState
           icon={Scissors}
           title="هنوز خدمتی اینجا نیست"
-          hint="خدماتی که سالن ارائه می‌دهد را با مدت و قیمت اضافه کنید تا مشتری‌ها بتوانند رزرو کنند."
+          hint="خدماتی که ارائه می‌دهید را با مدت و قیمت اضافه کنید تا مشتری‌ها بتوانند رزرو کنند."
           action={<Button icon={Plus} onClick={openNew}>افزودن خدمت</Button>}
         />
       ) : (
@@ -228,13 +275,38 @@ export default function SalonServicesPage() {
                   <Sep className="mx-0" />
                   <span className="font-semibold text-app-ink/80">{formatToman(service.priceToman)}</span>
                 </p>
+                {/* Always shown, on or off: it's set in the edit sheet, not by the switch beside it. */}
+                <p className="mt-1 flex items-center gap-1.5 text-[12px] text-app-muted">
+                  {service.rebookReminderEnabled ? (
+                    <>
+                      <BellRing className="h-3.5 w-3.5" aria-hidden />
+                      پیامک یادآوری: {toPersianDigits(service.rebookReminderDays)} روز بعد
+                    </>
+                  ) : (
+                    <>
+                      <BellOff className="h-3.5 w-3.5" aria-hidden />
+                      پیامک یادآوری: خاموش
+                    </>
+                  )}
+                </p>
                 {filter === "all" && categoryName(service.categoryId) && (
                   <span className="mt-2 inline-block rounded-full bg-app-card-2 px-2.5 py-0.5 text-[11px] font-semibold text-app-muted">
                     {categoryName(service.categoryId)}
                   </span>
                 )}
               </button>
-              <Toggle checked={service.active} onChange={() => handleToggleActive(service)} label={`فعال بودن ${service.name}`} />
+              {/* This switch is the service itself (bookable or not) — labelled so it isn't read as the SMS reminder. */}
+              <div className="flex shrink-0 flex-col items-center gap-1">
+                <Toggle
+                  checked={service.active}
+                  disabled={pendingActive.has(service.id)}
+                  onChange={() => handleToggleActive(service)}
+                  label={`فعال بودن ${service.name}`}
+                />
+                <span className={cx("text-[11px] font-bold", service.active ? "text-app-accent" : "text-app-muted")}>
+                  {service.active ? "فعال" : "غیرفعال"}
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -257,14 +329,12 @@ export default function SalonServicesPage() {
               <TextInput value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="مثلاً کوتاهی مو" autoFocus={!draft.id} />
             </Field>
             <Field label="دسته‌بندی">
-              <Select value={draft.categoryId} onChange={(e) => setDraft({ ...draft, categoryId: e.target.value })}>
-                <option value="">بدون دسته</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
+              <PickerSelect
+                title="دسته‌بندی"
+                value={draft.categoryId}
+                onChange={(categoryId) => setDraft({ ...draft, categoryId })}
+                options={[{ value: "", label: "بدون دسته" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+              />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="مدت (دقیقه)">
@@ -288,7 +358,35 @@ export default function SalonServicesPage() {
                 />
               </Field>
             </div>
-            {draftError && <p className="text-sm font-medium text-app-danger">{draftError}</p>}
+            <div className="rounded-2xl border border-app-line bg-app-card p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-app-ink">پیامک یادآوری نوبت بعدی</p>
+                  <p className="mt-0.5 text-xs leading-5 text-app-muted">
+                    چند روز بعد از انجام این خدمت، به مشتری پیامک می‌دهیم که وقت نوبت بعدی است (با لینک رزرو).
+                  </p>
+                </div>
+                <Toggle
+                  checked={draft.rebookEnabled}
+                  onChange={(rebookEnabled) => setDraft({ ...draft, rebookEnabled })}
+                  label="پیامک یادآوری نوبت بعدی"
+                />
+              </div>
+              {draft.rebookEnabled && (
+                <div className="mt-3">
+                <Field label="چند روز بعد؟" hint="هر روز ساعت ۱۲ ظهر ارسال می‌شود و از سهمیه پیامک ماهانه کم می‌شود.">
+                  <TextInput
+                    inputMode="numeric"
+                    dir="ltr"
+                    className="text-end"
+                    value={draft.rebookDays}
+                    onChange={(e) => setDraft({ ...draft, rebookDays: normalizeDigits(e.target.value).replace(/\D/g, "").slice(0, 3) })}
+                    placeholder={toPersianDigits(REBOOK_DEFAULT_DAYS)}
+                  />
+                </Field>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </Sheet>
@@ -301,7 +399,6 @@ export default function SalonServicesPage() {
             افزودن
           </Button>
         </form>
-        {categoryError && <p className="mb-3 text-sm font-medium text-app-danger">{categoryError}</p>}
         {categories.length === 0 ? (
           <p className="py-6 text-center text-sm text-app-muted">هنوز دسته‌بندی ندارید.</p>
         ) : (

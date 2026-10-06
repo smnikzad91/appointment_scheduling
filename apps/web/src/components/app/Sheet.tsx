@@ -10,33 +10,49 @@ import { X } from "lucide-react";
  * Rendered in a portal (so no transformed ancestor can trap it) that re-applies .app-root so
  * the design tokens still resolve.
  */
+// Open sheets, innermost last, so Escape closes only the top one when sheets stack
+// (e.g. the time picker over the booking sheet).
+const openStack: symbol[] = [];
+
 export default function Sheet({
   open,
   onClose,
   title,
   children,
   footer,
+  themeClassName = "",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Extra theme class for the portal root, e.g. "guest-root" so a sheet opened on a guest page stays dark. */
+  themeClassName?: string;
 }) {
   const [dragY, setDragY] = useState(0);
   const dragStart = useRef<number | null>(null);
+  // Latest onClose without re-running the effect below (callers pass inline arrows, and
+  // re-registering would reorder the stack).
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const id = Symbol("sheet");
+    openStack.push(id);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && openStack[openStack.length - 1] === id && onCloseRef.current();
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previous;
       document.removeEventListener("keydown", onKey);
+      openStack.splice(openStack.indexOf(id), 1);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -55,7 +71,7 @@ export default function Sheet({
 
   return createPortal(
     // Inline background: .app-root's own (unlayered) paper background would otherwise win over a utility.
-    <div className={`app-root fixed inset-0 z-[100000] flex items-end justify-center`} style={{ background: "transparent" }} dir="rtl">
+    <div className={`app-root ${themeClassName} fixed inset-0 z-[100000] flex items-end justify-center`} style={{ background: "transparent" }} dir="rtl">
       <div className="app-fade-in absolute inset-0 bg-[#1a1016]/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div
         role="dialog"

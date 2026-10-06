@@ -1,6 +1,6 @@
 import { apiFetch } from "./apiClient";
 
-export type ApiRole = "PLATFORM_ADMIN" | "SALON_OWNER" | "STYLIST" | "CUSTOMER";
+export type ApiRole = "PLATFORM_ADMIN" | "SALON_OWNER" | "STYLIST" | "CUSTOMER" | "INDEPENDENT_STYLIST";
 
 export interface ApiAuthUser {
   id: string;
@@ -22,6 +22,14 @@ export function apiLogin(identifier: string, password: string) {
   return apiFetch<ApiAuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ identifier, password }),
+  });
+}
+
+/** Signs in with an SMS code (requested via /auth/otp/request). 404 = no account for this phone. */
+export function apiVerifyOtp(phone: string, code: string) {
+  return apiFetch<ApiAuthResponse>("/auth/otp/verify", {
+    method: "POST",
+    body: JSON.stringify({ phone, code }),
   });
 }
 
@@ -51,6 +59,12 @@ export function apiRegisterSalonOwner(input: {
   latitude: number;
   longitude: number;
   salonPhone?: string;
+  planId?: string;
+  /** An independent stylist's own business (salonName = their business/display name). */
+  kind?: "SALON" | "INDEPENDENT";
+  serviceLocations?: string[];
+  serviceArea?: string;
+  hostSalonName?: string;
 }) {
   return apiFetch<ApiAuthResponse>("/auth/register-salon-owner", {
     method: "POST",

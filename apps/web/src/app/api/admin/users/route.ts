@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-
-// Wire format keeps the original "admin"/"user" roles; the Postgres Role enum
-// has more values (PLATFORM_ADMIN/SALON_OWNER/STYLIST/CUSTOMER) for the
-// salon-domain product, so we collapse to the two legacy values here.
-function toWireRole(role: string): "admin" | "user" {
-  return role === "PLATFORM_ADMIN" ? "admin" : "user";
-}
+import type { UserRole } from "@/types/content";
 
 export async function GET() {
   const session = await auth();
@@ -23,7 +17,7 @@ export async function GET() {
       firstName:     u.firstName,
       lastName:      u.lastName,
       email:         u.email,
-      role:          toWireRole(u.role),
+      role:          u.role.toLowerCase() as UserRole,
       walletBalance: u.walletBalance,
       avatar:        u.avatarUrl,
       phone:         u.phone,

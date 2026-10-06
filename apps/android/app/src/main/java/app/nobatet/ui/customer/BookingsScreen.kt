@@ -1,0 +1,253 @@
+package app.nobatet.ui.customer
+
+import app.nobatet.ui.components.AppTextButton
+import app.nobatet.ui.components.AppDialog
+import app.nobatet.ui.components.AppTextField
+import app.nobatet.ui.components.Toasts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import app.nobatet.data.AppContainer
+import app.nobatet.data.AppointmentStatus
+import app.nobatet.data.CustomerBooking
+import app.nobatet.data.BookingReview
+import app.nobatet.data.ReviewTarget
+import app.nobatet.data.SalonKind
+import app.nobatet.data.label
+import app.nobatet.ui.components.AppCard
+import app.nobatet.ui.components.Empty
+import app.nobatet.ui.components.LoadError
+import app.nobatet.ui.components.Loading
+import app.nobatet.ui.components.Muted
+import app.nobatet.ui.components.StatusChip
+import app.nobatet.ui.theme.LocalAppColors
+import app.nobatet.util.formatToman
+import app.nobatet.util.persianDateTime
+import app.nobatet.util.toSalonDateTime
+import java.time.Instant
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.rememberCoroutineScope
+import app.nobatet.data.persianError
+import app.nobatet.ui.components.PrimaryButton
+import kotlinx.coroutines.launch
+
+@Composable
+fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onRebook: (String, BookingPrefill) -> Unit) {
+    val vm: BookingsViewModel = viewModel(factory = viewModelFactory { initializer { BookingsViewModel(container) } })
+    val s by vm.state.collectAsStateWithLifecycle()
+    val c = LocalAppColors.current
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var confirm by remember { mutableStateOf<CustomerBooking?>(null) }
+    var reviewing by remember { mutableStateOf<Pair<CustomerBooking, ReviewTarget>?>(null) }
+    var paying by remember { mutableStateOf<CustomerBooking?>(null) }
+    // fresh list every time the tab is shown (a booking may have just been made or confirmed)
+    LaunchedEffect(Unit) { vm.load() }
+
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            app.nobatet.ui.components.PageHeader("نوبت‌های من")
+            app.nobatet.ui.components.ChipTabs(listOf(0 to "پیش‌رو", 1 to "گذشته"), tab) { tab = it }
+            val list = if (tab == 0) s.upcoming else s.past
+            when {
+                s.loading -> Loading()
+                s.error != null && s.bookings.isEmpty() -> LoadError(s.error!!, vm::load)
+                list.isEmpty() -> Empty(if (tab == 0) "نوبت پیش‌رویی ندارید" else "هنوز نوبتی نداشته‌اید", "از «کشف سالن» نوبت بگیرید.")
+                else -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(list, key = { it.id }) { b ->
+                        BookingCard(
+                            b, upcoming = tab == 0, cancelling = s.cancelling == b.id, onCancel = { confirm = b }, onOpenSalon = { onOpenSalon(b.salon.slug) },
+                            onRebook = { onRebook(b.salon.slug, BookingPrefill(b.services.map { it.serviceId }, b.stylistId)) },
+                            onReview = { target -> reviewing = b to target },
+                            onDeleteReview = { review -> vm.deleteReview(b.id, review.id) },
+                            onPayBalance = { paying = b },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    reviewing?.let { (b, target) ->
+        val existing = b.reviews.firstOrNull { it.target == target }
+        ReviewDialog(
+            title = if (target == ReviewTarget.SALON) "نظر درباره ${b.salon.name}" else "نظر درباره ${b.stylist.displayName}",
+            initialRating = existing?.rating, initialComment = existing?.comment.orEmpty(),
+            onDismiss = { reviewing = null },
+            onSave = { rating, comment -> vm.saveReview(b.id, target, existing?.id, rating, comment) { reviewing = null } },
+        )
+    }
+
+    paying?.let { b -> PayBalanceSheet(container, b, onDismiss = { paying = null }) { paying = null; vm.load() } }
+
+    confirm?.let { b ->
+        AppDialog(
+            onDismissRequest = { confirm = null },
+            title = { Text("لغو نوبت") },
+            text = { Text("نوبت ${b.salon.name} لغو شود؟") },
+            confirmButton = { AppTextButton(onClick = { confirm = null; vm.cancel(b.id) }) { Text("لغو نوبت", color = c.danger) } },
+            dismissButton = { AppTextButton(onClick = { confirm = null }) { Text("انصراف") } },
+        )
+    }
+}
+
+@Composable
+private fun BookingCard(
+    b: CustomerBooking, upcoming: Boolean, cancelling: Boolean, onCancel: () -> Unit, onOpenSalon: () -> Unit,
+    onRebook: () -> Unit, onReview: (ReviewTarget) -> Unit, onDeleteReview: (BookingReview) -> Unit, onPayBalance: () -> Unit,
+) {
+    val c = LocalAppColors.current
+    val start = Instant.parse(b.startAt).toSalonDateTime(b.salon.timezone)
+    AppCard(Modifier.clickable(onClick = onOpenSalon)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(b.salon.name, style = MaterialTheme.typography.titleMedium, color = c.ink, modifier = Modifier.weight(1f))
+            StatusChip(b.status)
+        }
+        Text(start.persianDateTime(), color = c.ink)
+        Muted(b.services.joinToString("، ") { it.service.name })
+        if (b.salon.kind != SalonKind.INDEPENDENT) Muted("با ${b.stylist.displayName}")
+        // independent stylists: where it happens, with the address the customer needs
+        b.serviceLocation?.let { loc ->
+            val address = if (loc == app.nobatet.data.ServiceLocation.CLIENT_HOME) b.visitAddress else b.salon.address
+            Muted(loc.label(b.salon.hostSalonName) + (address?.let { ": $it" } ?: ""))
+        } ?: b.salon.address?.let { Muted(it) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(formatToman(b.priceToman), color = c.accent, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            if (upcoming && (b.status == AppointmentStatus.PENDING || b.status == AppointmentStatus.CONFIRMED)) {
+                AppTextButton(onClick = onCancel, enabled = !cancelling) { Text(if (cancelling) "در حال لغو..." else "لغو نوبت", color = c.danger) }
+            }
+            if (!upcoming) AppTextButton(onClick = onRebook) { Text("رزرو دوباره") }
+        }
+        // the rest of the price, requested from the wallet by the stylist when they marked it done
+        if (b.status == AppointmentStatus.COMPLETED && b.balanceMethod == "WALLET" && b.balanceDueToman > 0) {
+            if (b.balancePaidAt != null) Text("باقی‌مانده ${formatToman(b.balanceDueToman)} از کیف پول پرداخت شد.", color = c.done, style = MaterialTheme.typography.bodySmall)
+            else PrimaryButton("پرداخت باقی‌مانده از کیف پول: ${formatToman(b.balanceDueToman)}", Modifier.fillMaxWidth(), onClick = onPayBalance)
+        }
+        if (b.prepaidToman > 0) Muted(
+            "پیش‌پرداخت ${formatToman(b.prepaidToman)} از کیف پول" + when (b.prepaymentStatus) {
+                "REFUNDED" -> "؛ به کیف پول شما برگشت"
+                "HELD" -> "؛ ${formatToman(b.priceToman - b.prepaidToman)} در محل"
+                else -> ""
+            },
+        )
+        // reviews: one about the salon and, at a salon, one about the stylist (an independent stylist: one)
+        if (b.status == AppointmentStatus.COMPLETED) {
+            val targets = if (b.salon.kind == SalonKind.INDEPENDENT) listOf(ReviewTarget.SALON) else listOf(ReviewTarget.SALON, ReviewTarget.STYLIST)
+            targets.forEach { target ->
+                val review = b.reviews.firstOrNull { it.target == target }
+                val about = if (target == ReviewTarget.SALON) (if (b.salon.kind == SalonKind.INDEPENDENT) b.stylist.displayName else "سالن") else b.stylist.displayName
+                if (review == null) {
+                    AppTextButton(onClick = { onReview(target) }) { Text("ثبت نظر درباره $about") }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("نظر شما درباره $about" + (review.rating?.let { "، " + "★".repeat(it) } ?: ""), color = c.ink, style = MaterialTheme.typography.labelLarge)
+                            review.comment?.let { Muted(it) }
+                            Muted(if (review.status == app.nobatet.data.ReviewStatus.APPROVED) "منتشر شده" else if (review.status == app.nobatet.data.ReviewStatus.PENDING) "در انتظار تایید" else "تایید نشد")
+                        }
+                        AppTextButton(onClick = { onReview(target) }) { Text("ویرایش") }
+                        AppTextButton(onClick = { onDeleteReview(review) }) { Text("حذف", color = c.danger) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Stars (1–5, tap again to clear) and a comment (≤ 500); a review needs at least one. */
+@Composable
+fun ReviewDialog(title: String, initialRating: Int?, initialComment: String, onDismiss: () -> Unit, onSave: (Int?, String?) -> Unit) {
+    val c = LocalAppColors.current
+    var rating by remember { mutableStateOf(initialRating) }
+    var comment by remember { mutableStateOf(initialComment) }
+    AppDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    (1..5).forEach { n ->
+                        Text(
+                            if ((rating ?: 0) >= n) "★" else "☆", color = c.pending, style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.clickable { rating = if (rating == n) null else n },
+                        )
+                    }
+                }
+                AppTextField(
+                    value = comment, onValueChange = { if (it.length <= 500) comment = it }, minLines = 3, modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("تجربه‌تان را بنویسید (اختیاری)") },
+                )
+            }
+        },
+        confirmButton = {
+            AppTextButton(onClick = { onSave(rating, comment.trim().ifEmpty { null }) }, enabled = rating != null || comment.isNotBlank()) { Text("ثبت نظر") }
+        },
+        dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
+    )
+}
+
+/** The customer pays the rest of a completed booking from their wallet (apps/api POST appointments/:id/pay-balance). */
+@Composable
+private fun PayBalanceSheet(container: AppContainer, b: CustomerBooking, onDismiss: () -> Unit, onPaid: () -> Unit) {
+    val c = LocalAppColors.current
+    val scope = rememberCoroutineScope()
+    val due = b.balanceDueToman
+    var balance by remember { mutableStateOf<Int?>(null) }
+    var reload by remember { mutableIntStateOf(0) }
+    var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(reload) { balance = runCatching { container.api.walletMe().balanceToman }.getOrNull() }
+    val short = balance?.let { (due - it).coerceAtLeast(0) } ?: 0
+    AppDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text("پرداخت باقی‌مانده نوبت") },
+        text = {
+            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Muted("${b.salon.name} باقی‌مانده مبلغ این نوبت را از کیف پول شما درخواست کرده است.")
+                Row { Text("مبلغ", color = c.ink, modifier = Modifier.weight(1f)); Text(formatToman(due), color = c.ink) }
+                Row { Muted("موجودی کیف پول", Modifier.weight(1f)); Muted(balance?.let { formatToman(it) } ?: "…") }
+                if (short > 0) {
+                    Text("موجودی کافی نیست؛ حداقل ${formatToman(short)} شارژ کنید.", color = c.ink)
+                    app.nobatet.ui.wallet.WalletTopUp(container, suggestedToman = maxOf(10_000, (short + 999) / 1000 * 1000), onPaid = { reload++ })
+                }
+            }
+        },
+        confirmButton = {
+            PrimaryButton("پرداخت ${formatToman(due)} از کیف پول", enabled = !busy && balance != null && short == 0) {
+                busy = true
+                scope.launch {
+                    runCatching { container.api.payBalance(b.id) }
+                        .onSuccess { Toasts.success("${formatToman(due)} از کیف پول پرداخت شد"); onPaid() }
+                        .onFailure { Toasts.error(persianError(it, "پرداخت انجام نشد", container.json)); reload++ }
+                    busy = false
+                }
+            }
+        },
+        dismissButton = { AppTextButton(onClick = onDismiss, enabled = !busy) { Text("انصراف") } },
+    )
+}

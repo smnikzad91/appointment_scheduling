@@ -14,7 +14,7 @@ import StylistList from "@/components/salon/StylistList";
 import Gallery from "@/components/salon/Gallery";
 import Reviews from "@/components/salon/Reviews";
 import InfoSection from "@/components/salon/InfoSection";
-import { SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -34,20 +34,28 @@ function bookingPrefill(salon: Salon, sp: Awaited<PageProps["searchParams"]>): B
   const offersAll = stylist && serviceIds.every((id) => stylist.services.some((x) => x.serviceId === id));
   const today = toSalonWallTime(new Date(), salon.timezone).dateKey;
   const dateKey = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) && sp.date >= today && sp.date <= addDaysToDateKey(today, 13) ? sp.date : null;
-  return { serviceIds, stylistId: serviceIds.length && offersAll ? stylist.id : null, dateKey };
+  // A stylist's own link (/book/@handle) comes with no services: preselect them for whatever's picked.
+  return { serviceIds, stylistId: stylist && (serviceIds.length === 0 || offersAll) ? stylist.id : null, dateKey };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const salon = await getSalonBySlug(slug);
   if (!salon) return {};
+  const description =
+    salon.description ||
+    (salon.kind === "INDEPENDENT"
+      ? `${salon.name}، آرایشگر مستقل در ${salon.city} — مشاهده خدمات و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`
+      : `${salon.name}، سالن زیبایی در ${salon.city} — مشاهده خدمات، آرایشگرها و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`);
 
   return {
     title: salon.name,
-    description: salon.description ?? undefined,
+    description,
+    // Prefill links (?book=1…) are the same page — point search engines at the clean URL.
+    alternates: { canonical: `${SITE_URL}/s/${encodeURIComponent(slug)}` },
     openGraph: {
       title: salon.name,
-      description: salon.description ?? undefined,
+      description,
       type: "website",
       locale: "fa_IR",
       images: [{ url: `/s/${slug}/opengraph-image`, width: 1200, height: 630, alt: salon.name }],
@@ -69,9 +77,10 @@ export default async function SalonPage({ params, searchParams }: PageProps) {
 
         <div className="pb-20 sm:pb-8">
           <Hero salon={salon} />
-          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="divide-y divide-g-line">
             <ServiceCategoryGroup salon={salon} />
-            <StylistList salon={salon} />
+            {/* An independent stylist is the whole business: no list of one. */}
+            {salon.kind !== "INDEPENDENT" && <StylistList salon={salon} />}
             <Gallery images={salon.gallery} />
             <Reviews salon={salon} />
             <InfoSection salon={salon} />

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requestSession } from "@/lib/requestSession";
 import { prisma } from "@/lib/prisma";
 import { logError } from "@/lib/errorLog";
 
 const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 
 export async function GET() {
-  const session = await auth();
+  const session = await requestSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth();
+  const session = await requestSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

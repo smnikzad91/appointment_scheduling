@@ -1,4 +1,5 @@
 import { salonApiFetch } from "./salonApiClient";
+import type { SalonKind, ServiceLocation } from "@/lib/independent";
 
 // Salon discovery (apps/api GET /salons/search), saved salons (/me/favorites) and the "tell me
 // when a time opens up" waitlist (/salons/:slug/waitlist, /me/waitlist).
@@ -9,7 +10,13 @@ export interface SalonCard {
   slug: string;
   province: string | null;
   city: string;
-  address: string;
+  /** null = an independent stylist's private (home) address. */
+  address: string | null;
+  /** INDEPENDENT = an independent stylist; their pin may be rounded (approximateLocation). */
+  kind?: SalonKind;
+  serviceLocations?: ServiceLocation[];
+  hostSalonName?: string | null;
+  approximateLocation?: boolean;
   logoUrl: string | null;
   coverImageUrl: string | null;
   latitude: number | null;
@@ -24,6 +31,8 @@ export interface SalonCard {
 }
 
 export interface SalonSearchParams {
+  /** SALON = salons only, INDEPENDENT = independent stylists only; omitted = both. */
+  kind?: SalonKind;
   province?: string;
   city?: string;
   q?: string;
@@ -79,7 +88,7 @@ export interface WaitlistEntry {
 }
 
 export function joinWaitlist(token: string, slug: string, data: { date: string; serviceIds: string[]; stylistId?: string }) {
-  return salonApiFetch<{ id: string }>(`/salons/${slug}/waitlist`, { method: "POST", headers: auth(token), body: JSON.stringify(data) });
+  return salonApiFetch<{ id: string }>(`/salons/${encodeURIComponent(slug)}/waitlist`, { method: "POST", headers: auth(token), body: JSON.stringify(data) });
 }
 
 export function listMyWaitlist(token: string) {

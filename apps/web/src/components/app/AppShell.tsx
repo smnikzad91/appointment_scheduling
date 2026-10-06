@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { LogOut, Moon, Sun, type LucideIcon } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
+import Image from "next/image";
 import { SITE_NAME } from "@/lib/site";
 import Sheet from "./Sheet";
 import InstallAppBanner from "./InstallAppBanner";
 import { Avatar, ListGroup, cx } from "./ui";
+import { clearAllDrafts } from "@/lib/formDrafts";
 
 export interface AppTab {
   href: string;
@@ -82,9 +84,7 @@ export default function AppShell({
       >
         <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-app-accent text-lg font-black text-app-accent-ink">
-              {SITE_NAME.slice(0, 1)}
-            </span>
+            <Image src="/images/logo/logo_symbol_transparent.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
             <div className="leading-tight">
               <p className="text-[15px] font-black text-app-ink">{SITE_NAME}</p>
               <p className="text-[11px] font-medium text-app-muted">{panelName}</p>
@@ -170,7 +170,10 @@ export default function AppShell({
           </button>
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: "/signin" })}
+            onClick={() => {
+              clearAllDrafts();
+              signOut({ callbackUrl: "/signin" });
+            }}
             className="flex h-14 w-full items-center gap-3 px-4 text-[15px] font-semibold text-app-danger active:bg-app-card-2"
           >
             <LogOut className="h-5 w-5" aria-hidden />

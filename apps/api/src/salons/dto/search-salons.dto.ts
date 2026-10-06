@@ -10,6 +10,11 @@ export class SearchSalonsDto {
   @IsString()
   city?: string;
 
+  /** SALON = salons only, INDEPENDENT = independent stylists only; omitted = both. */
+  @IsOptional()
+  @IsIn(["SALON", "INDEPENDENT"])
+  kind?: "SALON" | "INDEPENDENT";
+
   /** Matches the salon name, its address or one of its active services. */
   @IsOptional()
   @IsString()

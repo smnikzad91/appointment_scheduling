@@ -20,7 +20,9 @@ export default function SalonGalleryPage() {
     <>
       <PageHeader
         title="نمونه کارها"
-        subtitle="عکس کارهای انجام‌شده در سالن؛ در صفحه رزرو به مشتری‌ها نشان داده می‌شود. هر عکس را می‌توانید به نام یک آرایشگر ثبت کنید."
+        subtitle={`عکس کارهای انجام‌شده؛ در صفحه رزرو به مشتری‌ها نشان داده می‌شود.${
+          stylists.length > 1 ? " هر عکس را می‌توانید به نام یک آرایشگر ثبت کنید." : ""
+        }`}
       />
       {token ? <GalleryManager token={token} scope="salon" stylists={stylists.map((s) => ({ id: s.id, displayName: s.displayName }))} /> : <ListSkeleton />}
     </>

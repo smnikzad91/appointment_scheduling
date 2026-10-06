@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window behind Compose (shown for a moment at start): the panel background. -->
+    <style name="Theme.Nobatet" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/app_bg</item>
+        <item name="android:statusBarColor">@color/app_bg</item>
+    </style>
+    <!-- Launch: just the web's splash colour; BrandSplash (Compose) then plays the web's PWA splash
+         animation over it, so there's no jump between the two. -->
+    <style name="Theme.Nobatet.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="postSplashScreenTheme">@style/Theme.Nobatet</item>
+    </style>
+    <color name="app_bg">#F6EFE6</color>
+    <color name="brand">#A34A30</color>
+    <color name="splash_bg">#121319</color>
+</resources>

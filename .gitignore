@@ -8,6 +8,9 @@ node_modules/
 
 # build outputs
 dist/
+dist-a/
+dist-b/
+.dist-live
 build/
 .next/
 out/
@@ -38,3 +41,11 @@ yarn-error.log*
 
 # ad-hoc local debug scripts/screenshots, not part of the app
 .playwright-check/
+
+# Demo-data artwork (scripts/demo/make-images.py) — regenerate, never commit
+apps/web/public/uploads/demo/
+
+# uptime monitor counters (scripts/uptime-monitor.cjs)
+.uptime-state.json
+.uptime-state.json.tmp
+story-highlights/_preview/

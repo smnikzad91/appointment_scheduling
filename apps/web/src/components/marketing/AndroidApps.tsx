@@ -1,3 +1,5 @@
+import { Smartphone } from "lucide-react";
+
 const APPS = [
   {
     title: "اپ آرایشگر",
@@ -11,22 +13,26 @@ const APPS = [
 
 export default function AndroidApps() {
   return (
-    <section id="apps" className="bg-[#f7f0e8] pb-20">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="rounded-3xl bg-[#2a1d26] px-6 py-14 text-center sm:px-14">
-          <span className="text-sm font-bold text-[#c98872]">اپلیکیشن‌های اندروید</span>
-          <h2 className="mt-3 text-3xl font-extrabold text-white sm:text-4xl">دو اپ، یک سامانه</h2>
-          <p className="mt-4 text-gray-300">برای مشتری که نوبت می‌گیرد و برای آرایشگری که نوبت را انجام می‌دهد.</p>
+    <section id="apps" className="scroll-mt-20 py-10 sm:py-16">
+      <div className="mx-auto max-w-6xl px-5">
+        <div className="g-glass g-glow-border g-reveal relative overflow-hidden rounded-[2rem] px-6 py-14 text-center sm:px-14">
+          <div aria-hidden className="absolute -top-40 left-1/2 h-80 w-[36rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(224_80_122/0.35),transparent_70%)]" />
+          <span className="g-kicker relative">اپلیکیشن‌های اندروید</span>
+          <h2 className="relative mt-4 text-3xl font-black text-g-ink sm:text-[40px]">
+            دو اپ، <span className="g-gradient-text">یک سامانه</span>
+          </h2>
+          <p className="relative mt-4 text-g-muted">برای مشتری که نوبت می‌گیرد و برای آرایشگری که نوبت را انجام می‌دهد.</p>
 
-          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          <div className="relative mt-10 grid gap-4 sm:grid-cols-2">
             {APPS.map((app) => (
-              <div key={app.title} className="rounded-2xl bg-white/5 p-8 text-start">
-                <h3 className="text-lg font-bold text-white">{app.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-300">{app.description}</p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <span className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-[#2a1d26]">دریافت از کافه‌بازار</span>
-                  <span className="rounded-lg border border-white/20 px-4 py-2 text-sm font-bold text-white">دریافت از مایکت</span>
+              <div key={app.title} className="g-glass-soft rounded-3xl p-7 text-start transition hover:border-g-line-strong">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-g-accent-3">
+                    <Smartphone className="h-5 w-5" aria-hidden />
+                  </span>
+                  <h3 className="text-lg font-bold text-g-ink">{app.title}</h3>
                 </div>
+                <p className="mt-3 text-sm leading-7 text-g-muted">{app.description}</p>
               </div>
             ))}
           </div>

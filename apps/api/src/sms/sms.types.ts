@@ -1,0 +1,50 @@
+/**
+ * What the app sends. Each message has a kind (so a template-based provider can map it to its
+ * pattern/template id), the values that fill it, and a ready-made Persian text for providers
+ * that take free text. A driver uses whichever its API needs.
+ */
+export type SmsMessage =
+  | { kind: "otp"; to: string; params: { code: string; domain: string }; text: string }
+  | {
+      kind: "reminder-customer";
+      to: string;
+      params: { time: string; salon: string; stylist: string };
+      text: string;
+    }
+  | {
+      kind: "reminder-stylist";
+      to: string;
+      params: { time: string; customer: string; services: string };
+      text: string;
+    }
+  | {
+      /** The salon or the stylist booked, moved or cancelled the customer's appointment, or the
+       * stylist confirmed the one they booked online. */
+      kind: "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
+      to: string;
+      params: { day: string; time: string; salon: string; stylist: string };
+      text: string;
+    }
+  | {
+      /** The customer booked online (or it's still unconfirmed hours later); the stylist is asked
+       * to confirm it in their panel. */
+      kind: "new-booking-stylist" | "confirm-nudge-stylist";
+      to: string;
+      params: { day: string; time: string; customer: string };
+      text: string;
+    }
+  | {
+      /** "Time to book again", some days after a completed appointment (RebookReminderService). */
+      kind: "rebook-customer";
+      to: string;
+      params: { customer: string; days: string; service: string; salon: string; link: string };
+      text: string;
+    };
+
+export type SmsKind = SmsMessage["kind"];
+
+/** A provider. Throw on failure — SmsService logs it to the admin error log. */
+export interface SmsDriver {
+  readonly name: string;
+  send(message: SmsMessage): Promise<void>;
+}

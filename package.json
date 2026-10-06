@@ -8,20 +8,12 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "build:prod": "npm run generate -w @appointment-scheduling/database && npm run build -w api && npm run build -w web",
+    "deploy": "bash scripts/deploy.sh"
   },
   "devDependencies": {
     "next": "*",
     "turbo": "^2.5.8"
-  },
-  "overrides": {
-    "@react-jvectormap/core": {
-      "react": "^16.8.0 || ^17 || ^18 || ^19",
-      "react-dom": "^16.8.0 || ^17 || ^18 || ^19"
-    },
-    "@react-jvectormap/world": {
-      "react": "^16.8.0 || ^17 || ^18 || ^19",
-      "react-dom": "^16.8.0 || ^17 || ^18 || ^19"
-    }
   }
 }

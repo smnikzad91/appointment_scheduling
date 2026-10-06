@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { Salon, Booking } from "@/types/salon";
+import type { ServiceLocation } from "@/lib/independent";
+import { useBackgroundDraft } from "@/lib/useBackgroundDraft";
 
 export type BookingStep = "services" | "stylist" | "datetime" | "contact" | "otp" | "summary" | "success";
 
@@ -12,9 +14,15 @@ interface BookingState {
   stylistId: string | null;
   dateKey: string | null;
   startMinute: number | null;
-  customerName: string;
+  customerFirstName: string;
+  customerLastName: string;
   customerPhone: string;
   accessToken: string | null; // set once OTP verification succeeds
+  /** The code, when the API hands it back (no SMS provider yet) — StepOtp then verifies by itself. */
+  devCode: string | null;
+  /** Independent stylists: where it happens (one of theirs) and, for a home visit, the address. */
+  serviceLocation: ServiceLocation | null;
+  visitAddress: string;
 }
 
 const INITIAL_STATE: BookingState = {
@@ -22,15 +30,21 @@ const INITIAL_STATE: BookingState = {
   stylistId: null,
   dateKey: null,
   startMinute: null,
-  customerName: "",
+  customerFirstName: "",
+  customerLastName: "",
   customerPhone: "",
   accessToken: null,
+  devCode: null,
+  serviceLocation: null,
+  visitAddress: "",
 };
 
 interface BookingContextValue {
   salon: Salon;
   isOpen: boolean;
   step: BookingStep;
+  /** This salon's steps (an independent stylist has no "choose a stylist" step). */
+  steps: BookingStep[];
   state: BookingState;
   result: Booking | null;
   open: () => void;
@@ -54,19 +68,27 @@ export interface BookingPrefill {
 }
 
 export function BookingProvider({ salon, prefill, children }: { salon: Salon; prefill?: BookingPrefill | null; children: React.ReactNode }) {
+  const independent = salon.kind === "INDEPENDENT";
+  // An independent stylist is the only stylist: nothing to choose.
+  const steps = useMemo(() => (independent ? BOOKING_STEPS.filter((s) => s !== "stylist") : BOOKING_STEPS), [independent]);
+  // The only place they work needs no choice either.
+  const initialState = useMemo<BookingState>(
+    () => ({ ...INITIAL_STATE, serviceLocation: independent && salon.serviceLocations.length === 1 ? salon.serviceLocations[0] : null }),
+    [independent, salon.serviceLocations],
+  );
   const [isOpen, setIsOpen] = useState(!!prefill);
   // With services already chosen, start at the day/time step; back still reaches the earlier ones.
   const [step, setStep] = useState<BookingStep>(prefill?.serviceIds.length ? "datetime" : "services");
   const [state, setState] = useState<BookingState>(() =>
-    prefill ? { ...INITIAL_STATE, serviceIds: prefill.serviceIds, stylistId: prefill.stylistId, dateKey: prefill.dateKey } : INITIAL_STATE,
+    prefill ? { ...initialState, serviceIds: prefill.serviceIds, stylistId: prefill.stylistId, dateKey: prefill.dateKey } : initialState,
   );
   const [result, setResult] = useState<Booking | null>(null);
 
   const reset = useCallback(() => {
-    setState(INITIAL_STATE);
+    setState(initialState);
     setStep("services");
     setResult(null);
-  }, []);
+  }, [initialState]);
 
   const open = useCallback(() => {
     reset();
@@ -95,23 +117,40 @@ export function BookingProvider({ salon, prefill, children }: { salon: Salon; pr
     setState((s) => ({ ...s, ...patch }));
   }, []);
 
-  const stepIndex = BOOKING_STEPS.indexOf(step);
+  // If the OS kills the app while the customer is in another app (checking their calendar, the
+  // SMS code), bring them back to the same step with the same choices — also over a prefilled
+  // sheet (short link, «رزرو دوباره»): the draft is what they did after it. A finished booking
+  // isn't brought back.
+  useBackgroundDraft<{ step: BookingStep; state: BookingState }>(
+    `booking:${salon.slug}`,
+    () => (isOpen && step !== "success" ? { step, state } : null),
+    (draft) => {
+      if (!steps.includes(draft.step)) return;
+      const afterOtp = steps.indexOf(draft.step) > steps.indexOf("otp");
+      setState({ ...initialState, ...draft.state });
+      setStep(afterOtp && !draft.state.accessToken ? "contact" : draft.step);
+      setIsOpen(true);
+    },
+  );
+
+  const stepIndex = steps.indexOf(step);
 
   const goNext = useCallback(() => {
-    const nextIndex = Math.min(stepIndex + 1, BOOKING_STEPS.length - 1);
-    setStep(BOOKING_STEPS[nextIndex]);
-  }, [stepIndex]);
+    const nextIndex = Math.min(stepIndex + 1, steps.length - 1);
+    setStep(steps[nextIndex]);
+  }, [stepIndex, steps]);
 
   const goBack = useCallback(() => {
     const prevIndex = Math.max(stepIndex - 1, 0);
-    setStep(BOOKING_STEPS[prevIndex]);
-  }, [stepIndex]);
+    setStep(steps[prevIndex]);
+  }, [stepIndex, steps]);
 
   const value = useMemo<BookingContextValue>(
     () => ({
       salon,
       isOpen,
       step,
+      steps,
       state,
       result,
       open,
@@ -124,7 +163,7 @@ export function BookingProvider({ salon, prefill, children }: { salon: Salon; pr
       setResult,
       toggleService,
     }),
-    [salon, isOpen, step, state, result, open, openWithService, close, goNext, goBack, stepIndex, updateState, toggleService],
+    [salon, isOpen, step, steps, state, result, open, openWithService, close, goNext, goBack, stepIndex, updateState, toggleService],
   );
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;

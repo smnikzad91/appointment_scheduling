@@ -98,15 +98,67 @@ export interface Expense {
   amountToman: number;
   spentAt: string;
   note: string | null;
+  /** Optional private receipt photo (only the owner can open it). */
+  receiptUrl: string | null;
 }
 
 export interface StylistEarnings {
   stylist: { id: string; displayName: string; commissionPercent: number };
-  totals: { appointmentCount: number; incomeToman: number; tipsToman: number; shareToman: number; paidInPeriodToman: number };
+  totals: {
+    appointmentCount: number;
+    incomeToman: number;
+    tipsToman: number;
+    shareToman: number;
+    paidInPeriodToman: number;
+    /** The stylist's own expenses logged in the period. */
+    expensesToman: number;
+    /** shareToman − expensesToman; may be negative (a loss). */
+    netIncomeToman: number;
+  };
   balanceToman: number;
   items: IncomeItem[];
   payouts: Payout[];
+  expenses: StylistExpense[];
 }
+
+// The stylist's own work costs, logged on /stylist/expenses; they lower the stylist's net income
+// but never the salon's books or balance.
+export type StylistExpenseCategory = "SUPPLIES" | "PRODUCTS" | "TOOLS" | "TRAINING" | "TRANSPORT" | "OTHER";
+
+export const STYLIST_EXPENSE_CATEGORY_LABEL: Record<StylistExpenseCategory, string> = {
+  SUPPLIES: "مواد مصرفی",
+  PRODUCTS: "خرید محصول",
+  TOOLS: "ابزار و تعمیرات",
+  TRAINING: "آموزش",
+  TRANSPORT: "رفت‌وآمد",
+  OTHER: "سایر",
+};
+
+export interface StylistExpense {
+  id: string;
+  category: StylistExpenseCategory;
+  amountToman: number;
+  spentAt: string;
+  description: string;
+  receiptUrl: string | null;
+}
+
+export interface StylistExpensePage {
+  items: StylistExpense[];
+  /** Matching expenses in the period (all pages). */
+  total: number;
+  totalToman: number;
+  page: number;
+  pageSize: number;
+}
+
+export type StylistExpenseInput = {
+  category: StylistExpenseCategory;
+  amountToman: number;
+  spentAt: string;
+  description: string;
+  receiptUrl: string | null;
+};
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 const qs = (params: Record<string, string | undefined>) =>
@@ -144,11 +196,11 @@ export function listExpenses(token: string, p: Period) {
   return salonApiFetch<Expense[]>(`/salons/mine/expenses?${qs({ ...p })}`, { headers: auth(token) });
 }
 
-export function createExpense(token: string, data: { category: ExpenseCategory; amountToman: number; spentAt?: string; note?: string }) {
+export function createExpense(token: string, data: { category: ExpenseCategory; amountToman: number; spentAt?: string; note?: string; receiptUrl?: string | null }) {
   return salonApiFetch<Expense>("/salons/mine/expenses", { method: "POST", headers: auth(token), body: JSON.stringify(data) });
 }
 
-export function updateExpense(token: string, id: string, data: Partial<{ category: ExpenseCategory; amountToman: number; spentAt: string; note: string | null }>) {
+export function updateExpense(token: string, id: string, data: Partial<{ category: ExpenseCategory; amountToman: number; spentAt: string; note: string | null; receiptUrl: string | null }>) {
   return salonApiFetch<Expense>(`/salons/mine/expenses/${id}`, { method: "PATCH", headers: auth(token), body: JSON.stringify(data) });
 }
 
@@ -158,4 +210,23 @@ export function deleteExpense(token: string, id: string) {
 
 export function getMyEarnings(token: string, p: Period) {
   return salonApiFetch<StylistEarnings>(`/stylists/me/earnings?${qs({ ...p })}`, { headers: auth(token) });
+}
+
+export function listMyExpenses(token: string, p: Period, opts: { category?: StylistExpenseCategory; page?: number; pageSize?: number } = {}) {
+  return salonApiFetch<StylistExpensePage>(
+    `/stylists/me/expenses?${qs({ ...p, category: opts.category, page: opts.page?.toString(), pageSize: opts.pageSize?.toString() })}`,
+    { headers: auth(token) },
+  );
+}
+
+export function createMyExpense(token: string, data: StylistExpenseInput) {
+  return salonApiFetch<StylistExpense>("/stylists/me/expenses", { method: "POST", headers: auth(token), body: JSON.stringify(data) });
+}
+
+export function updateMyExpense(token: string, id: string, data: Partial<StylistExpenseInput>) {
+  return salonApiFetch<StylistExpense>(`/stylists/me/expenses/${id}`, { method: "PATCH", headers: auth(token), body: JSON.stringify(data) });
+}
+
+export function deleteMyExpense(token: string, id: string) {
+  return salonApiFetch<{ ok: true }>(`/stylists/me/expenses/${id}`, { method: "DELETE", headers: auth(token) });
 }

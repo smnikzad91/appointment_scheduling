@@ -33,7 +33,7 @@ export default function StepStylist() {
       <button
         type="button"
         onClick={() => select(null)}
-        className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 p-3 text-start dark:border-gray-800"
+        className="flex items-center justify-between gap-3 rounded-lg border border-g-line p-3 text-start"
       >
         <span className="text-sm font-medium">فرقی نمی‌کند</span>
         {state.stylistId === null && (
@@ -48,19 +48,19 @@ export default function StepStylist() {
           key={stylist.id}
           type="button"
           onClick={() => select(stylist.id)}
-          className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-start dark:border-gray-800"
+          className="flex items-center gap-3 rounded-lg border border-g-line p-3 text-start"
         >
           {stylist.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={stylist.avatarUrl} alt={stylist.displayName} className="h-10 w-10 rounded-full object-cover" />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500 dark:bg-gray-800">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-sm font-bold text-g-muted">
               {stylist.displayName.slice(0, 1)}
             </div>
           )}
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium">{stylist.displayName}</span>
-            <span className="mt-0.5 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="mt-0.5 flex items-center gap-2 text-xs text-g-muted">
               {stylist.rating !== undefined && (
                 <span className="flex items-center gap-1">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden />

@@ -8,7 +8,12 @@ const IRANIAN_MOBILE = /^09[0-9]{9}$/;
 
 export async function POST(req: NextRequest) {
   try {
-    const { firstName, lastName, email, phone, password, salonName, province, city, address, latitude, longitude } = await req.json();
+    const {
+      firstName, lastName, email, phone, password, salonName, province, city, address, latitude, longitude, planId,
+      kind, serviceLocations, serviceArea, hostSalonName,
+    } = await req.json();
+    // kind INDEPENDENT = an independent stylist signing up their own business (apps/api validates the rest).
+    const independent = kind === "INDEPENDENT";
 
     if (!firstName || !lastName || !phone || !password || !salonName || !province || !city || !address) {
       return NextResponse.json({ error: "همه فیلدها الزامی هستند" }, { status: 400 });
@@ -29,7 +34,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "محل سالن را روی نقشه مشخص کنید" }, { status: 400 });
     }
 
-    await apiRegisterSalonOwner({ firstName, lastName, email, phone, password, salonName, province, city, address, latitude, longitude });
+    await apiRegisterSalonOwner({
+      firstName, lastName, email, phone, password, salonName, province, city, address, latitude, longitude,
+      planId: typeof planId === "string" && planId ? planId : undefined,
+      ...(independent && {
+        kind: "INDEPENDENT" as const,
+        serviceLocations: Array.isArray(serviceLocations) ? serviceLocations : [],
+        serviceArea: typeof serviceArea === "string" ? serviceArea : undefined,
+        hostSalonName: typeof hostSalonName === "string" ? hostSalonName : undefined,
+      }),
+    });
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {

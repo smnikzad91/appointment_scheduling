@@ -1,4 +1,5 @@
 import { salonApiFetch } from "./salonApiClient";
+import type { SalonKind, ServiceLocation } from "@/lib/independent";
 
 function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` };
@@ -23,6 +24,33 @@ export interface OwnerSalon {
   longitude: number | null;
   status: "PENDING" | "ACTIVE" | "SUSPENDED";
   timezone: string;
+  /** INDEPENDENT = an independent stylist's own business (they're its only stylist). */
+  kind: SalonKind;
+  /** INDEPENDENT only: where they work, and the areas home visits cover. */
+  serviceLocations: ServiceLocation[];
+  serviceArea: string | null;
+  /** IN_SALON: the salon they work in. */
+  hostSalonName: string | null;
+  /** Short link nobatet.app/book/@<handle>; null = the link uses `slug`. */
+  handle: string | null;
+}
+
+// --- subscription (plan + limits; plans are edited at /admin/pricing) ---
+
+export interface OwnerSubscription {
+  /** "none" = no plan assigned, so no limits */
+  status: "none" | "active" | "expired";
+  plan: { id: string; name: string; monthlyPriceToman: number | null; maxStylists: number | null; smsPerMonth: number | null } | null;
+  /** null = no end date */
+  expiresAt: string | null;
+  /** limit null = unlimited */
+  stylists: { active: number; limit: number | null };
+  /** This Jalali month's reminder SMS; limit null = unlimited (no plan) */
+  sms: { period: string; sent: number; limit: number | null };
+}
+
+export function getMySubscription(token: string) {
+  return salonApiFetch<OwnerSubscription>("/salons/mine/subscription", { headers: authHeaders(token) });
 }
 
 /** Fired on window after the salon's name or logo changes, so the app bar can refresh. */
@@ -46,6 +74,18 @@ export interface UpdateSalonInput {
   brandColor?: string;
   latitude?: number;
   longitude?: number;
+  /** Independent stylists only. */
+  serviceLocations?: ServiceLocation[];
+  serviceArea?: string | null;
+  hostSalonName?: string | null;
+}
+
+export function setMySalonHandle(token: string, handle: string) {
+  return salonApiFetch<{ handle: string; slug: string }>("/salons/mine/handle", {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ handle }),
+  });
 }
 
 export function updateMySalon(token: string, data: UpdateSalonInput) {
@@ -100,10 +140,14 @@ export interface OwnerService {
   durationMinutes: number;
   priceToman: number;
   active: boolean;
+  /** "Time to book again" SMS to the customer this many days after a completed appointment. */
+  rebookReminderEnabled: boolean;
+  rebookReminderDays: number;
 }
 
 export function listMyServices(token: string) {
-  return salonApiFetch<OwnerService[]>("/salons/mine/services", { headers: authHeaders(token) });
+  // Always from the server: the list is re-read right after every edit.
+  return salonApiFetch<OwnerService[]>("/salons/mine/services", { headers: authHeaders(token), cache: "no-store" });
 }
 
 export interface CreateServiceInput {
@@ -112,6 +156,8 @@ export interface CreateServiceInput {
   categoryId?: string;
   durationMinutes: number;
   priceToman: number;
+  rebookReminderEnabled?: boolean;
+  rebookReminderDays?: number;
 }
 
 export function createService(token: string, data: CreateServiceInput) {
@@ -151,10 +197,16 @@ export interface OwnerStylist {
   active: boolean;
   /** Stylist's share of the money received for their appointments, 0–100. */
   commissionPercent: number;
-  user: { firstName: string; lastName: string; phone: string | null };
+  /** mustSetPassword: invited but hasn't used their "set your password" link yet. */
+  user: { firstName: string; lastName: string; phone: string | null; mustSetPassword: boolean };
   /** commissionPercent: this service's own share for the stylist; null = their default. */
   services: { serviceId: string; overridePriceToman: number | null; overrideDurationMinutes: number | null; commissionPercent: number | null }[];
-  tempPassword?: string;
+}
+
+/** A one-time "set your password" link secret; build the URL with setupLinkUrl(). */
+export interface StylistSetupLink {
+  setupToken: string;
+  expiresAt: string;
 }
 
 export interface StylistServiceEntry {
@@ -179,10 +231,19 @@ export interface InviteStylistInput {
 }
 
 export function inviteStylist(token: string, data: InviteStylistInput) {
-  return salonApiFetch<OwnerStylist>("/salons/mine/stylists", {
+  // setupToken is present when a new account was made (or an invited one never set a password).
+  return salonApiFetch<OwnerStylist & { setupToken?: string; setupExpiresAt?: string }>("/salons/mine/stylists", {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(data),
+  });
+}
+
+/** Issues a new one-time link for the stylist; any earlier unused link stops working. */
+export function regenerateStylistSetupLink(token: string, stylistId: string) {
+  return salonApiFetch<StylistSetupLink>(`/salons/mine/stylists/${stylistId}/setup-link`, {
+    method: "POST",
+    headers: authHeaders(token),
   });
 }
 
@@ -225,7 +286,8 @@ export interface OwnerAppointment {
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   priceToman: number;
   notes: string | null;
-  services: { service: { name: string } }[];
+  stylistShareToman: number | null;
+  services: { serviceId: string; priceToman: number; service: { name: string } }[];
   stylist: { displayName: string };
   customer: { firstName: string; lastName: string; phone: string | null };
 }
@@ -252,10 +314,35 @@ export interface SalonBookingInput {
   serviceIds: string[];
   startAt: string; // ISO instant
   notes?: string;
+  /** Independent stylists: where it happens (omitted = not specified), a home visit's address. */
+  serviceLocation?: ServiceLocation;
+  visitAddress?: string;
 }
 
 export function createSalonBooking(token: string, data: SalonBookingInput) {
   return salonApiFetch<OwnerAppointment>("/appointments/salon", { method: "POST", headers: authHeaders(token), body: JSON.stringify(data) });
+}
+
+/**
+ * Staff (owner, or the appointment's stylist) change an open appointment; omitted fields stay.
+ * `customerFirstName`/`customerLastName` rename the customer on this booking only (never their
+ * account); `null` goes back to the account's name.
+ */
+export function updateAppointmentDetails(
+  token: string,
+  id: string,
+  data: {
+    serviceIds?: string[];
+    startAt?: string;
+    notes?: string | null;
+    customerFirstName?: string | null;
+    customerLastName?: string | null;
+    /** Independent stylists: null = not specified. */
+    serviceLocation?: ServiceLocation | null;
+    visitAddress?: string | null;
+  },
+) {
+  return salonApiFetch<OwnerAppointment>(`/appointments/${id}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify(data) });
 }
 
 /** A customer who has booked here before (to prefill the name); `found: false` otherwise. */

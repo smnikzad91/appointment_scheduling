@@ -1,4 +1,5 @@
 import { salonApiFetch } from "./salonApiClient";
+import type { ServiceLocation } from "@/lib/independent";
 
 function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` };
@@ -8,7 +9,20 @@ export interface SelfStylistService {
   serviceId: string;
   overridePriceToman: number | null;
   overrideDurationMinutes: number | null;
-  service: { id: string; name: string; priceToman: number; durationMinutes: number };
+  /** The owner-set rate for this service; null = the stylist's default. */
+  commissionPercent: number | null;
+  /** This stylist's own "book again" SMS setting; null = the salon's (service.rebookReminder…). */
+  overrideRebookReminderEnabled: boolean | null;
+  overrideRebookReminderDays: number | null;
+  service: {
+    id: string;
+    name: string;
+    priceToman: number;
+    durationMinutes: number;
+    active: boolean;
+    rebookReminderEnabled: boolean;
+    rebookReminderDays: number;
+  };
 }
 
 export interface SelfStylist {
@@ -20,8 +34,21 @@ export interface SelfStylist {
   avatarUrl: string | null;
   coverImageUrl: string | null;
   active: boolean;
+  commissionPercent: number;
   workingHours: { dayOfWeek: number; startMinute: number; endMinute: number }[];
   services: SelfStylistService[];
+  salon: { slug: string; timezone: string; status: string; name: string; city: string; province: string | null; brandColor: string };
+  /** Short link nobatet.app/book/@<handle>; see getMyStylistHandle (which assigns one if missing). */
+  handle?: string | null;
+}
+
+/** The stylist's short-link handle; a generated one is assigned the first time. */
+export function getMyStylistHandle(token: string) {
+  return salonApiFetch<{ handle: string }>("/stylists/me/handle", { headers: authHeaders(token) });
+}
+
+export function setMyStylistHandle(token: string, handle: string) {
+  return salonApiFetch<{ handle: string }>("/stylists/me/handle", { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ handle }) });
 }
 
 /** Dispatched on window after the stylist edits their profile, so the app bar refreshes. */
@@ -42,7 +69,12 @@ export function updateMyStylistProfile(token: string, data: { bio?: string; avat
 export function updateMyServiceOverride(
   token: string,
   serviceId: string,
-  data: { overridePriceToman: number | null; overrideDurationMinutes: number | null },
+  data: {
+    overridePriceToman: number | null;
+    overrideDurationMinutes: number | null;
+    overrideRebookReminderEnabled?: boolean | null;
+    overrideRebookReminderDays?: number | null;
+  },
 ) {
   return salonApiFetch<SelfStylistService>(`/stylists/me/services/${serviceId}`, {
     method: "PATCH",
@@ -102,7 +134,12 @@ export interface StylistAppointment {
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   priceToman: number;
   notes: string | null;
-  services: { service: { name: string } }[];
+  /** Independent stylists: where it happens (null = not specified / a salon) and a home visit's address. */
+  serviceLocation?: ServiceLocation | null;
+  visitAddress?: string | null;
+  /** Frozen once COMPLETED: the stylist's commission plus any tip. */
+  stylistShareToman: number | null;
+  services: { serviceId: string; priceToman: number; service: { name: string } }[];
   customer: { firstName: string; lastName: string; phone: string | null };
 }
 

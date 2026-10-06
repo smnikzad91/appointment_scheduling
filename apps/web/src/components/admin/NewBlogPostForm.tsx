@@ -6,6 +6,7 @@ import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
 import SelectField from "@/components/admin/SelectField";
 import { toast } from "sonner";
+import { toastError } from "@/lib/toastError";
 
 interface Section {
   heading: string;
@@ -19,7 +20,6 @@ export default function NewBlogPostForm() {
   const isRTL = lang === "fa";
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
@@ -97,7 +97,6 @@ export default function NewBlogPostForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setSaving(true);
 
     const cleanSections = sections
@@ -118,7 +117,7 @@ export default function NewBlogPostForm() {
     setSaving(false);
 
     if (!res.ok) {
-      setError(data.error ?? "Failed to save");
+      toastError(data.error ?? "Failed to save");
       return;
     }
 
@@ -149,11 +148,6 @@ export default function NewBlogPostForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400">
-            {error}
-          </div>
-        )}
 
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -186,6 +180,7 @@ export default function NewBlogPostForm() {
             {coverUploading && <p className="mt-1 text-xs text-gray-400">{t("blogCoverImageUploading")}</p>}
             {coverImage && !coverUploading && (
               <div className="mt-2 relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element -- admin-only preview of an arbitrary-size image that may be on any host (admin-entered URL); next/image needs fixed dimensions and allowed remote hosts, and optimizing it gains nothing here */}
                 <img src={coverImage} alt="" className="h-32 w-auto rounded-xl border border-gray-200 object-cover dark:border-gray-700" />
                 <button type="button" onClick={() => setCoverImage("")}
                   className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white hover:bg-red-600">
@@ -291,6 +286,7 @@ export default function NewBlogPostForm() {
                   {sectionUploading[i] && <p className="mt-1 text-xs text-gray-400">{t("blogSectionImageUploading")}</p>}
                   {section.image && !sectionUploading[i] && (
                     <div className="mt-2 relative inline-block">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- admin-only preview of an arbitrary-size image that may be on any host (admin-entered URL); next/image needs fixed dimensions and allowed remote hosts, and optimizing it gains nothing here */}
                       <img src={section.image} alt="" className="h-28 w-auto rounded-xl border border-gray-200 object-cover dark:border-gray-700" />
                       <button type="button" onClick={() => removeSectionImage(i)}
                         className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white hover:bg-red-600">

@@ -216,14 +216,6 @@ export function TextArea({ className, ...rest }: React.TextareaHTMLAttributes<HT
   return <textarea className={cx(INPUT_CLASS, "py-3 leading-7", className)} {...rest} />;
 }
 
-export function Select({ className, children, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select className={cx(INPUT_CLASS, "h-12 appearance-none", className)} {...rest}>
-      {children}
-    </select>
-  );
-}
-
 /** iOS-style switch. */
 export function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean }) {
   return (

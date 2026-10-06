@@ -10,9 +10,12 @@ import {
   AdjustChargeDto,
   CreateExpenseDto,
   CreatePayoutDto,
+  CreateStylistExpenseDto,
   PayoutQueryDto,
   PeriodQueryDto,
+  StylistExpenseQueryDto,
   UpdateExpenseDto,
+  UpdateStylistExpenseDto,
 } from "./dto/accounting.dto.js";
 
 const userId = (req: Request) => (req.user as JwtPayload).sub;
@@ -88,5 +91,31 @@ export class AccountingController {
   @Roles(Role.STYLIST)
   earnings(@Req() req: Request, @Query() query: PeriodQueryDto) {
     return this.accounting.earningsForStylist(userId(req), query);
+  }
+
+  // Stylists only ever reach their own expenses: every query is scoped to the stylist profile of
+  // the signed-in user, so another stylist's id just reads as "not found".
+  @Get("stylists/me/expenses")
+  @Roles(Role.STYLIST)
+  listMyExpenses(@Req() req: Request, @Query() query: StylistExpenseQueryDto) {
+    return this.accounting.listStylistExpenses(userId(req), query);
+  }
+
+  @Post("stylists/me/expenses")
+  @Roles(Role.STYLIST)
+  createMyExpense(@Req() req: Request, @Body() dto: CreateStylistExpenseDto) {
+    return this.accounting.createStylistExpense(userId(req), dto);
+  }
+
+  @Patch("stylists/me/expenses/:id")
+  @Roles(Role.STYLIST)
+  updateMyExpense(@Req() req: Request, @Param("id") id: string, @Body() dto: UpdateStylistExpenseDto) {
+    return this.accounting.updateStylistExpense(userId(req), id, dto);
+  }
+
+  @Delete("stylists/me/expenses/:id")
+  @Roles(Role.STYLIST)
+  removeMyExpense(@Req() req: Request, @Param("id") id: string) {
+    return this.accounting.removeStylistExpense(userId(req), id);
   }
 }

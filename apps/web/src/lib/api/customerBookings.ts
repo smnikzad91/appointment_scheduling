@@ -1,4 +1,5 @@
 import { salonApiFetch } from "./salonApiClient";
+import type { SalonKind, ServiceLocation } from "@/lib/independent";
 
 function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` };
@@ -12,8 +13,12 @@ export interface CustomerBooking {
   endAt: string;
   priceToman: number;
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
-  salon: { name: string; slug: string };
+  /** The customer booked here: the full address, except an independent stylist's private (home) one unless the appointment is there (then null). */
+  salon: { name: string; slug: string; kind?: SalonKind; address?: string | null; hostSalonName?: string | null };
   stylist: { displayName: string };
+  /** Independent stylists: where it happens, and a home visit's address. */
+  serviceLocation?: ServiceLocation | null;
+  visitAddress?: string | null;
   services: { serviceId: string; service: { name: string } }[];
   reviews: BookingReview[];
 }

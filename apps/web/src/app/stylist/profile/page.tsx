@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Check, Wallet } from "lucide-react";
+import { Check, Wallet, BookOpen, QrCode, Receipt } from "lucide-react";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import GalleryManager from "@/components/app/GalleryManager";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
@@ -10,6 +10,7 @@ import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessTok
 import { STYLIST_UPDATED_EVENT, getMyStylistProfile, updateMyStylistProfile, type SelfStylist } from "@/lib/api/stylistSelf";
 import { toPersianDigits } from "@/lib/persian";
 import { Button, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, cx, LinkCard } from "@/components/app/ui";
+import { toastError } from "@/lib/toastError";
 
 const BIO_MAX = 300;
 
@@ -46,7 +47,7 @@ export default function StylistProfilePage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
-      setError("ذخیره تغییرات انجام نشد");
+      toastError("ذخیره تغییرات انجام نشد");
     } finally {
       setSaving(false);
     }
@@ -102,7 +103,6 @@ export default function StylistProfilePage() {
       </Field>
 
       <div className="mt-4">
-        {error && <ErrorBanner>{error}</ErrorBanner>}
         <Button type="submit" block busy={saving} disabled={!bioChanged && !saving} icon={saved ? Check : undefined}>
           {saved ? "ذخیره شد" : "ذخیره"}
         </Button>
@@ -110,7 +110,10 @@ export default function StylistProfilePage() {
     </form>
 
       <ReviewsLinkCard token={token} scope="stylist" className="mt-6" />
+      <LinkCard href="/stylist/share" icon={QrCode} title="کیت معرفی من" subtitle="لینک رزرو مستقیم با شما، کد QR و پوستر" className="mt-3" />
       <LinkCard href="/stylist/earnings" icon={Wallet} title="درآمد من" subtitle="سهم شما از نوبت‌ها، پرداخت‌های سالن و مانده حساب" className="mt-3" />
+      <LinkCard href="/stylist/expenses" icon={Receipt} title="هزینه‌های من" subtitle="مواد مصرفی، ابزار و خریدهای کاری" className="mt-3" />
+      <LinkCard href="/tutorials?role=stylist" icon={BookOpen} title="راهنمای استفاده" subtitle="راهنمای تصویری نوبت‌ها، ساعت کاری، درآمد و نمونه کارها" className="mt-3" />
 
       <SectionTitle>نمونه کارهای من</SectionTitle>
       <p className="-mt-1 mb-3 px-1 text-xs leading-6 text-app-muted">

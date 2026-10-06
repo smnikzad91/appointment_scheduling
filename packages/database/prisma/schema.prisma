@@ -12,6 +12,22 @@ enum Role {
   SALON_OWNER
   STYLIST
   CUSTOMER
+  /// A freelance stylist with no salon: owns a Salon of kind INDEPENDENT and is its only Stylist.
+  INDEPENDENT_STYLIST
+}
+
+/// SALON = a beauty salon with its own stylists; INDEPENDENT = one freelance stylist's own business.
+enum SalonKind {
+  SALON
+  INDEPENDENT
+}
+
+/// Where an independent stylist works (several allowed).
+enum ServiceLocation {
+  IN_SALON // the usual case: a chair/room in someone else's salon, under their own name — public address
+  STUDIO // their own/private studio — the address and pin are public
+  HOME // at the stylist's home — only an approximate area is public
+  CLIENT_HOME // home visits at the customer's place
 }
 
 enum SalonStatus {
@@ -70,6 +86,7 @@ enum NotificationType {
   BOOKING_CONFIRMED
   REVIEW_APPROVED
   SLOT_OPENED
+  BOOKING_UPDATED
 }
 
 enum PayoutMethod {
@@ -86,6 +103,16 @@ enum ExpenseCategory {
   UTILITIES
   EQUIPMENT
   MARKETING
+  OTHER
+}
+
+// A stylist's own work costs (tracked in the stylist panel), for their net income.
+enum StylistExpenseCategory {
+  SUPPLIES // consumable materials
+  PRODUCTS // products bought (for work or resale)
+  TOOLS // tool purchase or maintenance
+  TRAINING
+  TRANSPORT
   OTHER
 }
 
@@ -114,27 +141,34 @@ enum SocialPlatform {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  phone         String?  @unique
-  email         String?  @unique
-  passwordHash  String
-  firstName     String
-  lastName      String
-  avatarUrl     String?
-  role          Role
-  walletBalance Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  phone           String?  @unique
+  email           String?  @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  avatarUrl       String?
+  role            Role
+  walletBalance   Int      @default(0)
+  /// True for an invited stylist until they choose a password via their one-time link (their
+  /// passwordHash until then is random and unknown to anyone).
+  mustSetPassword Boolean  @default(false)
+  /// Promotional SMS ("time to book again") stopped by the customer — via the link in the text
+  /// (/r/<code>) or their dashboard. Transactional texts (codes, reminders, booking changes) still go.
+  promoSmsOptOut  Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  ownedSalons     Salon[]         @relation("SalonOwner")
-  stylist         Stylist?
-  appointments    Appointment[]   @relation("CustomerAppointments")
-  tickets         Ticket[]
-  cards           Card[]
-  deposits        Deposit[]
-  notifications   Notification[]
-  favoriteSalons  FavoriteSalon[]
-  waitlistEntries WaitlistEntry[]
+  ownedSalons         Salon[]              @relation("SalonOwner")
+  stylist             Stylist?
+  appointments        Appointment[]        @relation("CustomerAppointments")
+  tickets             Ticket[]
+  cards               Card[]
+  deposits            Deposit[]
+  notifications       Notification[]
+  favoriteSalons      FavoriteSalon[]
+  waitlistEntries     WaitlistEntry[]
+  passwordSetupTokens PasswordSetupToken[]
 
   @@map("users")
 }
@@ -346,30 +380,45 @@ model Deposit {
 }
 
 model Salon {
-  id            String      @id @default(cuid())
-  ownerId       String
-  owner         User        @relation("SalonOwner", fields: [ownerId], references: [id])
-  name          String
-  slug          String      @unique
-  description   String?
+  id               String            @id @default(cuid())
+  ownerId          String
+  owner            User              @relation("SalonOwner", fields: [ownerId], references: [id])
+  name             String
+  slug             String            @unique
+  /// Chosen short link: nobatet.app/book/@<handle> (lowercase a-z 0-9 . _, unique across salons AND
+  /// stylists — checked in apps/api share-handle.util). Null = the link uses `slug`.
+  handle           String?           @unique
+  description      String?
   // Province (استان) and county (شهرستان) from packages/iran-locations; province is null only on
   // salons created before it existed whose city didn't match the list.
-  province      String?
-  city          String
-  address       String
-  phone         String
-  instagram     String?
-  timezone      String      @default("Asia/Tehran")
-  logoUrl       String?
-  coverImageUrl String?
-  brandColor    String      @default("#a34a30")
-  latitude      Float?
-  longitude     Float?
-  status        SalonStatus @default(PENDING)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  province         String?
+  city             String
+  address          String
+  phone            String
+  instagram        String?
+  timezone         String            @default("Asia/Tehran")
+  logoUrl          String?
+  coverImageUrl    String?
+  brandColor       String            @default("#a34a30")
+  latitude         Float?
+  longitude        Float?
+  status           SalonStatus       @default(PENDING)
+  kind             SalonKind         @default(SALON)
+  // INDEPENDENT only: where they work, and (home visits) the areas they cover.
+  serviceLocations ServiceLocation[] @default([])
+  serviceArea      String?
+  // INDEPENDENT + IN_SALON: the salon they work in (free text, shown on their page).
+  hostSalonName    String?
+  // Subscription (apps/api src/subscriptions): no plan = no limits (salons from before plans
+  // existed, until the admin assigns one). planExpiresAt null = no end date.
+  planId           String?
+  plan             PricingPlan?      @relation(fields: [planId], references: [id], onDelete: Restrict)
+  planExpiresAt    DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   stylists          Stylist[]
+  smsUsage          SalonSmsUsage[]
   services          Service[]
   serviceCategories ServiceCategory[]
   appointments      Appointment[]
@@ -377,11 +426,13 @@ model Salon {
   reviews           Review[]
   payouts           StylistPayout[]
   expenses          SalonExpense[]
+  stylistExpenses   StylistExpense[]
   featured          FeaturedSalon?
   favoritedBy       FavoriteSalon[]
   waitlist          WaitlistEntry[]
 
   @@index([province, city])
+  @@index([kind, status])
   // Bounding-box prefilter for "near me" (see apps/api src/salons/salon-search.service.ts).
   @@index([latitude, longitude])
   @@map("salons")
@@ -408,6 +459,9 @@ model Stylist {
   salonId           String
   salon             Salon    @relation(fields: [salonId], references: [id])
   displayName       String
+  /// Short link nobatet.app/book/@<handle> to book with this stylist (same rules as Salon.handle);
+  /// given a generated one the first time they open their share kit.
+  handle            String?  @unique
   bio               String?
   avatarUrl         String?
   coverImageUrl     String?
@@ -426,23 +480,28 @@ model Stylist {
   payouts       StylistPayout[]
   featured      FeaturedStylist?
   waitlist      WaitlistEntry[]
+  expenses      StylistExpense[]
 
   @@index([salonId])
   @@map("stylists")
 }
 
 model Service {
-  id              String           @id @default(cuid())
-  salonId         String
-  salon           Salon            @relation(fields: [salonId], references: [id])
-  categoryId      String?
-  category        ServiceCategory? @relation(fields: [categoryId], references: [id])
-  name            String
-  description     String?
-  durationMinutes Int
-  priceToman      Int
-  active          Boolean          @default(true)
-  createdAt       DateTime         @default(now())
+  id                    String           @id @default(cuid())
+  salonId               String
+  salon                 Salon            @relation(fields: [salonId], references: [id])
+  categoryId            String?
+  category              ServiceCategory? @relation(fields: [categoryId], references: [id])
+  name                  String
+  description           String?
+  durationMinutes       Int
+  priceToman            Int
+  active                Boolean          @default(true)
+  // "Time to book again" SMS to the customer this many days after a completed appointment with
+  // this service (apps/api RebookReminderService). On at 30 days for new services.
+  rebookReminderEnabled Boolean          @default(true)
+  rebookReminderDays    Int              @default(30)
+  createdAt             DateTime         @default(now())
 
   stylists     StylistService[]
   appointments AppointmentService[]
@@ -452,14 +511,17 @@ model Service {
 }
 
 model StylistService {
-  stylistId               String
-  stylist                 Stylist @relation(fields: [stylistId], references: [id])
-  serviceId               String
-  service                 Service @relation(fields: [serviceId], references: [id])
-  overridePriceToman      Int?
-  overrideDurationMinutes Int?
+  stylistId                     String
+  stylist                       Stylist  @relation(fields: [stylistId], references: [id])
+  serviceId                     String
+  service                       Service  @relation(fields: [serviceId], references: [id])
+  overridePriceToman            Int?
+  overrideDurationMinutes       Int?
   // This stylist's share for this service (0–100); null = their default commissionPercent.
-  commissionPercent       Int?
+  commissionPercent             Int?
+  // The stylist's own rebook-reminder setting for this service; null = the service's.
+  overrideRebookReminderEnabled Boolean?
+  overrideRebookReminderDays    Int?
 
   @@id([stylistId, serviceId])
   @@map("stylist_services")
@@ -502,6 +564,14 @@ model Appointment {
   status                   AppointmentStatus @default(PENDING)
   priceToman               Int
   notes                    String?
+  /// The customer's name as staff set it on this booking (edit sheet); null = the account's name.
+  /// Only this booking changes — the customer's account and other salons never see it.
+  customerFirstName        String?
+  customerLastName         String?
+  /// Independent stylists only: where this booking happens (null = a salon, or not specified),
+  /// and for a home visit (CLIENT_HOME) the customer's address — seen only by the customer and staff.
+  serviceLocation          ServiceLocation?
+  visitAddress             String?
   // Accounting, frozen when the appointment is COMPLETED and cleared if it leaves that status:
   // the amount actually received (defaults to priceToman; the owner can correct it), the stylist's
   // commission percent at that moment, and their share. The salon's share is the rest.
@@ -512,6 +582,27 @@ model Appointment {
   tipToman                 Int?
   stylistShareToman        Int?
   completedAt              DateTime?
+  // When the "1 hour before" SMS went out (customer + stylist); cleared when the time changes.
+  // "1 hour before" SMS (apps/api ReminderService): set once both the customer's and the stylist's
+  // reminder are done (sent, or given up after too many failed tries). Each is tracked on its own so
+  // a failed send is retried without re-sending the other; reminderLeaseUntil is a short claim so
+  // several API instances never handle one booking at once. Rescheduling resets all of these.
+  reminderSentAt           DateTime?
+  reminderLeaseUntil       DateTime?
+  customerReminderSentAt   DateTime?
+  customerReminderAttempts Int               @default(0)
+  stylistReminderSentAt    DateTime?
+  stylistReminderAttempts  Int               @default(0)
+  // An online booking's "new booking, please confirm" SMS to its stylist: claimed (set) just before
+  // it's sent by ReminderService, outside the salon's quiet hours.
+  newBookingTextedAt       DateTime?
+  // An online booking still PENDING after a while gets one reminder SMS to its stylist to confirm it.
+  confirmNudgedAt          DateTime?
+  // "Time to book again" SMS after this (COMPLETED) appointment: set once sent or given up.
+  rebookReminderSentAt     DateTime?
+  rebookReminderAttempts   Int               @default(0)
+  // The short code in that SMS's link (/r/<code>): book again, or stop these texts.
+  rebookCode               String?           @unique
   createdAt                DateTime          @default(now())
   updatedAt                DateTime          @updatedAt
 
@@ -537,12 +628,29 @@ model AppointmentService {
   @@map("appointment_services")
 }
 
+/// One-time "set your password" link for an invited stylist (the salon owner can regenerate it).
+/// Only a SHA-256 of the link's secret is stored; using it or issuing a new one ends the old one.
+model PasswordSetupToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_setup_tokens")
+}
+
 model OtpCode {
   id        String   @id @default(cuid())
   phone     String
   code      String
   expiresAt DateTime
   consumed  Boolean  @default(false)
+  // Wrong guesses against this code; it's burned after OTP_MAX_ATTEMPTS (apps/api auth.service).
+  attempts  Int      @default(0)
   createdAt DateTime @default(now())
 
   @@index([phone])
@@ -659,10 +767,36 @@ model SalonExpense {
   amountToman Int
   spentAt     DateTime
   note        String?
+  // Optional photo of the receipt/invoice; private, only the salon owner can open it
+  // (uploaded through apps/web to /uploads/salon-expenses/…).
+  receiptUrl  String?
   createdAt   DateTime        @default(now())
 
   @@index([salonId, spentAt])
   @@map("salon_expenses")
+}
+
+// A stylist's own work costs, logged by the stylist in their panel. Subtracted from their share of
+// completed appointments to give their net income; never touches the salon's books.
+model StylistExpense {
+  id          String                 @id @default(cuid())
+  stylistId   String
+  stylist     Stylist                @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+  // The stylist's salon when it was logged (a stylist belongs to one salon).
+  salonId     String
+  salon       Salon                  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  category    StylistExpenseCategory
+  amountToman Int
+  spentAt     DateTime
+  description String
+  // Photo of the receipt/invoice, uploaded through apps/web (/uploads/expenses/…).
+  receiptUrl  String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([stylistId, spentAt])
+  @@index([salonId])
+  @@map("stylist_expenses")
 }
 
 // ── Home page showcase (edited by the platform admin) ─────────────────────
@@ -746,4 +880,53 @@ model WaitlistEntry {
   @@unique([customerId, salonId, dateKey])
   @@index([salonId, dateKey])
   @@map("waitlist_entries")
+}
+
+// Salon subscription plans: the landing page's pricing section and each salon's limits. Edited at
+// /admin/pricing (apps/web, Prisma directly); enforced by apps/api (src/subscriptions).
+model PricingPlan {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  // null = negotiated price ("توافقی"), 0 = free
+  monthlyPriceToman Int?
+  // Enforced by apps/api for salons on this plan: null = unlimited stylists; reminder SMS per
+  // Jalali month, null = none included.
+  maxStylists       Int?
+  smsPerMonth       Int?
+  // Extra feature lines, shown after the generated stylist/SMS lines
+  features          String[]
+  recommended       Boolean  @default(false)
+  ctaLabel          String   @default("انتخاب پلن")
+  ctaHref           String   @default("/signup-salon")
+  sortOrder         Int      @default(0)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  salons Salon[]
+
+  @@index([active, sortOrder])
+  @@map("pricing_plans")
+}
+
+model PricingSettings {
+  id        String   @id @default("singleton")
+  // Free trial length shown under the pricing heading; 0 hides it.
+  trialDays Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("pricing_settings")
+}
+
+// Reminder SMS sent per salon per Jalali month ("1405-07", salon timezone), checked against the
+// plan's smsPerMonth before each send (apps/api src/sms/reminder.service.ts).
+model SalonSmsUsage {
+  salonId String
+  salon   Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  period  String
+  sent    Int    @default(0)
+
+  @@id([salonId, period])
+  @@map("salon_sms_usage")
 }

@@ -3,17 +3,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
-import { Check, ChevronLeft, Images, Calculator } from "lucide-react";
+import { SubscriptionCard, useMySubscription } from "@/components/app/Subscription";
+import { Check, ChevronLeft, Images, Calculator, BookOpen, QrCode } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, updateMySalon, type OwnerSalon, type UpdateSalonInput, SALON_UPDATED_EVENT } from "@/lib/api/ownerSalon";
 import { toPersianDigits } from "@/lib/persian";
 import ProfilePhotos, { type PhotoPatch } from "@/components/app/ProfilePhotos";
 import LocationPickerLoader from "@/components/salon-dashboard/LocationPickerLoader";
 import ProvinceCitySelect from "@/components/common/ProvinceCitySelect";
-import { findProvince } from "@appointment-scheduling/iran-locations";
+import { placeCenter } from "@appointment-scheduling/iran-locations";
 import { persianApiError } from "@/lib/api/errorMessages";
-import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, cx, LinkCard } from "@/components/app/ui";
+import { Button, Card, ErrorBanner, Field, ListSkeleton, PageHeader, SectionTitle, TextArea, TextInput, Toggle, cx, LinkCard } from "@/components/app/ui";
+import { SERVICE_LOCATIONS, SERVICE_LOCATION_HINT, SERVICE_LOCATION_LABEL, isIndependent } from "@/lib/independent";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 // Curated brand colors that read well on the public salon page; the last swatch opens a picker.
 const SELECT_CLASS =
@@ -23,11 +26,11 @@ const BRAND_SWATCHES = ["#a34a30", "#c2185b", "#8e44ad", "#1f6f78", "#2e7d32", "
 
 export default function SalonSettingsPage() {
   const token = useApiAccessToken();
+  const subscription = useMySubscription(token);
   const [salon, setSalon] = useState<OwnerSalon | null>(null);
   const [form, setForm] = useState<UpdateSalonInput>({});
   const [dirty, setDirty] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const colorInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +52,7 @@ export default function SalonSettingsPage() {
           brandColor: s.brandColor,
           latitude: s.latitude ?? undefined,
           longitude: s.longitude ?? undefined,
+          ...(isIndependent(s) && { serviceLocations: s.serviceLocations, serviceArea: s.serviceArea ?? "", hostSalonName: s.hostSalonName ?? "" }),
         });
       })
       .catch(() => setLoadError("خطا در دریافت اطلاعات سالن"));
@@ -65,8 +69,8 @@ export default function SalonSettingsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
+    if (form.serviceLocations && form.serviceLocations.length === 0) return toastError("دست‌کم یک محل ارائه خدمات را انتخاب کنید");
     setSaving(true);
-    setError(null);
     try {
       setSalon(await updateMySalon(token, form));
       window.dispatchEvent(new Event(SALON_UPDATED_EVENT));
@@ -74,7 +78,7 @@ export default function SalonSettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
-      setError(persianApiError(err, "ذخیره تغییرات انجام نشد، دوباره تلاش کنید"));
+      toastError(persianApiError(err, "ذخیره تغییرات انجام نشد، دوباره تلاش کنید"));
     } finally {
       setSaving(false);
     }
@@ -95,19 +99,25 @@ export default function SalonSettingsPage() {
   if (!salon) return <ListSkeleton rows={5} />;
 
   const brand = form.brandColor ?? salon.brandColor;
+  const independent = isIndependent(salon);
+  const locations = form.serviceLocations ?? [];
   const isCustomColor = !BRAND_SWATCHES.includes(brand.toLowerCase());
 
   return (
     <form onSubmit={handleSubmit}>
-      <PageHeader title="تنظیمات سالن" subtitle="این اطلاعات در صفحه رزرو سالن به مشتری‌ها نشان داده می‌شود." />
+      <PageHeader
+        title={independent ? "تنظیمات کسب‌وکار" : "تنظیمات سالن"}
+        subtitle={independent ? "این اطلاعات در صفحه رزرو شما به مشتری‌ها نشان داده می‌شود." : "این اطلاعات در صفحه رزرو سالن به مشتری‌ها نشان داده می‌شود."}
+      />
 
       {/* Cover + logo, laid out like the public page */}
       <ProfilePhotos
         name={form.name || salon.name}
         coverUrl={salon.coverImageUrl}
         avatarUrl={salon.logoUrl}
-        avatarLabel="لوگو"
-        avatarShape="square"
+        // An independent stylist's "logo" is their own photo.
+        avatarLabel={independent ? "عکس شما" : "لوگو"}
+        avatarShape={independent ? "circle" : "square"}
         folder="salons"
         onSave={savePhotos}
       />
@@ -126,15 +136,41 @@ export default function SalonSettingsPage() {
         <ChevronLeft className="h-4 w-4 text-app-muted" aria-hidden />
       </Link>
       <ReviewsLinkCard token={token} scope="salon" className="mt-3" />
-      <LinkCard href="/salon/accounting" icon={Calculator} title="حسابداری" subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها" className="mt-3" />
+      <LinkCard href="/salon/share" icon={QrCode} title="کیت معرفی" subtitle="لینک مستقیم رزرو، کد QR و پوستر برای استوری و چاپ" className="mt-3" />
+      <LinkCard
+        href="/salon/accounting"
+        icon={Calculator}
+        title="حسابداری"
+        subtitle={independent ? "درآمد، هزینه‌ها و سود خالص ماه" : "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها"}
+        className="mt-3"
+      />
+      <LinkCard
+        href={independent ? "/tutorials?role=independent" : "/tutorials?role=owner"}
+        icon={BookOpen}
+        title="راهنمای استفاده"
+        subtitle={independent ? "راهنمای قدم‌به‌قدم پنل آرایشگر مستقل" : "راهنمای تصویری قدم‌به‌قدم همه بخش‌های پنل سالن"}
+        className="mt-3"
+      />
 
-      <SectionTitle>اطلاعات سالن</SectionTitle>
+      {subscription && (
+        <div id="subscription" className="scroll-mt-20">
+          <SectionTitle>اشتراک</SectionTitle>
+          <SubscriptionCard sub={subscription} />
+        </div>
+      )}
+
+      <SectionTitle>{independent ? "اطلاعات کسب‌وکار" : "اطلاعات سالن"}</SectionTitle>
       <Card className="flex flex-col gap-4 p-4">
-        <Field label="نام سالن">
+        <Field label={independent ? "نام کاری" : "نام سالن"}>
           <TextInput value={form.name ?? ""} onChange={(e) => update({ name: e.target.value })} />
         </Field>
-        <Field label="درباره سالن">
-          <TextArea rows={3} value={form.description ?? ""} onChange={(e) => update({ description: e.target.value })} placeholder="چند خط درباره سالن، تخصص‌ها و فضای آن" />
+        <Field label={independent ? "درباره شما" : "درباره سالن"}>
+          <TextArea
+            rows={3}
+            value={form.description ?? ""}
+            onChange={(e) => update({ description: e.target.value })}
+            placeholder={independent ? "چند خط درباره خودتان، تخصص‌ها و سابقه کار" : "چند خط درباره سالن، تخصص‌ها و فضای آن"}
+          />
         </Field>
         <ProvinceCitySelect
           value={{ province: form.province ?? "", city: form.city ?? "" }}
@@ -150,7 +186,10 @@ export default function SalonSettingsPage() {
         <Field label="تلفن">
           <TextInput type="tel" inputMode="tel" dir="ltr" className="text-end" value={form.phone ?? ""} onChange={(e) => update({ phone: e.target.value })} />
         </Field>
-        <Field label="آدرس دقیق" hint="خیابان، کوچه، پلاک، طبقه">
+        <Field
+          label={independent ? "آدرس محل کار" : "آدرس دقیق"}
+          hint={independent && !locations.some((l) => l === "IN_SALON" || l === "STUDIO") ? "فقط مشتری‌ای که نوبت گرفته آن را می‌بیند" : "خیابان، کوچه، پلاک، طبقه"}
+        >
           <TextArea rows={2} value={form.address ?? ""} onChange={(e) => update({ address: e.target.value })} />
         </Field>
         <Field label="اینستاگرام">
@@ -161,6 +200,41 @@ export default function SalonSettingsPage() {
         </Field>
       </Card>
 
+      {independent && (
+        <>
+          <SectionTitle>محل ارائه خدمات</SectionTitle>
+          <Card className="flex flex-col divide-y divide-app-line p-0">
+            {SERVICE_LOCATIONS.map((loc) => (
+              <div key={loc} className="flex items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-app-ink">{SERVICE_LOCATION_LABEL[loc]}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-app-muted">{SERVICE_LOCATION_HINT[loc]}</p>
+                </div>
+                <Toggle
+                  checked={locations.includes(loc)}
+                  onChange={(on) => update({ serviceLocations: on ? [...locations, loc] : locations.filter((l) => l !== loc) })}
+                  label={SERVICE_LOCATION_LABEL[loc]}
+                />
+              </div>
+            ))}
+            {locations.includes("IN_SALON") && (
+              <div className="p-4">
+                <Field label="نام سالنی که در آن کار می‌کنید" hint="اختیاری؛ در صفحه رزرو شما نشان داده می‌شود">
+                  <TextInput maxLength={100} value={form.hostSalonName ?? ""} onChange={(e) => update({ hostSalonName: e.target.value })} />
+                </Field>
+              </div>
+            )}
+            {locations.includes("CLIENT_HOME") && (
+              <div className="p-4">
+                <Field label="محدوده خدمات در منزل" hint="مثلاً کل قائم‌شهر و ساری">
+                  <TextInput maxLength={200} value={form.serviceArea ?? ""} onChange={(e) => update({ serviceArea: e.target.value })} />
+                </Field>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+
       <SectionTitle>موقعیت روی نقشه</SectionTitle>
       <Card className="overflow-hidden p-0">
         <div className="h-56">
@@ -168,8 +242,8 @@ export default function SalonSettingsPage() {
             value={form.latitude != null && form.longitude != null ? { lat: form.latitude, lng: form.longitude } : null}
             onChange={({ lat, lng }) => update({ latitude: lat, longitude: lng })}
             center={(() => {
-              const p = findProvince(form.province ?? "");
-              return p ? { lat: p.center[0], lng: p.center[1] } : null;
+              const c = placeCenter(form.province ?? "", form.city ?? "");
+              return c ? { lat: c[0], lng: c[1] } : null;
             })()}
           />
         </div>
@@ -218,9 +292,8 @@ export default function SalonSettingsPage() {
       </Card>
 
       {/* Save bar — pinned just above the tab bar, only while there's something to save. */}
-      {(dirty || saved || error) && (
+      {(dirty || saved) && (
         <div className="app-rise sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 mt-6">
-          {error && <ErrorBanner>{error}</ErrorBanner>}
           <Button type="submit" block busy={saving} icon={saved ? Check : undefined} className="shadow-[0_12px_30px_-12px_rgb(0_0_0/0.45)]">
             {saved ? "ذخیره شد" : "ذخیره تغییرات"}
           </Button>

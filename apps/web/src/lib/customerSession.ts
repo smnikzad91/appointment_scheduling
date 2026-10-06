@@ -1,3 +1,5 @@
+import { clearAllDrafts } from "./formDrafts";
+
 const STORAGE_KEY = "nobat_customer_session";
 
 export interface CustomerSession {
@@ -24,6 +26,7 @@ export function saveCustomerSession(session: CustomerSession) {
 }
 
 export function clearCustomerSession() {
+  clearAllDrafts(); // signing out: nothing typed stays for the next person on this phone
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {

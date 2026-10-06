@@ -22,11 +22,11 @@ export default function OpenStatusBadge({ workingHours, timeZone }: { workingHou
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
         open
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+          ? "bg-emerald-100 text-emerald-700 "
+          : "bg-white/5 text-g-muted"
       }`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${open ? "bg-emerald-500" : "bg-gray-400"}`} aria-hidden />
+      <span className={`h-1.5 w-1.5 rounded-full ${open ? "bg-emerald-500" : "bg-white/30"}`} aria-hidden />
       {open
         ? `باز است تا ${formatMinutesAsClock(todayHours!.endMinute)}`
         : todayHours && !todayHours.closed

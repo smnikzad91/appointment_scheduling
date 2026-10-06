@@ -15,20 +15,33 @@ export function formatPercent(percent: number) {
 import { addDaysToDateKey, formatSalonDate, salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { dateKeyToDate, toJalali } from "@/lib/jalali";
 import type { AccountingPeriod } from "@/lib/accountingPeriod";
-import { Select, cx } from "./ui";
+import { cx } from "./ui";
+import PickerSelect from "./PickerSelect";
 
 // Building blocks shared by the salon accounting page and the stylist earnings page.
 
-/** "‹ مهر ۱۴۰۵ ›" — step through Jalali months; can't go past the current month. */
-export function PeriodSwitcher({ period, onChange }: { period: AccountingPeriod; onChange: (offset: number) => void }) {
+/** "‹ مهر ۱۴۰۵ ›" — step through Jalali months; can't go past the current month unless `allowFuture`. */
+/** `minOffset` (e.g. -11) stops going further back; without it any past month can be opened. */
+export function PeriodSwitcher({
+  period,
+  onChange,
+  allowFuture,
+  minOffset,
+}: {
+  period: AccountingPeriod;
+  onChange: (offset: number) => void;
+  allowFuture?: boolean;
+  minOffset?: number;
+}) {
   return (
     <div className="mb-4 flex items-center justify-between rounded-3xl border border-app-line bg-app-card p-1.5 shadow-app">
       {/* RTL: the earlier month sits on the right. */}
       <button
         type="button"
         onClick={() => onChange(period.offset - 1)}
+        disabled={minOffset !== undefined && period.offset <= minOffset}
         aria-label="ماه قبل"
-        className="flex h-11 w-11 items-center justify-center rounded-2xl text-app-ink active:bg-app-card-2"
+        className="flex h-11 w-11 items-center justify-center rounded-2xl text-app-ink active:bg-app-card-2 disabled:opacity-25"
       >
         <ChevronRight className="h-5 w-5" aria-hidden />
       </button>
@@ -39,7 +52,7 @@ export function PeriodSwitcher({ period, onChange }: { period: AccountingPeriod;
       <button
         type="button"
         onClick={() => onChange(period.offset + 1)}
-        disabled={period.offset >= 0}
+        disabled={!allowFuture && period.offset >= 0}
         aria-label="ماه بعد"
         className="flex h-11 w-11 items-center justify-center rounded-2xl text-app-ink active:bg-app-card-2 disabled:opacity-25"
       >
@@ -103,20 +116,21 @@ function dayLabel(key: string, todayKey: string) {
 
 /**
  * Pick a salon-local day with Persian labels (no native date input). Days run from `fromKey` to
- * `toKey` inclusive, newest first. Value/onChange are "YYYY-MM-DD" keys.
+ * `toKey` inclusive (at most 400 of them), newest first, plus `value` itself when it falls
+ * outside that list. Value/onChange are "YYYY-MM-DD" keys.
  */
 export function DaySelect({ value, onChange, fromKey, toKey, label }: { value: string; onChange: (key: string) => void; fromKey: string; toKey: string; label: string }) {
   const todayKey = toSalonWallTime(new Date()).dateKey;
   const keys: string[] = [];
   for (let k = toKey; k >= fromKey && keys.length < 400; k = addDaysToDateKey(k, -1)) keys.push(k);
+  // The list is capped at 400 days, but the current value is always listed (e.g. an expense
+  // older than that), so the picker shows it and saving keeps it. Keys sort as dates.
+  if (value && !keys.includes(value)) {
+    if (keys.length === 0 || value > keys[0]) keys.unshift(value);
+    else keys.push(value);
+  }
   return (
-    <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-      {keys.map((k) => (
-        <option key={k} value={k}>
-          {dayLabel(k, todayKey)}
-        </option>
-      ))}
-    </Select>
+    <PickerSelect title={label} value={value} onChange={onChange} options={keys.map((k) => ({ value: k, label: dayLabel(k, todayKey) }))} />
   );
 }
 

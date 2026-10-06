@@ -1,13 +1,36 @@
+import { bookingCustomerFullName } from "../appointments/booking-customer-name.util.js";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { AppointmentStatus, NotificationType, Prisma } from "@appointment-scheduling/database";
+import { AppointmentStatus, NotificationType, Prisma, SalonKind } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
 import { stylistTake } from "./share.util.js";
-import { AdjustChargeDto, CreateExpenseDto, CreatePayoutDto, PayoutQueryDto, PeriodQueryDto, UpdateExpenseDto } from "./dto/accounting.dto.js";
+import {
+  AdjustChargeDto,
+  CreateExpenseDto,
+  CreatePayoutDto,
+  CreateStylistExpenseDto,
+  PayoutQueryDto,
+  PeriodQueryDto,
+  StylistExpenseQueryDto,
+  UpdateExpenseDto,
+  UpdateStylistExpenseDto,
+} from "./dto/accounting.dto.js";
 
 const MAX_PERIOD_DAYS = 400;
 const LIST_LIMIT = 500;
+const EXPENSE_PAGE_SIZE = 20;
+/** Stylist expenses reach back about a year (the panel shows this month and the 11 before). */
+const EXPENSE_MAX_AGE_DAYS = 400;
+
+const STYLIST_EXPENSE_SELECT = {
+  id: true,
+  category: true,
+  amountToman: true,
+  spentAt: true,
+  description: true,
+  receiptUrl: true,
+} satisfies Prisma.StylistExpenseSelect;
 
 const INCOME_SELECT = {
   id: true,
@@ -17,6 +40,8 @@ const INCOME_SELECT = {
   stylistCommissionPercent: true,
   tipToman: true,
   stylistShareToman: true,
+  customerFirstName: true,
+  customerLastName: true,
   customer: { select: { firstName: true, lastName: true } },
   stylist: { select: { id: true, displayName: true } },
   services: { select: { service: { select: { name: true } } } },
@@ -36,7 +61,7 @@ function toIncomeItem(a: IncomeRow) {
   return {
     id: a.id,
     startAt: a.startAt,
-    customerName: `${a.customer.firstName} ${a.customer.lastName}`.trim(),
+    customerName: bookingCustomerFullName(a),
     stylist: a.stylist,
     services: a.services.map((s) => s.service.name),
     priceToman: a.priceToman,
@@ -201,7 +226,13 @@ export class AccountingService {
     const tipToman = dto.tipToman === undefined ? appointment.tipToman : dto.tipToman || null;
     const updated = await this.prisma.appointment.update({
       where: { id: appointment.id },
-      data: { chargedToman: dto.chargedToman, tipToman, stylistShareToman: stylistTake(dto.chargedToman, percent, tipToman) },
+      data: {
+        chargedToman: dto.chargedToman,
+        tipToman,
+        // An independent stylist is the business: the whole amount, tip included, is its income,
+        // with no share set aside for a stylist (and so no balance to pay out).
+        stylistShareToman: salon.kind === SalonKind.INDEPENDENT ? 0 : stylistTake(dto.chargedToman, percent, tipToman),
+      },
       select: INCOME_SELECT,
     });
     return toIncomeItem(updated);
@@ -277,6 +308,7 @@ export class AccountingService {
         amountToman: dto.amountToman,
         spentAt: dto.spentAt ? new Date(dto.spentAt) : new Date(),
         note: dto.note?.trim() || null,
+        receiptUrl: dto.receiptUrl || null,
       },
     });
   }
@@ -292,6 +324,7 @@ export class AccountingService {
         amountToman: dto.amountToman,
         spentAt: dto.spentAt ? new Date(dto.spentAt) : undefined,
         note: dto.note === undefined ? undefined : dto.note?.trim() || null,
+        receiptUrl: dto.receiptUrl === undefined ? undefined : dto.receiptUrl || null,
       },
     });
   }
@@ -313,7 +346,7 @@ export class AccountingService {
     if (!stylist) throw new NotFoundException("Stylist profile not found");
     const { from, to } = this.period(query);
 
-    const [rows, payouts, earned, paid] = await Promise.all([
+    const [rows, payouts, earned, paid, expenses] = await Promise.all([
       this.prisma.appointment.findMany({
         where: { stylistId: stylist.id, status: AppointmentStatus.COMPLETED, startAt: { gte: from, lt: to } },
         orderBy: { startAt: "desc" },
@@ -330,9 +363,17 @@ export class AccountingService {
         _sum: { stylistShareToman: true },
       }),
       this.prisma.stylistPayout.aggregate({ where: { stylistId: stylist.id }, _sum: { amountToman: true } }),
+      this.prisma.stylistExpense.findMany({
+        where: { stylistId: stylist.id, spentAt: { gte: from, lt: to } },
+        orderBy: { spentAt: "desc" },
+        take: LIST_LIMIT,
+        select: STYLIST_EXPENSE_SELECT,
+      }),
     ]);
 
     const items = rows.map(toIncomeItem);
+    const shareToman = items.reduce((sum, i) => sum + i.stylistShareToman, 0);
+    const expensesToman = expenses.reduce((sum, e) => sum + e.amountToman, 0);
     return {
       period: { from, to },
       stylist,
@@ -340,13 +381,95 @@ export class AccountingService {
         appointmentCount: items.length,
         incomeToman: items.reduce((sum, i) => sum + i.chargedToman + i.tipToman, 0),
         tipsToman: items.reduce((sum, i) => sum + i.tipToman, 0),
-        shareToman: items.reduce((sum, i) => sum + i.stylistShareToman, 0),
+        shareToman,
         paidInPeriodToman: payouts.reduce((sum, p) => sum + p.amountToman, 0),
+        expensesToman,
+        // The stylist's own costs come out of what they earned; the salon balance is unaffected.
+        netIncomeToman: shareToman - expensesToman,
       },
       balanceToman: (earned._sum.stylistShareToman ?? 0) - (paid._sum.amountToman ?? 0),
       items,
       payouts,
+      expenses,
     };
+  }
+
+  // ── Stylist: their own expenses ───────────────────────────────────────────
+
+  async listStylistExpenses(userId: string, query: StylistExpenseQueryDto) {
+    const stylist = await this.myStylist(userId);
+    const { from, to } = this.period(query);
+    const where: Prisma.StylistExpenseWhereInput = {
+      stylistId: stylist.id,
+      spentAt: { gte: from, lt: to },
+      ...(query.category && { category: query.category }),
+    };
+    const pageSize = query.pageSize ?? EXPENSE_PAGE_SIZE;
+    const page = query.page ?? 1;
+    const [items, agg] = await Promise.all([
+      this.prisma.stylistExpense.findMany({
+        where,
+        orderBy: [{ spentAt: "desc" }, { createdAt: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: STYLIST_EXPENSE_SELECT,
+      }),
+      this.prisma.stylistExpense.aggregate({ where, _count: { _all: true }, _sum: { amountToman: true } }),
+    ]);
+    return { items, total: agg._count._all, totalToman: agg._sum.amountToman ?? 0, page, pageSize };
+  }
+
+  async createStylistExpense(userId: string, dto: CreateStylistExpenseDto) {
+    const stylist = await this.myStylist(userId);
+    this.assertExpenseDate(new Date(dto.spentAt));
+    return this.prisma.stylistExpense.create({
+      data: {
+        stylistId: stylist.id,
+        salonId: stylist.salonId,
+        category: dto.category,
+        amountToman: dto.amountToman,
+        spentAt: new Date(dto.spentAt),
+        description: dto.description.trim(),
+        receiptUrl: dto.receiptUrl || null,
+      },
+      select: STYLIST_EXPENSE_SELECT,
+    });
+  }
+
+  async updateStylistExpense(userId: string, expenseId: string, dto: UpdateStylistExpenseDto) {
+    const stylist = await this.myStylist(userId);
+    const expense = await this.prisma.stylistExpense.findFirst({ where: { id: expenseId, stylistId: stylist.id }, select: { id: true, spentAt: true } });
+    if (!expense) throw new NotFoundException("Expense not found");
+    // An older expense can still be edited as long as its date isn't moved.
+    if (dto.spentAt && new Date(dto.spentAt).getTime() !== expense.spentAt.getTime()) this.assertExpenseDate(new Date(dto.spentAt));
+    return this.prisma.stylistExpense.update({
+      where: { id: expense.id },
+      data: {
+        category: dto.category,
+        amountToman: dto.amountToman,
+        spentAt: dto.spentAt ? new Date(dto.spentAt) : undefined,
+        description: dto.description?.trim(),
+        receiptUrl: dto.receiptUrl === undefined ? undefined : dto.receiptUrl || null,
+      },
+      select: STYLIST_EXPENSE_SELECT,
+    });
+  }
+
+  async removeStylistExpense(userId: string, expenseId: string) {
+    const stylist = await this.myStylist(userId);
+    const { count } = await this.prisma.stylistExpense.deleteMany({ where: { id: expenseId, stylistId: stylist.id } });
+    if (count === 0) throw new NotFoundException("Expense not found");
+    return { ok: true };
+  }
+
+  private assertExpenseDate(spentAt: Date) {
+    if (spentAt.getTime() < Date.now() - EXPENSE_MAX_AGE_DAYS * 86_400_000) throw new BadRequestException("Expense date is too old");
+  }
+
+  private async myStylist(userId: string) {
+    const stylist = await this.prisma.stylist.findUnique({ where: { userId }, select: { id: true, salonId: true } });
+    if (!stylist) throw new NotFoundException("Stylist profile not found");
+    return stylist;
   }
 
   private period(query: { from: string; to: string }) {

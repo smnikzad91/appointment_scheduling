@@ -5,6 +5,7 @@ import { PERSIAN_WEEKDAY_NAMES, WEEK_ORDER_SATURDAY_FIRST } from "@/lib/jalali";
 import { toSalonWallTime } from "@/lib/salonTime";
 import DirectionsButton from "./DirectionsButton";
 import SalonMapLoader from "./SalonMapLoader";
+import { placeLabel } from "@/lib/independent";
 
 export default function InfoSection({ salon }: { salon: Salon }) {
   const today = toSalonWallTime(new Date(), salon.timezone).dayOfWeek;
@@ -16,21 +17,44 @@ export default function InfoSection({ salon }: { salon: Salon }) {
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-2 text-sm">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-g-faint" aria-hidden />
             <span>
               {[salon.province, salon.city !== salon.province ? salon.city : null].filter(Boolean).join("، ")}
-              {salon.province || salon.city ? "، " : ""}
-              {salon.address}
+              {salon.address && (
+                <>
+                  {salon.province || salon.city ? "، " : ""}
+                  {salon.address}
+                </>
+              )}
             </span>
           </div>
+          {salon.kind === "INDEPENDENT" && salon.serviceLocations.length > 0 && (
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex flex-wrap gap-1.5">
+                {salon.serviceLocations.map((loc) => (
+                  <span key={loc} className="rounded-full border border-g-line-strong px-2.5 py-1 text-xs font-semibold text-g-ink">
+                    {placeLabel(loc, salon.hostSalonName)}
+                  </span>
+                ))}
+              </div>
+              {salon.serviceLocations.includes("CLIENT_HOME") && salon.serviceArea && (
+                <p className="text-g-muted">محدوده خدمات در منزل: {salon.serviceArea}</p>
+              )}
+              {salon.approximateLocation && (
+                <p className="text-xs leading-5 text-g-faint">نشانی دقیق پس از رزرو نوبت به شما نشان داده می‌شود.</p>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2 text-sm">
-            <Phone className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+            <Phone className="h-4 w-4 shrink-0 text-g-faint" aria-hidden />
             <a href={`tel:${salon.phone}`} dir="ltr" className="text-end">
               {toPersianDigits(salon.phone)}
             </a>
           </div>
 
-          {salon.location && <DirectionsButton location={salon.location} />}
+          {salon.location && !salon.approximateLocation && (
+            <DirectionsButton location={salon.location} salonName={salon.name} address={salon.address ?? undefined} />
+          )}
 
           <div className="mt-2 overflow-hidden rounded-xl">
             <table className="w-full text-sm">
@@ -40,7 +64,7 @@ export default function InfoSection({ salon }: { salon: Salon }) {
                   const isToday = dayOfWeek === today;
                   return (
                     <tr key={dayOfWeek} className={isToday ? "font-medium" : ""}>
-                      <td className="py-1 pe-3 text-gray-600 dark:text-gray-400">{PERSIAN_WEEKDAY_NAMES[dayOfWeek]}</td>
+                      <td className="py-1 pe-3 text-g-muted">{PERSIAN_WEEKDAY_NAMES[dayOfWeek]}</td>
                       <td className="py-1 text-end">
                         {!hours || hours.closed
                           ? "تعطیل"
@@ -54,7 +78,8 @@ export default function InfoSection({ salon }: { salon: Salon }) {
           </div>
         </div>
 
-        {salon.location && (
+        {/* A private address gets no pin at all, not even a rounded one. */}
+        {salon.location && !salon.approximateLocation && (
           <div className="h-56 overflow-hidden rounded-xl sm:h-full sm:min-h-56">
             <SalonMapLoader location={salon.location} brandColor={salon.brandColor} />
           </div>

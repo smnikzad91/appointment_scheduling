@@ -6,6 +6,8 @@ import { salonApiFetch } from "./salonApiClient";
 export interface NewReviewData {
   reviewId: string;
   target: "SALON" | "STYLIST";
+  /** An independent stylist's own business: the review is about "you". */
+  independent?: boolean;
   rating: number | null;
   excerpt: string | null;
   customerName: string;
@@ -25,6 +27,9 @@ export interface BookingData {
   bySalon?: boolean;
   /** BOOKING_CANCELLED: who cancelled. */
   cancelledBy?: "CUSTOMER" | "SALON" | "STYLIST";
+  /** BOOKING_UPDATED: who changed it, and the start time before the change. */
+  updatedBy?: "SALON" | "STYLIST";
+  previousStartAt?: string;
 }
 
 export interface PayoutData {
@@ -61,6 +66,7 @@ export type AppNotification = {
   | { type: "BOOKING_CANCELLED"; data: BookingData }
   | { type: "PAYOUT_RECORDED"; data: PayoutData }
   | { type: "BOOKING_CONFIRMED"; data: BookingData }
+  | { type: "BOOKING_UPDATED"; data: BookingData }
   | { type: "REVIEW_APPROVED"; data: ReviewApprovedData }
   | { type: "SLOT_OPENED"; data: SlotOpenedData }
 );

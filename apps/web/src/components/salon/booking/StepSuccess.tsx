@@ -6,7 +6,7 @@ import { CheckCircle2, CalendarPlus, CalendarCheck } from "lucide-react";
 import { useBooking } from "./BookingProvider";
 import { buildIcsFile } from "@/lib/ics";
 import { dateKeyToDate, formatJalaliFull } from "@/lib/jalali";
-import { formatMinutesAsClock, splitFullName } from "@/lib/persian";
+import { formatMinutesAsClock } from "@/lib/persian";
 import { salonWallTimeToInstant } from "@/lib/salonTime";
 import { saveCustomerSession } from "@/lib/customerSession";
 
@@ -15,7 +15,7 @@ export default function StepSuccess() {
 
   useEffect(() => {
     if (state.accessToken) {
-      saveCustomerSession({ token: state.accessToken, firstName: splitFullName(state.customerName).firstName });
+      saveCustomerSession({ token: state.accessToken, firstName: state.customerFirstName.trim() });
     }
     // Only ever needs to run once, right when the success screen mounts with a fresh token.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -32,7 +32,7 @@ export default function StepSuccess() {
     const ics = buildIcsFile({
       title: `نوبت ${salon.name}`,
       description: services.map((s) => s.name).join("، "),
-      location: salon.address,
+      location: salon.address ?? undefined,
       start,
       durationMinutes: result!.endMinute - result!.startMinute,
     });
@@ -50,7 +50,7 @@ export default function StepSuccess() {
       <CheckCircle2 className="h-14 w-14 text-emerald-500" aria-hidden />
       <div>
         <h3 className="text-lg font-bold">نوبت شما ثبت شد!</h3>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        <p className="mt-1 text-sm text-g-muted">
           {formatJalaliFull(dateKeyToDate(result.date))} ساعت {formatMinutesAsClock(result.startMinute)}
         </p>
       </div>
@@ -59,14 +59,14 @@ export default function StepSuccess() {
         <button
           type="button"
           onClick={handleAddToCalendar}
-          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium dark:border-gray-800"
+          className="inline-flex items-center gap-1.5 rounded-full border border-g-line px-4 py-2 text-sm font-medium"
         >
           <CalendarPlus className="h-4 w-4" aria-hidden />
           افزودن به تقویم
         </button>
         <Link
           href="/my-bookings"
-          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium dark:border-gray-800"
+          className="inline-flex items-center gap-1.5 rounded-full border border-g-line px-4 py-2 text-sm font-medium"
         >
           <CalendarCheck className="h-4 w-4" aria-hidden />
           نوبت‌های من

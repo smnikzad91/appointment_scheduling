@@ -1,5 +1,6 @@
 "use client";
 
+import { placeLabel } from "@/lib/independent";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarPlus, CalendarX2, RotateCcw, Star, Trash2 } from "lucide-react";
@@ -22,6 +23,7 @@ import { StatusChip, relativeDayLabel } from "./appointments";
 import Sheet from "./Sheet";
 import { Button, ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader, TextArea, cx, riseStyle } from "./ui";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 type Tab = "upcoming" | "past";
 
@@ -39,8 +41,18 @@ const REVIEW_STATUS: Record<BookingReview["status"], { label: string; className:
   REJECTED: { label: "منتشر نشد", className: "bg-app-muted/12 text-app-muted" },
 };
 
+/** An independent stylist is their own business: one review of them (the business's), not two. */
 function missingTargets(b: CustomerBooking) {
-  return REVIEW_TARGETS.filter((t) => !b.reviews.some((r) => r.target === t));
+  const targets: ReviewTarget[] = b.salon.kind === "INDEPENDENT" ? ["SALON"] : REVIEW_TARGETS;
+  return targets.filter((t) => !b.reviews.some((r) => r.target === t));
+}
+
+/** Where an independent stylist's booking happens, with the address the customer needs. */
+function bookingPlace(b: CustomerBooking): string | null {
+  if (b.salon.kind !== "INDEPENDENT" || !b.serviceLocation) return null;
+  const label = placeLabel(b.serviceLocation, b.salon.hostSalonName);
+  const address = b.serviceLocation === "CLIENT_HOME" ? b.visitAddress : b.salon.address;
+  return address ? `${label}: ${address}` : label;
 }
 
 /**
@@ -66,14 +78,12 @@ export default function CustomerBookings({
   const [reviewTarget, setReviewTarget] = useState<CustomerBooking | null>(null);
   const [drafts, setDrafts] = useState<Record<ReviewTarget, Draft>>(EMPTY_DRAFTS);
   const [reviewing, setReviewing] = useState(false);
-  const [sheetError, setSheetError] = useState<string | null>(null);
 
   // Editing one of the customer's own reviews.
   const [editing, setEditing] = useState<{ booking: CustomerBooking; review: BookingReview } | null>(null);
   const [editDraft, setEditDraft] = useState<Draft>({ rating: 0, comment: "" });
   const [editBusy, setEditBusy] = useState<"save" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     if (!token) return;
@@ -103,13 +113,12 @@ export default function CustomerBookings({
   async function confirmCancel() {
     if (!token || !cancelTarget) return;
     setCancelling(true);
-    setSheetError(null);
     try {
       await cancelBooking(token, cancelTarget.id);
       setCancelTarget(null);
       reload();
     } catch {
-      setSheetError("لغو نوبت انجام نشد، دوباره تلاش کنید");
+      toastError("لغو نوبت انجام نشد، دوباره تلاش کنید");
     } finally {
       setCancelling(false);
     }
@@ -117,7 +126,6 @@ export default function CustomerBookings({
 
   function openReview(booking: CustomerBooking) {
     setDrafts(EMPTY_DRAFTS);
-    setSheetError(null);
     setReviewTarget(booking);
   }
 
@@ -130,11 +138,10 @@ export default function CustomerBookings({
     // Stars only, text only, or both — a section with neither is skipped.
     const toSend = missingTargets(reviewTarget).filter((t) => drafts[t].rating > 0 || drafts[t].comment.trim() !== "");
     if (toSend.length === 0) {
-      setSheetError("برای ثبت نظر، امتیاز بدهید یا چند کلمه بنویسید");
+      toastError("برای ثبت نظر، امتیاز بدهید یا چند کلمه بنویسید");
       return;
     }
     setReviewing(true);
-    setSheetError(null);
     try {
       for (const target of toSend) {
         const { rating, comment } = drafts[target];
@@ -142,7 +149,7 @@ export default function CustomerBookings({
       }
       setReviewTarget(null);
     } catch (err) {
-      setSheetError(persianApiError(err, "ثبت نظر انجام نشد"));
+      toastError(persianApiError(err, "ثبت نظر انجام نشد"));
     } finally {
       setReviewing(false);
       reload(); // also picks up a review that went through before a later one failed
@@ -153,7 +160,6 @@ export default function CustomerBookings({
     setEditing({ booking, review });
     setEditDraft({ rating: review.rating ?? 0, comment: review.comment ?? "" });
     setConfirmDelete(false);
-    setEditError(null);
   }
 
   const editDirty =
@@ -163,17 +169,16 @@ export default function CustomerBookings({
   async function saveEdit() {
     if (!token || !editing) return;
     if (editDraft.rating === 0 && editDraft.comment.trim() === "") {
-      setEditError("امتیاز بدهید یا چند کلمه بنویسید؛ برای پاک کردن کامل، «حذف نظر» را بزنید");
+      toastError("امتیاز بدهید یا چند کلمه بنویسید؛ برای پاک کردن کامل، «حذف نظر» را بزنید");
       return;
     }
     setEditBusy("save");
-    setEditError(null);
     try {
       await updateReview(token, editing.review.id, { rating: editDraft.rating || null, comment: editDraft.comment.trim() || null });
       setEditing(null);
       reload();
     } catch (err) {
-      setEditError(persianApiError(err, "ذخیره تغییرات انجام نشد"));
+      toastError(persianApiError(err, "ذخیره تغییرات انجام نشد"));
     } finally {
       setEditBusy(null);
     }
@@ -186,13 +191,12 @@ export default function CustomerBookings({
       return;
     }
     setEditBusy("delete");
-    setEditError(null);
     try {
       await deleteReview(token, editing.review.id);
       setEditing(null);
       reload();
     } catch (err) {
-      setEditError(persianApiError(err, "حذف نظر انجام نشد"));
+      toastError(persianApiError(err, "حذف نظر انجام نشد"));
     } finally {
       setEditBusy(null);
     }
@@ -241,8 +245,15 @@ export default function CustomerBookings({
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-black text-app-ink">{b.salon.name}</p>
                     <p className="mt-0.5 truncate text-[13px] text-app-muted">
-                      {b.services.map((s) => s.service.name).join("، ")}<Sep />{b.stylist.displayName}
+                      {b.services.map((s) => s.service.name).join("، ")}
+                      {b.salon.kind !== "INDEPENDENT" && (
+                        <>
+                          <Sep />
+                          {b.stylist.displayName}
+                        </>
+                      )}
                     </p>
+                    {bookingPlace(b) && <p className="mt-0.5 text-[12px] leading-5 text-app-muted">{bookingPlace(b)}</p>}
                   </div>
                   <StatusChip status={b.status} />
                 </div>
@@ -295,7 +306,7 @@ export default function CustomerBookings({
                       </Link>
                     )}
                     {canCancel && (
-                      <Button variant="danger" className="h-11 flex-1" onClick={() => { setSheetError(null); setCancelTarget(b); }}>
+                      <Button variant="danger" className="h-11 flex-1" onClick={() => { setCancelTarget(b); }}>
                         لغو نوبت
                       </Button>
                     )}
@@ -314,7 +325,6 @@ export default function CustomerBookings({
               نوبت {relativeDayLabel(toSalonWallTime(cancelTarget.startAt).dateKey)} ساعت{" "}
               {formatMinutesAsClock(toSalonWallTime(cancelTarget.startAt).minuteOfDay)} در {cancelTarget.salon.name} لغو شود؟
             </p>
-            {sheetError && <ErrorBanner>{sheetError}</ErrorBanner>}
             <div className="grid grid-cols-2 gap-2.5">
               <Button variant="secondary" onClick={() => setCancelTarget(null)}>
                 منصرف شدم
@@ -344,7 +354,9 @@ export default function CustomerBookings({
               const draft = drafts[target];
               return (
                 <section key={target} className="rounded-3xl border border-app-line bg-app-card p-4">
-                  <p className="text-xs font-bold text-app-muted">{target === "SALON" ? "سالن" : "آرایشگر"}</p>
+                  <p className="text-xs font-bold text-app-muted">
+                    {target === "STYLIST" || reviewTarget.salon.kind === "INDEPENDENT" ? "آرایشگر" : "سالن"}
+                  </p>
                   <p className="mb-3 font-black text-app-ink">{name}</p>
                   <StarRatingInput
                     value={draft.rating}
@@ -379,7 +391,6 @@ export default function CustomerBookings({
             <p className="px-1 text-xs leading-6 text-app-muted">
               می‌توانید فقط امتیاز بدهید، فقط نظر بنویسید یا هر دو؛ هر بخش را هم می‌توانید خالی بگذارید. نظر شما پس از تایید سالن یا آرایشگر در صفحه سالن نمایش داده می‌شود.
             </p>
-            {sheetError && <p className="text-sm font-medium text-app-danger">{sheetError}</p>}
           </div>
         )}
       </Sheet>
@@ -435,7 +446,6 @@ export default function CustomerBookings({
                 ? "این نظر الان در صفحه سالن نمایش داده می‌شود. اگر ویرایشش کنید، تا تایید دوباره نمایش داده نمی‌شود."
                 : "بعد از ذخیره، نظر شما دوباره برای تایید فرستاده می‌شود."}
             </p>
-            {editError && <p className="text-sm font-medium text-app-danger">{editError}</p>}
             <Button variant="danger" block icon={Trash2} busy={editBusy === "delete"} disabled={editBusy !== null} onClick={removeReview}>
               {confirmDelete ? "بله، این نظر حذف شود" : "حذف نظر"}
             </Button>

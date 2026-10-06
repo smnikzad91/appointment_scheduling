@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { SalonKind } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { assertOwnsSalon } from "../salons/salon-ownership.util.js";
@@ -19,14 +20,21 @@ export class CatalogService {
   async create(userId: string, dto: CreateServiceDto) {
     const salon = await this.salonsService.findMine(userId);
     await this.assertCategoryInSalon(dto.categoryId, salon.id);
+    // An independent stylist offers every service of their own business: attach it to their
+    // stylist profile at once (a salon owner assigns services to stylists separately).
+    const soloStylist =
+      salon.kind === SalonKind.INDEPENDENT ? await this.prisma.stylist.findUnique({ where: { userId }, select: { id: true } }) : null;
     return this.prisma.service.create({
       data: {
+        ...(soloStylist && { stylists: { create: { stylistId: soloStylist.id } } }),
         salonId: salon.id,
         name: dto.name,
         description: dto.description,
         categoryId: dto.categoryId,
         durationMinutes: dto.durationMinutes,
         priceToman: dto.priceToman,
+        rebookReminderEnabled: dto.rebookReminderEnabled,
+        rebookReminderDays: dto.rebookReminderDays,
       },
     });
   }

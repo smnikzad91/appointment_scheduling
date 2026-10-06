@@ -1,19 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, Scissors } from "lucide-react";
+import { BellRing, Check, Scissors } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMyStylistProfile, updateMyServiceOverride, type SelfStylist } from "@/lib/api/stylistSelf";
 import { formatToman, normalizeDigits, toPersianDigits } from "@/lib/persian";
-import { Card, EmptyState, ErrorBanner, ListSkeleton, PageHeader, TextInput, cx, riseStyle } from "@/components/app/ui";
+import { Card, EmptyState, ErrorBanner, ListSkeleton, PageHeader, TextInput, Toggle, cx, riseStyle } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
+import { toastError } from "@/lib/toastError";
 
 type Entry = SelfStylist["services"][number];
+/** rebook: null = follow the salon's setting for this service; rebookDays "" = the salon's days. */
+type Draft = { price: string; duration: string; rebook: boolean | null; rebookDays: string };
+const REBOOK_MAX_DAYS = 365;
 
 export default function StylistServicesPage() {
   const token = useApiAccessToken();
   const [profile, setProfile] = useState<SelfStylist | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, { price: string; duration: string }>>({});
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,33 +34,42 @@ export default function StylistServicesPage() {
 
   useEffect(load, [load]);
 
+  function savedDraft(entry: Entry): Draft {
+    return {
+      price: entry.overridePriceToman != null ? String(entry.overridePriceToman) : "",
+      duration: entry.overrideDurationMinutes != null ? String(entry.overrideDurationMinutes) : "",
+      rebook: entry.overrideRebookReminderEnabled,
+      rebookDays: entry.overrideRebookReminderDays != null ? String(entry.overrideRebookReminderDays) : "",
+    };
+  }
+
   function draftFor(entry: Entry) {
-    return (
-      drafts[entry.serviceId] ?? {
-        price: entry.overridePriceToman != null ? String(entry.overridePriceToman) : "",
-        duration: entry.overrideDurationMinutes != null ? String(entry.overrideDurationMinutes) : "",
-      }
-    );
+    return drafts[entry.serviceId] ?? savedDraft(entry);
   }
 
   function isDirty(entry: Entry) {
     const draft = drafts[entry.serviceId];
     if (!draft) return false;
-    return (
-      draft.price !== (entry.overridePriceToman != null ? String(entry.overridePriceToman) : "") ||
-      draft.duration !== (entry.overrideDurationMinutes != null ? String(entry.overrideDurationMinutes) : "")
-    );
+    const saved = savedDraft(entry);
+    return (Object.keys(saved) as (keyof Draft)[]).some((k) => draft[k] !== saved[k]);
   }
 
   async function handleSave(entry: Entry) {
     if (!token) return;
     const draft = draftFor(entry);
+    const rebookDays = draft.rebookDays.trim() ? Number(draft.rebookDays) : null;
+    if (rebookDays !== null && !(rebookDays >= 1 && rebookDays <= REBOOK_MAX_DAYS)) {
+      toastError(`فاصله یادآوری باید بین ۱ تا ${toPersianDigits(REBOOK_MAX_DAYS)} روز باشد`);
+      return;
+    }
     setSavingId(entry.serviceId);
     setError(null);
     try {
       const updated = await updateMyServiceOverride(token, entry.serviceId, {
         overridePriceToman: draft.price.trim() ? Number(draft.price) : null,
         overrideDurationMinutes: draft.duration.trim() ? Number(draft.duration) : null,
+        overrideRebookReminderEnabled: draft.rebook,
+        overrideRebookReminderDays: rebookDays,
       });
       setProfile((p) => (p ? { ...p, services: p.services.map((s) => (s.serviceId === updated.serviceId ? updated : s)) } : p));
       setDrafts((d) => {
@@ -67,7 +80,7 @@ export default function StylistServicesPage() {
       setSavedId(entry.serviceId);
       setTimeout(() => setSavedId((id) => (id === entry.serviceId ? null : id)), 2000);
     } catch {
-      setError("ذخیره تغییرات انجام نشد");
+      toastError("ذخیره تغییرات انجام نشد");
     } finally {
       setSavingId(null);
     }
@@ -77,9 +90,11 @@ export default function StylistServicesPage() {
 
   return (
     <>
-      <PageHeader title="خدمات من" subtitle="قیمت یا زمان هر خدمت را برای خودتان تنظیم کنید؛ خالی یعنی پیش‌فرض سالن." />
+      <PageHeader
+        title="خدمات من"
+        subtitle="قیمت، زمان و پیامک یادآوری نوبت بعدیِ هر خدمت را برای خودتان تنظیم کنید؛ خالی یعنی پیش‌فرض سالن."
+      />
 
-      {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {profile.services.length === 0 ? (
         <EmptyState icon={Scissors} title="هنوز خدمتی به شما داده نشده" hint="خدماتی که ارائه می‌دهید را صاحب سالن مشخص می‌کند." />
@@ -90,7 +105,13 @@ export default function StylistServicesPage() {
             const dirty = isDirty(entry);
             const effectivePrice = entry.overridePriceToman ?? entry.service.priceToman;
             const effectiveDuration = entry.overrideDurationMinutes ?? entry.service.durationMinutes;
-            const customized = entry.overridePriceToman != null || entry.overrideDurationMinutes != null;
+            const customized =
+              entry.overridePriceToman != null ||
+              entry.overrideDurationMinutes != null ||
+              entry.overrideRebookReminderEnabled != null ||
+              entry.overrideRebookReminderDays != null;
+            const setDraft = (patch: Partial<Draft>) => setDrafts((d) => ({ ...d, [entry.serviceId]: { ...draft, ...patch } }));
+            const rebookOn = draft.rebook ?? entry.service.rebookReminderEnabled;
             return (
               <Card key={entry.serviceId} className="app-rise p-4" style={riseStyle(i)}>
                 <div className="flex items-start justify-between gap-3">
@@ -119,7 +140,7 @@ export default function StylistServicesPage() {
                       className="h-11 text-end"
                       placeholder={toPersianDigits(entry.service.priceToman)}
                       value={draft.price}
-                      onChange={(e) => setDrafts((d) => ({ ...d, [entry.serviceId]: { ...draft, price: normalizeDigits(e.target.value).replace(/\D/g, "") } }))}
+                      onChange={(e) => setDraft({ price: normalizeDigits(e.target.value).replace(/\D/g, "") })}
                     />
                   </label>
                   <label className="w-24">
@@ -130,7 +151,7 @@ export default function StylistServicesPage() {
                       className="h-11 text-end"
                       placeholder={toPersianDigits(entry.service.durationMinutes)}
                       value={draft.duration}
-                      onChange={(e) => setDrafts((d) => ({ ...d, [entry.serviceId]: { ...draft, duration: normalizeDigits(e.target.value).replace(/\D/g, "") } }))}
+                      onChange={(e) => setDraft({ duration: normalizeDigits(e.target.value).replace(/\D/g, "") })}
                     />
                   </label>
                   <button
@@ -145,6 +166,34 @@ export default function StylistServicesPage() {
                   >
                     <Check className="h-5 w-5" aria-hidden />
                   </button>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2 border-t border-app-line pt-3">
+                  <BellRing className="h-4 w-4 shrink-0 text-app-muted" aria-hidden />
+                  <span className="min-w-0 flex-1 text-[12px] leading-5 text-app-muted">
+                    پیامک «وقت نوبت بعدی» به مشتری
+                    {rebookOn && (
+                      <>
+                        {" "}بعد از
+                        <TextInput
+                          inputMode="numeric"
+                          dir="ltr"
+                          aria-label={`روزهای یادآوری ${entry.service.name}`}
+                          className="mx-1.5 inline-block h-9 w-16 px-2 text-center"
+                          placeholder={toPersianDigits(entry.service.rebookReminderDays)}
+                          value={draft.rebookDays}
+                          onChange={(e) => setDraft({ rebookDays: normalizeDigits(e.target.value).replace(/\D/g, "").slice(0, 3) })}
+                        />
+                        روز
+                      </>
+                    )}
+                  </span>
+                  <Toggle
+                    checked={rebookOn}
+                    // Back to the salon's own setting clears the override.
+                    onChange={(on) => setDraft({ rebook: on === entry.service.rebookReminderEnabled ? null : on })}
+                    label={`پیامک یادآوری نوبت بعدی برای ${entry.service.name}`}
+                  />
                 </div>
               </Card>
             );

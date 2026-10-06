@@ -1,26 +1,48 @@
 "use client";
 
-import Checkbox from "@/components/form/input/Checkbox";
-import Input from "@/components/form/input/InputField";
-import Label from "@/components/form/Label";
-import { EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
+import AuthCard, { AuthLink } from "@/components/guest/AuthCard";
+import { FloatingInput, PasswordInput } from "@/components/guest/fields";
+import GradientButton from "@/components/guest/GradientButton";
+import SocialAuth from "@/components/guest/SocialAuth";
+import { rise } from "@/components/guest/motion";
+import { requestOtp } from "@/lib/api/bookings";
+import { persianApiError } from "@/lib/api/errorMessages";
+import { isValidIranianMobile, normalizeDigits, toPersianDigits } from "@/lib/persian";
+import { formatCountdown, useResendCountdown } from "@/hooks/useResendCountdown";
+import { useWebOtp } from "@/lib/useWebOtp";
+import { toastError } from "@/lib/toastError";
+
+const OTP_LENGTH = 5;
+
+/** After signing in, each role goes to its own panel. */
+async function goToPanel(router: ReturnType<typeof useRouter>) {
+  const res = await fetch("/api/auth/session");
+  const session = await res.json();
+  const role = session?.user?.role;
+
+  // A customer sent here from a salon page or search (e.g. to save a salon) goes back there.
+  // Same-site paths only, so the parameter can't redirect anywhere else.
+  const back = new URLSearchParams(window.location.search).get("callbackUrl");
+  const safeBack = back && /^\/(?![\/\\])/.test(back) ? back : null; // "/x", never "//x" or "/\\x"
+  router.push(
+    role === "PLATFORM_ADMIN" ? "/admin" : role === "SALON_OWNER" || role === "INDEPENDENT_STYLIST" ? "/salon" : role === "STYLIST" ? "/stylist" : safeBack ?? "/dashboard",
+  );
+  router.refresh();
+}
 
 export default function SignInForm() {
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [mode, setMode] = useState<"otp" | "password">("password");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     const result = await signIn("credentials", {
@@ -30,143 +52,263 @@ export default function SignInForm() {
     });
 
     if (result?.error) {
-      setError("ایمیل/شماره موبایل یا رمز عبور اشتباه است");
+      toastError("ایمیل/شماره موبایل یا رمز عبور اشتباه است");
       setLoading(false);
       return;
     }
 
-    // Fetch session to get role and redirect accordingly
-    const res = await fetch("/api/auth/session");
-    const session = await res.json();
-    const role = session?.user?.role;
-
-    // A customer sent here from a salon page or search (e.g. to save a salon) goes back there.
-    // Same-site paths only, so the parameter can't redirect anywhere else.
-    const back = new URLSearchParams(window.location.search).get("callbackUrl");
-    const safeBack = back && /^\/(?![\/\\])/.test(back) ? back : null; // "/x", never "//x" or "/\\x"
-    router.push(
-      role === "PLATFORM_ADMIN" ? "/admin" : role === "SALON_OWNER" ? "/salon" : role === "STYLIST" ? "/stylist" : safeBack ?? "/dashboard",
-    );
-    router.refresh();
+    await goToPanel(router);
   };
 
   return (
-    <div className="flex flex-col flex-1 w-full">
-      {/* back link */}
-      <div
-        className="w-full max-w-md sm:pt-10 mx-auto mb-5 px-6 sm:px-0"
-        style={{ animation: "fade-in-up 0.4s ease both" }}
-      >
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-all hover:text-brand-500 hover:-translate-x-0.5 dark:text-gray-500"
-        >
-          <svg className="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          بازگشت به سایت
-        </Link>
+    <AuthCard
+      title="خوش برگشتید"
+      subtitle={mode === "otp" ? "شماره موبایلتان را وارد کنید تا کد ورود برایتان پیامک شود." : "با ایمیل یا شماره موبایل و رمز عبور وارد شوید."}
+      footer={
+        <>
+          حساب ندارید؟ <AuthLink href="/signup">ثبت‌نام کنید</AuthLink>
+        </>
+      }
+    >
+      <div role="tablist" className="g-rise mb-5 grid grid-cols-2 gap-1 rounded-2xl border border-g-line p-1" style={rise(2)}>
+        {(
+          [
+            ["password", "ورود با رمز عبور"],
+            ["otp", "ورود با کد پیامکی"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={mode === value}
+            onClick={() => {
+              setMode(value);
+            }}
+            className={`rounded-xl px-3 py-2.5 text-sm font-bold transition ${mode === value ? "bg-g-accent text-white shadow-sm" : "text-g-muted hover:text-g-ink"}`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto px-6 sm:px-0 pb-10">
+      {mode === "otp" ? (
+        <OtpSignIn onSignedIn={() => goToPanel(router)} onUsePassword={() => setMode("password")} />
+      ) : (
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
-        {/* header */}
-        <div className="mb-7" style={{ animation: "fade-in-up 0.5s ease 0.05s both" }}>
-          <h1 className="mb-1.5 text-2xl font-bold text-gray-800 dark:text-white/90">
-            ورود به حساب
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            ایمیل یا شماره موبایل و رمز عبور خود را وارد کنید.
-          </p>
+        <FloatingInput
+          className="g-rise"
+          style={rise(3)}
+          label="ایمیل یا شماره موبایل"
+          hint="09121234567"
+          type="text"
+          dir="ltr"
+          inputMode="email"
+          autoComplete="username"
+          required
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+        />
+
+        <div className="g-rise" style={rise(4)}>
+          <PasswordInput
+            label="رمز عبور"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <div className="mt-2 flex justify-end">
+            <Link href="/reset-password" className="text-[13px] text-g-muted transition hover:text-g-accent">
+              رمز را فراموش کرده‌اید؟
+            </Link>
+          </div>
         </div>
 
-        {/* form */}
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-5">
+        <GradientButton type="submit" loading={loading} loadingLabel="در حال ورود…" className="g-rise mt-1" style={rise(5)}>
+          ورود
+        </GradientButton>
+      </form>
+      )}
 
-            {error && (
-              <div className="rounded-lg bg-error-50 px-4 py-3 text-sm text-error-700 dark:bg-error-500/10 dark:text-error-400">
-                {error}
-              </div>
-            )}
+      <SocialAuth style={rise(6)} />
+    </AuthCard>
+  );
+}
 
-            <div style={{ animation: "fade-in-up 0.5s ease 0.2s both" }}>
-              <Label>ایمیل یا شماره موبایل <span className="text-error-500">*</span></Label>
-              <Input
-                placeholder="example@email.com یا 09121234567"
-                type="text"
-                dir="ltr"
-                autoComplete="username"
-                required
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-              />
-            </div>
+/** Phone → SMS code → signed in (NextAuth "otp" provider), for every role. */
+function OtpSignIn({ onSignedIn, onUsePassword }: { onSignedIn: () => Promise<void>; onUsePassword: () => void }) {
+  const [phone, setPhone] = useState("");
+  const [sent, setSent] = useState<{ phone: string; devCode?: string } | null>(null);
+  const [loading, setLoading] = useState(false);
 
-            <div style={{ animation: "fade-in-up 0.5s ease 0.25s both" }}>
-              <Label>رمز عبور <span className="text-error-500">*</span></Label>
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="رمز عبور خود را وارد کنید"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                >
-                  {showPassword
-                    ? <EyeIcon className="fill-current" />
-                    : <EyeCloseIcon className="fill-current" />}
-                </button>
-              </div>
-            </div>
+  async function sendCode(e: React.FormEvent) {
+    e.preventDefault();
+    const normalized = normalizeDigits(phone.trim());
+    if (!isValidIranianMobile(normalized)) return toastError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد");
+    setLoading(true);
+    try {
+      const { devCode } = await requestOtp(normalized);
+      setSent({ phone: normalized, devCode });
+    } catch (err) {
+      toastError(persianApiError(err, "ارسال کد ورود ممکن نشد، دوباره تلاش کنید"));
+    } finally {
+      setLoading(false);
+    }
+  }
 
-            <div
-              className="flex items-center justify-between"
-              style={{ animation: "fade-in-up 0.5s ease 0.3s both" }}
-            >
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <Checkbox checked={rememberMe} onChange={setRememberMe} />
-                <span className="text-sm text-gray-600 dark:text-gray-400">مرا به خاطر بسپار</span>
-              </label>
-              <Link href="/reset-password" className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400 transition-colors">
-                فراموشی رمز
-              </Link>
-            </div>
+  if (sent) {
+    return (
+      <OtpCodeForm
+        phone={sent.phone}
+        devCode={sent.devCode}
+        onSignedIn={onSignedIn}
+        onUsePassword={onUsePassword}
+        onChangePhone={() => {
+          setSent(null);
+        }}
+      />
+    );
+  }
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-brand-500/25 transition-all hover:bg-brand-600 hover:-translate-y-0.5 hover:shadow-brand-500/40 disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
-              style={{ animation: "fade-in-up 0.5s ease 0.35s both" }}
-            >
-              {loading ? (
-                <>
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  در حال ورود...
-                </>
-              ) : "ورود"}
+  return (
+    <form onSubmit={sendCode} className="flex flex-col gap-4">
+      <FloatingInput
+        className="g-rise"
+        style={rise(3)}
+        label="شماره موبایل"
+        hint="09121234567"
+        type="tel"
+        dir="ltr"
+        inputMode="numeric"
+        autoComplete="tel"
+        required
+        value={phone}
+        onChange={(e) => setPhone(normalizeDigits(e.target.value))}
+      />
+      <GradientButton type="submit" loading={loading} loadingLabel="در حال ارسال کد…" className="g-rise mt-1" style={rise(4)}>
+        دریافت کد ورود
+      </GradientButton>
+    </form>
+  );
+}
+
+/** Mounted once the code is sent, so the resend countdown starts then. */
+function OtpCodeForm({
+  phone,
+  devCode,
+  onSignedIn,
+  onUsePassword,
+  onChangePhone,
+}: {
+  phone: string;
+  devCode?: string;
+  onSignedIn: () => Promise<void>;
+  onUsePassword: () => void;
+  onChangePhone: () => void;
+}) {
+  // No SMS provider yet (the api's OTP bypass): it returned the code, so fill it in and sign in.
+  const [code, setCode] = useState(devCode ?? "");
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const { secondsLeft, restart } = useResendCountdown();
+
+  async function verify(otp: string) {
+    setLoading(true);
+    const result = await signIn("otp", { phone, code: otp, redirect: false });
+    if (result?.error) {
+      toastError(
+        result.code === "no_account" ? (
+          <>
+            حسابی با این شماره موبایل وجود ندارد. <AuthLink href="/signup">ثبت‌نام کنید</AuthLink>
+          </>
+        ) : result.code === "staff_password" ? (
+          <>
+            این شماره متعلق به حساب مدیر یا آرایشگر است.{" "}
+            <button type="button" onClick={onUsePassword} className="font-bold underline">
+              با رمز عبور وارد شوید
             </button>
-          </div>
-        </form>
+          </>
+        ) : (
+          "کد وارد شده صحیح نیست یا منقضی شده است"
+        ),
+      );
+      setLoading(false);
+      return;
+    }
+    await onSignedIn();
+  }
 
-        <p
-          className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400"
-          style={{ animation: "fade-in-up 0.5s ease 0.4s both" }}
-        >
-          حساب ندارید؟{" "}
-          <Link href="/signup" className="font-semibold text-brand-500 hover:text-brand-600 dark:text-brand-400">
-            ثبت‌نام کنید
-          </Link>
-        </p>
+  useEffect(() => {
+    if (devCode?.length !== OTP_LENGTH) return;
+    const t = setTimeout(() => void verify(devCode), 400);
+    return () => clearTimeout(t);
+    // once, on arrival with a code
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Chrome on Android reads the code from the SMS itself and signs in.
+  useWebOtp(!devCode, (otp) => {
+    const digits = normalizeDigits(otp).replace(/\D/g, "").slice(0, OTP_LENGTH);
+    setCode(digits);
+    if (digits.length === OTP_LENGTH) void verify(digits);
+  });
+
+  async function resend() {
+    setResending(true);
+    try {
+      const { devCode: next } = await requestOtp(phone);
+      restart();
+      setCode(next ?? "");
+      if (next?.length === OTP_LENGTH) void verify(next);
+    } catch (err) {
+      toastError(persianApiError(err, "ارسال مجدد کد ممکن نشد، کمی بعد دوباره تلاش کنید"));
+    } finally {
+      setResending(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void verify(code);
+      }}
+      className="flex flex-col gap-4"
+    >
+      <p className="text-sm leading-7 text-g-muted">
+        کد {toPersianDigits(OTP_LENGTH)} رقمی به شماره <span dir="ltr">{toPersianDigits(phone)}</span> پیامک شد.
+      </p>
+      <FloatingInput
+        label="کد ورود"
+        hint="-----"
+        type="text"
+        dir="ltr"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        autoFocus
+        required
+        value={code}
+        onChange={(e) => setCode(normalizeDigits(e.target.value).replace(/\D/g, "").slice(0, OTP_LENGTH))}
+      />
+      <GradientButton type="submit" loading={loading} loadingLabel="در حال ورود…" disabled={code.length !== OTP_LENGTH}>
+        ورود
+      </GradientButton>
+      <div className="flex items-center justify-between text-[13px]">
+        <button type="button" onClick={onChangePhone} className="text-g-muted transition hover:text-g-accent">
+          تغییر شماره
+        </button>
+        {secondsLeft > 0 ? (
+          <span className="text-g-muted">
+            ارسال مجدد تا <span dir="ltr">{formatCountdown(secondsLeft)}</span>
+          </span>
+        ) : (
+          <button type="button" onClick={resend} disabled={resending} className="font-bold text-g-accent disabled:opacity-50">
+            {resending ? "در حال ارسال…" : "ارسال مجدد کد"}
+          </button>
+        )}
       </div>
-    </div>
+    </form>
   );
 }

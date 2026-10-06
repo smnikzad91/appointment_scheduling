@@ -1,0 +1,38 @@
+import type { Metadata } from "next";
+import { LifeBuoy } from "lucide-react";
+import TutorialsIndex from "@/components/tutorials/TutorialsIndex";
+import { TUTORIALS, TUTORIAL_ROLES, type TutorialRole } from "@/content/tutorials";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { toPersianDigits } from "@/lib/persian";
+import { rise } from "@/components/guest/motion";
+
+export const metadata: Metadata = {
+  title: "راهنمای استفاده",
+  description: `راهنمای قدم‌به‌قدم ${SITE_NAME} با تصویر برای صاحبان سالن، آرایشگرها و مشتری‌ها: ثبت سالن، آرایشگرها، ساعت کاری، رزرو آنلاین و پیگیری نوبت.`,
+  alternates: { canonical: `${SITE_URL}/tutorials` },
+};
+
+export default async function TutorialsPage({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
+  const { role } = await searchParams;
+  const initialRole = TUTORIAL_ROLES.some((r) => r.id === role) ? (role as TutorialRole) : undefined;
+  const steps = TUTORIALS.reduce((n, t) => n + t.steps.length, 0);
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 pb-24 pt-12 sm:px-6">
+      <header className="mb-6 max-w-2xl">
+        <span className="g-kicker g-rise" style={rise(0)}>
+          <LifeBuoy className="h-3.5 w-3.5" aria-hidden />
+          مرکز راهنما
+        </span>
+        <h1 className="g-rise mt-4 text-4xl font-black leading-tight text-g-ink sm:text-5xl" style={rise(1)}>
+          هر کاری در {SITE_NAME}، <span className="g-gradient-text">قدم‌به‌قدم</span>
+        </h1>
+        <p className="g-rise mt-4 text-[15px] leading-8 text-g-muted" style={rise(2)}>
+          {toPersianDigits(TUTORIALS.length)} راهنمای تصویری در {toPersianDigits(steps)} مرحله، با همان صفحه‌هایی که در اپ می‌بینید. نقش خود را انتخاب کنید یا
+          دنبال کاری که می‌خواهید انجام دهید بگردید.
+        </p>
+      </header>
+      <TutorialsIndex initialRole={initialRole} />
+    </div>
+  );
+}

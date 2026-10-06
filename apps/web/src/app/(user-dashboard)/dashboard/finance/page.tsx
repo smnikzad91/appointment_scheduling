@@ -9,6 +9,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Modal } from "@/components/ui/modal";
 import { toPersianDigits } from "@/lib/persian";
+import PickerSelect from "@/components/app/PickerSelect";
 
 type Card = {
   id: string;
@@ -645,17 +646,12 @@ export default function FinancePage() {
           <form onSubmit={handleSubmitDeposit} className="space-y-4 px-6 py-5">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{t("depositCard")}</label>
-              <select
+              <PickerSelect
+                title={t("depositCard")}
                 value={selCardId}
-                onChange={(e) => setSelCardId(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none transition-colors focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:border-brand-500 dark:focus:bg-gray-800"
-              >
-                {cards.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.bankName} — ****{c.cardNumber.slice(-4)}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelCardId}
+                options={cards.map((c) => ({ value: c.id, label: c.bankName, hint: `****${c.cardNumber.slice(-4)}` }))}
+              />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">{t("depositAmount")}</label>

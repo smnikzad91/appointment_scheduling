@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { SalonStatus } from "@appointment-scheduling/database";
+import { SalonKind, SalonStatus } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { UpdateSalonDto } from "./dto/update-salon.dto.js";
+import { publicLocation } from "./public-location.util.js";
 import { assertIranCoordinates, resolveProvinceCity } from "../common/location.js";
 import { UpdateSalonStatusDto } from "./dto/update-salon-status.dto.js";
 
@@ -9,8 +10,8 @@ import { UpdateSalonStatusDto } from "./dto/update-salon-status.dto.js";
 export class SalonsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findPublicBySlug(slug: string) {
-    return this.prisma.salon.findFirst({
+  async findPublicBySlug(slug: string) {
+    const salon = await this.prisma.salon.findFirst({
       where: { slug, status: "ACTIVE" },
       include: {
         serviceCategories: { orderBy: { order: "asc" } },
@@ -24,10 +25,12 @@ export class SalonsService {
         galleryImages: { orderBy: { createdAt: "desc" }, select: { id: true, url: true, caption: true, stylistId: true } },
       },
     });
+    return salon && publicLocation(salon);
   }
 
-  listPublic() {
-    return this.prisma.salon.findMany({ where: { status: "ACTIVE" } });
+  async listPublic() {
+    const salons = await this.prisma.salon.findMany({ where: { status: "ACTIVE" } });
+    return salons.map(publicLocation);
   }
 
   async findMine(userId: string) {
@@ -38,13 +41,15 @@ export class SalonsService {
 
   async updateMine(userId: string, dto: UpdateSalonDto) {
     const salon = await this.findMine(userId);
-    const { province, city, ...rest } = dto;
+    const { province, city, serviceLocations, serviceArea, hostSalonName, ...rest } = dto;
+    // Where they work is an independent stylist's setting; a salon is always at its address.
+    const workplace = salon.kind === SalonKind.INDEPENDENT ? { serviceLocations, serviceArea, hostSalonName } : {};
     const location =
       province !== undefined || city !== undefined ? resolveProvinceCity(province ?? salon.province ?? "", city ?? salon.city) : {};
     assertIranCoordinates(dto.latitude, dto.longitude);
     return this.prisma.salon.update({
       where: { id: salon.id },
-      data: { ...rest, ...location, ...(rest.address !== undefined && { address: rest.address.trim() }) },
+      data: { ...rest, ...workplace, ...location, ...(rest.address !== undefined && { address: rest.address.trim() }) },
     });
   }
 
@@ -56,6 +61,7 @@ export class SalonsService {
       orderBy: { createdAt: "desc" },
       include: {
         owner: { select: { id: true, firstName: true, lastName: true, phone: true } },
+        plan: { select: { id: true, name: true } },
       },
     });
   }

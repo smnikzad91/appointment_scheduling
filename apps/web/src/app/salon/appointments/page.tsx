@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
-import { listMySalonAppointments, updateAppointmentStatus } from "@/lib/api/ownerSalon";
+import { getMySalon, listMySalonAppointments, updateAppointmentStatus } from "@/lib/api/ownerSalon";
+import { isIndependent } from "@/lib/independent";
 import AppointmentsScreen from "@/components/app/AppointmentsScreen";
 import SalonBookingSheet from "@/components/app/SalonBookingSheet";
 import { IconButton, ListSkeleton } from "@/components/app/ui";
@@ -16,6 +17,14 @@ export default function SalonAppointmentsPage() {
   const [version, setVersion] = useState(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const load = useCallback(() => listMySalonAppointments(token!), [token, version]);
+  // An independent stylist is the only stylist: no stylist name on every booking.
+  const [independent, setIndependent] = useState(false);
+  useEffect(() => {
+    if (!token) return;
+    getMySalon(token)
+      .then((s) => setIndependent(isIndependent(s)))
+      .catch(() => {});
+  }, [token]);
   const updateStatus = useCallback((id: string, status: Parameters<typeof updateAppointmentStatus>[2]) => updateAppointmentStatus(token!, id, status), [token]);
 
   if (!token) return <ListSkeleton />;
@@ -23,7 +32,8 @@ export default function SalonAppointmentsPage() {
     <>
       <AppointmentsScreen
         title="نوبت‌ها"
-        showStylist
+        showStylist={!independent}
+        edit={{ token }}
         load={load}
         updateStatus={updateStatus}
         headerAction={

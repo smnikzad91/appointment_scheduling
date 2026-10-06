@@ -1,7 +1,8 @@
 "use client";
 
+import type { SalonKind } from "@/lib/independent";
 import { useEffect, useMemo, useState } from "react";
-import { List, LoaderCircle, LocateFixed, Map as MapIcon, Search, SearchX, X } from "lucide-react";
+import { List, LoaderCircle, LocateFixed, Map as MapIcon, Navigation, Search, SearchX, Star, X } from "lucide-react";
 import { searchSalons, type SalonCard, type SalonSearchParams } from "@/lib/api/discovery";
 import { toPersianDigits } from "@/lib/persian";
 import ProvinceCitySelect from "@/components/common/ProvinceCitySelect";
@@ -20,6 +21,7 @@ const SELECT_CLASS =
   "h-12 w-full appearance-none rounded-2xl border border-app-line bg-app-card px-4 text-app-ink outline-none transition focus:border-app-accent focus:ring-4 focus:ring-app-accent/15 disabled:opacity-50";
 
 export interface SalonSearchInitial {
+  kind?: SalonKind;
   province?: string;
   city?: string;
   q?: string;
@@ -30,6 +32,7 @@ type LocateState = "idle" | "locating" | "denied" | "unavailable";
 
 export default function SalonSearch({ initial = {} }: { initial?: SalonSearchInitial }) {
   const [place, setPlace] = useState({ province: initial.province ?? "", city: initial.city ?? "" });
+  const [kind, setKind] = useState<SalonKind | "">(initial.kind ?? "");
   const [qInput, setQInput] = useState(initial.q ?? "");
   const [q, setQ] = useState(initial.q ?? "");
   const [near, setNear] = useState<Near | null>(null);
@@ -50,13 +53,14 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
 
   const params = useMemo<SalonSearchParams>(
     () => ({
+      kind: kind || undefined,
       province: place.province || undefined,
       city: place.city || undefined,
       q: q || undefined,
       ...(near && { lat: near.lat, lng: near.lng, sort, ...(radiusKm > 0 && { radiusKm }) }),
       limit: PAGE,
     }),
-    [place, q, near, sort, radiusKm],
+    [kind, place, q, near, sort, radiusKm],
   );
   const key = JSON.stringify(params) + retry;
 
@@ -73,12 +77,13 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
   // Keep the filters in the address bar (without reloading).
   useEffect(() => {
     const url = new URL(window.location.href);
-    for (const [k, v] of [["province", place.province], ["city", place.city], ["q", q]] as const) {
+    const type = kind === "INDEPENDENT" ? "independent" : kind === "SALON" ? "salon" : "";
+    for (const [k, v] of [["type", type], ["province", place.province], ["city", place.city], ["q", q]] as const) {
       if (v) url.searchParams.set(k, v);
       else url.searchParams.delete(k);
     }
     window.history.replaceState(window.history.state, "", url);
-  }, [place, q]);
+  }, [kind, place, q]);
 
   const loading = results?.key !== key && error?.key !== key;
   const failed = error?.key === key;
@@ -137,6 +142,21 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
         )}
       </label>
 
+      {/* Salons, independent stylists, or both */}
+      <div role="radiogroup" aria-label="نوع" className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+        {(
+          [
+            ["", "همه"],
+            ["SALON", "سالن‌ها"],
+            ["INDEPENDENT", "آرایشگران مستقل"],
+          ] as const
+        ).map(([v, label]) => (
+          <button key={v || "all"} type="button" role="radio" aria-checked={kind === v} onClick={() => setKind(v)} className={chip(kind === v)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="mt-3">
         <ProvinceCitySelect
           value={place}
@@ -180,17 +200,6 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
           {loading && results && <LoaderCircle className="ms-2 inline h-4 w-4 animate-spin" aria-hidden />}
         </p>
         <div className="flex items-center gap-2">
-          {near && (
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as "distance" | "rating")}
-              aria-label="مرتب‌سازی"
-              className="h-9 appearance-none rounded-full border border-app-line bg-app-card px-3 text-[13px] font-semibold text-app-ink"
-            >
-              <option value="distance">نزدیک‌ترین</option>
-              <option value="rating">بالاترین امتیاز</option>
-            </select>
-          )}
           <div className="flex rounded-full border border-app-line bg-app-card p-0.5" role="tablist" aria-label="نمایش">
             {(
               [
@@ -213,6 +222,36 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
           </div>
         </div>
       </div>
+
+      {/* Sort only matters around the customer's position; a segmented control, not a native select. */}
+      {near && (
+        <div className="-mt-1 mb-3 flex items-center gap-2">
+          <span className="text-[13px] text-app-muted">مرتب‌سازی</span>
+          <div className="flex rounded-full border border-app-line bg-app-card p-0.5" role="radiogroup" aria-label="مرتب‌سازی">
+            {(
+              [
+                ["distance", Navigation, "نزدیک‌ترین"],
+                ["rating", Star, "بالاترین امتیاز"],
+              ] as const
+            ).map(([v, Icon, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={sort === v}
+                onClick={() => setSort(v)}
+                className={cx(
+                  "flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-semibold transition",
+                  sort === v ? "bg-app-accent text-app-accent-ink" : "text-app-muted",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {failed ? (
         <ErrorBanner onRetry={() => setRetry((n) => n + 1)}>جستجو انجام نشد</ErrorBanner>

@@ -4,25 +4,38 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDownIcon } from "@/icons";
 import { useLanguage } from "@/context/LanguageContext";
 
+/** Plain strings (value = label), or value/label pairs when the stored value isn't what's shown. */
+type Option = string | { value: string; label: string };
+
 interface Props {
   value: string;
   onChange: (value: string) => void;
-  options: string[];
+  options: Option[];
   placeholder?: string;
+  ariaLabel?: string;
 }
 
-export default function SelectField({ value, onChange, options, placeholder = "انتخاب کنید" }: Props) {
+const optValue = (o: Option) => (typeof o === "string" ? o : o.value);
+const optLabel = (o: Option) => (typeof o === "string" ? o : o.label);
+
+export default function SelectField({ value, onChange, options, placeholder = "انتخاب کنید", ariaLabel }: Props) {
   const { lang } = useLanguage();
   const isRTL = lang === "fa";
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const current = options.find((o) => optValue(o) === value);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   return (
@@ -30,6 +43,9 @@ export default function SelectField({ value, onChange, options, placeholder = "�
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel}
         className={`flex w-full items-center justify-between rounded-xl border px-4 py-2.5 text-sm outline-none transition-all cursor-pointer
           bg-white dark:bg-gray-800
           ${open
@@ -38,20 +54,24 @@ export default function SelectField({ value, onChange, options, placeholder = "�
           }
           ${value ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"}`}
       >
-        <span className="truncate">{value || placeholder}</span>
+        <span className="truncate">{current ? optLabel(current) : placeholder}</span>
         <ChevronDownIcon className={`h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200 dark:text-gray-500 ${isRTL ? "mr-2" : "ml-2"} ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
         <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg shadow-black/10 dark:border-gray-700 dark:bg-gray-900 dark:shadow-black/30">
-          <div className="max-h-52 overflow-y-auto py-1">
+          <div className="max-h-52 overflow-y-auto py-1" role="listbox">
             {options.length === 0 && (
               <div className="px-4 py-3 text-sm text-gray-400 dark:text-gray-500">موردی یافت نشد</div>
             )}
-            {options.map((opt) => (
+            {options.map((o) => {
+              const opt = optValue(o);
+              return (
               <button
                 key={opt}
                 type="button"
+                role="option"
+                aria-selected={opt === value}
                 onClick={() => { onChange(opt); setOpen(false); }}
                 className={`flex w-full items-center gap-2 px-4 py-2.5 text-sm transition-colors
                   ${opt === value
@@ -65,9 +85,10 @@ export default function SelectField({ value, onChange, options, placeholder = "�
                     </svg>
                   : <span className="h-3.5 w-3.5 shrink-0" />
                 }
-                <span>{opt}</span>
+                <span>{optLabel(o)}</span>
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

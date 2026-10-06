@@ -1,5 +1,6 @@
 import { Prisma, type ErrorSource } from "@appointment-scheduling/database";
 import { prisma } from "@/lib/prisma";
+import { errorCauses } from "@/lib/errorCauses";
 
 // Writes to the shared error_logs table shown on the admin dashboard (/admin). apps/api records
 // its own errors (src/error-log); this covers apps/web — server code directly, and the browser
@@ -20,13 +21,22 @@ export interface LogErrorInput {
 }
 
 export function describeError(error: unknown): { message: string; stack?: string } {
-  if (error instanceof Error) return { message: error.message.trim() || error.name, stack: error.stack };
+  if (error instanceof Error) {
+    const base = error.message.trim() || error.name;
+    const chain = errorCauses(error).map((c) => [c.code, c.message].filter(Boolean).join(": ") || c.name || "?");
+    return { message: [base, ...chain].join(" ← "), stack: error.stack };
+  }
   if (typeof error === "string") return { message: error };
   try {
     return { message: JSON.stringify(error) };
   } catch {
     return { message: String(error) };
   }
+}
+
+function withCauses(context: Record<string, unknown> | undefined, error: unknown) {
+  const causes = errorCauses(error);
+  return causes.length ? { ...context, causes } : context;
 }
 
 /** Logs to the console and persists to error_logs. Never throws. */
@@ -46,7 +56,7 @@ export async function logError(input: LogErrorInput): Promise<void> {
         statusCode: input.statusCode,
         userId: input.userId,
         userAgent: input.userAgent?.slice(0, 500),
-        context: input.context as Prisma.InputJsonValue | undefined,
+        context: withCauses(input.context, input.error) as Prisma.InputJsonValue | undefined,
       },
     });
   } catch (err) {

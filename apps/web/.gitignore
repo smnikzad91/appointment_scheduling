@@ -12,6 +12,9 @@
 
 # next.js
 /.next/
+/.next-a/
+/.next-b/
+/.next-live
 /out/
 
 # production
@@ -45,3 +48,4 @@ next-env.d.ts
 /public/uploads/salons/
 /public/uploads/stylists/
 /public/uploads/banners/
+/private-uploads/

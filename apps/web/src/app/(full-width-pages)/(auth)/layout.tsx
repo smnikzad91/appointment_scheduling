@@ -1,44 +1,15 @@
-import ThemeTogglerTwo from "@/components/common/ThemeTogglerTwo";
-import { ThemeProvider } from "@/context/ThemeContext";
 import AuthBrandPanel from "@/components/auth/AuthBrandPanel";
-import React from "react";
+import GuestBackdrop from "@/components/guest/GuestBackdrop";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    // app-root: same paper/terracotta theme as the panels — sign-in is the installed app's first screen.
-    <div dir="rtl" className="app-root bg-white dark:bg-gray-900">
-      <ThemeProvider>
-        <div className="app-pt-safe app-pb-safe flex lg:flex-row-reverse h-dvh overflow-hidden">
-
-          {/* ── form side ── */}
-          <div className="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto no-scrollbar">
-            {/* dot grid */}
-            <div
-              className="pointer-events-none absolute inset-0 opacity-[0.035] dark:opacity-[0.06]"
-              style={{
-                backgroundImage: "radial-gradient(circle, var(--app-accent) 1px, transparent 1px)",
-                backgroundSize: "24px 24px",
-              }}
-            />
-            {/* top-right glow */}
-            <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-brand-400/15 blur-3xl dark:bg-brand-500/20" />
-            {/* bottom-left glow */}
-            <div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-brand-300/10 blur-3xl dark:bg-brand-600/15" />
-
-            {/* content */}
-            <div className="relative z-10 flex flex-col flex-1">
-              {children}
-            </div>
-          </div>
-
-          {/* ── brand panel ── */}
-          <AuthBrandPanel />
-
-          <div className="fixed bottom-6 left-6 z-50 hidden sm:block">
-            <ThemeTogglerTwo />
-          </div>
-        </div>
-      </ThemeProvider>
+    // Always dark (guest theme) — sign-in is also the installed app's first screen.
+    <div dir="rtl" className="app-root guest-root min-h-dvh">
+      <GuestBackdrop />
+      <div className="app-pt-safe app-pb-safe mx-auto flex min-h-dvh max-w-6xl gap-12 px-4 sm:px-6 lg:px-8">
+        <main className="flex flex-1 flex-col items-center justify-center py-8">{children}</main>
+        <AuthBrandPanel />
+      </div>
     </div>
   );
 }

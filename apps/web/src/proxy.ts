@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
+import { usesSalonPanel } from "./lib/roles";
 import { NextResponse } from "next/server";
 
 const { auth } = NextAuth(authConfig);
@@ -24,7 +25,7 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  if (isSalonRoute && role !== "SALON_OWNER") {
+  if (isSalonRoute && !usesSalonPanel(role)) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 

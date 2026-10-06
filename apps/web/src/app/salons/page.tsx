@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Calendar } from "lucide-react";
 import { findProvince } from "@appointment-scheduling/iran-locations";
 import SalonSearch from "@/components/discovery/SalonSearch";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import GuestBackdrop from "@/components/guest/GuestBackdrop";
+import GuestLogo from "@/components/guest/GuestLogo";
+import { rise } from "@/components/guest/motion";
+import GuestTabBar from "@/components/guest/GuestTabBar";
 
 interface PageProps {
-  searchParams: Promise<{ province?: string; city?: string; q?: string }>;
+  searchParams: Promise<{ province?: string; city?: string; q?: string; type?: string }>;
 }
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
@@ -26,25 +29,35 @@ export default async function SalonsPage({ searchParams }: PageProps) {
   const province = findProvince(sp.province ?? "")?.name ?? "";
   const city = province && sp.city && findProvince(province)!.cities.includes(sp.city) ? sp.city : "";
   return (
-    <div dir="rtl" className="app-root min-h-dvh">
-      <header className="app-pt-safe sticky top-0 z-40 border-b border-app-line bg-app-bg/85 backdrop-blur-xl">
+    <div dir="rtl" className="app-root guest-root min-h-dvh">
+      <GuestBackdrop />
+      <header className="app-pt-safe sticky top-0 z-40 border-b border-g-line bg-g-bg/60 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2 text-lg font-black text-app-ink">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-app-accent text-app-accent-ink">
-              <Calendar className="h-4 w-4" aria-hidden />
-            </span>
-            {SITE_NAME}
-          </Link>
-          <Link href="/signin?callbackUrl=%2Fsalons" className="rounded-full bg-app-card-2 px-4 py-2 text-sm font-bold text-app-ink">
+          <GuestLogo />
+          <Link href="/signin?callbackUrl=%2Fsalons" className="g-btn g-btn-ghost h-10 px-4 text-sm">
             ورود
           </Link>
         </div>
       </header>
-      <main className="mx-auto max-w-lg px-4 pb-16 pt-5">
-        <h1 className="text-[26px] font-black leading-tight text-app-ink">سالن زیبایی پیدا کنید</h1>
-        <p className="mb-4 mt-1 text-sm text-app-muted">بر اساس شهر، خدمت یا نزدیک‌ترین سالن به شما — و همین‌جا نوبت بگیرید.</p>
-        <SalonSearch initial={{ province, city, q: sp.q?.slice(0, 60) }} />
+      <main className="mx-auto max-w-lg px-4 pb-16 pt-6">
+        <h1 className="g-rise text-[28px] font-black leading-tight text-g-ink" style={rise(0)}>
+          سالن زیبایی <span className="g-gradient-text">پیدا کنید</span>
+        </h1>
+        <p className="g-rise mb-5 mt-2 text-sm leading-7 text-g-muted" style={rise(1)}>
+          بر اساس شهر، خدمت یا نزدیک‌ترین سالن به شما — و همین‌جا نوبت بگیرید.
+        </p>
+        <div className="g-rise" style={rise(2)}>
+          <SalonSearch
+            initial={{
+              province,
+              city,
+              q: sp.q?.slice(0, 60),
+              kind: sp.type === "independent" ? "INDEPENDENT" : sp.type === "salon" ? "SALON" : undefined,
+            }}
+          />
+        </div>
       </main>
+      <GuestTabBar />
     </div>
   );
 }

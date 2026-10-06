@@ -1,4 +1,5 @@
-import { ArrayMinSize, IsArray, IsDateString, IsOptional, IsString, Matches, MaxLength } from "class-validator";
+import { ArrayMinSize, IsArray, IsDateString, IsEnum, IsOptional, IsString, Matches, MaxLength } from "class-validator";
+import { ServiceLocation } from "@appointment-scheduling/database";
 
 export class CreateAppointmentDto {
   @IsString()
@@ -19,6 +20,17 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  /** Independent stylists: where it happens (one of theirs); a single offered location is the default. */
+  @IsOptional()
+  @IsEnum(ServiceLocation)
+  serviceLocation?: ServiceLocation;
+
+  /** Required for a home visit (CLIENT_HOME): the customer's address. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  visitAddress?: string;
 }
 
 /** The salon booking a customer (phone call or walk-in) with a specific stylist. */
@@ -51,6 +63,17 @@ export class CreateSalonAppointmentDto {
   @IsString()
   @MaxLength(500)
   notes?: string;
+
+  /** Independent stylists: where it happens (one of theirs); a single offered location is the default. */
+  @IsOptional()
+  @IsEnum(ServiceLocation)
+  serviceLocation?: ServiceLocation;
+
+  /** Required for a home visit (CLIENT_HOME): the customer's address. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  visitAddress?: string;
 }
 
 export class CustomerLookupQueryDto {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Banknote, CalendarCheck2, Download, Plus, Receipt, Scissors, Trash2, Users, Wallet } from "lucide-react";
+import { Banknote, CalendarCheck2, Download, Paperclip, Plus, Receipt, Scissors, Trash2, Users, Wallet } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   EXPENSE_CATEGORY_LABEL,
@@ -29,13 +29,17 @@ import { jalaliMonthPeriod, type AccountingPeriod } from "@/lib/accountingPeriod
 import { jalaliDate, jalaliMonthSlug, type Report } from "@/lib/accountingExport";
 import ExportSheet from "@/components/app/AccountingReport";
 import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
+import { getMySalon } from "@/lib/api/ownerSalon";
+import { isIndependent } from "@/lib/independent";
 import { formatToman, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, toSalonWallTime } from "@/lib/salonTime";
 import MoneyInput from "@/components/app/MoneyInput";
+import { ReceiptField, useReceipt } from "@/components/app/ReceiptField";
 import Sheet from "@/components/app/Sheet";
 import Sep from "@/components/common/Sep";
 import { BalanceChip, DaySelect, HeroAmount, MoneyFigure, PeriodSwitcher, dayKeyToInstant, formatPercent, instantToDayKey, shortDate } from "@/components/app/accounting";
 import { Avatar, Button, ChipTabs, EmptyState, ErrorBanner, Field, IconButton, ListSkeleton, PageHeader, TextInput, cx, riseStyle } from "@/components/app/ui";
+import { toastError } from "@/lib/toastError";
 
 type Tab = "stylists" | "income" | "expenses" | "services";
 const METHODS = Object.keys(PAYOUT_METHOD_LABEL) as PayoutMethod[];
@@ -46,6 +50,18 @@ export default function SalonAccountingPage() {
   const [offset, setOffset] = useState(0);
   const period = useMemo(() => jalaliMonthPeriod(offset), [offset]);
   const [tab, setTab] = useState<Tab>("stylists");
+  // An independent stylist is the business: no stylists tab, shares or balances — income, costs, net.
+  const [independent, setIndependent] = useState(false);
+  useEffect(() => {
+    if (!token) return;
+    getMySalon(token)
+      .then((s) => {
+        if (!isIndependent(s)) return;
+        setIndependent(true);
+        setTab((t) => (t === "stylists" ? "income" : t));
+      })
+      .catch(() => {});
+  }, [token]);
 
   const [summary, setSummary] = useState<{ key: string; data: SalonSummary } | null>(null);
   const [income, setIncome] = useState<{ key: string; items: IncomeItem[] } | null>(null);
@@ -98,7 +114,7 @@ export default function SalonAccountingPage() {
     <>
       <PageHeader
         title="حسابداری"
-        subtitle="درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌های سالن"
+        subtitle={independent ? "درآمد، هزینه‌ها و سود خالص شما" : "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌های سالن"}
         action={data && <IconButton icon={Download} label="خروجی اکسل یا PDF" tone="plain" onClick={() => setExportOpen(true)} />}
       />
       <PeriodSwitcher period={period} onChange={setOffset} />
@@ -110,18 +126,25 @@ export default function SalonAccountingPage() {
           <section className="rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
             {/* No minus sign: next to Persian digits in RTL it drifts to the wrong side and is easy to miss. */}
             <p className="text-xs text-white/60">
-              {data.totals.netProfitToman < 0 ? "زیان خالص سالن" : "سود خالص سالن"} در {period.label}
+              {data.totals.netProfitToman < 0 ? "زیان خالص" : "سود خالص"}
+              {!independent && " سالن"} در {period.label}
             </p>
             <p className={cx("mt-1 text-[30px] font-black leading-tight", data.totals.netProfitToman < 0 && "text-[#ff9b8a]")}>
               {formatToman(Math.abs(data.totals.netProfitToman))}
             </p>
             {data.totals.netProfitToman < 0 && (
-              <p className="mt-1 text-xs text-[#ff9b8a]">هزینه‌های این ماه از سهم سالن بیشتر بوده است.</p>
+              <p className="mt-1 text-xs text-[#ff9b8a]">
+                {independent ? "هزینه‌های این ماه از درآمد بیشتر بوده است." : "هزینه‌های این ماه از سهم سالن بیشتر بوده است."}
+              </p>
             )}
             <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-3xl bg-white/[0.06] p-4">
               <HeroAmount label="درآمد کل" amount={data.totals.incomeToman} />
-              <HeroAmount label="سهم آرایشگرها" amount={data.totals.stylistShareToman} />
-              <HeroAmount label="سهم سالن" amount={data.totals.salonShareToman} />
+              {!independent && (
+                <>
+                  <HeroAmount label="سهم آرایشگرها" amount={data.totals.stylistShareToman} />
+                  <HeroAmount label="سهم سالن" amount={data.totals.salonShareToman} />
+                </>
+              )}
               <HeroAmount label="هزینه‌ها" amount={data.totals.expensesToman} />
             </div>
             <p className="mt-3 flex flex-wrap items-center text-xs text-white/65">
@@ -133,8 +156,12 @@ export default function SalonAccountingPage() {
                   انعام‌ها: {formatToman(data.totals.tipsToman)}
                 </>
               )}
-              <Sep />
-              طلب آرایشگرها: {formatToman(data.totals.owedToStylistsToman)}
+              {!independent && (
+                <>
+                  <Sep />
+                  طلب آرایشگرها: {formatToman(data.totals.owedToStylistsToman)}
+                </>
+              )}
             </p>
           </section>
 
@@ -143,7 +170,7 @@ export default function SalonAccountingPage() {
               value={tab}
               onChange={setTab}
               options={[
-                { value: "stylists", label: "آرایشگرها" },
+                ...(independent ? [] : [{ value: "stylists" as const, label: "آرایشگرها" }]),
                 { value: "income", label: "درآمدها", count: income?.items.length },
                 { value: "expenses", label: "هزینه‌ها", count: expenses?.items.length },
                 { value: "services", label: "خدمات" },
@@ -151,7 +178,7 @@ export default function SalonAccountingPage() {
             />
           </div>
 
-          {tab === "stylists" &&
+          {tab === "stylists" && !independent &&
             (data.stylists.length === 0 ? (
               <EmptyState icon={Users} title="هنوز آرایشگری ندارید" hint="از تب آرایشگرها، آرایشگر اضافه کنید و سهم او را تعیین کنید." />
             ) : (
@@ -210,8 +237,12 @@ export default function SalonAccountingPage() {
                         <p className="truncate font-bold text-app-ink">{item.customerName}</p>
                         <p className="mt-0.5 truncate text-xs text-app-muted">
                           {shortDate(item.startAt)}
-                          <Sep />
-                          {item.stylist.displayName}
+                          {!independent && (
+                            <>
+                              <Sep />
+                              {item.stylist.displayName}
+                            </>
+                          )}
                           <Sep />
                           {item.services.join("، ")}
                         </p>
@@ -221,18 +252,23 @@ export default function SalonAccountingPage() {
                         {item.tipToman > 0 && <p className="text-[11px] font-bold text-app-done">با {formatToman(item.tipToman)} انعام</p>}
                       </div>
                     </div>
-                    <p className="mt-2 text-xs text-app-muted">
-                      سهم آرایشگر ({formatPercent(item.commissionPercent)}{item.tipToman > 0 && " + انعام"}):{" "}
-                      <span className="font-bold text-app-accent">{formatToman(item.stylistShareToman)}</span>
-                      <Sep />
-                      سهم سالن: <span className="font-bold text-app-ink">{formatToman(item.salonShareToman)}</span>
-                      {item.chargedToman !== item.priceToman && (
-                        <>
-                          <Sep />
-                          <span className="text-app-pending">اصلاح‌شده</span>
-                        </>
-                      )}
-                    </p>
+                    {/* An independent stylist has no split: the whole amount is theirs. */}
+                    {independent ? (
+                      item.chargedToman !== item.priceToman && <p className="mt-2 text-xs text-app-pending">مبلغ اصلاح‌شده</p>
+                    ) : (
+                      <p className="mt-2 text-xs text-app-muted">
+                        سهم آرایشگر ({formatPercent(item.commissionPercent)}{item.tipToman > 0 && " + انعام"}):{" "}
+                        <span className="font-bold text-app-accent">{formatToman(item.stylistShareToman)}</span>
+                        <Sep />
+                        سهم سالن: <span className="font-bold text-app-ink">{formatToman(item.salonShareToman)}</span>
+                        {item.chargedToman !== item.priceToman && (
+                          <>
+                            <Sep />
+                            <span className="text-app-pending">اصلاح‌شده</span>
+                          </>
+                        )}
+                      </p>
+                    )}
                   </button>
                 ))}
               </div>
@@ -280,7 +316,10 @@ export default function SalonAccountingPage() {
                         <Receipt className="h-5 w-5" aria-hidden />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-bold text-app-ink">{EXPENSE_CATEGORY_LABEL[e.category]}</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="truncate font-bold text-app-ink">{EXPENSE_CATEGORY_LABEL[e.category]}</span>
+                          {e.receiptUrl && <Paperclip className="h-3.5 w-3.5 shrink-0 text-app-muted" aria-label="رسید دارد" />}
+                        </span>
                         <span className="block truncate text-xs text-app-muted">
                           {shortDate(e.spentAt)}
                           {e.note && (
@@ -332,7 +371,7 @@ export default function SalonAccountingPage() {
         />
       )}
       <ExportSheet report={report} onClose={() => setExportOpen(false)} />
-      {chargeSheet && <ChargeSheet key={chargeSheet.id} token={token} item={chargeSheet} onClose={() => setChargeSheet(null)} onSaved={refresh} />}
+      {chargeSheet && <ChargeSheet key={chargeSheet.id} token={token} item={chargeSheet} independent={independent} onClose={() => setChargeSheet(null)} onSaved={refresh} />}
       {expenseSheet && (
         <ExpenseSheet
           key={expenseSheet.n}
@@ -357,7 +396,6 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
   const [dayKey, setDayKey] = useState(todayKey);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const loadPayouts = useCallback(() => {
@@ -368,9 +406,8 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
   useEffect(loadPayouts, [loadPayouts]);
 
   async function save() {
-    if (!amount) return setError("مبلغ پرداخت را وارد کنید");
+    if (!amount) return toastError("مبلغ پرداخت را وارد کنید");
     setBusy(true);
-    setError(null);
     try {
       await createPayout(token, { stylistId: stylist.id, amountToman: amount, method, paidAt: dayKeyToInstant(dayKey), note: note.trim() || undefined });
       setAmount(null);
@@ -378,7 +415,7 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
       loadPayouts();
       onChanged();
     } catch (err) {
-      setError(persianApiError(err, "ثبت پرداخت انجام نشد"));
+      toastError(persianApiError(err, "ثبت پرداخت انجام نشد"));
     } finally {
       setBusy(false);
     }
@@ -392,7 +429,7 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
       loadPayouts();
       onChanged();
     } catch (err) {
-      setError(persianApiError(err, "حذف پرداخت انجام نشد"));
+      toastError(persianApiError(err, "حذف پرداخت انجام نشد"));
     }
   }
 
@@ -442,7 +479,6 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
             <DaySelect label="تاریخ پرداخت" value={dayKey} onChange={setDayKey} fromKey={addDaysToDateKey(todayKey, -90)} toKey={todayKey} />
           </Field>
           <TextInput value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="توضیح (اختیاری)، مثلاً تسویه شهریور" />
-          {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
           <Button block busy={busy} onClick={save}>
             ثبت پرداخت{amount ? ` ${formatToman(amount)}` : ""}
           </Button>
@@ -493,11 +529,23 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
 }
 
 /** Correct what a completed appointment actually brought in; the split follows. */
-function ChargeSheet({ token, item, onClose, onSaved }: { token: string; item: IncomeItem; onClose: () => void; onSaved: () => void }) {
+function ChargeSheet({
+  token,
+  item,
+  independent,
+  onClose,
+  onSaved,
+}: {
+  token: string;
+  item: IncomeItem;
+  /** An independent stylist: no split — amount and tip are all theirs. */
+  independent: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [amount, setAmount] = useState<number | null>(item.chargedToman);
   const [tipAmount, setTipAmount] = useState<number | null>(item.tipToman || null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const value = amount ?? 0;
   const tip = tipAmount ?? 0;
   const commission = Math.round((value * item.commissionPercent) / 100);
@@ -505,13 +553,12 @@ function ChargeSheet({ token, item, onClose, onSaved }: { token: string; item: I
 
   async function save() {
     setBusy(true);
-    setError(null);
     try {
       await adjustCharge(token, item.id, value, tip);
       onSaved();
       onClose();
     } catch (err) {
-      setError(persianApiError(err, "ذخیره مبلغ انجام نشد"));
+      toastError(persianApiError(err, "ذخیره مبلغ انجام نشد"));
     } finally {
       setBusy(false);
     }
@@ -542,10 +589,15 @@ function ChargeSheet({ token, item, onClose, onSaved }: { token: string; item: I
         <MoneyInput value={amount} onChange={setAmount} />
       </Field>
       <div className="mt-3">
-        <Field label="انعام برای آرایشگر (اختیاری)" hint="اگر مشتری انعام را به سالن داد (مثلاً روی کارت‌خوان)؛ تمامش سهم آرایشگر است.">
+        <Field
+          label={independent ? "انعام (اختیاری)" : "انعام برای آرایشگر (اختیاری)"}
+          hint={independent ? "اگر مشتری انعام داد؛ جزو درآمد شما حساب می‌شود." : "اگر مشتری انعام را به سالن داد (مثلاً روی کارت‌خوان)؛ تمامش سهم آرایشگر است."}
+        >
           <MoneyInput value={tipAmount} onChange={setTipAmount} />
         </Field>
       </div>
+      {!independent && (
+        <>
       <div className="mt-4 grid grid-cols-2 gap-2 rounded-3xl bg-app-card-2 p-4">
         <MoneyFigure label={`سهم آرایشگر (${formatPercent(item.commissionPercent)}${tip ? " + انعام" : ""})`} amount={commission + tip} tone="accent" />
         <MoneyFigure label="سهم سالن" amount={value - commission} />
@@ -553,7 +605,8 @@ function ChargeSheet({ token, item, onClose, onSaved }: { token: string; item: I
       <p className="mt-2 px-1 text-xs leading-6 text-app-muted">
         درصد سهم همانی است که هنگام انجام این نوبت برای آرایشگر ثبت بود (اگر خدمتی درصد جداگانه داشته باشد، میانگین وزنی بر اساس قیمت).
       </p>
-      {error && <p className="mt-3 text-sm font-medium text-app-danger">{error}</p>}
+        </>
+      )}
     </Sheet>
   );
 }
@@ -584,20 +637,25 @@ function ExpenseSheet({
   const [note, setNote] = useState(expense?.note ?? "");
   const [busy, setBusy] = useState<"save" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const receipt = useReceipt(expense?.receiptUrl ?? null, "salon-expenses", (message) => message && toastError(message));
+
+  function close() {
+    receipt.discard();
+    onClose();
+  }
 
   async function save() {
-    if (!amount) return setError("مبلغ هزینه را وارد کنید");
+    if (!amount) return toastError("مبلغ هزینه را وارد کنید");
     setBusy("save");
-    setError(null);
     try {
-      const data = { category, amountToman: amount, spentAt: dayKeyToInstant(dayKey), note: note.trim() || undefined };
+      const data = { category, amountToman: amount, spentAt: dayKeyToInstant(dayKey), note: note.trim() || undefined, receiptUrl: receipt.url };
       if (expense) await updateExpense(token, expense.id, { ...data, note: note.trim() || null });
       else await createExpense(token, data);
+      receipt.saved();
       onSaved();
-      onClose();
+      close();
     } catch (err) {
-      setError(persianApiError(err, "ذخیره هزینه انجام نشد"));
+      toastError(persianApiError(err, "ذخیره هزینه انجام نشد"));
     } finally {
       setBusy(null);
     }
@@ -609,10 +667,11 @@ function ExpenseSheet({
     setBusy("delete");
     try {
       await deleteExpense(token, expense.id);
+      receipt.deleted();
       onSaved();
-      onClose();
+      close();
     } catch (err) {
-      setError(persianApiError(err, "حذف هزینه انجام نشد"));
+      toastError(persianApiError(err, "حذف هزینه انجام نشد"));
       setBusy(null);
     }
   }
@@ -620,10 +679,10 @@ function ExpenseSheet({
   return (
     <Sheet
       open
-      onClose={() => !busy && onClose()}
+      onClose={() => !busy && !receipt.uploading && close()}
       title={expense ? "ویرایش هزینه" : "هزینه جدید"}
       footer={
-        <Button block busy={busy === "save"} disabled={busy !== null} onClick={save}>
+        <Button block busy={busy === "save"} disabled={busy !== null || receipt.uploading} onClick={save}>
           {expense ? "ذخیره تغییرات" : "ثبت هزینه"}
         </Button>
       }
@@ -657,7 +716,7 @@ function ExpenseSheet({
         <Field label="توضیح (اختیاری)">
           <TextInput value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="مثلاً رنگ مو و اکسیدان" />
         </Field>
-        {error && <p className="text-sm font-medium text-app-danger">{error}</p>}
+        <ReceiptField receipt={receipt} />
         {expense && (
           <Button variant="danger" block icon={Trash2} busy={busy === "delete"} disabled={busy !== null} onClick={remove}>
             {confirmDelete ? "بله، این هزینه حذف شود" : "حذف هزینه"}
@@ -736,9 +795,9 @@ function buildSalonReport(period: AccountingPeriod, data: SalonSummary, income: 
       },
       {
         title: "هزینه‌ها",
-        columns: ["تاریخ", "دسته", "مبلغ", "توضیح"],
-        rows: expenses.map((e) => [jalaliDate(e.spentAt), EXPENSE_CATEGORY_LABEL[e.category], e.amountToman, e.note ?? ""]),
-        totals: ["جمع", "", t.expensesToman, ""],
+        columns: ["تاریخ", "دسته", "مبلغ", "توضیح", "رسید"],
+        rows: expenses.map((e) => [jalaliDate(e.spentAt), EXPENSE_CATEGORY_LABEL[e.category], e.amountToman, e.note ?? "", e.receiptUrl ? "دارد" : ""]),
+        totals: ["جمع", "", t.expensesToman, "", ""],
       },
     ],
   };

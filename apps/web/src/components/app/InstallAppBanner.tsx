@@ -58,7 +58,7 @@ export default function InstallAppBanner() {
     >
       <div className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/icon-192.png" alt="" className="h-12 w-12 shrink-0 rounded-2xl" />
+        <img src="/icons/icon-192x192.png" alt="" className="h-12 w-12 shrink-0 rounded-2xl" />
         <div className="min-w-0 flex-1">
           <p className="font-black text-app-ink">{SITE_NAME} را روی گوشی نصب کنید</p>
           <p className="text-xs leading-5 text-app-muted">مثل یک اپ از صفحه اصلی گوشی باز می‌شود، بدون نوار مرورگر.</p>

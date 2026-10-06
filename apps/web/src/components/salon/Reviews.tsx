@@ -9,7 +9,7 @@ export default function Reviews({ salon }: { salon: Salon }) {
       {salon.ratingCount > 0 && <ReviewSummary reviews={salon.reviews} ratingAverage={salon.ratingAverage} ratingCount={salon.ratingCount} />}
 
       {salon.reviews.length === 0 ? (
-        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">هنوز نظری ثبت نشده است.</p>
+        <p className="mt-6 text-center text-sm text-g-muted">هنوز نظری ثبت نشده است.</p>
       ) : (
         <div className="mt-6 flex flex-col gap-3">
           {salon.reviews.map((review) => (

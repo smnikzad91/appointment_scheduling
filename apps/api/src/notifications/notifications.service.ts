@@ -5,7 +5,7 @@ import type { SlotOpenedData } from "../waitlist/waitlist.service.js";
 
 const LIST_LIMIT = 30;
 
-/** Payload of NEW_BOOKING, BOOKING_CANCELLED and BOOKING_CONFIRMED. */
+/** Payload of NEW_BOOKING, BOOKING_CANCELLED, BOOKING_CONFIRMED and BOOKING_UPDATED. */
 export interface BookingData {
   appointmentId: string;
   /** For the customer's copy ("سالن رز نوبت شما را تایید کرد"). */
@@ -18,6 +18,9 @@ export interface BookingData {
   bySalon?: boolean;
   /** BOOKING_CANCELLED: who cancelled. */
   cancelledBy?: "CUSTOMER" | "SALON" | "STYLIST";
+  /** BOOKING_UPDATED: who changed it, and the start time before the change. */
+  updatedBy?: "SALON" | "STYLIST";
+  previousStartAt?: string;
 }
 
 /** Payload of PAYOUT_RECORDED (sent to the stylist). */
@@ -43,6 +46,8 @@ export type NotificationData = NewReviewData | BookingData | PayoutData | Review
 export interface NewReviewData {
   reviewId: string;
   target: "SALON" | "STYLIST";
+  /** Set for an independent stylist's own business. */
+  independent?: boolean;
   rating: number | null;
   /** First ~120 characters of the comment, if any. */
   excerpt: string | null;

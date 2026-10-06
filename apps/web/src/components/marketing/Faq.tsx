@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import SectionHead from "./SectionHead";
 
 const FAQS = [
   {
@@ -26,28 +27,38 @@ export default function Faq() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="bg-[#f7f0e8] py-20">
-      <div className="mx-auto grid max-w-6xl gap-10 px-6 md:grid-cols-3">
-        <div>
-          <span className="text-sm font-bold text-[#a34a30]">سؤالات متداول</span>
-          <h2 className="mt-3 text-3xl font-extrabold text-[#2a1d26]">پاسخ پرسش‌های رایج</h2>
-        </div>
+    <section id="faq" className="scroll-mt-20 py-20 sm:py-28">
+      <div className="mx-auto grid max-w-6xl gap-10 px-5 md:grid-cols-3">
+        <SectionHead kicker="سؤالات متداول" title="پاسخ پرسش‌های رایج" />
 
-        <div className="divide-y divide-black/5 md:col-span-2">
+        <div className="flex flex-col gap-3 md:col-span-2">
           {FAQS.map((faq, i) => {
             const isOpen = openIndex === i;
             return (
-              <div key={faq.question} className="py-5">
+              <div
+                key={faq.question}
+                className={`g-reveal rounded-2xl border transition-colors duration-300 ${
+                  isOpen ? "border-g-accent/30 bg-white/[0.05]" : "border-g-line bg-g-glass-soft hover:border-g-line-strong"
+                }`}
+              >
                 <button
                   type="button"
                   onClick={() => setOpenIndex(isOpen ? null : i)}
                   aria-expanded={isOpen}
-                  className="flex w-full items-center justify-between gap-4 text-start"
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-start"
                 >
-                  <span className="font-bold text-[#2a1d26]">{faq.question}</span>
-                  <ChevronDown className={`h-5 w-5 shrink-0 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden />
+                  <span className="font-bold text-g-ink">{faq.question}</span>
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180 text-g-accent" : "text-g-faint"}`}
+                    aria-hidden
+                  />
                 </button>
-                {isOpen && <p className="mt-3 text-sm leading-relaxed text-gray-600">{faq.answer}</p>}
+                {/* grid-rows 0fr→1fr animates the height without measuring it */}
+                <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+                  <div className="overflow-hidden">
+                    <p className="px-5 pb-5 text-sm leading-7 text-g-muted">{faq.answer}</p>
+                  </div>
+                </div>
               </div>
             );
           })}

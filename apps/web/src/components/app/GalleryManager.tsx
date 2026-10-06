@@ -15,7 +15,9 @@ import { persianApiError } from "@/lib/api/errorMessages";
 import { releaseUploads, uploadImage } from "@/lib/uploadImage";
 import { toPersianDigits } from "@/lib/persian";
 import Sheet from "./Sheet";
-import { Button, ErrorBanner, Field, Select, TextInput, cx } from "./ui";
+import { Button, ErrorBanner, Field, TextInput, cx } from "./ui";
+import PickerSelect from "./PickerSelect";
+import { toastError } from "@/lib/toastError";
 
 interface Pending {
   key: string;
@@ -49,7 +51,6 @@ export default function GalleryManager({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [sheetError, setSheetError] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     listGallery(token, scope)
@@ -84,7 +85,7 @@ export default function GalleryManager({
       } catch (err) {
         releaseUploads([url]); // uploaded but not saved (e.g. gallery full)
         failed++;
-        if (failed === 1) setError(persianApiError(err, "آپلود برخی عکس‌ها انجام نشد"));
+        if (failed === 1) toastError(persianApiError(err, "آپلود برخی عکس‌ها انجام نشد"));
       } finally {
         setPending((p) => p.filter((x) => x.key !== key));
         URL.revokeObjectURL(preview);
@@ -97,13 +98,11 @@ export default function GalleryManager({
     setCaption(item.caption ?? "");
     setCreditId(item.stylistId ?? "");
     setConfirmDelete(false);
-    setSheetError(null);
   }
 
   async function handleSave() {
     if (!selected) return;
     setSaving(true);
-    setSheetError(null);
     try {
       const patch: { caption?: string | null; stylistId?: string | null } = { caption: caption.trim() || null };
       if (scope === "salon") patch.stylistId = creditId || null;
@@ -111,7 +110,7 @@ export default function GalleryManager({
       setItems((list) => list?.map((x) => (x.id === updated.id ? updated : x)) ?? list);
       setSelected(null);
     } catch (err) {
-      setSheetError(persianApiError(err, "ذخیره تغییرات انجام نشد"));
+      toastError(persianApiError(err, "ذخیره تغییرات انجام نشد"));
     } finally {
       setSaving(false);
     }
@@ -124,14 +123,13 @@ export default function GalleryManager({
       return;
     }
     setDeleting(true);
-    setSheetError(null);
     try {
       await deleteGalleryImage(token, selected.id);
       releaseUploads([selected.url]);
       setItems((list) => list?.filter((x) => x.id !== selected.id) ?? list);
       setSelected(null);
     } catch (err) {
-      setSheetError(persianApiError(err, "حذف عکس انجام نشد"));
+      toastError(persianApiError(err, "حذف عکس انجام نشد"));
     } finally {
       setDeleting(false);
     }
@@ -154,7 +152,6 @@ export default function GalleryManager({
 
   return (
     <>
-      {error && <ErrorBanner>{error}</ErrorBanner>}
 
       <div className="grid grid-cols-3 gap-2">
         {room > 0 && (
@@ -225,17 +222,14 @@ export default function GalleryManager({
             </Field>
             {scope === "salon" && stylists && stylists.length > 0 && (
               <Field label="کار کدام آرایشگر است؟">
-                <Select value={creditId} onChange={(e) => setCreditId(e.target.value)}>
-                  <option value="">کار سالن (بدون نام آرایشگر)</option>
-                  {stylists.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.displayName}
-                    </option>
-                  ))}
-                </Select>
+                <PickerSelect
+                  title="کار کدام آرایشگر است؟"
+                  value={creditId}
+                  onChange={setCreditId}
+                  options={[{ value: "", label: "کار سالن (بدون نام آرایشگر)" }, ...stylists.map((s) => ({ value: s.id, label: s.displayName }))]}
+                />
               </Field>
             )}
-            {sheetError && <p className="rounded-2xl bg-app-danger/10 px-4 py-3 text-sm font-medium text-app-danger">{sheetError}</p>}
             <Button variant="danger" block icon={Trash2} busy={deleting} disabled={saving} onClick={handleDelete} className={cx(confirmDelete && "ring-2 ring-app-danger/40")}>
               {confirmDelete ? "بله، این عکس حذف شود" : "حذف عکس"}
             </Button>
