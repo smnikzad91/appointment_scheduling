@@ -40,7 +40,7 @@
     ".next-b/dev/types/**/*.ts",
     ".next-a/dev/types/**/*.ts"
   ],
-  "exclude": ["src/**/*.test.ts", 
+  "exclude": ["src/**/*.test.ts", "src/lib/appReleases/testApk.ts", 
     "node_modules"
   ]
 }

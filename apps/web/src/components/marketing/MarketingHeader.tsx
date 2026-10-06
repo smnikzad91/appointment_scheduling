@@ -6,7 +6,7 @@ import MobileNav from "./MobileNav";
 const NAV_LINKS = [
   { href: "/salons", label: "جستجوی سالن" },
   { href: "/#features", label: "امکانات" },
-  { href: "/#apps", label: "اپلیکیشن‌ها" },
+  { href: "/download-app", label: "اپلیکیشن" },
   { href: "/#pricing", label: "تعرفه‌ها" },
   { href: "/tutorials", label: "راهنما" },
   { href: "/#faq", label: "سؤالات متداول" },

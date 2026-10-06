@@ -4,11 +4,12 @@ import { join, resolve } from "path";
 import { Readable } from "stream";
 import { NextResponse } from "next/server";
 import { recordVisit } from "@/lib/analytics/record";
+import { prisma } from "@/lib/prisma";
 
 // The Android app's APKs (the `direct` build; the store builds update through Bazaar/Myket) for the
-// in-app updater and anyone downloading from the site. They live outside the repo in APK_DIR
-// (e.g. /var/lib/nobatet/apk), copied there by scripts/publish-apk.sh and listed in
-// public/app-version.json (downloadUrl + apkSha256) — see apps/android/RELEASING.md.
+// in-app updater, /download-app and anyone with the link. They live outside the repo in APK_DIR
+// (e.g. /var/lib/nobatet/apk), uploaded and published at /admin/app-releases; only published
+// releases are served, and /app-version.json points at the latest.
 // Range requests let Android's DownloadManager resume an interrupted download.
 
 const NAME = /^nobatet-\d+\.apk$/;
@@ -46,6 +47,8 @@ async function serve(req: Request, ctx: RouteContext<"/download/[file]">, head: 
   const dir = process.env.APK_DIR;
   // Only nobatet-<versionCode>.apk: no "../", no other files from the folder.
   if (!dir || !NAME.test(file)) return notFound();
+  // only a published release (/admin/app-releases) — an uploaded but unpublished one isn't downloadable
+  if (!(await prisma.appRelease.findFirst({ where: { fileName: file, published: true }, select: { id: true } }))) return notFound();
   const path = join(resolve(dir), file);
   let size: number;
   let mtime: number;

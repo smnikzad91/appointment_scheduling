@@ -50,6 +50,7 @@ const AppSidebar: React.FC = () => {
     { icon: <ListIcon />,       name: t("navSalons"),       path: "/admin/salons" },
     { icon: <CalenderIcon />,   name: t("navAppointments"), path: "/admin/appointments" },
     { icon: <GridIcon />,       name: t("navAnalytics"),    path: "/admin/analytics" },
+    { icon: <BoxCubeIcon />,    name: t("navAppReleases"),  path: "/admin/app-releases" },
     { icon: <ShootingStarIcon />, name: t("navHomepage"),   path: "/admin/homepage" },
     { icon: <BoxCubeIcon />,    name: t("navPricing"),      path: "/admin/pricing" },
     { icon: <PlugInIcon />,     name: t("navSocialLinks"),    path: "/admin/social-links" },

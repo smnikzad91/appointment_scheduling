@@ -9,7 +9,7 @@ const COLUMNS = [
     links: [
       { label: "امکانات", href: "/#features" },
       { label: "تعرفه‌ها", href: "/#pricing" },
-      { label: "اپلیکیشن‌ها", href: "/#apps" },
+      { label: "اپلیکیشن", href: "/download-app" },
     ],
   },
   {

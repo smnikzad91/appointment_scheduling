@@ -1169,3 +1169,43 @@ model PageVisit {
   @@index([salonSlug, createdAt])
   @@map("page_visits")
 }
+
+/// An Android release of the app (one app for every role), uploaded and published at
+/// /admin/app-releases (apps/web lib/appReleases). The APK lives in APK_DIR as fileName; only
+/// published releases are downloadable (/download/[file]) and drive /app-version.json.
+model AppRelease {
+  id          String    @id @default(cuid())
+  versionCode Int       @unique
+  versionName String
+  /// nobatet-<versionCode>.apk, server-generated
+  fileName    String    @unique
+  /// lowercase hex
+  sha256      String
+  size        Int
+  /// SHA-256 of the signing certificate read from the APK ("AB:CD:…"), null when unreadable
+  certSha256  String?
+  /// Persian release notes, shown in the app's update dialog and on /download-app
+  notes       String    @default("")
+  published   Boolean   @default(false)
+  /// true: every older install must update (this becomes minVersionCode)
+  mandatory   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+  createdById String
+
+  @@index([published, versionCode])
+  @@map("app_releases")
+}
+
+/// Store pages for the app (singleton id "singleton"), edited at /admin/app-releases and shown on
+/// /download-app; «به‌زودی» while comingSoon or without a URL.
+model AppStoreLinks {
+  id               String   @id @default("singleton")
+  bazaarUrl        String?
+  bazaarComingSoon Boolean  @default(true)
+  myketUrl         String?
+  myketComingSoon  Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+
+  @@map("app_store_links")
+}
