@@ -39,10 +39,12 @@ import kotlinx.coroutines.launch
 /** Where the in-app update is in the `direct` build. */
 private sealed interface Step {
     data object Idle : Step
-    /** [percent] null while the size isn't known. */
-    data class Downloading(val id: Long, val percent: Int?, val waitingForNetwork: Boolean = false) : Step
+    /** [percent] null while the size isn't known. [id] null = the plain-HTTP fallback (ApkUpdater.startDirect). */
+    data class Downloading(val id: Long?, val percent: Int?, val waitingForNetwork: Boolean = false) : Step
     data object Verifying : Step
     data class NeedsPermission(val apk: java.io.File) : Step
+    /** Downloaded and checked while the app wasn't in front: waits for «نصب» (or the notification). */
+    data class Ready(val apk: java.io.File) : Step
     data class InstallerOpened(val apk: java.io.File) : Step
     data class Failed(val message: String) : Step
 }
@@ -63,20 +65,27 @@ private const val MSG_DOWNLOAD_FAILED = "دریافت نسخه تازه انجا
 fun UpdateCheck(container: AppContainer) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val updater = remember { ApkUpdater(context) }
-    var version by remember { mutableStateOf<AppVersion?>(null) }
-    var dismissed by remember { mutableStateOf(false) }
+    val updater = container.apkUpdater
+    val cache = container.updateCheck
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    var version by remember { mutableStateOf(cache.version) }
+    var dismissed by remember { mutableStateOf(cache.dismissed) }
+    fun dismiss() { dismissed = true; cache.dismissed = true }
     var step by remember { mutableStateOf<Step>(Step.Idle) }
     val direct = BuildConfig.DISTRIBUTION == "direct"
 
     suspend fun check() {
         // keeps what we knew when the request fails: a known mandatory update stays mandatory
-        val v = runCatching { container.web.appVersion() }.getOrNull() ?: return
+        val v = runCatching { container.updates.appVersion() }.getOrNull()
+        cache.checked = true
+        if (v == null) return
         if (v.latestVersionCode != version?.latestVersionCode) step = Step.Idle
         version = v
+        cache.version = v
         if (direct) updater.cleanup(keepCode = v.latestVersionCode.takeIf { updateNeed(BuildConfig.VERSION_CODE, v) != UpdateNeed.NONE })
     }
-    LaunchedEffect(Unit) { check() }
+    // once per process: a recreated activity (rotation, theme switch) keeps the first answer
+    LaunchedEffect(Unit) { if (!cache.checked) check() }
 
     val v = version
     val need = v?.let { updateNeed(BuildConfig.VERSION_CODE, it) } ?: UpdateNeed.NONE
@@ -84,6 +93,7 @@ fun UpdateCheck(container: AppContainer) {
     val visible = required || (need == UpdateNeed.OFFERED && !dismissed)
 
     fun openInstaller(apk: java.io.File) {
+        updater.clearReadyNotification()
         step = if (!updater.canInstall()) Step.NeedsPermission(apk)
         else if (runCatching { context.startActivity(updater.installIntent(apk)) }.isSuccess) Step.InstallerOpened(apk)
         else Step.Failed(MSG_NO_INSTALLER)
@@ -108,18 +118,24 @@ fun UpdateCheck(container: AppContainer) {
             normalizedSha256(v.apkSha256) == null -> openUrl(context, v.downloadUrl)
             else -> scope.launch {
                 updater.verified(v)?.let { openInstaller(it); return@launch }
-                val id = updater.activeDownload(v.latestVersionCode)
-                    ?: runCatching { updater.start(v) }.getOrElse { step = Step.Failed(MSG_DOWNLOAD_FAILED); return@launch }
-                step = Step.Downloading(id, null)
+                if (updater.directActive()) { step = Step.Downloading(null, null); return@launch }
+                val id = updater.activeDownload(v.latestVersionCode) ?: runCatching { updater.start(v) }.getOrNull()
+                if (id == null) {
+                    // DownloadManager refused (disabled on some ROMs): download it ourselves
+                    updater.startDirect(v)
+                    step = Step.Downloading(null, null)
+                } else step = Step.Downloading(id, null)
             }
         }
     }
 
     // Progress while the dialog is up (the download itself goes on in the background if it's closed).
-    val downloadId = (step as? Step.Downloading)?.id
-    if (downloadId != null) LaunchedEffect(downloadId) {
+    val downloading = step as? Step.Downloading
+    // keyed on the source (DownloadManager id, or the fallback), not on the progress
+    if (downloading != null) LaunchedEffect(downloading.id ?: -1L) {
+        val downloadId = downloading.id
         while (true) {
-            when (val s = updater.status(downloadId)) {
+            when (val s = if (downloadId == null) updater.directStatus() else updater.status(downloadId)) {
                 is ApkUpdater.Status.Running -> {
                     val total = if (s.total > 0) s.total else v.apkSize ?: 0
                     step = Step.Downloading(downloadId, if (total > 0) (s.downloaded * 100 / total).toInt().coerceIn(0, 100) else null, s.waitingForNetwork)
@@ -128,16 +144,27 @@ fun UpdateCheck(container: AppContainer) {
                     updater.forget()
                     step = Step.Verifying
                     val apk = updater.verified(v)
-                    if (apk != null) openInstaller(apk)
-                    else {
+                    // Never start the installer from the background (Android 10+ silently blocks it):
+                    // in front → open it; otherwise a tap-to-install notification and «نصب» in the dialog.
+                    if (apk != null && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) openInstaller(apk)
+                    else if (apk != null) {
+                        updater.notifyReady(apk, v.latestVersionName)
+                        step = Step.Ready(apk)
+                    } else {
                         updater.file(v.latestVersionCode)?.delete()
                         step = Step.Failed(MSG_CORRUPT)
                     }
                     return@LaunchedEffect
                 }
                 ApkUpdater.Status.Failed -> {
-                    updater.cancel()
-                    step = Step.Failed(MSG_DOWNLOAD_FAILED)
+                    if (downloadId != null) {
+                        // DownloadManager failed (restricted on some ROMs): once more with a plain download
+                        updater.startDirect(v)
+                        step = Step.Downloading(null, null)
+                    } else {
+                        updater.cancel()
+                        step = Step.Failed(MSG_DOWNLOAD_FAILED)
+                    }
                     return@LaunchedEffect
                 }
             }
@@ -147,7 +174,7 @@ fun UpdateCheck(container: AppContainer) {
 
     val c = LocalAppColors.current
     val intro = listOfNotNull(if (required) "برای ادامه، نسخه تازه اپ را نصب کنید." else "نسخه ${v.latestVersionName} آماده نصب است.", v.notes?.takeIf { it.isNotBlank() }).joinToString("\n")
-    val laterButton: @Composable () -> Unit = { AppTextButton(onClick = { dismissed = true }) { Text("بعداً") } }
+    val laterButton: @Composable () -> Unit = { AppTextButton(onClick = { dismiss() }) { Text("بعداً") } }
     val later = if (required) null else laterButton
     // offline mid-download: «تلاش دوباره» is the main button, so cancel moves here
     val cancelAndLater: @Composable () -> Unit = {
@@ -156,7 +183,7 @@ fun UpdateCheck(container: AppContainer) {
     }
     val s = step
     AppDialog(
-        onDismissRequest = { if (!required) dismissed = true },
+        onDismissRequest = { if (!required) dismiss() },
         dismissible = !required,
         title = { Text(if (required) "به‌روزرسانی لازم است" else "نسخه تازه نوبتت") },
         text = {
@@ -177,6 +204,7 @@ fun UpdateCheck(container: AppContainer) {
                         LinearProgressIndicator(Modifier.fillMaxWidth(), color = c.accent, trackColor = c.line)
                     }
                     is Step.NeedsPermission -> Text("برای نصب، در صفحه بعد «اجازه از این منبع» را برای نوبتت روشن کنید.")
+                    is Step.Ready -> Text("نسخه تازه دریافت شد؛ برای نصب، «نصب» را بزنید.")
                     is Step.InstallerOpened -> Text("نصب انجام نشد؟ اگر نصب‌کننده خطای «تداخل با بسته موجود» داد، اول نوبتت فعلی را حذف کنید و دوباره نصب کنید.", color = c.muted)
                     is Step.Failed -> Text(s.message, color = c.danger)
                 }
@@ -193,6 +221,7 @@ fun UpdateCheck(container: AppContainer) {
                     // a ROM without this screen: the installer asks for the permission itself
                     runCatching { context.startActivity(updater.permissionSettingsIntent()) }.onFailure { runCatching { context.startActivity(updater.installIntent(s.apk)) } }
                 }) { Text("ادامه") }
+                is Step.Ready -> AppTextButton(onClick = { if (s.apk.isFile) openInstaller(s.apk) else { step = Step.Idle; begin() } }) { Text("نصب") }
                 is Step.InstallerOpened -> AppTextButton(onClick = { if (s.apk.isFile) openInstaller(s.apk) else { step = Step.Idle; begin() } }) { Text("نصب") }
                 is Step.Failed -> AppTextButton(onClick = { step = Step.Idle; begin() }) { Text("تلاش دوباره") }
             }

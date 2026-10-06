@@ -37,6 +37,9 @@ data class LoginUiState(
     val signUpSalon: Boolean = false,
     val firstName: String = "",
     val lastName: String = "",
+    /** Sign-up: the phone's SMS code was sent (form → code → account). */
+    val signUpCodeSent: Boolean = false,
+    val signUpDevCode: String? = null,
 )
 
 const val OTP_LENGTH = 5
@@ -96,7 +99,10 @@ class LoginViewModel(private val container: AppContainer, private val onSignedIn
     fun setFirstName(v: String) = _state.update { it.copy(firstName = v) }
     fun setLastName(v: String) = _state.update { it.copy(lastName = v) }
 
-    /** A customer account, as the web's /signup (name, mobile, password ≥ 8); signed in straight away. */
+    /**
+     * A customer account, as the web's /signup (name, mobile, password ≥ 8): first the phone's SMS
+     * code (purpose "register" — refused for a taken number before any SMS), then [createAccount].
+     */
     fun register() {
         val s = _state.value
         when {
@@ -104,10 +110,21 @@ class LoginViewModel(private val container: AppContainer, private val onSignedIn
             !isValidIranianMobile(s.phone) -> return fail("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد")
             s.password.length < 8 -> return fail("رمز عبور باید حداقل ۸ کاراکتر باشد")
         }
-        run("ساخت حساب انجام نشد؛ دوباره تلاش کنید") {
-            onSignedIn(container.api.register(app.nobatet.data.RegisterRequest(s.firstName.trim(), s.lastName.trim(), s.phone, s.password)))
+        run("ارسال کد تایید ممکن نشد، دوباره تلاش کنید") {
+            val devCode = container.api.requestOtp(OtpRequest(s.phone, "register")).devCode
+            _state.update { it.copy(signUpCodeSent = true, signUpDevCode = devCode) }
         }
     }
+
+    suspend fun resendRegisterCode(): String? = container.api.requestOtp(OtpRequest(_state.value.phone, "register")).devCode
+
+    /** Signed in straight away once the account exists. */
+    suspend fun createAccount(code: String) {
+        val s = _state.value
+        onSignedIn(container.api.register(app.nobatet.data.RegisterRequest(s.firstName.trim(), s.lastName.trim(), s.phone, s.password, code = code)))
+    }
+
+    fun backFromCode() = _state.update { it.copy(signUpCodeSent = false, signUpDevCode = null) }
 
     private fun startCountdown() {
         countdown?.cancel()

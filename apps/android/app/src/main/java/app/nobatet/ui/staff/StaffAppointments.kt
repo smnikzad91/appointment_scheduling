@@ -37,6 +37,13 @@ import app.nobatet.util.persianDateTime
 import app.nobatet.util.toPersianDigits
 import app.nobatet.util.toSalonDateTime
 import java.time.Instant
+import androidx.compose.foundation.background
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontWeight
+import app.nobatet.ui.components.AppTextButton
 
 /** What a status may become, as apps/web components/app/appointments.tsx NEXT_ACTIONS. */
 fun nextActions(status: AppointmentStatus): List<Pair<AppointmentStatus, String>> = when (status) {
@@ -79,10 +86,14 @@ fun AppointmentDetailSheet(
     timezone: String?,
     busy: Boolean,
     onDismiss: () -> Unit,
-    onStatus: (AppointmentStatus) -> Unit,
+    /** balanceMethod: COMPLETED only — ON_SITE or WALLET, how the rest of the price is received. */
+    onStatus: (AppointmentStatus, String?) -> Unit,
     onEdit: () -> Unit,
 ) {
     val c = LocalAppColors.current
+    // what's left after the pre-payment; «انجام شد» then asks how it's received
+    val remaining = (a.priceToman - if (a.prepaymentStatus == "REFUNDED") 0 else a.prepaidToman).coerceAtLeast(0)
+    var choosingBalance by remember(a.id) { mutableStateOf(false) }
     val context = LocalContext.current
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.bg) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp).navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -94,6 +105,14 @@ fun AppointmentDetailSheet(
             Line("زمان", Instant.parse(a.startAt).toSalonDateTime(timezone).persianDateTime())
             Line("خدمات", a.services.joinToString("، ") { it.service.name })
             Line("مبلغ", formatToman(a.priceToman))
+            if (a.prepaidToman > 0) Line(
+                "پیش‌پرداخت",
+                formatToman(a.prepaidToman) + when (a.prepaymentStatus) {
+                    "REFUNDED" -> "، به مشتری برگشت"
+                    "SETTLED" -> "، به کیف پول سالن واریز شد"
+                    else -> "؛ دریافت در محل ${formatToman(a.priceToman - a.prepaidToman)}"
+                },
+            )
             a.serviceLocation?.let { Line("محل", it.label()) }
             a.visitAddress?.let { Line("نشانی مشتری", it) }
             a.notes?.takeIf { it.isNotBlank() }?.let { Line("یادداشت", it) }
@@ -103,7 +122,22 @@ fun AppointmentDetailSheet(
                 ) { Text("تماس با مشتری ${phone.toPersianDigits()}") }
             }
             if (a.isOpen) SecondaryButton(onClick = onEdit, modifier = Modifier.fillMaxWidth()) { Text("ویرایش نوبت") }
-            nextActions(a.status).forEach { (status, label) ->
+            if (a.status == AppointmentStatus.COMPLETED && a.balanceMethod != null) Text(
+                when {
+                    a.balanceMethod == "ON_SITE" -> "باقی‌مبلغ در محل دریافت شد."
+                    a.balancePaidAt != null -> "باقی‌مانده ${formatToman(a.balanceDueToman)} از کیف پول مشتری پرداخت شد."
+                    else -> "باقی‌مانده ${formatToman(a.balanceDueToman)} از کیف پول مشتری درخواست شده؛ در انتظار پرداخت مشتری."
+                },
+                color = c.ink, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxWidth().background(c.card2, RoundedCornerShape(16.dp)).padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+            if (choosingBalance) {
+                Text("باقی‌مانده ${formatToman(remaining)} را چطور دریافت می‌کنید؟", color = c.ink, fontWeight = FontWeight.Bold)
+                PrimaryButton("در محل دریافت کردم (نقد / کارت)", Modifier.fillMaxWidth(), enabled = !busy) { onStatus(AppointmentStatus.COMPLETED, "ON_SITE") }
+                SecondaryButton(onClick = { onStatus(AppointmentStatus.COMPLETED, "WALLET") }, modifier = Modifier.fillMaxWidth(), enabled = !busy) { Text("درخواست از کیف پول مشتری") }
+                Muted("با «کیف پول»، به مشتری پیامک می‌رود تا باقی‌مانده را در پنل خودش از کیف پول پرداخت کند.")
+                AppTextButton(onClick = { choosingBalance = false }, modifier = Modifier.fillMaxWidth()) { Text("انصراف", color = c.muted) }
+            } else nextActions(a.status).forEach { (status, label) ->
                 PrimaryButton(
                     label, enabled = !busy,
                     color = when (status) {
@@ -111,7 +145,7 @@ fun AppointmentDetailSheet(
                         AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED -> null
                         else -> c.muted
                     },
-                ) { onStatus(status) }
+                ) { if (status == AppointmentStatus.COMPLETED && remaining > 0) choosingBalance = true else onStatus(status, null) }
             }
         }
     }

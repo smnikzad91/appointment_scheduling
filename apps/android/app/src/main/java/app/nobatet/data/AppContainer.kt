@@ -55,6 +55,29 @@ class AppContainer(context: Context) {
         .build()
         .create(WebApi::class.java)
 
+    /**
+     * Public requests that must not carry the sign-in token or depend on it: the update check (it
+     * runs before anyone signs in) and the APK download when DownloadManager can't do it.
+     */
+    private val publicHttp: OkHttpClient = OkHttpClient.Builder()
+        .apply { if (BuildConfig.DEBUG) addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC)) }
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .build()
+
+    val updates: UpdateApi = Retrofit.Builder()
+        .baseUrl(BuildConfig.WEB_BASE_URL)
+        .client(publicHttp)
+        .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+        .build()
+        .create(UpdateApi::class.java)
+
+    /** One per process: a download outlives the screen that started it. */
+    val apkUpdater by lazy { app.nobatet.update.ApkUpdater(appContext, publicHttp) }
+
+    /** The update check's result for this process, so a recreated activity neither asks again nor re-offers a dismissed update. */
+    val updateCheck = app.nobatet.update.UpdateCheckCache()
+
     /** The customer's saved salons, shared by the salon page and home. */
     val favorites = FavoritesStore(api)
 

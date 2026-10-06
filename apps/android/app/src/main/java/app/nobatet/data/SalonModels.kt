@@ -173,10 +173,21 @@ data class CustomerBooking(
     val services: List<BookingService> = emptyList(),
     val stylistId: String? = null,
     val reviews: List<BookingReview> = emptyList(),
+    /** Online bookings: half the price, paid from the wallet. HELD | SETTLED | REFUNDED */
+    val prepaidToman: Int = 0,
+    val prepaymentStatus: String? = null,
+    /** The rest, once COMPLETED: ON_SITE or WALLET (balanceDueToman requested; paid when balancePaidAt) */
+    val balanceMethod: String? = null,
+    val balanceDueToman: Int = 0,
+    val balancePaidAt: String? = null,
 )
 
 @Serializable
-data class StatusUpdate(val status: AppointmentStatus)
+data class StatusUpdate(
+    val status: AppointmentStatus,
+    /** COMPLETED only: ON_SITE (received directly) or WALLET (requested from the customer's wallet) */
+    val balanceMethod: String? = null,
+)
 
 /** How a place reads to customers (apps/web lib/independent.ts placeLabel). */
 fun ServiceLocation.label(hostSalonName: String? = null): String = when (this) {

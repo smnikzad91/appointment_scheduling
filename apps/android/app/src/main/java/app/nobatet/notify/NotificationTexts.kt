@@ -15,14 +15,14 @@ import java.time.LocalDate
 enum class NotificationScope { CUSTOMER, STYLIST, SALON }
 
 /** Where tapping it goes. */
-enum class NotificationTarget { APPOINTMENTS, REVIEWS, EARNINGS, SALON_PAGE }
+enum class NotificationTarget { APPOINTMENTS, REVIEWS, EARNINGS, SALON_PAGE, WALLET }
 
 data class NotificationText(val title: String, val detail: String?, val target: NotificationTarget, val salonSlug: String? = null)
 
 private fun AppNotification.str(key: String): String? = (data[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 private fun AppNotification.bool(key: String): Boolean = (data[key] as? JsonPrimitive)?.content == "true"
 
-private val PAYOUT_METHOD = mapOf("CASH" to "نقدی", "CARD_TO_CARD" to "کارت به کارت", "BANK_TRANSFER" to "واریز بانکی", "OTHER" to "سایر")
+private val PAYOUT_METHOD = mapOf("CASH" to "نقدی", "CARD_TO_CARD" to "کارت به کارت", "BANK_TRANSFER" to "واریز بانکی", "OTHER" to "سایر", "WALLET" to "کیف پول")
 
 /** How each notification reads — apps/web components/app/NotificationBell.tsx describe(), all three scopes. */
 fun describe(n: AppNotification, scope: NotificationScope): NotificationText {
@@ -48,7 +48,11 @@ fun describe(n: AppNotification, scope: NotificationScope): NotificationText {
         )
         "BOOKING_CANCELLED" -> {
             val by = n.str("cancelledBy")
-            val title = if (scope == NotificationScope.CUSTOMER) {
+            val title = if (by == "SYSTEM") {
+                // an online booking nobody confirmed, cancelled a day after its time; pre-payment refunded
+                if (scope == NotificationScope.CUSTOMER) "نوبت شما در $salon تایید نشد؛ پیش‌پرداخت به کیف پولتان برگشت"
+                else "${if (scope == NotificationScope.STYLIST) "نوبت $customer" else "نوبت $customer با $stylist"} تایید نشد و خودکار لغو شد"
+            } else if (scope == NotificationScope.CUSTOMER) {
                 if (by == "STYLIST") "$stylist نوبت شما در $salon را لغو کرد" else "$salon نوبت شما را لغو کرد"
             } else {
                 val who = when (by) { "CUSTOMER" -> customer; "STYLIST" -> stylist; else -> "سالن" }
@@ -57,6 +61,14 @@ fun describe(n: AppNotification, scope: NotificationScope): NotificationText {
             }
             NotificationText(title, bookingDetail, appointments)
         }
+        // the stylist asked for the rest of the price from the customer's wallet…
+        "BALANCE_REQUESTED" -> NotificationText(
+            "$salon: باقی‌مانده نوبت ${formatToman((n.data["amountToman"] as? JsonPrimitive)?.intOrNull ?: 0)}؛ از کیف پول پرداخت کنید", bookingDetail, appointments,
+        )
+        // …and the customer paid it (owner, stylist)
+        "BALANCE_PAID" -> NotificationText(
+            "$customer باقی‌مانده نوبت را از کیف پول پرداخت کرد (${formatToman((n.data["amountToman"] as? JsonPrimitive)?.intOrNull ?: 0)})", bookingDetail, NotificationTarget.WALLET,
+        )
         "BOOKING_CONFIRMED" -> NotificationText("$salon نوبت شما با $stylist را تایید کرد", bookingDetail, appointments)
         "BOOKING_UPDATED" -> NotificationText(
             when (scope) {

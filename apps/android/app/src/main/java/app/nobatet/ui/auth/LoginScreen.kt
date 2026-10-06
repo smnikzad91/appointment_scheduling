@@ -91,7 +91,7 @@ fun LoginScreen(container: AppContainer, onSignedIn: (AuthResponse) -> Unit) {
                         FooterLink("حساب دارید؟", "وارد شوید") { vm.setSignUpSalon(false) }
                     }
                     state.signUp -> {
-                        AuthCard("ساخت حساب", "برای رزرو آنلاین و پیگیری نوبت‌ها حساب بسازید.") { SignUpForm(state, vm) }
+                        AuthCard("ساخت حساب", "برای رزرو آنلاین و پیگیری نوبت‌ها حساب بسازید.") { SignUpForm(container, state, vm) }
                         FooterLink("حساب دارید؟", "وارد شوید") { vm.setSignUp(false) }
                     }
                     else -> {
@@ -213,7 +213,11 @@ private fun OtpForm(state: LoginUiState, vm: LoginViewModel) {
 }
 
 @Composable
-private fun SignUpForm(state: LoginUiState, vm: LoginViewModel) {
+private fun SignUpForm(container: AppContainer, state: LoginUiState, vm: LoginViewModel) {
+    if (state.signUpCodeSent) return PhoneCodeStep(
+        container, state.phone, state.signUpDevCode, "تایید و ساخت حساب",
+        onSubmit = vm::createAccount, onResend = vm::resendRegisterCode, onBack = vm::backFromCode, onError = vm::showError,
+    )
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             AppTextField(state.firstName, vm::setFirstName, label = { Text("نام") }, singleLine = true, modifier = Modifier.weight(1f))
@@ -227,7 +231,7 @@ private fun SignUpForm(state: LoginUiState, vm: LoginViewModel) {
             state.password, vm::setPassword, label = { Text("رمز عبور (حداقل ۸ کاراکتر)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         )
-        PrimaryButton(if (state.busy) "در حال ساخت حساب..." else "ساخت حساب", enabled = !state.busy, onClick = vm::register)
+        PrimaryButton(if (state.busy) "در حال ارسال کد..." else "ساخت حساب", enabled = !state.busy, onClick = vm::register)
     }
 }
 

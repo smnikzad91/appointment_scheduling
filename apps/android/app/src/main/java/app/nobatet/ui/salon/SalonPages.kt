@@ -78,6 +78,7 @@ fun SalonPageScreen(page: SalonPage, container: AppContainer, data: SalonData, o
             SalonPage.REVIEWS -> SalonReviewsPage(container, data)
             SalonPage.GALLERY -> SalonGalleryPage(container, data)
             SalonPage.SHARE -> SalonSharePage(container, data)
+            SalonPage.WALLET -> app.nobatet.ui.wallet.WalletScreen(container)
         }
     }
 }

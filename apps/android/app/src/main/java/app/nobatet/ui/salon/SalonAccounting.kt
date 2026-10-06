@@ -172,7 +172,8 @@ fun SalonAccountingPage(container: AppContainer, data: SalonData) {
                         AppCard {
                             Row { Text(p.stylist?.displayName ?: "", color = c.ink, modifier = Modifier.weight(1f)); Text(formatToman(p.amountToman), color = c.ink) }
                             Muted((PAYOUT_METHOD_LABEL[p.method] ?: p.method) + "، " + Instant.parse(p.paidAt).toSalonDateTime(tz).toLocalDate().persianLabel() + (p.note?.let { "، $it" } ?: ""))
-                            AppTextButton(onClick = {
+                            // a wallet payout really moved the money: it can't be deleted
+                            if (p.method != "WALLET") AppTextButton(onClick = {
                                 scope.launch { runCatching { container.api.deletePayout(p.id) }.onSuccess { reload++ }.onFailure { Toasts.error(persianError(it, "حذف پرداخت انجام نشد", container.json)) } }
                             }) { Text("حذف پرداخت", color = c.danger) }
                         }
@@ -260,6 +261,7 @@ private fun PayoutDialog(container: AppContainer, st: StylistAccount, onDismiss:
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     PAYOUT_METHOD_LABEL.forEach { (k, label) -> AppChip(selected = method == k, onClick = { method = k }, label = { Text(label) }) }
                 }
+                if (method == "WALLET") Muted("مبلغ همین حالا از کیف پول شما به کیف پول ${st.displayName} منتقل می‌شود و قابل حذف نیست.")
                 AppTextField(note, { note = it.take(200) }, label = { Text("یادداشت (اختیاری)") }, singleLine = true)
                 error?.let { Text(it, color = c.danger) }
             }

@@ -50,6 +50,13 @@ import app.nobatet.util.formatToman
 import app.nobatet.util.persianDateTime
 import app.nobatet.util.toSalonDateTime
 import java.time.Instant
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.rememberCoroutineScope
+import app.nobatet.data.persianError
+import app.nobatet.ui.components.PrimaryButton
+import kotlinx.coroutines.launch
 
 @Composable
 fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onRebook: (String, BookingPrefill) -> Unit) {
@@ -59,6 +66,7 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onReb
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var confirm by remember { mutableStateOf<CustomerBooking?>(null) }
     var reviewing by remember { mutableStateOf<Pair<CustomerBooking, ReviewTarget>?>(null) }
+    var paying by remember { mutableStateOf<CustomerBooking?>(null) }
     // fresh list every time the tab is shown (a booking may have just been made or confirmed)
     LaunchedEffect(Unit) { vm.load() }
 
@@ -78,6 +86,7 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onReb
                             onRebook = { onRebook(b.salon.slug, BookingPrefill(b.services.map { it.serviceId }, b.stylistId)) },
                             onReview = { target -> reviewing = b to target },
                             onDeleteReview = { review -> vm.deleteReview(b.id, review.id) },
+                            onPayBalance = { paying = b },
                         )
                     }
                 }
@@ -95,6 +104,8 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onReb
         )
     }
 
+    paying?.let { b -> PayBalanceSheet(container, b, onDismiss = { paying = null }) { paying = null; vm.load() } }
+
     confirm?.let { b ->
         AppDialog(
             onDismissRequest = { confirm = null },
@@ -109,7 +120,7 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onReb
 @Composable
 private fun BookingCard(
     b: CustomerBooking, upcoming: Boolean, cancelling: Boolean, onCancel: () -> Unit, onOpenSalon: () -> Unit,
-    onRebook: () -> Unit, onReview: (ReviewTarget) -> Unit, onDeleteReview: (BookingReview) -> Unit,
+    onRebook: () -> Unit, onReview: (ReviewTarget) -> Unit, onDeleteReview: (BookingReview) -> Unit, onPayBalance: () -> Unit,
 ) {
     val c = LocalAppColors.current
     val start = Instant.parse(b.startAt).toSalonDateTime(b.salon.timezone)
@@ -133,6 +144,18 @@ private fun BookingCard(
             }
             if (!upcoming) AppTextButton(onClick = onRebook) { Text("رزرو دوباره") }
         }
+        // the rest of the price, requested from the wallet by the stylist when they marked it done
+        if (b.status == AppointmentStatus.COMPLETED && b.balanceMethod == "WALLET" && b.balanceDueToman > 0) {
+            if (b.balancePaidAt != null) Text("باقی‌مانده ${formatToman(b.balanceDueToman)} از کیف پول پرداخت شد.", color = c.done, style = MaterialTheme.typography.bodySmall)
+            else PrimaryButton("پرداخت باقی‌مانده از کیف پول: ${formatToman(b.balanceDueToman)}", Modifier.fillMaxWidth(), onClick = onPayBalance)
+        }
+        if (b.prepaidToman > 0) Muted(
+            "پیش‌پرداخت ${formatToman(b.prepaidToman)} از کیف پول" + when (b.prepaymentStatus) {
+                "REFUNDED" -> "؛ به کیف پول شما برگشت"
+                "HELD" -> "؛ ${formatToman(b.priceToman - b.prepaidToman)} در محل"
+                else -> ""
+            },
+        )
         // reviews: one about the salon and, at a salon, one about the stylist (an independent stylist: one)
         if (b.status == AppointmentStatus.COMPLETED) {
             val targets = if (b.salon.kind == SalonKind.INDEPENDENT) listOf(ReviewTarget.SALON) else listOf(ReviewTarget.SALON, ReviewTarget.STYLIST)
@@ -186,5 +209,45 @@ fun ReviewDialog(title: String, initialRating: Int?, initialComment: String, onD
             AppTextButton(onClick = { onSave(rating, comment.trim().ifEmpty { null }) }, enabled = rating != null || comment.isNotBlank()) { Text("ثبت نظر") }
         },
         dismissButton = { AppTextButton(onClick = onDismiss) { Text("انصراف") } },
+    )
+}
+
+/** The customer pays the rest of a completed booking from their wallet (apps/api POST appointments/:id/pay-balance). */
+@Composable
+private fun PayBalanceSheet(container: AppContainer, b: CustomerBooking, onDismiss: () -> Unit, onPaid: () -> Unit) {
+    val c = LocalAppColors.current
+    val scope = rememberCoroutineScope()
+    val due = b.balanceDueToman
+    var balance by remember { mutableStateOf<Int?>(null) }
+    var reload by remember { mutableIntStateOf(0) }
+    var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(reload) { balance = runCatching { container.api.walletMe().balanceToman }.getOrNull() }
+    val short = balance?.let { (due - it).coerceAtLeast(0) } ?: 0
+    AppDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text("پرداخت باقی‌مانده نوبت") },
+        text = {
+            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Muted("${b.salon.name} باقی‌مانده مبلغ این نوبت را از کیف پول شما درخواست کرده است.")
+                Row { Text("مبلغ", color = c.ink, modifier = Modifier.weight(1f)); Text(formatToman(due), color = c.ink) }
+                Row { Muted("موجودی کیف پول", Modifier.weight(1f)); Muted(balance?.let { formatToman(it) } ?: "…") }
+                if (short > 0) {
+                    Text("موجودی کافی نیست؛ حداقل ${formatToman(short)} شارژ کنید.", color = c.ink)
+                    app.nobatet.ui.wallet.WalletTopUp(container, suggestedToman = maxOf(10_000, (short + 999) / 1000 * 1000), onPaid = { reload++ })
+                }
+            }
+        },
+        confirmButton = {
+            PrimaryButton("پرداخت ${formatToman(due)} از کیف پول", enabled = !busy && balance != null && short == 0) {
+                busy = true
+                scope.launch {
+                    runCatching { container.api.payBalance(b.id) }
+                        .onSuccess { Toasts.success("${formatToman(due)} از کیف پول پرداخت شد"); onPaid() }
+                        .onFailure { Toasts.error(persianError(it, "پرداخت انجام نشد", container.json)); reload++ }
+                    busy = false
+                }
+            }
+        },
+        dismissButton = { AppTextButton(onClick = onDismiss, enabled = !busy) { Text("انصراف") } },
     )
 }

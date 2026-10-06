@@ -48,7 +48,7 @@ data class AppNotification(val id: String, val type: String, val readAt: String?
 data class NotificationList(val items: List<AppNotification> = emptyList(), val unreadCount: Int = 0)
 
 @Serializable
-data class RegisterRequest(val firstName: String, val lastName: String, val phone: String, val password: String, val email: String? = null)
+data class RegisterRequest(val firstName: String, val lastName: String, val phone: String, val password: String, val email: String? = null, val code: String)
 
 // ── apps/web routes ─────────────────────────────────────────────────────────────────────────
 

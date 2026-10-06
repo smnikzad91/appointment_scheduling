@@ -80,7 +80,7 @@ fun estimatedShare(a: StaffAppointment, stylist: SelfStylist): Int =
         (s.priceToman * rate / 100.0).toInt()
     }
 
-enum class StylistPage(val title: String) { EARNINGS("درآمد من"), EXPENSES("هزینه‌های من"), REVIEWS("نظرات درباره شما"), SHARE("کیت معرفی من") }
+enum class StylistPage(val title: String) { EARNINGS("درآمد من"), EXPENSES("هزینه‌های من"), REVIEWS("نظرات درباره شما"), SHARE("کیت معرفی من"), WALLET("کیف پول") }
 
 /** «صبح بخیر / روز بخیر / عصر بخیر» by the salon's clock (the web's greeting). */
 private fun greeting(minuteOfDay: Int) = when {
@@ -170,6 +170,7 @@ fun StylistHomeScreen(stylist: SelfStylist, appointments: List<StaffAppointment>
                 StatTile("نوبت‌های آینده", upcoming.size, Icons.Outlined.Schedule)
             }
         }
+        item(key = "wallet") { app.nobatet.ui.wallet.WalletBalanceCard(actions.container) { onOpenPage(StylistPage.WALLET) } }
         item(key = "earnings") { LinkCard(Icons.Outlined.AccountBalanceWallet, "درآمد من", "سهم شما از نوبت‌ها، پرداخت‌های سالن و مانده حساب") { onOpenPage(StylistPage.EARNINGS) } }
         item(key = "expenses") { LinkCard(Icons.Outlined.ReceiptLong, "هزینه‌های من", "مواد مصرفی، ابزار و خریدهای کاری") { onOpenPage(StylistPage.EXPENSES) } }
         if (pending.isNotEmpty()) {

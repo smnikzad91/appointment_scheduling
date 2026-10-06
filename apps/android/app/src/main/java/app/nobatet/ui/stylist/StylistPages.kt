@@ -109,6 +109,7 @@ fun StylistPageScreen(page: StylistPage, container: AppContainer, stylist: SelfS
             StylistPage.EXPENSES -> ExpensesPage(container, stylist)
             StylistPage.REVIEWS -> ReviewsPage(container)
             StylistPage.SHARE -> SharePage(container, stylist)
+            StylistPage.WALLET -> app.nobatet.ui.wallet.WalletScreen(container)
         }
     }
 }

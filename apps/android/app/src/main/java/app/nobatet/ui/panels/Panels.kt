@@ -122,7 +122,7 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
             PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth) {
                 BookingsScreen(container, onOpenSalon = openSalon, onRebook = { slug, prefill -> overlay = CustomerOverlay.Salon(slug, prefill) })
             },
-            PanelTab("کیف پول", Icons.Outlined.AccountBalanceWallet) { app.nobatet.ui.customer.WalletScreen(container) },
+            PanelTab("کیف پول", Icons.Outlined.AccountBalanceWallet) { app.nobatet.ui.wallet.WalletScreen(container) },
             PanelTab("پروفایل", Icons.Outlined.Person) {
                 ProfileScreen(container, user, onOpenSupport = { overlay = CustomerOverlay.Support }, onSignOut = onSignOut)
             },

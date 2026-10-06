@@ -129,10 +129,10 @@ fun SalonSheets(container: AppContainer, data: SalonData, sheets: SalonSheetsSta
             a, salon.timezone, sheets.busy,
             onDismiss = { sheets.selected = null },
             onEdit = { sheets.selected = null; sheets.editing = a },
-            onStatus = { status ->
+            onStatus = { status, balanceMethod ->
                 scope.launch {
                     sheets.busy = true
-                    runCatching { container.api.setStatus(a.id, StatusUpdate(status)) }
+                    runCatching { container.api.setStatus(a.id, StatusUpdate(status, balanceMethod)) }
                         .onSuccess { sheets.selected = null; data.loadAppointments() }
                         .onFailure { Toasts.error(persianError(it, "تغییر وضعیت نوبت انجام نشد، دوباره تلاش کنید", container.json)) }
                     sheets.busy = false
@@ -209,7 +209,7 @@ fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
     }
 }
 
-enum class SalonPage(val title: String) { ACCOUNTING("حسابداری"), REVIEWS("نظرات مشتری‌ها"), GALLERY("گالری نمونه کارها"), SHARE("کیت معرفی") }
+enum class SalonPage(val title: String) { ACCOUNTING("حسابداری"), REVIEWS("نظرات مشتری‌ها"), GALLERY("گالری نمونه کارها"), SHARE("کیت معرفی"), WALLET("کیف پول") }
 
 /**
  * The salon home, as the web's app/salon/page.tsx: the dark hero (logo, status, today's forecast,
@@ -286,6 +286,7 @@ fun SalonHomeScreen(container: AppContainer, data: SalonData, sheets: SalonSheet
                 StatTile("نوبت‌های آینده", upcoming.size, Icons.Outlined.Schedule)
             }
         }
+        item(key = "wallet") { app.nobatet.ui.wallet.WalletBalanceCard(container) { onOpenPage(SalonPage.WALLET) } }
         item(key = "accounting") {
             LinkCard(Icons.Outlined.Calculate, "حسابداری", if (independent) "درآمد، هزینه‌ها و سود خالص ماه" else "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها") { onOpenPage(SalonPage.ACCOUNTING) }
         }

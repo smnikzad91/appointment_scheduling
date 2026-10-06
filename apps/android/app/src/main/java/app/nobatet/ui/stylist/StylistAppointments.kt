@@ -105,11 +105,11 @@ fun StaffSheets(actions: StaffActions, stylist: SelfStylist) {
             a, tz, actions.busy,
             onDismiss = { actions.selected = null },
             onEdit = { actions.selected = null; actions.editing = a },
-            onStatus = { status ->
+            onStatus = { status, balanceMethod ->
                 scope.launch {
                     actions.busy = true
                     try {
-                        actions.container.api.setStatus(a.id, StatusUpdate(status))
+                        actions.container.api.setStatus(a.id, StatusUpdate(status, balanceMethod))
                         actions.selected = null
                         actions.reload()
                     } catch (e: Exception) {

@@ -84,5 +84,12 @@ newer build keeps it: Android doesn't install a lower versionCode over a higher 
 4. A newer **mandatory** release: the sheet can't be closed (swipe, back, tap outside).
 5. Network off mid-download: the sheet says it's waiting for the connection and offers «تلاش دوباره»;
    «بعداً» closes an optional update and the app works normally.
-6. Bazaar build: the button opens Bazaar. `aapt dump permissions nobatet-bazaar-<n>.apk` shows no
+6. Put the app in the background mid-download: when it finishes, a «نسخه … نوبتت دریافت شد — برای نصب
+   بزنید» notification opens the installer, and the dialog shows «نصب» when you come back. The installer
+   never opens by itself from the background.
+7. A phone whose DownloadManager is disabled or restricted (some Xiaomi/MIUI builds): the download still
+   runs, through the app's own HTTP fallback.
+8. «بعداً» on an optional update, then rotate or switch the theme: no new check and no dialog until the
+   next cold start.
+9. Bazaar build: the button opens Bazaar. `aapt dump permissions nobatet-bazaar-<n>.apk` shows no
    `REQUEST_INSTALL_PACKAGES`.

@@ -206,6 +206,8 @@ data class RegisterSalonRequest(
     val firstName: String,
     val lastName: String,
     val phone: String,
+    /** the SMS code confirming the phone (OtpRequest purpose "register") */
+    val code: String,
     val password: String,
     val salonName: String,
     val province: String,
