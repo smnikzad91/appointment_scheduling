@@ -28,10 +28,11 @@ function appt(overrides: Record<string, unknown> = {}) {
 
 type Row = ReturnType<typeof appt>;
 
-function setup(rows: Row[], claimCount = 1, allowance = Infinity, nudgeRows: Row[] = [], newRows: Row[] = []) {
-  // Answers each of the tick's three queries with its own rows, filtered by status like the DB.
+function setup(rows: Row[], claimCount = 1, allowance = Infinity, nudgeRows: Row[] = [], newRows: Row[] = [], openRows: Row[] = []) {
+  // Answers each of the tick's queries with its own rows, filtered by status like the DB.
   const answer = (where: Record<string, unknown>) => {
-    const list = where.newBookingTextedAt === null ? newRows : where.confirmNudgedAt === null ? nudgeRows : rows;
+    const list =
+      where.stateNudgedAt === null ? openRows : where.newBookingTextedAt === null ? newRows : where.confirmNudgedAt === null ? nudgeRows : rows;
     return Promise.resolve(typeof where.status === 'string' ? list.filter((r) => r.status === where.status) : list);
   };
   const prisma = {
@@ -243,5 +244,37 @@ describe('ReminderService quiet hours (22:00–08:00 Tehran)', () => {
     const { service, sms } = setup([early]);
     expect(await service.tick(at('06:00'))).toBe(2);
     expect(sms.send.mock.calls.map((c) => c[0].kind)).toEqual(['reminder-customer', 'reminder-stylist']);
+  });
+});
+
+describe('ReminderService: booking still open 24 h after its end', () => {
+  const at = (hhmm: string, day = '2026-10-06') => new Date(`${day}T${hhmm}:00+03:30`);
+  const open = (over: Record<string, unknown> = {}) =>
+    appt({ id: 'o1', status: 'CONFIRMED', startAt: at('10:00', '2026-10-04'), endAt: at('11:00', '2026-10-04'), ...over });
+
+  it('texts the stylist once to set the state, in the daytime', async () => {
+    const { service, sms, prisma } = setup([], 1, Infinity, [], [], [open()]);
+    expect(await service.tick(at('12:00'))).toBe(1);
+    const msg = sms.send.mock.calls[0][0];
+    expect(msg).toMatchObject({ kind: 'state-nudge-stylist', to: '09120000002', params: { customer: 'نگار رضایی' } });
+    expect(msg.text).toContain('هنوز باز است');
+    expect(msg.text.length).toBeLessThanOrEqual(70);
+    const where = prisma.appointment.findMany.mock.calls.at(-1)![0].where;
+    expect(where.endAt.lt).toEqual(new Date(at('12:00').getTime() - 24 * 3600_000));
+    expect(where.endAt.gt).toEqual(new Date(at('12:00').getTime() - 7 * 24 * 3600_000));
+    expect(prisma.appointment.updateMany).toHaveBeenCalledWith({ where: { id: 'o1', stateNudgedAt: null }, data: { stateNudgedAt: at('12:00') } });
+  });
+
+  it('waits for quiet hours to end', async () => {
+    const { service, sms } = setup([], 1, Infinity, [], [], [open()]);
+    expect(await service.tick(at('23:30'))).toBe(0);
+    expect(sms.send).not.toHaveBeenCalled();
+  });
+
+  it('a prepaid one is texted even with no SMS allowance left; an unpaid one is not', async () => {
+    const paid = setup([], 1, 0, [], [], [open({ prepaidToman: 190_000 })]);
+    expect(await paid.service.tick(at('12:00'))).toBe(1);
+    const unpaid = setup([], 1, 0, [], [], [open()]);
+    expect(await unpaid.service.tick(at('12:00'))).toBe(0);
   });
 });

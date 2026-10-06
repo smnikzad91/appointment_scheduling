@@ -140,6 +140,10 @@ export const stylistNewBookingText = (p: { day: string; time: string; customer: 
   return fitSms(rest, ["customer"], (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتت تایید کنید`);
 };
 
+/** Once, 24 h after a booking ended while it's still open: «نوبت نگار رضایی، سه‌شنبه ۱۴ مهر ۰۸:۰۰ هنوز باز است؛ وضعیتش را در پنل مشخص کنید». */
+export const stylistStateNudgeText = (p: { day: string; time: string; customer: string }) =>
+  fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز باز است؛ وضعیتش را در پنل مشخص کنید`);
+
 /** Once, when an online booking is still unconfirmed a couple of hours later. */
 export const stylistConfirmNudgeText = (p: { day: string; time: string; customer: string }) =>
   fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل نوبتت تایید کنید`);

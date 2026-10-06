@@ -767,6 +767,9 @@ model Appointment {
   newBookingTextedAt       DateTime?
   // An online booking still PENDING after a while gets one reminder SMS to its stylist to confirm it.
   confirmNudgedAt          DateTime?
+  // Still open (not marked done / no-show / cancelled) 24 h after its end: one SMS asking the
+  // stylist to set its state (ReminderService.nudgeOpenAfterEnd).
+  stateNudgedAt            DateTime?
   // "Time to book again" SMS after this (COMPLETED) appointment: set once sent or given up.
   rebookReminderSentAt     DateTime?
   rebookReminderAttempts   Int               @default(0)
