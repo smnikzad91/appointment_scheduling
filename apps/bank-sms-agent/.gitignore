@@ -1,0 +1,4 @@
+# the device's settings (DEVICE_SECRET) and its runtime files
+.env
+data/
+agent.log

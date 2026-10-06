@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { blogPosts } from "@/data/blogPosts";
+import { blogCategories, blogPosts } from "@/data/blogPosts";
+
+// Inserts the articles of src/data/blogPosts.ts missing from the database — as drafts: the admin
+// reviews and publishes each one. Their categories are created when missing.
 
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "PLATFORM_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  for (const c of blogCategories) {
+    await prisma.blogCategory.upsert({ where: { name: c.name }, create: c, update: {} });
   }
 
   let inserted = 0;
@@ -26,7 +33,7 @@ export async function POST() {
         hashtags: post.hashtags ?? [],
         sections: post.sections ?? [],
         highlight: post.highlight ?? false,
-        published: true,
+        published: false,
         ...(post.createdAt ? { createdAt: new Date(post.createdAt) } : {}),
       },
     });

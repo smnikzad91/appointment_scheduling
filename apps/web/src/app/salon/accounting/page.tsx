@@ -38,10 +38,12 @@ import { ReceiptField, useReceipt } from "@/components/app/ReceiptField";
 import Sheet from "@/components/app/Sheet";
 import Sep from "@/components/common/Sep";
 import { BalanceChip, DaySelect, HeroAmount, MoneyFigure, PeriodSwitcher, dayKeyToInstant, formatPercent, instantToDayKey, shortDate } from "@/components/app/accounting";
+import Link from "next/link";
+import WalletHistory from "@/components/app/WalletHistory";
 import { Avatar, Button, ChipTabs, EmptyState, ErrorBanner, Field, IconButton, ListSkeleton, PageHeader, TextInput, cx, riseStyle } from "@/components/app/ui";
 import { toastError } from "@/lib/toastError";
 
-type Tab = "stylists" | "income" | "expenses" | "services";
+type Tab = "stylists" | "income" | "expenses" | "services" | "wallet";
 const METHODS = Object.keys(PAYOUT_METHOD_LABEL) as PayoutMethod[];
 const CATEGORIES = Object.keys(EXPENSE_CATEGORY_LABEL) as ExpenseCategory[];
 
@@ -173,6 +175,8 @@ export default function SalonAccountingPage() {
                 ...(independent ? [] : [{ value: "stylists" as const, label: "آرایشگرها" }]),
                 { value: "income", label: "درآمدها", count: income?.items.length },
                 { value: "expenses", label: "هزینه‌ها", count: expenses?.items.length },
+                // pre-payments of completed / no-show online bookings land in the owner's wallet
+                { value: "wallet" as const, label: "کیف پول" },
                 { value: "services", label: "خدمات" },
               ]}
             />
@@ -274,6 +278,12 @@ export default function SalonAccountingPage() {
               </div>
             ))}
 
+          {tab === "wallet" && (
+            <div className="mt-4">
+              <WalletHistory title="موجودی کیف پول" />
+              <Link href="/salon/wallet" className="mt-3 block text-center text-sm font-bold text-app-accent">شارژ کیف پول ←</Link>
+            </div>
+          )}
           {tab === "expenses" && (
             <>
               <div className="mb-3 flex items-center justify-between px-1">
@@ -475,9 +485,16 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
               </button>
             ))}
           </div>
-          <Field label="تاریخ">
-            <DaySelect label="تاریخ پرداخت" value={dayKey} onChange={setDayKey} fromKey={addDaysToDateKey(todayKey, -90)} toKey={todayKey} />
-          </Field>
+          {method === "WALLET" ? (
+            <p className="rounded-2xl bg-app-card-2 p-3 text-xs leading-6 text-app-muted">
+              مبلغ همین حالا از کیف پول شما به کیف پول {stylist.displayName} منتقل می‌شود و قابل حذف نیست.{" "}
+              <Link href="/salon/wallet" className="font-bold text-app-accent">موجودی و شارژ کیف پول</Link>
+            </p>
+          ) : (
+            <Field label="تاریخ">
+              <DaySelect label="تاریخ پرداخت" value={dayKey} onChange={setDayKey} fromKey={addDaysToDateKey(todayKey, -90)} toKey={todayKey} />
+            </Field>
+          )}
           <TextInput value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="توضیح (اختیاری)، مثلاً تسویه شهریور" />
           <Button block busy={busy} onClick={save}>
             ثبت پرداخت{amount ? ` ${formatToman(amount)}` : ""}
@@ -508,7 +525,8 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
                   )}
                 </p>
               </div>
-              <button
+              {/* wallet payouts moved real money (or are a booking's pre-payment share): not deletable */}
+              {p.method !== "WALLET" && <button
                 type="button"
                 onClick={() => remove(p)}
                 aria-label="حذف پرداخت"
@@ -519,7 +537,7 @@ function StylistAccountSheet({ token, stylist, onClose, onChanged }: { token: st
               >
                 <Trash2 className="h-4 w-4" aria-hidden />
                 {confirmDelete === p.id && "حذف شود؟"}
-              </button>
+              </button>}
             </div>
           ))}
         </div>

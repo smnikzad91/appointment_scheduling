@@ -1,3 +1,5 @@
+// first: the api's own .env, before @prisma/client loads the migrator's (see load-env.ts)
+import './load-env.js';
 import type { Server } from 'node:http';
 import { Server as NetServer } from 'node:net';
 import { NestFactory } from '@nestjs/core';

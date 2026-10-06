@@ -107,8 +107,10 @@ async function main() {
       next[m.id] = { ...next[m.id], alerted: state[m.id]?.alerted ?? false };
     }
   }
-  writeFileSync(`${STATE_FILE}.tmp`, JSON.stringify(next));
-  renameSync(`${STATE_FILE}.tmp`, STATE_FILE);
+  // per-process temp name: a slow run overlapping the next minute's must not rename the other's file away
+  const tmp = `${STATE_FILE}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify(next));
+  renameSync(tmp, STATE_FILE);
 }
 
 module.exports = { decide, TARGETS, FAIL_THRESHOLD };

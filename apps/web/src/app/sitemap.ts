@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { salonApiFetch } from "@/lib/api/salonApiClient";
 import { SITE_URL } from "@/lib/site";
 import { TUTORIALS } from "@/content/tutorials";
+import { activeCities } from "@/lib/cityPages";
 
 const BASE_URL = SITE_URL;
 
@@ -24,9 +25,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/`, changeFrequency: "weekly", priority: 1.0 },
     { url: `${BASE_URL}/salons`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${BASE_URL}/signup-salon`, changeFrequency: "monthly", priority: 0.9 },
+    { url: `${BASE_URL}/signup-salon?type=independent`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE_URL}/blog`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE_URL}/news`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE_URL}/tutorials`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/download-app`, changeFrequency: "weekly", priority: 0.7 },
     ...TUTORIALS.map((t) => ({ url: `${BASE_URL}/tutorials/${t.slug}`, changeFrequency: "monthly" as const, priority: 0.6 })),
     { url: `${BASE_URL}/faq`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE_URL}/contact`, changeFrequency: "yearly", priority: 0.5 },
@@ -55,5 +59,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...salonRoutes, ...blogRoutes, ...newsRoutes];
+  // city landing pages: only cities that have active salons (lib/cityPages.ts)
+  const cityRoutes: MetadataRoute.Sitemap = (await activeCities()).map((c) => ({
+    url: `${BASE_URL}/salons/${encodeURIComponent(c.slug)}`,
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
+  return [...staticRoutes, ...cityRoutes, ...salonRoutes, ...blogRoutes, ...newsRoutes];
 }

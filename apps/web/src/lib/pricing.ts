@@ -56,7 +56,7 @@ export function planFeatureLines(plan: Pick<PricingPlanData, "maxStylists" | "sm
   if (plan.maxStylists === null) lines.push("آرایشگر نامحدود");
   else if (plan.maxStylists === 1) lines.push("یک آرایشگر");
   else lines.push(`تا ${groupedPersian(plan.maxStylists)} آرایشگر`);
-  if (plan.smsPerMonth) lines.push(`${groupedPersian(plan.smsPerMonth)} پیامک یادآوری در ماه`);
+  // (no SMS allowance line: since 2026-10-05 each booking SMS is charged at cost to the booking's stylist)
   return [...lines, ...plan.features];
 }
 

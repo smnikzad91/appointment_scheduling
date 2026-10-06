@@ -19,6 +19,9 @@
      api/                 npm workspace "api" — NestJS backend, source of truth for the
                            salon domain (salons, stylists, services, appointments).
                            Owns auth (JWT). Postgres via @appointment-scheduling/database.
+     bank-sms-agent/      Node 18 script (no deps, not a workspace) for a BeagleBone Black + SIM800C that
+                           forwards the bank card's deposit SMS to apps/web → automatic wallet top-ups
+                           (see its README and apps/web/CLAUDE.md «Automatic top-ups»)
      android-customer/    (not yet scaffolded) Kotlin/Gradle, customer-facing app
      android-stylist/     (not yet scaffolded) Kotlin/Gradle, stylist-facing app
    packages/
@@ -45,7 +48,7 @@
      (password) or /auth/otp/verify (SMS code)
      (src/lib/apiAuth.ts) to verify login rather than checking a DB directly.
    - Android app → apps/web routes: the few features that live only in apps/web (image upload
-     `/api/upload`, private receipts, `/api/user/{profile,password,avatar,sms-preferences,tickets}`)
+     `/api/upload`, private receipts, `/api/user/{profile,password,avatar,sms-preferences,tickets,finance}`)
      also accept `Authorization: Bearer <apps/api token>` (`apps/web/src/lib/requestSession.ts`, checked
      via apps/api `GET /auth/me`, cached ≤ 1 min), so the app uses one token everywhere. `GET /auth/me`
      returns the current account (role included) — the app reads it at start to pick the panel.
@@ -62,6 +65,11 @@
        role so default privileges grant DML to the app roles.
      - `salon_web` (apps/web), `salon_api` (apps/api) — SELECT/INSERT/UPDATE/DELETE only,
        no DDL/TRUNCATE, can't touch `_prisma_migrations`, 30s statement timeout.
+       apps/api must load its own `.env` before anything imports `@prisma/client`, which otherwise
+       auto-loads packages/database/.env (the migrator's URL) first. That's `src/load-env.ts`, the
+       first import of `main.ts`. Without it the API ran as `salon_migrator` until 2026-10-06. apps/web
+       keeps one Prisma client per process with `connection_limit=5` (`src/lib/prisma.ts`), under
+       salon_web's limit of 40 even while a deploy overlaps old and new workers.
      - `postgres` superuser has no password: `sudo -u postgres psql` (peer auth) only.
      pg_hba rejects everything else; hardening lives in `/etc/postgresql/17/main/pg_hba.conf`
      and `conf.d/10-security.conf` (originals saved as `*.orig`).

@@ -133,6 +133,14 @@ export interface StylistAppointment {
   endAt: string;
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   priceToman: number;
+  /** Paid in advance from the customer's wallet (online bookings); 0 = none. */
+  prepaidToman?: number;
+  /** HELD while open, SETTLED to the owner's wallet (completed / no-show), REFUNDED to the customer (cancelled). */
+  prepaymentStatus?: "HELD" | "SETTLED" | "REFUNDED" | null;
+  /** The rest after the pre-payment, once COMPLETED: ON_SITE (received directly) or WALLET (requested from the customer's wallet). */
+  balanceMethod?: "ON_SITE" | "WALLET" | null;
+  balanceDueToman?: number;
+  balancePaidAt?: string | null;
   notes: string | null;
   /** Independent stylists: where it happens (null = not specified / a salon) and a home visit's address. */
   serviceLocation?: ServiceLocation | null;
@@ -147,10 +155,10 @@ export function listMyAppointments(token: string) {
   return salonApiFetch<StylistAppointment[]>("/appointments/stylist/mine", { headers: authHeaders(token) });
 }
 
-export function updateMyAppointmentStatus(token: string, id: string, status: StylistAppointment["status"]) {
+export function updateMyAppointmentStatus(token: string, id: string, status: StylistAppointment["status"], balanceMethod?: "ON_SITE" | "WALLET") {
   return salonApiFetch<StylistAppointment>(`/appointments/${id}/status`, {
     method: "PATCH",
     headers: authHeaders(token),
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, ...(balanceMethod && { balanceMethod }) }),
   });
 }

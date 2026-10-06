@@ -14,7 +14,7 @@ import { getMyStylistProfile } from "@/lib/api/stylistSelf";
 import { salonApiFetch } from "@/lib/api/salonApiClient";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { toastError } from "@/lib/toastError";
-import { formatMinutesAsClock, formatToman, isValidIranianMobile, normalizeDigits, toPersianDigits } from "@/lib/persian";
+import { formatMinutesAsClock, formatToman, isValidIranianMobile, normalizeDigits, normalizeIranianMobile, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { dateKeyToDate, toJalali } from "@/lib/jalali";
 import Sep from "@/components/common/Sep";
@@ -128,8 +128,8 @@ export default function SalonBookingSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  // Returning customer? Fill in the name.
-  const normalizedPhone = normalizeDigits(phone);
+  // Returning customer? Fill in the name. «+989…» is accepted and stored / texted as «09…».
+  const normalizedPhone = normalizeIranianMobile(phone);
   const known = lookup?.phone === normalizedPhone ? lookup.name : null;
   useEffect(() => {
     if (!isValidIranianMobile(normalizedPhone)) return;
@@ -234,7 +234,7 @@ export default function SalonBookingSheet({
   async function submit() {
     if (!data) return;
     if (editing) return saveEdit(editing);
-    if (!isValidIranianMobile(normalizedPhone)) return toastError("شماره موبایل مشتری باید با ۰۹ شروع شده و ۱۱ رقم باشد");
+    if (!isValidIranianMobile(normalizedPhone)) return toastError("شماره موبایل مشتری را به شکل ۰۹۱۲۱۲۳۴۵۶۷ یا ‎+989121234567‎ وارد کنید");
     if (!known && !firstName.trim()) return toastError("نام مشتری را وارد کنید");
     if (!stylistId) return toastError(asStylist ? "حساب آرایشگری شما غیرفعال است" : "آرایشگر را انتخاب کنید");
     if (chosenIds.length === 0) return toastError("دست‌کم یک خدمت انتخاب کنید");
@@ -298,16 +298,16 @@ export default function SalonBookingSheet({
           </>
         ) : (
           <>
-            <Field label="موبایل مشتری">
+            <Field label="موبایل مشتری" hint="به شکل ۰۹… یا ‎+98…‎">
               <TextInput
                 type="tel"
-                inputMode="numeric"
+                inputMode="tel"
                 dir="ltr"
-                maxLength={11}
+                maxLength={17}
                 className="text-end"
                 value={phone}
                 onChange={(e) => setPhone(normalizeDigits(e.target.value))}
-                placeholder="09121234567"
+                placeholder="09121234567 / +989121234567"
               />
             </Field>
             {known ? (

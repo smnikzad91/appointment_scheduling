@@ -49,3 +49,5 @@ next-env.d.ts
 /public/uploads/stylists/
 /public/uploads/banners/
 /private-uploads/
+# account photos uploaded at runtime (/api/user/avatar); the few files already tracked stay tracked
+/public/images/uploads/avatars/

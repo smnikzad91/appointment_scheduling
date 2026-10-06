@@ -2,7 +2,7 @@ import { bookingCustomerFullName, withBookingCustomerName } from "./booking-cust
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
-import { AppointmentStatus, NotificationType, Role, SalonKind, ServiceLocation } from "@appointment-scheduling/database";
+import { AppointmentStatus, NotificationType, PrepaymentStatus, Role, SalonKind, ServiceLocation } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { JwtPayload } from "../auth/auth.service.js";
 import { findEligibleStylists } from "../salons/eligible-stylists.util.js";
@@ -18,7 +18,9 @@ import { NotificationsService, type BookingData } from "../notifications/notific
 import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { clock, customerBookingText, independentBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
+import { balanceRequestText, clock, customerBookingText, faMoney, independentBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
+import { applyPrepayment, prepaymentFor, refundExcessPrepayment, takePrepayment } from "../wallet/prepayment.js";
+import { balanceOnCompletion, payBalance, undoBalance } from "../wallet/balance.js";
 
 type CustomerSmsKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
 
@@ -215,17 +217,21 @@ export class AppointmentsService {
         ]);
         if (timeOff || conflict) return null;
 
-        return tx.appointment.create({
+        const priceToman = pricing.reduce((sum, p) => sum + p.priceToman, 0);
+        // Online bookings pre-pay half from the wallet (wallet/prepayment.ts); staff bookings don't.
+        const prepaidToman = bySalon ? 0 : prepaymentFor(priceToman);
+        const created = await tx.appointment.create({
           data: {
             salonId: dto.salonId,
             stylistId: candidate.id,
             customerId,
             startAt,
             endAt,
-            priceToman: pricing.reduce((sum, p) => sum + p.priceToman, 0),
+            priceToman,
             notes: dto.notes,
             ...place,
             ...(bySalon && { status: AppointmentStatus.CONFIRMED }),
+            ...(prepaidToman > 0 && { prepaidToman, prepaymentStatus: PrepaymentStatus.HELD }),
             services: {
               create: pricing.map((p) => ({
                 serviceId: p.serviceId,
@@ -236,6 +242,9 @@ export class AppointmentsService {
           },
           include: APPOINTMENT_INCLUDE,
         });
+        // Not enough balance throws (402) and rolls the booking back.
+        await takePrepayment(tx, customerId, created.id, prepaidToman);
+        return created;
       });
 
       if (appointment) {
@@ -291,7 +300,7 @@ export class AppointmentsService {
     return rows.map(withBookingCustomerName);
   }
 
-  async updateStatus(user: JwtPayload, appointmentId: string, status: UpdatableAppointmentStatus) {
+  async updateStatus(user: JwtPayload, appointmentId: string, status: UpdatableAppointmentStatus, balanceMethod?: "ON_SITE" | "WALLET") {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: { services: { select: { serviceId: true, priceToman: true } } },
@@ -300,10 +309,31 @@ export class AppointmentsService {
 
     await this.assertCanSetStatus(user, appointment, status);
 
-    const updated = await this.prisma.appointment.update({
-      where: { id: appointmentId },
-      data: { status, ...(await this.accountingFor(appointment, status)) },
-    });
+    const completing = status === AppointmentStatus.COMPLETED && appointment.status !== AppointmentStatus.COMPLETED;
+    const leavingCompleted = status !== AppointmentStatus.COMPLETED && appointment.status === AppointmentStatus.COMPLETED;
+    const data = {
+      status,
+      ...(await this.accountingFor(appointment, status)),
+      // the rest of the price: on site, or requested from the customer's wallet (wallet/balance.ts)
+      ...(completing && balanceOnCompletion(appointment, balanceMethod)),
+    };
+    // Money moves with the status: a prepaid booking's pre-payment (refund on cancel, the owner's
+    // wallet on completion / no-show — wallet/prepayment.ts), and a paid balance given back when
+    // the booking leaves COMPLETED.
+    const moneyMoves = appointment.prepaymentStatus || (leavingCompleted && appointment.balanceMethod);
+    const updated = moneyMoves
+      ? await this.prisma.$transaction(async (tx) => {
+          const { ownerId } = await tx.salon.findUniqueOrThrow({ where: { id: appointment.salonId }, select: { ownerId: true } });
+          const { userId: stylistUserId } = await tx.stylist.findUniqueOrThrow({ where: { id: appointment.stylistId }, select: { userId: true } });
+          if (leavingCompleted) await undoBalance(tx, appointment, ownerId, stylistUserId);
+          await applyPrepayment(tx, { ...appointment, ownerId, stylistUserId }, status, data.stylistCommissionPercent ?? 0);
+          return tx.appointment.update({ where: { id: appointmentId }, data });
+        })
+      : await this.prisma.appointment.update({ where: { id: appointmentId }, data });
+    if (completing && updated.balanceMethod === "WALLET" && updated.balanceDueToman > 0) {
+      await this.notifyBooking(appointmentId, NotificationType.BALANCE_REQUESTED, { amountToman: updated.balanceDueToman }, user.sub, "customer");
+      void this.smsBalanceRequest(appointmentId);
+    }
     if (status === AppointmentStatus.CANCELLED && appointment.status !== AppointmentStatus.CANCELLED) {
       const cancelledBy = user.role === Role.CUSTOMER ? "CUSTOMER" : user.role === Role.STYLIST ? "STYLIST" : "SALON";
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CANCELLED, { cancelledBy }, user.sub);
@@ -317,6 +347,31 @@ export class AppointmentsService {
       if (appointment.startAt > new Date()) void this.smsCustomer(appointmentId, "confirmed-customer");
     }
     return updated;
+  }
+
+  /** The customer pays the rest of a completed booking from their wallet; owner and stylist are told. */
+  async payBalance(customerId: string, appointmentId: string) {
+    const paid = await this.prisma.$transaction((tx) => payBalance(tx, customerId, appointmentId));
+    await this.notifyBooking(appointmentId, NotificationType.BALANCE_PAID, { amountToman: paid.paidToman }, customerId);
+    const a = await this.prisma.appointment.findUnique({ where: { id: appointmentId }, include: { ...APPOINTMENT_INCLUDE, stylist: true } });
+    return a && forCustomer(a);
+  }
+
+  /** «باقی‌مانده نوبتت در … : … تومان؛ در پنل از کیف پول پرداخت کنید» — always sent (a payment), counted when there's allowance. */
+  private async smsBalanceRequest(appointmentId: string) {
+    try {
+      const a = await this.prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { salonId: true, balanceDueToman: true, salon: { select: { name: true } }, stylist: { select: { userId: true } }, customer: { select: { phone: true } } },
+      });
+      if (!a?.customer.phone || a.balanceDueToman <= 0) return;
+      const params = { amount: faMoney(a.balanceDueToman), salon: a.salon.name };
+      const text = balanceRequestText(params);
+      await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text));
+      await this.sms.send({ kind: "balance-request-customer", to: a.customer.phone, params, text }, { userId: a.stylist.userId, appointmentId, note: "درخواست باقی‌مانده به مشتری" });
+    } catch (err) {
+      this.logger.warn(`balance-request SMS for ${appointmentId} failed: ${(err as Error).message}`);
+    }
   }
 
   /**
@@ -391,6 +446,8 @@ export class AppointmentsService {
       if (servicesChanged) {
         await tx.appointmentService.deleteMany({ where: { appointmentId: appointment.id } });
         await tx.appointmentService.createMany({ data: pricing.map((p) => ({ appointmentId: appointment.id, ...p })) });
+        // cheaper now: a pre-payment above half the new price goes back to the customer
+        await refundExcessPrepayment(tx, appointment, pricing.reduce((sum, p) => sum + p.priceToman, 0));
       }
       return tx.appointment.update({
         where: { id: appointment.id },
@@ -438,8 +495,10 @@ export class AppointmentsService {
         select: {
           salonId: true,
           startAt: true,
+          prepaidToman: true,
+          prepaymentStatus: true,
           salon: { select: { name: true, timezone: true, kind: true } },
-          stylist: { select: { displayName: true, user: { select: { firstName: true } } } },
+          stylist: { select: { userId: true, displayName: true, user: { select: { firstName: true } } } },
           customer: { select: { phone: true } },
         },
       });
@@ -452,12 +511,22 @@ export class AppointmentsService {
       };
       // An independent stylist: only their first name, the business being them (sms.text.ts).
       const firstName = a.stylist.user.firstName.trim() || a.stylist.displayName;
+      const prepaid = a.prepaidToman > 0;
+      const refunded = a.prepaymentStatus === PrepaymentStatus.REFUNDED;
       const text =
         a.salon.kind === SalonKind.INDEPENDENT
-          ? independentBookingText(kind, { day: params.day, time: params.time, name: firstName })
-          : customerBookingText(kind, params);
-      if (!(await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text)))) return;
-      await this.sms.send({ kind, to: a.customer.phone, params, text });
+          ? independentBookingText(kind, { day: params.day, time: params.time, name: firstName }, { refunded })
+          : customerBookingText(kind, params, { refunded });
+      // A prepaid booking's confirmation / cancellation always reaches the customer (they paid):
+      // counted against the salon's allowance when there is some, sent anyway when there isn't.
+      if (!(await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text))) && !prepaid) return;
+      const NOTE: Record<CustomerSmsKind, string> = {
+        "booked-customer": "اطلاع ثبت نوبت به مشتری",
+        "rescheduled-customer": "اطلاع جابه‌جایی نوبت به مشتری",
+        "cancelled-customer": "اطلاع لغو نوبت به مشتری",
+        "confirmed-customer": "اطلاع تایید نوبت به مشتری",
+      };
+      await this.sms.send({ kind, to: a.customer.phone, params, text }, { userId: a.stylist.userId, appointmentId, note: NOTE[kind] });
     } catch (err) {
       this.logger.warn(`${kind} SMS for ${appointmentId} failed: ${(err as Error).message}`);
     }
@@ -467,7 +536,7 @@ export class AppointmentsService {
   private async notifyBooking(
     appointmentId: string,
     type: NotificationType,
-    extra: Pick<BookingData, "bySalon" | "cancelledBy" | "updatedBy" | "previousStartAt">,
+    extra: Pick<BookingData, "bySalon" | "cancelledBy" | "updatedBy" | "previousStartAt" | "amountToman">,
     exceptUserId: string,
     audience: "everyone" | "customer" = "everyone",
   ) {

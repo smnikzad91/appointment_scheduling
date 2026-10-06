@@ -6,8 +6,8 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { instantToSalonWallTime } from "../availability/salon-time.util.js";
 import { SmsService } from "./sms.service.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { clock, customerReminderText, independentReminderText, jalaliDay, servicesSummary, smsParts, stylistConfirmNudgeText, stylistNewBookingText, stylistReminderText } from "./sms.text.js";
-import { maySendNow, parseQuietHours, type QuietWindow } from "./quiet-hours.util.js";
+import { clock, customerReminderText, independentReminderText, jalaliDay, smsParts, stylistConfirmNudgeText, stylistNewBookingText, stylistReminderText, stylistStateNudgeText } from "./sms.text.js";
+import { maySendNow, parseQuietHours, quietUntil, type QuietWindow } from "./quiet-hours.util.js";
 import { runsBackgroundJobs } from "./job-runner.js";
 
 const TICK_MS = 60_000;
@@ -23,6 +23,9 @@ const MAX_ATTEMPTS = 3;
 const LEASE_MS = 2 * 60_000;
 /** An online booking still PENDING this long after its stylist was first texted gets one nudge. */
 const NUDGE_AFTER_MINUTES = 120;
+// A booking still open this long after its end gets one "set its state" SMS — if it ended within the window.
+const OPEN_NUDGE_AFTER_MS = 24 * 60 * 60_000;
+const OPEN_NUDGE_WINDOW_MS = 7 * 24 * 60 * 60_000;
 
 type Recipient = "customer" | "stylist";
 const SENT_AT = { customer: "customerReminderSentAt", stylist: "stylistReminderSentAt" } as const;
@@ -62,7 +65,7 @@ type DueAppointment = {
   stylistReminderSentAt: Date | null;
   stylistReminderAttempts: number;
   salon: { name: string; timezone: string; kind?: string };
-  stylist: { displayName: string; user: { phone: string | null; firstName?: string } };
+  stylist: { userId: string; displayName: string; user: { phone: string | null; firstName?: string } };
   customer: { firstName: string; lastName: string; phone: string | null };
   services: { service: { name: string } }[];
 };
@@ -107,7 +110,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
         },
         include: {
           salon: { select: { name: true, timezone: true, kind: true } },
-          stylist: { select: { displayName: true, user: { select: { phone: true, firstName: true } } } },
+          stylist: { select: { userId: true, displayName: true, user: { select: { phone: true, firstName: true } } } },
           customer: { select: { firstName: true, lastName: true, phone: true } },
           services: { select: { service: { select: { name: true } } } },
         },
@@ -115,6 +118,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       for (const a of due) sent += await this.remind(a, now);
       sent += await this.textNewBookings(now);
       sent += await this.nudgeUnconfirmed(now);
+      sent += await this.nudgeOpenAfterEnd(now);
       if (sent) this.logger.log(`sent ${sent} reminder SMS`);
     } catch (error) {
       this.logger.error("reminder tick failed", error instanceof Error ? error.stack : String(error));
@@ -139,15 +143,12 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
     }
 
     const time = clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay);
-    const services = a.services.map((s) => s.service.name).join("، ");
     const firstName = a.stylist.user.firstName?.trim() || a.stylist.displayName;
-    // The customer gets the first service by name and the rest counted («… و ۲ خدمت دیگر»).
-    const summary = servicesSummary(a.services.map((s) => s.service.name));
-    const customerParams = { time, services: summary, salon: a.salon.name, stylist: firstName };
-    // An independent stylist is the business: no business name, just the services and them.
-    const customerText =
-      a.salon.kind === "INDEPENDENT" ? independentReminderText({ time, services: summary, name: firstName }) : customerReminderText(customerParams);
-    const stylistParams = { time, customer: bookingCustomerFullName(a), services };
+    // No service names in either reminder (owner's choice, 2026-10-05): time, place and who.
+    const customerParams = { time, salon: a.salon.name, stylist: firstName };
+    // An independent stylist is the business: no business name, just them.
+    const customerText = a.salon.kind === "INDEPENDENT" ? independentReminderText({ time, name: firstName }) : customerReminderText(customerParams);
+    const stylistParams = { time, customer: bookingCustomerFullName(a) };
     const messages = {
       customer: a.customer.phone && { kind: "reminder-customer" as const, to: a.customer.phone, params: customerParams, text: customerText },
       stylist: a.stylist.user.phone && { kind: "reminder-stylist" as const, to: a.stylist.user.phone, params: stylistParams, text: stylistReminderText(stylistParams) },
@@ -169,7 +170,9 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
         done[who] = true;
         continue;
       }
-      if (await this.sms.send(message)) {
+      // the booking's stylist pays what the gateway charged (SmsService)
+      const note = who === "customer" ? "یادآوری ۱ ساعته به مشتری" : "یادآوری ۱ ساعته به آرایشگر";
+      if (await this.sms.send(message, { userId: a.stylist.userId, appointmentId: a.id, note })) {
         await this.prisma.appointment.update({ where: { id: a.id }, data: { [SENT_AT[who]]: now } });
         done[who] = true;
         sent++;
@@ -191,13 +194,15 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       where: { status: AppointmentStatus.PENDING, newBookingTextedAt: null, startAt: { gt: now } },
       include: {
         salon: { select: { timezone: true } },
-        stylist: { select: { user: { select: { phone: true } } } },
+        stylist: { select: { userId: true, user: { select: { phone: true } } } },
         customer: { select: { firstName: true, lastName: true } },
       },
     });
     let sent = 0;
     for (const a of due) {
-      if (!maySendNow(now, a.salon.timezone, a.startAt, this.quiet)) continue; // after quiet hours
+      // A prepaid booking texts the stylist right away, night or day (the owner's choice, 2026-10-05):
+      // the customer has paid and is waiting. Unpaid ones wait for quiet hours to end.
+      if (!(a.prepaidToman > 0) && !maySendNow(now, a.salon.timezone, a.startAt, this.quiet)) continue;
       const claimed = await this.prisma.appointment.updateMany({ where: { id: a.id, newBookingTextedAt: null }, data: { newBookingTextedAt: now } });
       if (claimed.count !== 1 || !a.stylist.user.phone) continue;
       const params = {
@@ -205,9 +210,12 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
         time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
         customer: bookingCustomerFullName(a),
       };
-      const text = stylistNewBookingText({ ...params, homeVisit: a.serviceLocation === "CLIENT_HOME" });
-      if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text)))) continue;
-      if (await this.sms.send({ kind: "new-booking-stylist", to: a.stylist.user.phone, params, text })) sent++;
+      const prepaid = a.prepaidToman > 0;
+      const text = stylistNewBookingText({ ...params, homeVisit: a.serviceLocation === "CLIENT_HOME", prepaid });
+      // A prepaid booking is always announced (the customer paid): counted against the allowance
+      // when there is some, sent anyway when there isn't.
+      if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text))) && !prepaid) continue;
+      if (await this.sms.send({ kind: "new-booking-stylist", to: a.stylist.user.phone, params, text }, { userId: a.stylist.userId, appointmentId: a.id, note: "اطلاع نوبت جدید به آرایشگر" })) sent++;
     }
     return sent;
   }
@@ -222,7 +230,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       },
       include: {
         salon: { select: { timezone: true } },
-        stylist: { select: { user: { select: { phone: true } } } },
+        stylist: { select: { userId: true, user: { select: { phone: true } } } },
         customer: { select: { firstName: true, lastName: true } },
       },
     });
@@ -238,7 +246,46 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       };
       const text = stylistConfirmNudgeText(params);
       if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text)))) continue;
-      if (await this.sms.send({ kind: "confirm-nudge-stylist", to: a.stylist.user.phone, params, text })) sent++;
+      if (await this.sms.send({ kind: "confirm-nudge-stylist", to: a.stylist.user.phone, params, text }, { userId: a.stylist.userId, appointmentId: a.id, note: "یادآوری تایید نوبت به آرایشگر" })) sent++;
+    }
+    return sent;
+  }
+
+  /**
+   * A booking still open 24 h after its end — confirmed, or pending without a pre-payment (a
+   * prepaid pending one is cancelled and refunded at that point, wallet/stale-prepayment) — gets one
+   * SMS asking its stylist to mark it done / no-show / cancelled: until then a pre-payment stays held
+   * and the books miss it. Only bookings that ended within the last 7 days (no backlog), outside
+   * quiet hours, at most 20 a run; sent even past the plan's allowance when the booking is prepaid.
+   */
+  private async nudgeOpenAfterEnd(now: Date): Promise<number> {
+    const due = await this.prisma.appointment.findMany({
+      where: {
+        stateNudgedAt: null,
+        endAt: { lt: new Date(now.getTime() - OPEN_NUDGE_AFTER_MS), gt: new Date(now.getTime() - OPEN_NUDGE_WINDOW_MS) },
+        OR: [{ status: AppointmentStatus.CONFIRMED }, { status: AppointmentStatus.PENDING, prepaidToman: 0 }],
+      },
+      orderBy: { endAt: "asc" },
+      take: 20,
+      include: {
+        salon: { select: { timezone: true } },
+        stylist: { select: { userId: true, user: { select: { phone: true } } } },
+        customer: { select: { firstName: true, lastName: true } },
+      },
+    });
+    let sent = 0;
+    for (const a of due) {
+      if (quietUntil(now, a.salon.timezone, this.quiet)) continue; // nothing urgent about a past booking
+      const claimed = await this.prisma.appointment.updateMany({ where: { id: a.id, stateNudgedAt: null }, data: { stateNudgedAt: now } });
+      if (claimed.count !== 1 || !a.stylist.user.phone) continue;
+      const params = {
+        day: jalaliDay(a.startAt, a.salon.timezone),
+        time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
+        customer: bookingCustomerFullName(a),
+      };
+      const text = stylistStateNudgeText(params);
+      if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text))) && !(a.prepaidToman > 0)) continue;
+      if (await this.sms.send({ kind: "state-nudge-stylist", to: a.stylist.user.phone, params, text }, { userId: a.stylist.userId, appointmentId: a.id, note: "یادآوری وضعیت نوبت به آرایشگر" })) sent++;
     }
     return sent;
   }

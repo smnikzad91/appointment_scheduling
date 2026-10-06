@@ -1,30 +1,14 @@
 import { Metadata } from "next";
+import { seoMetadata } from "@/lib/pageSeo";
 import FaqPageClient from "@/components/public/FaqPageClient";
 import { JsonLd } from "@/components/common/JsonLd";
 import { prisma } from "@/lib/prisma";
-import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "سوالات متداول",
-  description: "پاسخ رایج‌ترین سوال‌ها درباره نوبتت — ثبت سالن، رزرو نوبت، پلن‌ها و پشتیبانی.",
-  keywords: ["سوالات متداول", "FAQ", "پشتیبانی", "نوبت‌دهی آنلاین", "نوبتت"],
-  alternates: { canonical: `${SITE_URL}/faq` },
-  openGraph: {
-    title: "سوالات متداول | نوبتت",
-    description: "پاسخ رایج‌ترین سوال‌ها درباره نوبتت.",
-    url: `${SITE_URL}/faq`,
-    type: "website",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "سوالات متداول نوبتت" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "سوالات متداول | نوبتت",
-    description: "پاسخ رایج‌ترین سوال‌ها درباره نوبتت.",
-    images: ["/opengraph-image"],
-  },
-};
+export function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("faq", "/faq");
+}
 
 export default async function FaqPage() {
   const rawFaqs = await prisma.faq.findMany({

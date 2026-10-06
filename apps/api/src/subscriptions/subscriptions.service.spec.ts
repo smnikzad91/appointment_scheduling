@@ -47,27 +47,15 @@ describe('SubscriptionsService.takeReminderSms', () => {
     plan,
   });
 
-  it("counts against this Jalali month's allowance", async () => {
-    const { service, prisma } = setup(salon({ smsPerMonth: 100 }));
-    expect(await service.takeReminderSms('s1', NOW)).toBe(true);
-    expect(prisma.salonSmsUsage.createMany).toHaveBeenCalledWith({ data: [{ salonId: 's1', period: '1405-07' }], skipDuplicates: true });
-    expect(prisma.salonSmsUsage.updateMany).toHaveBeenCalledWith({
-      where: { salonId: 's1', period: '1405-07', sent: { lte: 99 } },
-      data: { sent: { increment: 1 } },
-    });
-  });
-
-  it('says no once the allowance is used up', async () => {
-    const { service } = setup(salon({ smsPerMonth: 100 }), { updated: 0 });
-    expect(await service.takeReminderSms('s1', NOW)).toBe(false);
-  });
-
-  it('sends none on a plan without SMS or after the subscription expires', async () => {
-    const none = setup(salon({ smsPerMonth: null }));
-    expect(await none.service.takeReminderSms('s1', NOW)).toBe(false);
-    expect(none.prisma.salonSmsUsage.updateMany).not.toHaveBeenCalled();
+  it("counts usage for this Jalali month and never says no (the allowance no longer limits; SMS cost the stylist)", async () => {
+    for (const plan of [{ smsPerMonth: 100 }, { smsPerMonth: 0 }, { smsPerMonth: null }]) {
+      const { service, prisma } = setup(salon(plan), { updated: 0 });
+      expect(await service.takeReminderSms('s1', NOW)).toBe(true);
+      expect(prisma.salonSmsUsage.createMany).toHaveBeenCalledWith({ data: [{ salonId: 's1', period: '1405-07' }], skipDuplicates: true });
+      expect(prisma.salonSmsUsage.updateMany).toHaveBeenCalledWith({ where: { salonId: 's1', period: '1405-07' }, data: { sent: { increment: 1 } } });
+    }
     const expired = setup(salon({ smsPerMonth: 100 }, new Date('2026-09-01')));
-    expect(await expired.service.takeReminderSms('s1', NOW)).toBe(false);
+    expect(await expired.service.takeReminderSms('s1', NOW)).toBe(true);
   });
 
   it('only records usage for salons without a plan', async () => {

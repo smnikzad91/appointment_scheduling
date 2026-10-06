@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { seoMetadata } from "@/lib/pageSeo";
 import Link from "next/link";
 import { findProvince } from "@appointment-scheduling/iran-locations";
 import SalonSearch from "@/components/discovery/SalonSearch";
+import { activeCities } from "@/lib/cityPages";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import GuestBackdrop from "@/components/guest/GuestBackdrop";
 import GuestLogo from "@/components/guest/GuestLogo";
@@ -15,7 +17,8 @@ interface PageProps {
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const { province, city } = await searchParams;
   const where = city || province;
-  const title = where ? `سالن‌های زیبایی ${where}` : "جستجوی سالن زیبایی";
+  if (!where) return seoMetadata("salons", "/salons");
+  const title = `سالن‌های زیبایی ${where}`;
   return {
     title,
     description: `${title} — مقایسه امتیاز، خدمات و فاصله، و رزرو آنلاین نوبت در ${SITE_NAME}.`,
@@ -28,6 +31,7 @@ export default async function SalonsPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const province = findProvince(sp.province ?? "")?.name ?? "";
   const city = province && sp.city && findProvince(province)!.cities.includes(sp.city) ? sp.city : "";
+  const cities = await activeCities();
   return (
     <div dir="rtl" className="app-root guest-root min-h-dvh">
       <GuestBackdrop />
@@ -56,6 +60,19 @@ export default async function SalonsPage({ searchParams }: PageProps) {
             }}
           />
         </div>
+        {/* a crawlable link to each city page (the search above is client-side) */}
+        {cities.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-base font-black text-g-ink">آرایشگاه‌ها بر اساس شهر</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {cities.map((c) => (
+                <Link key={c.slug} href={`/salons/${encodeURIComponent(c.slug)}`} className="rounded-full border border-g-line px-3 py-1.5 text-sm text-g-ink hover:border-g-accent">
+                  آرایشگاه {c.city}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
       <GuestTabBar />
     </div>

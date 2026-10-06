@@ -7,6 +7,7 @@ import { SocialIcon } from "@/components/common/SocialIcon";
 import OpenStatusBadge from "./OpenStatusBadge";
 import PlaceholderArt from "./PlaceholderArt";
 import FavoriteButton from "@/components/common/FavoriteButton";
+import BackButton from "./BackButton";
 
 export default function Hero({ salon }: { salon: Salon }) {
   const initials = salon.name.trim().slice(0, 1);
@@ -22,6 +23,7 @@ export default function Hero({ salon }: { salon: Salon }) {
         )}
         {/* cover fades into the page */}
         <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-g-bg to-transparent" />
+        <BackButton className="absolute right-3 top-3" />
         <FavoriteButton salonId={salon.id} salonName={salon.name} variant="overlay" className="absolute left-3 top-3" />
       </div>
 

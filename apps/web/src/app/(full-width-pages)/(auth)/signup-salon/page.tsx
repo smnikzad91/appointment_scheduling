@@ -1,11 +1,12 @@
 import SignUpSalonForm from "@/components/auth/SignUpSalonForm";
 import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { seoMetadata } from "@/lib/pageSeo";
 
-export const metadata: Metadata = {
-  title: "ثبت‌نام سالن",
-  description: "سالن زیبایی خود را رایگان در نوبتت ثبت کنید و نوبت‌دهی آنلاین را همین امروز شروع کنید.",
-};
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ type?: string }> }): Promise<Metadata> {
+  const independent = (await searchParams).type === "independent";
+  return seoMetadata(independent ? "signup-independent" : "signup-salon", independent ? "/signup-salon?type=independent" : "/signup-salon");
+}
 
 // ?plan=<id> comes from a plan's button in the landing page's pricing section;
 // ?type=independent opens it for an independent stylist (their own business, no salon).

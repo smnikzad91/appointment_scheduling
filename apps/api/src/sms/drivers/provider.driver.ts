@@ -26,7 +26,7 @@ export class ProviderSmsDriver implements SmsDriver {
     this.url = (config.url?.trim() || DEFAULT_URL).replace(/\/+$/, "");
   }
 
-  async send(message: SmsMessage): Promise<void> {
+  async send(message: SmsMessage): Promise<{ cost?: number }> {
     if (!this.config.apiKey) throw new Error("SMS_API_KEY is not set");
     const res = await fetch(`${this.url}/api/v1/sms`, {
       method: "POST",
@@ -40,5 +40,9 @@ export class ProviderSmsDriver implements SmsDriver {
       const retryAfter = res.headers.get("Retry-After");
       throw new Error(`notifycloud ${res.status}: ${body.error ?? res.statusText}${retryAfter ? ` (retry after ${retryAfter}s)` : ""}`);
     }
+    // the gateway answers with what it took from the key's balance (toman): charged on to the booking's stylist
+    const body = (await res.json().catch(() => ({}))) as { cost?: unknown };
+    const cost = Number(body.cost);
+    return { cost: Number.isFinite(cost) && cost > 0 ? Math.round(cost) : undefined };
   }
 }

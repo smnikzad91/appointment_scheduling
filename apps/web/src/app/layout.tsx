@@ -8,10 +8,12 @@ import SessionWrapper from "@/components/common/SessionWrapper";
 import ToastProvider from "@/components/common/ToastProvider";
 import AgGridSetup from "@/components/common/AgGridSetup";
 import ClientErrorReporter from "@/components/common/ClientErrorReporter";
+import { InAppHistoryTracker } from "@/lib/inAppHistory";
+import { VisitTracker } from "@/lib/analytics/client";
 import SplashScreen from "@/components/common/SplashScreen";
 import FormDraftKeeper from "@/components/common/FormDraftKeeper";
 import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL, SITE_KEYWORDS } from "@/lib/site";
 
 // viewport-fit=cover lets the app shell paint under the notch / home indicator (it pads itself
 // with env(safe-area-inset-*)); the theme color tints the status bar to match the app bar.
@@ -33,7 +35,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
-  keywords: ["نوبت‌دهی آنلاین", "رزرو آنلاین سالن زیبایی", "نرم‌افزار آرایشگاه", "مدیریت سالن", "نوبتت"],
+  keywords: SITE_KEYWORDS,
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
   publisher: SITE_NAME,
@@ -78,12 +80,16 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        {/* Google Search Console ownership of nobatet.app — must stay in <head> (not metadata, which streams into <body>) */}
+        <meta name="google-site-verification" content="wxv6MrsgaSDIs550uwXxWHMgB0eOkih6SE2E9k_vu_E" />
       </head>
       <body className="dark:bg-gray-900">
         {/* Once per session; hidden before paint on later loads (theme-init.js). */}
         <SplashScreen />
         <AgGridSetup />
         <ClientErrorReporter />
+        <InAppHistoryTracker />
+        <VisitTracker />
         <ServiceWorkerRegister />
         <FormDraftKeeper />
         <SessionWrapper>

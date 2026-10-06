@@ -16,7 +16,10 @@ export default function StylistAppointmentsPage() {
   const [version, setVersion] = useState(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const load = useCallback(() => listMyAppointments(token!), [token, version]);
-  const updateStatus = useCallback((id: string, status: Parameters<typeof updateMyAppointmentStatus>[2]) => updateMyAppointmentStatus(token!, id, status), [token]);
+  const updateStatus = useCallback(
+    (id: string, status: Parameters<typeof updateMyAppointmentStatus>[2], balanceMethod?: "ON_SITE" | "WALLET") => updateMyAppointmentStatus(token!, id, status, balanceMethod),
+    [token],
+  );
 
   if (!token) return <ListSkeleton />;
   return (

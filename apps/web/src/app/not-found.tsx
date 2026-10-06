@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "صفحه پیدا نشد | Assist Me",
+  title: "صفحه پیدا نشد",
   description: "صفحه‌ای که دنبالش هستید وجود ندارد یا جابه‌جا شده است.",
+  robots: { index: false, follow: true },
 };
 
 export default function NotFound() {

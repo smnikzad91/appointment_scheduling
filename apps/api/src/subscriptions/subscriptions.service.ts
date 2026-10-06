@@ -1,7 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import type { Prisma } from "@appointment-scheduling/database";
+import { WalletTxKind, type Prisma } from "@appointment-scheduling/database";
+import { InsufficientWalletError, moveWallet } from "../wallet/prepayment.js";
+import { PurchasePlanDto } from "./dto/purchase-plan.dto.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { jalaliPeriod, subscriptionStatus, trialEnd } from "./subscription.util.js";
+import { jalaliPeriod, purchaseEnd, purchaseStart, subscriptionStatus, trialEnd, unusedPurchaseCredit } from "./subscription.util.js";
 import { SetSalonSubscriptionDto } from "./dto/set-salon-subscription.dto.js";
 
 type Db = PrismaService | Prisma.TransactionClient;
@@ -12,7 +14,8 @@ const PLAN_SUMMARY = { id: true, name: true, monthlyPriceToman: true, maxStylist
  * Salon plans (PricingPlan rows, edited at /admin/pricing in apps/web) and their limits:
  * how many active stylists a salon may have and how many reminder SMS it gets per Jalali month.
  * A salon without a plan has no limits; an expired one can't add stylists and gets no reminders.
- * There's no payment gateway yet, so the platform admin assigns plans and end dates by hand.
+ * The owner buys or renews a plan from their platform wallet (purchase); the platform admin can
+ * still assign any plan and end date by hand (setForSalon).
  */
 @Injectable()
 export class SubscriptionsService {
@@ -46,31 +49,17 @@ export class SubscriptionsService {
   }
 
   /**
-   * Takes one reminder SMS from the salon's allowance for the current Jalali month; false means
-   * don't send. The conditional increment is atomic, so parallel senders can't overshoot.
-   */
-  /**
-   * Takes `parts` SMS (see smsParts: what the gateway bills) from the salon's monthly allowance, all
-   * or nothing: false when they don't all fit (or the plan has none / has expired).
+   * Counts `parts` SMS (see smsParts) against the salon's month, for the owner's usage line. Since
+   * 2026-10-05 the plan's allowance no longer limits anything (owner's rule): every booking SMS is
+   * sent and its real cost is charged to the booking's stylist's wallet (SmsService.send). Always true.
    */
   async takeReminderSms(salonId: string, now = new Date(), parts = 1): Promise<boolean> {
-    const salon = await this.prisma.salon.findUnique({
-      where: { id: salonId },
-      select: { timezone: true, planId: true, planExpiresAt: true, plan: { select: { smsPerMonth: true } } },
-    });
-    if (!salon) return false;
-    const status = subscriptionStatus(salon, now);
-    if (status === "expired") return false;
-    const limit = salon.plan ? (salon.plan.smsPerMonth ?? 0) : null;
-    if (limit === 0) return false;
-
+    const salon = await this.prisma.salon.findUnique({ where: { id: salonId }, select: { timezone: true } });
+    if (!salon) return true;
     const period = jalaliPeriod(now, salon.timezone);
     await this.prisma.salonSmsUsage.createMany({ data: [{ salonId, period }], skipDuplicates: true });
-    const taken = await this.prisma.salonSmsUsage.updateMany({
-      where: { salonId, period, ...(limit !== null && { sent: { lte: limit - parts } }) },
-      data: { sent: { increment: parts } },
-    });
-    return taken.count === 1;
+    await this.prisma.salonSmsUsage.updateMany({ where: { salonId, period }, data: { sent: { increment: parts } } });
+    return true;
   }
 
   /** The owner's view: plan, end date and how much of each limit is used. */
@@ -90,8 +79,77 @@ export class SubscriptionsService {
       plan: salon.plan,
       expiresAt: salon.planExpiresAt,
       stylists: { active: activeStylists, limit: salon.plan ? salon.plan.maxStylists : null },
-      sms: { period, sent: usage?.sent ?? 0, limit: salon.plan ? (salon.plan.smsPerMonth ?? 0) : null },
+      // no limit any more: each SMS costs the booking's stylist (wallet «هزینه پیامک»)
+      sms: { period, sent: usage?.sent ?? 0, limit: null },
     };
+  }
+
+  /**
+   * Plans the owner can buy (visible ones with a set price; null = «توافقی», arranged with the admin),
+   * and what switching away from their running plan would credit back (switchCreditToman).
+   */
+  async purchasablePlans(userId: string, now = new Date()) {
+    const salon = await this.prisma.salon.findFirst({ where: { ownerId: userId }, select: { id: true, planId: true } });
+    const [plans, running] = await Promise.all([
+      this.prisma.pricingPlan.findMany({
+        where: { active: true, monthlyPriceToman: { not: null } },
+        orderBy: { sortOrder: "asc" },
+        select: { ...PLAN_SUMMARY, recommended: true },
+      }),
+      salon?.planId ? this.runningPurchases(this.prisma, salon.id, salon.planId, now) : Promise.resolve([]),
+    ]);
+    return { plans, currentPlanId: salon?.planId ?? null, switchCreditToman: unusedPurchaseCredit(running, now) };
+  }
+
+  /** The current plan's bought periods that haven't ended or been credited back yet. */
+  private runningPurchases(db: Db, salonId: string, planId: string, now: Date) {
+    return db.planPurchase.findMany({ where: { salonId, planId, endedAt: null, endsAt: { gt: now } } });
+  }
+
+  /**
+   * The owner buys `months` of a plan from their wallet: renewing the current plan extends it from
+   * its end, another plan starts now. The salon row is locked so two purchases can't both extend
+   * from the same end; not enough balance → 402 and nothing changes.
+   */
+  async purchase(userId: string, dto: PurchasePlanDto, now = new Date()) {
+    return this.prisma.$transaction(async (tx) => {
+      const found = await tx.salon.findFirst({ where: { ownerId: userId }, select: { id: true } });
+      if (!found) throw new NotFoundException("You don't own a salon yet");
+      await tx.$queryRaw`SELECT 1 FROM salons WHERE id = ${found.id} FOR UPDATE`;
+      const salon = await tx.salon.findUniqueOrThrow({ where: { id: found.id }, select: { id: true, ownerId: true, planId: true, planExpiresAt: true } });
+      const plan = await tx.pricingPlan.findFirst({ where: { id: dto.planId, active: true }, select: { id: true, name: true, monthlyPriceToman: true } });
+      if (!plan) throw new BadRequestException("This plan is no longer available");
+      if (plan.monthlyPriceToman === null) throw new BadRequestException("This plan's price is arranged with the platform");
+      if (salon.planId === plan.id && salon.planExpiresAt === null) throw new BadRequestException("Your plan has no end date");
+
+      // Switching from a running bought plan: its unused part goes back to the wallet first.
+      let creditToman = 0;
+      if (salon.planId && salon.planId !== plan.id) {
+        const running = await this.runningPurchases(tx, salon.id, salon.planId, now);
+        for (const p of running) {
+          const credit = unusedPurchaseCredit([p], now);
+          await tx.planPurchase.update({ where: { id: p.id }, data: { endedAt: now, creditedToman: credit } });
+          if (credit > 0) await moveWallet(tx, salon.ownerId, credit, WalletTxKind.PLAN_CREDIT, { planPurchaseId: p.id });
+          creditToman += credit;
+        }
+      }
+
+      const startsAt = purchaseStart(salon, plan.id, now);
+      const endsAt = purchaseEnd(startsAt, dto.months);
+      const amountToman = plan.monthlyPriceToman * dto.months;
+      const purchase = await tx.planPurchase.create({
+        data: { salonId: salon.id, planId: plan.id, planName: plan.name, months: dto.months, amountToman, startsAt, endsAt },
+      });
+      if (amountToman > 0) {
+        const after = await moveWallet(tx, salon.ownerId, -amountToman, WalletTxKind.PLAN_PURCHASE, { planPurchaseId: purchase.id });
+        if (after === null) {
+          const owner = await tx.user.findUnique({ where: { id: salon.ownerId }, select: { walletBalance: true } });
+          throw new InsufficientWalletError(amountToman, owner?.walletBalance ?? 0, "Not enough wallet balance for this plan");
+        }
+      }
+      await tx.salon.update({ where: { id: salon.id }, data: { planId: plan.id, planExpiresAt: endsAt } });
+      return { planId: plan.id, planName: plan.name, months: dto.months, amountToman, creditToman, startsAt, expiresAt: endsAt };
+    });
   }
 
   /** Platform admin: assign a plan (hidden plans too — e.g. a custom deal) and an end date. */

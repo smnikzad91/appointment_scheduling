@@ -12,6 +12,14 @@ export interface CustomerBooking {
   startAt: string;
   endAt: string;
   priceToman: number;
+  /** Paid in advance from the customer's wallet (online bookings); 0 = none. */
+  prepaidToman?: number;
+  /** HELD while open, SETTLED to the owner's wallet (completed / no-show), REFUNDED to the customer (cancelled). */
+  prepaymentStatus?: "HELD" | "SETTLED" | "REFUNDED" | null;
+  /** The rest after the pre-payment, once COMPLETED: ON_SITE (received directly) or WALLET (requested from the customer's wallet). */
+  balanceMethod?: "ON_SITE" | "WALLET" | null;
+  balanceDueToman?: number;
+  balancePaidAt?: string | null;
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   /** The customer booked here: the full address, except an independent stylist's private (home) one unless the appointment is there (then null). */
   salon: { name: string; slug: string; kind?: SalonKind; address?: string | null; hostSalonName?: string | null };
@@ -35,6 +43,11 @@ export interface BookingReview {
 
 export function getMyBookings(token: string) {
   return salonApiFetch<CustomerBooking[]>("/appointments/mine", { headers: authHeaders(token) });
+}
+
+/** Pay the rest of a completed booking from the wallet (when the stylist asked for it); 402 when short. */
+export function payBookingBalance(token: string, id: string) {
+  return salonApiFetch<CustomerBooking>(`/appointments/${id}/pay-balance`, { method: "POST", headers: authHeaders(token) });
 }
 
 export function cancelBooking(token: string, id: string) {

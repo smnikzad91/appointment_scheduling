@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { notifyBlog } from "@/lib/telegram";
+import { notifyBlog, telegramConfigured } from "@/lib/telegram";
+import { logError } from "@/lib/errorLog";
 
 export async function GET() {
   const session = await auth();
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (post.published) {
-    void notifyBlog({ slug: post.slug, title: post.title, category: String(post.category), excerpt: post.excerpt, hashtags: post.hashtags ?? [], coverImage: post.coverImage ?? undefined });
+    if (telegramConfigured()) notifyBlog({ slug: post.slug, title: post.title, category: String(post.category), excerpt: post.excerpt, hashtags: post.hashtags ?? [], coverImage: post.coverImage ?? undefined }).catch((error) => logError({ error, path: "/api/admin/blog", context: { action: "notifyBlog" } }));
   }
 
   return NextResponse.json({ id: post.id, slug: post.slug }, { status: 201 });

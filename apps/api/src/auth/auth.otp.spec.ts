@@ -88,3 +88,32 @@ describe('AuthService.verifyOtp', () => {
     expect(res.user.role).toBe('CUSTOMER');
   });
 });
+
+describe('phone verified by SMS code for new accounts', () => {
+  it('won\'t send a sign-up code to a number that already has an account', async () => {
+    const { service, sms } = setup();
+    await expect(service.requestOtp('09121234567', 'register')).rejects.toMatchObject({ status: 409 });
+    expect(sms.send).not.toHaveBeenCalled();
+  });
+
+  it('sends a sign-up code to a new number', async () => {
+    const { service, sms } = setup({ user: null });
+    await expect(service.requestOtp('09120000000', 'register')).resolves.toEqual({ success: true });
+    expect(sms.send).toHaveBeenCalledTimes(1);
+  });
+
+  const registration = { phone: '09120000000', email: undefined, password: 'secret-pass', firstName: 'سارا', lastName: 'احمدی' };
+
+  it('creates the customer only with the right code, and uses the code up', async () => {
+    const { service, prisma } = setup({ user: null });
+    await expect(service.register({ ...registration, code: '12345' })).resolves.toMatchObject({ accessToken: 'token' });
+    expect(prisma.user.create).toHaveBeenCalledTimes(1);
+    expect(prisma.otpCode.updateMany).toHaveBeenLastCalledWith({ where: { id: 'otp-1', consumed: false }, data: { consumed: true } });
+  });
+
+  it('refuses a wrong code without creating anything', async () => {
+    const { service, prisma } = setup({ user: null });
+    await expect(service.register({ ...registration, code: '99999' })).rejects.toMatchObject({ status: 401 });
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+});

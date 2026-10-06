@@ -14,6 +14,9 @@ const inTwoHours = () => new Date(Date.now() + 2 * 60 * 60_000);
 function setup({ allowance = true, kind = 'SALON' } = {}) {
   const tx = {
     $executeRaw: vi.fn(),
+    // wallet: the online booking's pre-payment goes through
+    $queryRaw: vi.fn().mockResolvedValue([{ walletBalance: 50_000 }]),
+    walletTransaction: { create: vi.fn() },
     workingHour: { findMany: vi.fn().mockResolvedValue([0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, startMinute: 0, endMinute: 1440 }))) },
     timeOff: { findFirst: vi.fn().mockResolvedValue(null) },
     appointment: {

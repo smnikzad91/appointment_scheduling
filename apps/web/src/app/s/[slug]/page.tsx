@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { fillSeoTemplate, getPageSeo } from "@/lib/pageSeo";
 import { notFound } from "next/navigation";
 import { getSalonBySlug } from "@/lib/api/salons";
 import SalonBrandProvider from "@/components/salon/SalonBrandProvider";
@@ -7,6 +8,7 @@ import { addDaysToDateKey, toSalonWallTime } from "@/lib/salonTime";
 import type { Salon } from "@/types/salon";
 import BookingSheet from "@/components/salon/booking/BookingSheet";
 import StickyBookButton from "@/components/salon/StickyBookButton";
+import GuestTabBar from "@/components/guest/GuestTabBar";
 import SalonJsonLd from "@/components/salon/SalonJsonLd";
 import Hero from "@/components/salon/Hero";
 import ServiceCategoryGroup from "@/components/salon/ServiceCategoryGroup";
@@ -14,7 +16,7 @@ import StylistList from "@/components/salon/StylistList";
 import Gallery from "@/components/salon/Gallery";
 import Reviews from "@/components/salon/Reviews";
 import InfoSection from "@/components/salon/InfoSection";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_URL } from "@/lib/site";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -42,19 +44,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const salon = await getSalonBySlug(slug);
   if (!salon) return {};
-  const description =
-    salon.description ||
-    (salon.kind === "INDEPENDENT"
-      ? `${salon.name}، آرایشگر مستقل در ${salon.city} — مشاهده خدمات و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`
-      : `${salon.name}، سالن زیبایی در ${salon.city} — مشاهده خدمات، آرایشگرها و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`);
-
+  const seo = await getPageSeo(salon.kind === "INDEPENDENT" ? "independent-page" : "salon-page");
+  const vars = { name: salon.name, city: salon.city };
+  const description = salon.description || fillSeoTemplate(seo.description, vars);
+  const title = fillSeoTemplate(seo.title, vars);
   return {
-    title: salon.name,
+    title,
     description,
+    ...(seo.keywords.length ? { keywords: seo.keywords } : {}),
     // Prefill links (?book=1…) are the same page — point search engines at the clean URL.
     alternates: { canonical: `${SITE_URL}/s/${encodeURIComponent(slug)}` },
     openGraph: {
-      title: salon.name,
+      title,
       description,
       type: "website",
       locale: "fa_IR",
@@ -75,6 +76,7 @@ export default async function SalonPage({ params, searchParams }: PageProps) {
       <BookingProvider salon={salon} prefill={prefill}>
         <SalonJsonLd salon={salon} url={`${SITE_URL}/s/${slug}`} />
 
+        {/* room for the floating «رزرو نوبت» bar; GuestTabBar adds its own spacer */}
         <div className="pb-20 sm:pb-8">
           <Hero salon={salon} />
           <div className="divide-y divide-g-line">
@@ -88,6 +90,7 @@ export default async function SalonPage({ params, searchParams }: PageProps) {
         </div>
 
         <StickyBookButton />
+        <GuestTabBar />
         <BookingSheet />
       </BookingProvider>
     </SalonBrandProvider>

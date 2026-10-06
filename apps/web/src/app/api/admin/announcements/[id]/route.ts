@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { notifyAnnouncement } from "@/lib/telegram";
+import { notifyAnnouncement, telegramConfigured } from "@/lib/telegram";
+import { logError } from "@/lib/errorLog";
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -19,7 +20,7 @@ export async function PUT(req: Request, { params }: Params) {
 
   // Notify when toggling to active
   if (body.active === true && !previous.active) {
-    void notifyAnnouncement({ text: item.text, emoji: item.emoji, link: item.link, linkText: item.linkText });
+    if (telegramConfigured()) notifyAnnouncement({ text: item.text, emoji: item.emoji, link: item.link, linkText: item.linkText }).catch((error) => logError({ error, path: "/api/admin/announcements/[id]", context: { action: "notifyAnnouncement" } }));
   }
 
   return NextResponse.json(item);

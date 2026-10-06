@@ -9,12 +9,15 @@ import { dateKeyToDate, formatJalaliFull } from "@/lib/jalali";
 import { formatMinutesAsClock } from "@/lib/persian";
 import { salonWallTimeToInstant } from "@/lib/salonTime";
 import { saveCustomerSession } from "@/lib/customerSession";
+import { trackBookingEvent } from "@/lib/analytics/client";
 
 export default function StepSuccess() {
-  const { salon, state, result, close } = useBooking();
+  const { salon, state, result, close, signedIn } = useBooking();
 
   useEffect(() => {
-    if (state.accessToken) {
+    trackBookingEvent("booking_done");
+    // signed in on the site: their bookings are in the panel, nothing to remember here
+    if (state.accessToken && !signedIn) {
       saveCustomerSession({ token: state.accessToken, firstName: state.customerFirstName.trim() });
     }
     // Only ever needs to run once, right when the success screen mounts with a fresh token.

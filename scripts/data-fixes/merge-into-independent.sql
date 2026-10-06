@@ -56,8 +56,9 @@ BEGIN
   IF EXISTS (SELECT 1 FROM appointments WHERE "customerId" = r.stylist_user_id)
      OR EXISTS (SELECT 1 FROM salons WHERE "ownerId" = r.stylist_user_id)
      OR EXISTS (SELECT 1 FROM tickets WHERE "userId" = r.stylist_user_id)
-     OR EXISTS (SELECT 1 FROM deposits WHERE "userId" = r.stylist_user_id)
-     OR EXISTS (SELECT 1 FROM cards WHERE "userId" = r.stylist_user_id) THEN
+     OR EXISTS (SELECT 1 FROM wallet_transactions WHERE "userId" = r.stylist_user_id)
+     OR EXISTS (SELECT 1 FROM wallet_top_ups WHERE "userId" = r.stylist_user_id)
+     OR EXISTS (SELECT 1 FROM withdrawal_requests WHERE "userId" = r.stylist_user_id) THEN
     RAISE EXCEPTION 'stylist account has its own customer/wallet/ticket data — not deleting it';
   END IF;
 END $$;

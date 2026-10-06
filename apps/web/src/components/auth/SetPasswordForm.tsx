@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
-import { completePasswordSetup, getPasswordSetup, type PasswordSetupInfo } from "@/lib/api/passwordSetup";
+import { completePasswordSetup, getPasswordSetup, sendPasswordSetupCode, type PasswordSetupInfo } from "@/lib/api/passwordSetup";
+import PhoneCodeStep from "@/components/guest/PhoneCodeStep";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { toPersianDigits } from "@/lib/persian";
 import AuthCard, { AuthLink } from "@/components/guest/AuthCard";
@@ -15,8 +16,8 @@ import { toastError } from "@/lib/toastError";
 const MIN_LENGTH = 8;
 
 /**
- * Where an invited stylist lands from the salon owner's one-time link: choose a password, then
- * get signed straight into the stylist panel. The link dies once used (or when the owner makes a
+ * Where an invited stylist lands from the salon owner's one-time link: choose a password, confirm
+ * the phone the owner entered with an SMS code, then get signed straight into the stylist panel. The link dies once used (or when the owner makes a
  * new one), so a used or expired link just explains how to get a fresh one.
  */
 export default function SetPasswordForm({ token }: { token: string }) {
@@ -26,6 +27,7 @@ export default function SetPasswordForm({ token }: { token: string }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [codeSent, setCodeSent] = useState<{ devCode?: string } | null>(null);
 
   useEffect(() => {
     getPasswordSetup(token)
@@ -43,9 +45,25 @@ export default function SetPasswordForm({ token }: { token: string }) {
       toastError("رمز عبور و تکرار آن یکسان نیستند");
       return;
     }
+    if (info?.phone) {
+      // the account's phone must answer an SMS code before the password is saved
+      setLoading(true);
+      try {
+        setCodeSent(await sendPasswordSetupCode(token));
+      } catch (err) {
+        toastError(persianApiError(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    await finish();
+  };
+
+  const finish = async (code?: string) => {
     setLoading(true);
     try {
-      const { phone } = await completePasswordSetup(token, password);
+      const { phone } = await completePasswordSetup(token, password, code);
       const result = phone ? await signIn("credentials", { identifier: phone, password, redirect: false }) : null;
       if (!result || result.error) {
         // The password is set; only the automatic sign-in failed.
@@ -99,6 +117,18 @@ export default function SetPasswordForm({ token }: { token: string }) {
         </>
       }
     >
+      {codeSent && info.phone ? (
+        <PhoneCodeStep
+          phone={info.phone}
+          devCode={codeSent.devCode}
+          submitLabel="تایید و ورود"
+          loadingLabel="در حال ثبت…"
+          onSubmit={finish}
+          onResend={() => sendPasswordSetupCode(token)}
+          onBack={() => setCodeSent(null)}
+          backLabel="تغییر رمز"
+        />
+      ) : (
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
         {/* Lets the phone's password manager save the new password against this number. */}
@@ -131,6 +161,7 @@ export default function SetPasswordForm({ token }: { token: string }) {
           ثبت رمز و ورود
         </GradientButton>
       </form>
+      )}
     </AuthCard>
   );
 }

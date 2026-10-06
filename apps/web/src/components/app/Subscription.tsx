@@ -7,16 +7,18 @@ import { getMySubscription, type OwnerSubscription } from "@/lib/api/ownerSalon"
 import { planPriceLabel } from "@/lib/pricing";
 import { toPersianDigits } from "@/lib/persian";
 import { formatSalonDate } from "@/lib/salonTime";
-import { Card, cx } from "@/components/app/ui";
+import { Button, Card, cx } from "@/components/app/ui";
+import PlanPurchaseSheet from "@/components/app/PlanPurchaseSheet";
 
-// The salon's plan and limits (apps/api src/subscriptions). There's no online payment yet:
-// renewals and upgrades go through support, and the platform admin updates the plan.
+// The salon's plan and limits (apps/api src/subscriptions). The owner buys or renews a plan from
+// their wallet (PlanPurchaseSheet); the platform admin can still set one by hand.
 
 const DAY_MS = 86_400_000;
 const SOON_DAYS = 7;
 
 /** Loads the owner's subscription; null while loading or if it failed (the UI just hides). */
 export function useMySubscription(token: string | null | undefined, reloadKey?: unknown) {
+  // reloadKey: bump it to re-read (e.g. after buying a plan)
   const [sub, setSub] = useState<OwnerSubscription | null>(null);
   useEffect(() => {
     if (!token) return;
@@ -61,15 +63,27 @@ function Usage({ icon: Icon, label, used, limit, none }: { icon: typeof Users; l
 }
 
 /** Settings page: plan, end date and how much of each limit is used. */
-export function SubscriptionCard({ sub, className }: { sub: OwnerSubscription | null; className?: string }) {
+export function SubscriptionCard({ sub, className, token, onChanged }: { sub: OwnerSubscription | null; className?: string; token?: string | null; onChanged?: () => void }) {
+  const [buying, setBuying] = useState(false);
   if (!sub) return null;
+  const buy = token && (
+    <>
+      <Button block variant="secondary" onClick={() => setBuying(true)}>
+        {sub.status === "none" || !sub.plan ? "خرید پلن از کیف پول" : "تمدید یا تغییر پلن از کیف پول"}
+      </Button>
+      <PlanPurchaseSheet token={token} sub={sub} open={buying} onClose={() => setBuying(false)} onBought={() => onChanged?.()} />
+    </>
+  );
   if (sub.status === "none" || !sub.plan) {
     return (
-      <Card className={cx("p-4 text-sm leading-7 text-app-muted", className)}>
-        هنوز پلنی برای سالن شما ثبت نشده و فعلاً محدودیتی ندارید.{" "}
-        <Link href="/#pricing" className="font-bold text-app-accent">
-          دیدن پلن‌ها
-        </Link>
+      <Card className={cx("flex flex-col gap-3 p-4 text-sm leading-7 text-app-muted", className)}>
+        <p>
+          هنوز پلنی برای سالن شما ثبت نشده و فعلاً محدودیتی ندارید.{" "}
+          <Link href="/#pricing" className="font-bold text-app-accent">
+            دیدن پلن‌ها
+          </Link>
+        </p>
+        {buy}
       </Card>
     );
   }
@@ -111,17 +125,19 @@ export function SubscriptionCard({ sub, className }: { sub: OwnerSubscription | 
       <Usage icon={MessageSquareText} label="پیامک این ماه" used={sub.sms.sent} limit={sub.sms.limit} none="در این پلن نیست" />
       {sub.sms.limit !== 0 && (
         <p className="-mt-2 ps-8 text-xs leading-6 text-app-muted">
-          هر ۷۰ نویسه یک پیامک حساب می‌شود؛ پیامک «وقت نوبت بعدی» (با لینک رزرو) معمولاً ۲ پیامک است.
+          محدودیتی ندارد؛ هزینه هر پیامک نوبت (برای مشتری یا آرایشگر) از کیف پول آرایشگرِ همان نوبت کم می‌شود و در «کیف پول» دیده می‌شود.
         </p>
       )}
 
-      <p className="text-xs leading-6 text-app-muted">
-        برای تمدید یا تغییر پلن{" "}
-        <Link href="/contact" className="font-bold text-app-accent">
-          با پشتیبانی تماس بگیرید
-        </Link>
-        .
-      </p>
+      {buy || (
+        <p className="text-xs leading-6 text-app-muted">
+          برای تمدید یا تغییر پلن{" "}
+          <Link href="/contact" className="font-bold text-app-accent">
+            با پشتیبانی تماس بگیرید
+          </Link>
+          .
+        </p>
+      )}
     </Card>
   );
 }
@@ -132,7 +148,7 @@ export function SubscriptionNotice({ sub, seats, className }: { sub: OwnerSubscr
   const left = daysLeft(sub);
   let text: string | null = null;
   if (sub.status === "expired") {
-    text = "اشتراک سالن به پایان رسیده است؛ تا تمدید، افزودن آرایشگر و پیامک یادآوری متوقف است.";
+    text = "اشتراک سالن به پایان رسیده است؛ تا تمدید (از کیف پول، در تنظیمات)، افزودن آرایشگر و پیامک یادآوری متوقف است.";
   } else if (left !== null && left <= SOON_DAYS) {
     text = `${toPersianDigits(left)} روز تا پایان اشتراک سالن مانده است.`;
   } else if (seats && stylistSeatsFull(sub)) {

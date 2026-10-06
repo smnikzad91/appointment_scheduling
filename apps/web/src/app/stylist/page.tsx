@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
+import WalletBalanceCard from "@/components/app/WalletBalanceCard";
 import { CalendarCheck2, CalendarClock, ChevronLeft, Clock3, Coffee, Hourglass, QrCode, Receipt, Wallet } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMyStylistProfile, listMyAppointments, updateMyAppointmentStatus, type SelfStylist, type StylistAppointment } from "@/lib/api/stylistSelf";
@@ -51,7 +52,7 @@ export default function StylistOverviewPage() {
   useEffect(reload, [reload]);
 
   const actions = useAppointmentActions(
-    useCallback((id, status) => updateMyAppointmentStatus(token!, id, status), [token]),
+    useCallback((id, status, balanceMethod) => updateMyAppointmentStatus(token!, id, status, balanceMethod), [token]),
     reload,
   );
 
@@ -129,6 +130,7 @@ export default function StylistOverviewPage() {
       {error && <div className="mt-3"><ErrorBanner onRetry={reload}>{error}</ErrorBanner></div>}
 
       <ReviewsLinkCard token={token} scope="stylist" onlyWhenPending className="mt-3" />
+      <WalletBalanceCard href="/stylist/wallet" className="mt-3" />
       <LinkCard href="/stylist/share" icon={QrCode} title="کیت معرفی من" subtitle="لینک رزرو مستقیم با شما، کد QR و پوستر" className="mt-3" />
 
       <div className="mt-3 grid grid-cols-3 gap-2.5">

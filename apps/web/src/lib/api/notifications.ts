@@ -26,16 +26,18 @@ export interface BookingData {
   /** NEW_BOOKING: made by the salon rather than online. */
   bySalon?: boolean;
   /** BOOKING_CANCELLED: who cancelled. */
-  cancelledBy?: "CUSTOMER" | "SALON" | "STYLIST";
+  cancelledBy?: "CUSTOMER" | "SALON" | "STYLIST" | "SYSTEM";
   /** BOOKING_UPDATED: who changed it, and the start time before the change. */
   updatedBy?: "SALON" | "STYLIST";
   previousStartAt?: string;
+  /** BALANCE_REQUESTED / BALANCE_PAID: the rest of the price, from the customer's wallet. */
+  amountToman?: number;
 }
 
 export interface PayoutData {
   payoutId: string;
   amountToman: number;
-  method: "CASH" | "CARD_TO_CARD" | "BANK_TRANSFER" | "OTHER";
+  method: "CASH" | "CARD_TO_CARD" | "BANK_TRANSFER" | "OTHER" | "WALLET";
   paidAt: string;
   note: string | null;
 }
@@ -67,6 +69,8 @@ export type AppNotification = {
   | { type: "PAYOUT_RECORDED"; data: PayoutData }
   | { type: "BOOKING_CONFIRMED"; data: BookingData }
   | { type: "BOOKING_UPDATED"; data: BookingData }
+  | { type: "BALANCE_REQUESTED"; data: BookingData }
+  | { type: "BALANCE_PAID"; data: BookingData }
   | { type: "REVIEW_APPROVED"; data: ReviewApprovedData }
   | { type: "SLOT_OPENED"; data: SlotOpenedData }
 );

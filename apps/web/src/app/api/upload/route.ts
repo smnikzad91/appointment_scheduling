@@ -20,7 +20,7 @@ function sniffImage(b: Buffer): "jpg" | "png" | "gif" | "webp" | null {
   return null;
 }
 
-const ALLOWED_FOLDERS = ["tickets", "deposits", "salons", "stylists", "banners", "expenses", "salon-expenses"];
+const ALLOWED_FOLDERS = ["tickets", "salons", "stylists", "banners", "expenses", "salon-expenses"];
 
 export async function POST(req: NextRequest) {
   const session = await requestSession();

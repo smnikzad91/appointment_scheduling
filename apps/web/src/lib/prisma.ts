@@ -2,11 +2,20 @@ import { PrismaClient } from "@appointment-scheduling/database";
 
 const globalForPrisma = global as typeof global & { prisma?: PrismaClient };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+// At most 5 connections per process unless DATABASE_URL says otherwise. Prisma's default
+// (2 × CPUs + 1 = 9 here) × 2 cluster workers, doubled while a deploy's reload overlaps old and
+// new workers, plus the build's own workers, went past salon_web's 40-connection limit on
+// 2026-10-05 («too many connections for role "salon_web"»).
+function pooledUrl(): string | undefined {
+  const url = process.env.DATABASE_URL;
+  if (!url || /[?&]connection_limit=/.test(url)) return undefined;
+  return `${url}${url.includes("?") ? "&" : "?"}connection_limit=5`;
 }
+
+// One client per process, in production too: Next can evaluate this module in several server
+// bundles, and each `new PrismaClient()` opens its own pool.
+export const prisma: PrismaClient =
+  globalForPrisma.prisma ?? (globalForPrisma.prisma = new PrismaClient(pooledUrl() ? { datasourceUrl: pooledUrl() } : undefined));
 
 /**
  * True only for Prisma's "record to update/delete not found" (P2025). Routes use this to return

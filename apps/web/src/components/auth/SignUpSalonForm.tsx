@@ -16,6 +16,9 @@ import { planFeatureLines, planPriceLabel, type PricingPlanData } from "@/lib/pr
 import { SERVICE_LOCATIONS, SERVICE_LOCATION_HINT, SERVICE_LOCATION_LABEL, type SalonKind, type ServiceLocation } from "@/lib/independent";
 import { useBackgroundDraft } from "@/lib/useBackgroundDraft";
 import { toastError } from "@/lib/toastError";
+import PhoneCodeStep from "@/components/guest/PhoneCodeStep";
+import { requestOtp } from "@/lib/api/bookings";
+import { persianApiError } from "@/lib/api/errorMessages";
 
 export type SignUpPlan = Pick<PricingPlanData, "id" | "name" | "monthlyPriceToman" | "maxStylists" | "smsPerMonth" | "features" | "recommended">;
 
@@ -47,6 +50,7 @@ export default function SignUpSalonForm({
   const [address, setAddress] = useState("");
   const [pin, setPin] = useState<GeoLocation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [codeSent, setCodeSent] = useState<{ devCode?: string } | null>(null);
 
   // The choices that aren't plain text fields (FormDraftKeeper brings those back), kept if the OS
   // kills the app while they're in another app — e.g. fetching the salon's address.
@@ -92,7 +96,18 @@ export default function SignUpSalonForm({
     }
 
     setLoading(true);
+    try {
+      setCodeSent(await requestOtp(phone, "register"));
+    } catch (err) {
+      toastError(persianApiError(err, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید"));
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // The phone is confirmed by SMS first; then the account and the business are created with it.
+  const createAccount = async (code: string) => {
+    if (!pin) return; // checked before the code was sent
     const res = await fetch("/api/auth/register-salon-owner", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -101,6 +116,7 @@ export default function SignUpSalonForm({
         lastName,
         phone,
         password,
+        code,
         salonName,
         province: place.province,
         city: place.city,
@@ -121,7 +137,6 @@ export default function SignUpSalonForm({
 
     if (!res.ok) {
       toastError(data.error || "خطا در ثبت‌نام");
-      setLoading(false);
       return;
     }
 
@@ -157,6 +172,18 @@ export default function SignUpSalonForm({
         </>
       }
     >
+      {codeSent ? (
+        <PhoneCodeStep
+          phone={phone}
+          devCode={codeSent.devCode}
+          submitLabel={independent ? "تایید و ثبت کسب‌وکار" : "تایید و ثبت سالن"}
+          loadingLabel="در حال ثبت‌نام…"
+          onSubmit={createAccount}
+          onResend={() => requestOtp(phone, "register")}
+          onBack={() => setCodeSent(null)}
+          backLabel="بازگشت به فرم"
+        />
+      ) : (
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
         <div role="radiogroup" aria-label="نوع کسب‌وکار" className="g-rise grid grid-cols-2 gap-2.5" style={rise(2.5)}>
@@ -317,10 +344,11 @@ export default function SignUpSalonForm({
           </>
         )}
 
-        <GradientButton type="submit" loading={loading} loadingLabel="در حال ثبت‌نام…" className="g-rise mt-2" style={rise(8)}>
+        <GradientButton type="submit" loading={loading} loadingLabel="در حال ارسال کد…" className="g-rise mt-2" style={rise(8)}>
           {independent ? "ثبت‌نام آرایشگر مستقل" : "ثبت‌نام و ساخت سالن"}
         </GradientButton>
       </form>
+      )}
     </AuthCard>
   );
 }

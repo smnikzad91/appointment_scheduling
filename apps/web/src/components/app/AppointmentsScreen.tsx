@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, CalendarRange, CalendarX2, List } from "lucide-react";
 import { salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
-import { AppointmentList, AppointmentSheet, useAppointmentActions, type AppAppointment, type AppointmentStatus } from "./appointments";
+import { AppointmentList, AppointmentSheet, useAppointmentActions, type AppAppointment, type AppointmentStatus, type BalanceMethod } from "./appointments";
 import SalonBookingSheet from "./SalonBookingSheet";
 import AppointmentCalendar from "./AppointmentCalendar";
 import AppointmentWeek from "./AppointmentWeek";
@@ -39,7 +39,7 @@ export default function AppointmentsScreen({
   /** e.g. the salon's "new booking" button */
   headerAction?: React.ReactNode;
   load: () => Promise<AppAppointment[]>;
-  updateStatus: (id: string, status: AppointmentStatus) => Promise<unknown>;
+  updateStatus: (id: string, status: AppointmentStatus, balanceMethod?: BalanceMethod) => Promise<unknown>;
 }) {
   const [appointments, setAppointments] = useState<AppAppointment[] | null>(null);
   const [error, setError] = useState<string | null>(null);

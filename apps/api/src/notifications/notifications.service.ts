@@ -16,8 +16,10 @@ export interface BookingData {
   startAt: string; // ISO instant
   /** NEW_BOOKING: booked by the salon (phone/walk-in) rather than online. */
   bySalon?: boolean;
-  /** BOOKING_CANCELLED: who cancelled. */
-  cancelledBy?: "CUSTOMER" | "SALON" | "STYLIST";
+  /** BALANCE_REQUESTED / BALANCE_PAID: the rest of the price, from the customer's wallet. */
+  amountToman?: number;
+  /** BOOKING_CANCELLED: who cancelled; SYSTEM = an unconfirmed prepaid booking, refunded (wallet/stale-prepayment). */
+  cancelledBy?: "CUSTOMER" | "SALON" | "STYLIST" | "SYSTEM";
   /** BOOKING_UPDATED: who changed it, and the start time before the change. */
   updatedBy?: "SALON" | "STYLIST";
   previousStartAt?: string;

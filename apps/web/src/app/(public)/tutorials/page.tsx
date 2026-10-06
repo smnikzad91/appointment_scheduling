@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
+import { seoMetadata } from "@/lib/pageSeo";
 import { LifeBuoy } from "lucide-react";
 import TutorialsIndex from "@/components/tutorials/TutorialsIndex";
 import { TUTORIALS, TUTORIAL_ROLES, type TutorialRole } from "@/content/tutorials";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME } from "@/lib/site";
 import { toPersianDigits } from "@/lib/persian";
 import { rise } from "@/components/guest/motion";
 
-export const metadata: Metadata = {
-  title: "راهنمای استفاده",
-  description: `راهنمای قدم‌به‌قدم ${SITE_NAME} با تصویر برای صاحبان سالن، آرایشگرها و مشتری‌ها: ثبت سالن، آرایشگرها، ساعت کاری، رزرو آنلاین و پیگیری نوبت.`,
-  alternates: { canonical: `${SITE_URL}/tutorials` },
-};
+// Edited at /admin/seo-settings; static pages refresh it every minute
+export const revalidate = 60;
+
+export function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("tutorials", "/tutorials");
+}
 
 export default async function TutorialsPage({ searchParams }: { searchParams: Promise<{ role?: string }> }) {
   const { role } = await searchParams;

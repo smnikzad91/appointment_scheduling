@@ -28,10 +28,11 @@ function appt(overrides: Record<string, unknown> = {}) {
 
 type Row = ReturnType<typeof appt>;
 
-function setup(rows: Row[], claimCount = 1, allowance = Infinity, nudgeRows: Row[] = [], newRows: Row[] = []) {
-  // Answers each of the tick's three queries with its own rows, filtered by status like the DB.
+function setup(rows: Row[], claimCount = 1, allowance = Infinity, nudgeRows: Row[] = [], newRows: Row[] = [], openRows: Row[] = []) {
+  // Answers each of the tick's queries with its own rows, filtered by status like the DB.
   const answer = (where: Record<string, unknown>) => {
-    const list = where.newBookingTextedAt === null ? newRows : where.confirmNudgedAt === null ? nudgeRows : rows;
+    const list =
+      where.stateNudgedAt === null ? openRows : where.newBookingTextedAt === null ? newRows : where.confirmNudgedAt === null ? nudgeRows : rows;
     return Promise.resolve(typeof where.status === 'string' ? list.filter((r) => r.status === where.status) : list);
   };
   const prisma = {
@@ -58,13 +59,13 @@ const updates = (prisma: ReturnType<typeof setup>['prisma'], id = 'a1') =>
   prisma.appointment.update.mock.calls.filter((c) => c[0].where.id === id).map((c) => c[0].data);
 
 describe('ReminderService.tick', () => {
-  it("reminds an independent stylist's customer of the services and the stylist's first name, not the business", async () => {
+  it("reminds an independent stylist's customer of the stylist's first name only — no business, no services", async () => {
     const { service, sms } = setup([
       appt({ salon: { name: 'Nail artist', timezone: 'Asia/Tehran', kind: 'INDEPENDENT' }, stylist: { displayName: 'سارا', user: { phone: '09120000002', firstName: 'سارا' } } }),
     ]);
     await service.tick(NOW);
     const customer = sms.send.mock.calls.map((c) => c[0]).find((m) => m.kind === 'reminder-customer');
-    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ کوتاهی مو و ۱ خدمت دیگر با سارا');
+    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ با سارا');
   });
 
   it('texts both the customer and the stylist, in salon-local time, then marks the booking done', async () => {
@@ -73,8 +74,9 @@ describe('ReminderService.tick', () => {
 
     const [customer, stylist] = sms.send.mock.calls.map((c) => c[0]);
     expect(customer).toMatchObject({ kind: 'reminder-customer', to: '09120000001', params: { time: '۱۴:۲۵', salon: 'سالن رز', stylist: 'سارا' } });
-    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ کوتاهی مو و ۱ خدمت دیگر در سالن رز با سارا');
-    expect(stylist).toMatchObject({ kind: 'reminder-stylist', to: '09120000002', params: { customer: 'نگار رضایی', services: 'کوتاهی مو، براشینگ' } });
+    expect(customer.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ در سالن رز با سارا');
+    expect(stylist).toMatchObject({ kind: 'reminder-stylist', to: '09120000002', params: { customer: 'نگار رضایی' } });
+    expect(stylist.text).toBe('یادآوری نوبتت: ساعت ۱۴:۲۵ نوبت نگار رضایی');
 
     const data = updates(prisma);
     expect(data).toContainEqual({ customerReminderSentAt: NOW });
@@ -213,6 +215,14 @@ describe('ReminderService quiet hours (22:00–08:00 Tehran)', () => {
     expect(sms.send).toHaveBeenCalledTimes(1);
   });
 
+  it('a prepaid booking at 02:00 texts the stylist right away (and says it is prepaid)', async () => {
+    const paid = nightBooking({ prepaidToman: 190_000 });
+    const { service, sms } = setup([], 1, Infinity, [], [paid]);
+    expect(await service.tick(at('02:00'))).toBe(1);
+    expect(sms.send.mock.calls[0][0].kind).toBe('new-booking-stylist');
+    expect(sms.send.mock.calls[0][0].text).toContain('پیش‌پرداخت');
+  });
+
   it('holds the nudge back overnight too', async () => {
     const pendingNudge = nightBooking({ newBookingTextedAt: at('20:30', '2026-10-05') });
     const { service, sms } = setup([], 1, Infinity, [pendingNudge]);
@@ -234,5 +244,38 @@ describe('ReminderService quiet hours (22:00–08:00 Tehran)', () => {
     const { service, sms } = setup([early]);
     expect(await service.tick(at('06:00'))).toBe(2);
     expect(sms.send.mock.calls.map((c) => c[0].kind)).toEqual(['reminder-customer', 'reminder-stylist']);
+  });
+});
+
+describe('ReminderService: booking still open 24 h after its end', () => {
+  const at = (hhmm: string, day = '2026-10-06') => new Date(`${day}T${hhmm}:00+03:30`);
+  const open = (over: Record<string, unknown> = {}) =>
+    appt({ id: 'o1', status: 'CONFIRMED', startAt: at('10:00', '2026-10-04'), endAt: at('11:00', '2026-10-04'), ...over });
+
+  it('texts the stylist once to set the state, in the daytime', async () => {
+    const { service, sms, prisma } = setup([], 1, Infinity, [], [], [open()]);
+    expect(await service.tick(at('12:00'))).toBe(1);
+    const msg = sms.send.mock.calls[0][0];
+    expect(msg).toMatchObject({ kind: 'state-nudge-stylist', to: '09120000002', params: { customer: 'نگار رضایی' } });
+    expect(msg.text).toContain('هنوز باز است');
+    expect(msg.text.length).toBeLessThanOrEqual(70);
+    const where = prisma.appointment.findMany.mock.calls.at(-1)![0].where;
+    const endAt = where.endAt as { lt: Date; gt: Date };
+    expect(endAt.lt).toEqual(new Date(at('12:00').getTime() - 24 * 3600_000));
+    expect(endAt.gt).toEqual(new Date(at('12:00').getTime() - 7 * 24 * 3600_000));
+    expect(prisma.appointment.updateMany).toHaveBeenCalledWith({ where: { id: 'o1', stateNudgedAt: null }, data: { stateNudgedAt: at('12:00') } });
+  });
+
+  it('waits for quiet hours to end', async () => {
+    const { service, sms } = setup([], 1, Infinity, [], [], [open()]);
+    expect(await service.tick(at('23:30'))).toBe(0);
+    expect(sms.send).not.toHaveBeenCalled();
+  });
+
+  it('a prepaid one is texted even with no SMS allowance left; an unpaid one is not', async () => {
+    const paid = setup([], 1, 0, [], [], [open({ prepaidToman: 190_000 })]);
+    expect(await paid.service.tick(at('12:00'))).toBe(1);
+    const unpaid = setup([], 1, 0, [], [], [open()]);
+    expect(await unpaid.service.tick(at('12:00'))).toBe(0);
   });
 });

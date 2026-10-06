@@ -53,6 +53,32 @@ export function getMySubscription(token: string) {
   return salonApiFetch<OwnerSubscription>("/salons/mine/subscription", { headers: authHeaders(token) });
 }
 
+export interface PurchasablePlan {
+  id: string;
+  name: string;
+  monthlyPriceToman: number;
+  maxStylists: number | null;
+  smsPerMonth: number | null;
+  recommended: boolean;
+}
+
+/** Plans the owner can buy from their wallet (visible, with a set price), and the credit for
+ * switching away from the running bought plan (its unused part, back to the wallet). */
+export function getPurchasablePlans(token: string) {
+  return salonApiFetch<{ plans: PurchasablePlan[]; currentPlanId: string | null; switchCreditToman: number }>("/salons/mine/subscription/plans", {
+    headers: authHeaders(token),
+  });
+}
+
+/** Buy or renew `months` of a plan from the owner's wallet (402 when the balance is short). */
+export function purchasePlan(token: string, planId: string, months: number) {
+  return salonApiFetch<{ planName: string; months: number; amountToman: number; creditToman: number; expiresAt: string }>("/salons/mine/subscription/purchase", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ planId, months }),
+  });
+}
+
 /** Fired on window after the salon's name or logo changes, so the app bar can refresh. */
 export const SALON_UPDATED_EVENT = "salon:updated";
 
@@ -287,6 +313,11 @@ export interface OwnerAppointment {
   priceToman: number;
   notes: string | null;
   stylistShareToman: number | null;
+  prepaidToman?: number;
+  /** The rest after the pre-payment, once COMPLETED: ON_SITE (received directly) or WALLET (requested from the customer's wallet). */
+  balanceMethod?: "ON_SITE" | "WALLET" | null;
+  balanceDueToman?: number;
+  balancePaidAt?: string | null;
   services: { serviceId: string; priceToman: number; service: { name: string } }[];
   stylist: { displayName: string };
   customer: { firstName: string; lastName: string; phone: string | null };
@@ -296,11 +327,12 @@ export function listMySalonAppointments(token: string) {
   return salonApiFetch<OwnerAppointment[]>("/appointments/salon/mine", { headers: authHeaders(token) });
 }
 
-export function updateAppointmentStatus(token: string, id: string, status: OwnerAppointment["status"]) {
+/** `balanceMethod` (COMPLETED only): how the rest of the price is received — on site or from the customer's wallet. */
+export function updateAppointmentStatus(token: string, id: string, status: OwnerAppointment["status"], balanceMethod?: "ON_SITE" | "WALLET") {
   return salonApiFetch<OwnerAppointment>(`/appointments/${id}/status`, {
     method: "PATCH",
     headers: authHeaders(token),
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, ...(balanceMethod && { balanceMethod }) }),
   });
 }
 

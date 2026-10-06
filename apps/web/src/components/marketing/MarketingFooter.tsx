@@ -9,7 +9,7 @@ const COLUMNS = [
     links: [
       { label: "امکانات", href: "/#features" },
       { label: "تعرفه‌ها", href: "/#pricing" },
-      { label: "اپلیکیشن‌ها", href: "/#apps" },
+      { label: "اپلیکیشن", href: "/download-app" },
     ],
   },
   {
@@ -17,6 +17,7 @@ const COLUMNS = [
     links: [
       { label: "سؤالات متداول", href: "/#faq" },
       { label: "مرکز راهنما", href: "/tutorials" },
+      { label: "وبلاگ", href: "/blog" },
       { label: "سؤالات متداول سالن‌ها", href: "/faq" },
       { label: "تماس با ما", href: "/contact" },
     ],

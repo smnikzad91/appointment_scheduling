@@ -67,6 +67,13 @@ export class AppointmentsController {
   @Roles(Role.CUSTOMER, Role.STYLIST, Role.SALON_OWNER)
   updateStatus(@Req() req: Request, @Param("id") id: string, @Body() dto: UpdateAppointmentStatusDto) {
     const user = req.user as JwtPayload;
-    return this.appointmentsService.updateStatus(user, id, dto.status);
+    return this.appointmentsService.updateStatus(user, id, dto.status, dto.balanceMethod);
+  }
+
+  /** The customer pays the rest of a completed booking from their wallet (when the stylist asked for it). */
+  @Post(":id/pay-balance")
+  @Roles(Role.CUSTOMER)
+  payBalance(@Req() req: Request, @Param("id") id: string) {
+    return this.appointmentsService.payBalance((req.user as JwtPayload).sub, id);
   }
 }

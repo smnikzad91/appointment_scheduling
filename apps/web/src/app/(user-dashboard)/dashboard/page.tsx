@@ -36,7 +36,7 @@ export default function CustomerHomePage() {
 
   const links = [
     { href: "/dashboard/bookings", label: "نوبت‌های من", icon: CalendarDays },
-    { href: "/dashboard/finance", label: "کیف پول و کارت‌ها", icon: Wallet },
+    { href: "/dashboard/finance", label: "کیف پول", icon: Wallet },
     { href: "/dashboard/support", label: "پشتیبانی", icon: LifeBuoy },
     { href: "/dashboard/profile", label: "ویرایش پروفایل", icon: UserRound },
     { href: "/dashboard/account", label: "امنیت و رمز عبور", icon: ShieldCheck },

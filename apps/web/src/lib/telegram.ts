@@ -12,6 +12,9 @@ function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** A bot token and channel are set (TELEGRAM_BOT_TOKEN / TELEGRAM_CHANNEL). Without them nothing is sent automatically. */
+export const telegramConfigured = () => !!(TOKEN && CHANNEL);
+
 interface SendOptions {
   replyMarkup?: object;
 }
