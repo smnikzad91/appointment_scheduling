@@ -283,6 +283,8 @@ model SocialLink {
   @@map("social_links")
 }
 
+/// Unused since PageSeo (2026-10-06): kept only so the deploy that introduced page_seo didn't break
+/// the code still running during it. Drop it (model + table) in the next migration.
 model SiteSeo {
   id          String   @id @default(cuid())
   title       String
@@ -292,6 +294,19 @@ model SiteSeo {
   updatedAt   DateTime @updatedAt
 
   @@map("site_seo")
+}
+
+/// Search-engine title / description / keywords of one public page (apps/web lib/pageSeoDefaults.ts
+/// lists the keys and their defaults; an empty field falls back to the default). Edited at
+/// /admin/seo-settings. Replaced the single home-page SiteSeo row.
+model PageSeo {
+  key         String   @id
+  title       String   @default("")
+  description String   @default("")
+  keywords    String[] @default([])
+  updatedAt   DateTime @updatedAt
+
+  @@map("page_seo")
 }
 
 model ContactMessage {

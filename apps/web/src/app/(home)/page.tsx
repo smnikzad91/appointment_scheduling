@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
+import { seoMetadata } from "@/lib/pageSeo";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import Hero from "@/components/marketing/Hero";
 import Showcase from "@/components/marketing/Showcase";
@@ -10,7 +10,7 @@ import Pricing from "@/components/marketing/Pricing";
 import Faq from "@/components/marketing/Faq";
 import FinalCta from "@/components/marketing/FinalCta";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
-import { SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { JsonLd } from "@/components/common/JsonLd";
 
 // What the site is, for search engines: the brand (Organization + logo), the site with its salon
@@ -54,21 +54,8 @@ const homeJsonLd = {
 
 export const dynamic = "force-dynamic";
 
-const defaultSeo = { title: SITE_TITLE, description: SITE_DESCRIPTION };
-
-export async function generateMetadata(): Promise<Metadata> {
-  const seo = await prisma.siteSeo.findFirst();
-  const title = seo?.title || defaultSeo.title;
-  const description = seo?.description || defaultSeo.description;
-
-  return {
-    title: { absolute: title },
-    description,
-    // explicit: an `undefined` here clears the layout's list instead of inheriting it
-    keywords: seo?.keywords?.length ? seo.keywords : SITE_KEYWORDS,
-    alternates: { canonical: SITE_URL },
-    openGraph: { title, description, type: "website" },
-  };
+export function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("home", "/", { absoluteTitle: true });
 }
 
 export default function HomePage() {

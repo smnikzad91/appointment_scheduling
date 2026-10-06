@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { seoMetadata } from "@/lib/pageSeo";
 import Link from "next/link";
 import { findProvince } from "@appointment-scheduling/iran-locations";
 import SalonSearch from "@/components/discovery/SalonSearch";
@@ -15,7 +16,8 @@ interface PageProps {
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const { province, city } = await searchParams;
   const where = city || province;
-  const title = where ? `سالن‌های زیبایی ${where}` : "جستجوی سالن زیبایی";
+  if (!where) return seoMetadata("salons", "/salons");
+  const title = `سالن‌های زیبایی ${where}`;
   return {
     title,
     description: `${title} — مقایسه امتیاز، خدمات و فاصله، و رزرو آنلاین نوبت در ${SITE_NAME}.`,

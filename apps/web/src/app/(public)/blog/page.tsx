@@ -1,29 +1,13 @@
 import { Metadata } from "next";
+import { seoMetadata } from "@/lib/pageSeo";
 import BlogPageClient from "@/components/public/BlogPageClient";
 import { prisma } from "@/lib/prisma";
-import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "وبلاگ",
-  description: "راهنمای مدیریت سالن زیبایی، جذب مشتری و نوبت‌دهی آنلاین. مقالات کاربردی برای صاحبان سالن و آرایشگرها.",
-  keywords: ["وبلاگ", "مدیریت سالن زیبایی", "نوبت‌دهی آنلاین", "آرایشگاه", "نوبتت"],
-  alternates: { canonical: `${SITE_URL}/blog` },
-  openGraph: {
-    title: "وبلاگ | نوبتت",
-    description: "راهنمای مدیریت سالن زیبایی و نوبت‌دهی آنلاین.",
-    url: `${SITE_URL}/blog`,
-    type: "website",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "وبلاگ نوبتت" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "وبلاگ | نوبتت",
-    description: "راهنمای مدیریت سالن زیبایی و نوبت‌دهی آنلاین.",
-    images: ["/opengraph-image"],
-  },
-};
+export function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("blog", "/blog");
+}
 
 export default async function BlogPage() {
   const raw = await prisma.blogPost.findMany({

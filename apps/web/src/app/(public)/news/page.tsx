@@ -1,29 +1,13 @@
 import { Metadata } from "next";
+import { seoMetadata } from "@/lib/pageSeo";
 import NewsPageClient from "@/components/public/NewsPageClient";
 import { prisma } from "@/lib/prisma";
-import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "اخبار",
-  description: "آخرین اخبار، به‌روزرسانی‌ها و اطلاعیه‌های نوبتت. از جدیدترین امکانات نوبت‌دهی آنلاین سالن‌ها مطلع شوید.",
-  keywords: ["اخبار نوبتت", "به‌روزرسانی محصول", "اطلاعیه"],
-  alternates: { canonical: `${SITE_URL}/news` },
-  openGraph: {
-    title: "اخبار | نوبتت",
-    description: "آخرین اخبار و اطلاعیه‌های نوبتت.",
-    url: `${SITE_URL}/news`,
-    type: "website",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "اخبار نوبتت" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "اخبار | نوبتت",
-    description: "آخرین اخبار و اطلاعیه‌های نوبتت.",
-    images: ["/opengraph-image"],
-  },
-};
+export function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("news", "/news");
+}
 
 export default async function NewsPage() {
   const raw = await prisma.newsItem.findMany({

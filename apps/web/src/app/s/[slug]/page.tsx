@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { fillSeoTemplate, getPageSeo } from "@/lib/pageSeo";
 import { notFound } from "next/navigation";
 import { getSalonBySlug } from "@/lib/api/salons";
 import SalonBrandProvider from "@/components/salon/SalonBrandProvider";
@@ -15,7 +16,7 @@ import StylistList from "@/components/salon/StylistList";
 import Gallery from "@/components/salon/Gallery";
 import Reviews from "@/components/salon/Reviews";
 import InfoSection from "@/components/salon/InfoSection";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_URL } from "@/lib/site";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -43,16 +44,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const salon = await getSalonBySlug(slug);
   if (!salon) return {};
-  const description =
-    salon.description ||
-    (salon.kind === "INDEPENDENT"
-      ? `${salon.name}، آرایشگر مستقل در ${salon.city} — مشاهده خدمات و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`
-      : `${salon.name}، سالن زیبایی در ${salon.city} — مشاهده خدمات، آرایشگرها و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`);
-
-  const title = `${salon.name} — رزرو آنلاین نوبت${salon.city ? ` در ${salon.city}` : ""}`;
+  const seo = await getPageSeo(salon.kind === "INDEPENDENT" ? "independent-page" : "salon-page");
+  const vars = { name: salon.name, city: salon.city };
+  const description = salon.description || fillSeoTemplate(seo.description, vars);
+  const title = fillSeoTemplate(seo.title, vars);
   return {
     title,
     description,
+    ...(seo.keywords.length ? { keywords: seo.keywords } : {}),
     // Prefill links (?book=1…) are the same page — point search engines at the clean URL.
     alternates: { canonical: `${SITE_URL}/s/${encodeURIComponent(slug)}` },
     openGraph: {

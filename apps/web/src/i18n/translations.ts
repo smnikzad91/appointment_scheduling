@@ -59,7 +59,7 @@ const translations = {
 
     // SEO Settings admin page
     seoSettingsTitle: "SEO Settings",
-    seoSettingsSubtitle: "Controls the title, description and keywords search engines see for the public home page.",
+    seoSettingsSubtitle: "The title, description and keywords search engines see for each public page. An empty field uses the default shown in grey.",
     seoFieldTitle: "Page Title *",
     seoFieldTitlePlaceholder: "e.g. Nobata — online booking for beauty salons",
     seoFieldDescription: "Meta Description *",
@@ -73,6 +73,16 @@ const translations = {
     seoLoading: "Loading…",
     seoError: "Failed to load SEO settings.",
     seoLastUpdated: "Last updated",
+    seoSaveError: "Saving failed.",
+    seoCustom: "Customised",
+    seoUsingDefault: "Default",
+    seoUseDefault: "Use the default",
+    seoResetConfirm: "Clear this page's values and use the defaults?",
+    seoTitleSuffixHint: "« | نوبتت» is added to the end automatically.",
+    seoTitleHomeHint: "Used exactly as written (nothing is added).",
+    seoPlaceholdersHint: "Template — filled in per page:",
+    seoSalonDescriptionHint: "Used only when the salon hasn't written its own description.",
+    seoDefaultKeywords: "Default keywords",
 
     // FAQ admin page
     faqTitle: "Manage FAQs",
@@ -1125,7 +1135,7 @@ const translations = {
 
     // SEO Settings admin page
     seoSettingsTitle: "تنظیمات سئو",
-    seoSettingsSubtitle: "عنوان، توضیحات و کلمات کلیدی که موتورهای جستجو برای صفحه اصلی سایت می‌بینند را کنترل می‌کند.",
+    seoSettingsSubtitle: "عنوان، توضیحات و کلمات کلیدی که موتورهای جستجو برای هر صفحه عمومی می‌بینند. فیلد خالی یعنی مقدار پیش‌فرض (متن خاکستری).",
     seoFieldTitle: "عنوان صفحه *",
     seoFieldTitlePlaceholder: "مثلاً: نوبتت — نوبت‌دهی آنلاین سالن‌های زیبایی",
     seoFieldDescription: "توضیحات متا *",
@@ -1139,6 +1149,16 @@ const translations = {
     seoLoading: "در حال بارگذاری…",
     seoError: "خطا در بارگذاری تنظیمات سئو.",
     seoLastUpdated: "آخرین بروزرسانی",
+    seoSaveError: "ذخیره انجام نشد.",
+    seoCustom: "سفارشی",
+    seoUsingDefault: "پیش‌فرض",
+    seoUseDefault: "برگشت به پیش‌فرض",
+    seoResetConfirm: "مقادیر این صفحه پاک شود و پیش‌فرض‌ها استفاده شوند؟",
+    seoTitleSuffixHint: "« | نوبتت» خودکار به انتهای عنوان اضافه می‌شود.",
+    seoTitleHomeHint: "دقیقاً همین متن استفاده می‌شود (چیزی اضافه نمی‌شود).",
+    seoPlaceholdersHint: "الگو — برای هر صفحه پر می‌شود:",
+    seoSalonDescriptionHint: "فقط وقتی استفاده می‌شود که سالن توضیحات خودش را ننوشته باشد.",
+    seoDefaultKeywords: "کلمات کلیدی پیش‌فرض",
 
     // FAQ admin page
     faqTitle: "مدیریت سوالات متداول",

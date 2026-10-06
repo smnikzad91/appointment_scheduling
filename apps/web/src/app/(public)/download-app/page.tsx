@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { seoMetadata } from "@/lib/pageSeo";
 import { CircleCheck, Download, Hourglass, Info, ShoppingBag, Smartphone, Star } from "lucide-react";
 import { publishedReleases, storeLinks } from "@/lib/appReleases/releases";
 import { rise } from "@/components/guest/motion";
 import { toPersianDigits } from "@/lib/persian";
 import { formatSalonDate } from "@/lib/salonTime";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME } from "@/lib/site";
 
 // «اپلیکیشن»: the one Android app for every role (customer, stylist, salon, independent), laid out
 // like devtrader.ir/download-app — the latest published release (/admin/app-releases) with a direct
@@ -12,11 +13,9 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: `دانلود اپلیکیشن اندروید ${SITE_NAME}`,
-  description: "اپ اندروید نوبتت برای مشتری‌ها، آرایشگرها و سالن‌ها: رزرو و مدیریت نوبت، کیف پول و اعلان‌ها. دانلود مستقیم، کافه‌بازار و مایکت.",
-  alternates: { canonical: `${SITE_URL}/download-app` },
-};
+export function generateMetadata(): Promise<Metadata> {
+  return seoMetadata("download-app", "/download-app");
+}
 
 const STEPS = [
   "روی «دانلود مستقیم» بزنید و منتظر بمانید تا دانلود تمام شود.",
