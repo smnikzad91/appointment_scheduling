@@ -47,5 +47,5 @@ apps/web/public/uploads/demo/
 
 # uptime monitor counters (scripts/uptime-monitor.cjs)
 .uptime-state.json
-.uptime-state.json.tmp
+.uptime-state.json*.tmp
 story-highlights/_preview/

@@ -11,17 +11,17 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to 26.04 from 2026-10-19
     defaults:
       run:
         working-directory: apps/android
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "8.11.1"
       # The release key, when the repo has the secrets (base64 keystore + passwords); else unsigned.
@@ -48,7 +48,7 @@ jobs:
           gradle assembleDirectDebug assembleRelease bundleBazaarRelease bundleMyketRelease \
             testDirectDebugUnitTest --tests 'app.nobatet.update.*' --stacktrace 2>&1 | tee build.log
       # One clearly named file per channel: nobatet-<flavor>-<run number>[-unsigned].apk / .aab, plus
-      # SHA256SUMS. The direct APK is what scripts/publish-apk.sh puts on nobatet.app.
+      # SHA256SUMS. The direct APK is what gets uploaded at nobatet.app/admin/app-releases.
       - name: Collect release files
         shell: bash
         env:
@@ -90,11 +90,11 @@ jobs:
             echo "- \`$(basename "$apk")\`: \`$msg\`" >> "$GITHUB_STEP_SUMMARY"
           done
           exit 0
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nobatet-debug-apk
           path: apps/android/app/build/outputs/apk/direct/debug/*.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nobatet-release
           path: apps/android/dist/*

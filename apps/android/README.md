@@ -43,9 +43,9 @@ website» buttons go through `openInBrowser` so they don't loop back into the ap
 - Flavors (`distribution`): `direct` (APK on nobatet.app, in-app download + install, the only one with
   `REQUEST_INSTALL_PACKAGES`), `bazaar`, `myket` (update button opens the store page). `BuildConfig.DISTRIBUTION`.
   Local builds: `assembleDirectDebug`, tests `testDirectDebugUnitTest`.
-- Updates: the app reads apps/web `public/app-version.json` at start (offer above `latestVersionCode`, require
-  below `minVersionCode`; `apkSha256`/`apkSize` for the in-app install). Publishing steps and signing rules:
-  `RELEASING.md` (`scripts/publish-apk.sh`).
+- Updates: the app reads apps/web `/app-version.json` at start (offer above `latestVersionCode`, require
+  below `minVersionCode`; `apkSha256`/`apkSize` for the in-app install), built from the releases published at
+  /admin/app-releases. Publishing steps and signing rules: `RELEASING.md`.
 - Store texts: `store-listing.md`. Provinces: `app/src/main/assets/iran_provinces.json` is generated from
   packages/iran-locations — regenerate when a county is added.
 

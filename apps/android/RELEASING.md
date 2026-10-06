@@ -32,65 +32,56 @@ Android only installs an update that is signed with **the same key** as the inst
 
 ## Publishing a version on nobatet.app
 
-1. **Pick the CI run.** Actions → *Android* → a green run on `android-app`. Note its **run id** (the
-   number in the URL, `…/actions/runs/<run-id>`) and its **run number** `#<n>`, which is the versionCode.
+Releases are uploaded and published from the admin panel: **/admin/app-releases** («نسخه‌های اپ»).
+`/app-version.json` and the `/download-app` page are built from the published releases, so there is
+no file to edit and nothing to deploy.
+
+1. **Pick the CI run.** Actions → *Android* → a green run on `android-app`. Its **run number** `#<n>`
+   is the versionCode.
 2. **Download the signed direct APK** from the run's artifact `nobatet-release`:
    `nobatet-direct-<n>.apk` (not `-unsigned`).
-3. **Copy it to the server** as `nobatet-<n>.apk` in `APK_DIR` (`/var/lib/nobatet/apk`, set in
-   `apps/web/.env.production`; the folder must be readable by the web app's user).
-   Never replace a file that is already published. Each build has its own name.
-4. **Compute the SHA-256**: `sha256sum /var/lib/nobatet/apk/nobatet-<n>.apk` and `stat -c %s` for the size.
-5. **Update `apps/web/public/app-version.json`** and deploy:
-   ```json
-   {
-     "latestVersionCode": <n>,
-     "latestVersionName": "0.2.0",
-     "minVersionCode": 1,
-     "downloadUrl": "https://nobatet.app/download/nobatet-<n>.apk",
-     "apkSha256": "<lowercase hex from step 4>",
-     "apkSize": <bytes>,
-     "notes": "…"
-   }
-   ```
-   Commit, push, then `npm run deploy`. Check it: `curl -sI https://nobatet.app/download/nobatet-<n>.apk`
-   should return 200 with the right `Content-Length`.
+3. **Upload it** at /admin/app-releases. Fill in:
+   - **version name** and **build number** (= `<n>`). Both must match what's inside the APK.
+   - **اختیاری / اجباری**. Mandatory makes this build the minimum: older builds can't be used until they update.
+   - **release notes**. They show in the update sheet, on /download-app and in the version history.
+   - **انتشار فوری**, or leave it off and publish later from the table.
 
-Steps 3–5 in one go, on the server (the token needs read access to Actions on this repo; it is taken
-from the environment only and never stored):
+   The server reads the APK itself and refuses it when the package isn't `app.nobatet`, the
+   versionCode was already uploaded or isn't above the latest published one, or the signature isn't
+   `ANDROID_CERT_SHA256`. It stores the file as `nobatet-<n>.apk` in `APK_DIR`, outside the repo, and
+   records its SHA-256 and size. The limit is 150 MB.
+4. **Check it**: `curl -s https://nobatet.app/app-version.json` should show `latestVersionCode` = `<n>`
+   with its `apkSha256`. `curl -sI https://nobatet.app/download/nobatet-<n>.apk` should return 200.
 
-```sh
-GITHUB_TOKEN=github_pat_… scripts/publish-apk.sh <run-id> --name 0.2.0 --notes "…"   # [--min <versionCode>]
-```
-
-Rules for `app-version.json`:
-- `latestVersionCode` must be the run number of the APK at `downloadUrl`.
-- `apkSha256` must be the hash of that exact file. Without it the app won't install in-app and opens
-  `downloadUrl` in the browser instead. A wrong hash makes every download fail with «فایل دریافتی سالم نیست».
-- Raise `minVersionCode` only when old builds really can't work any more (for example, an API change).
-  Everyone below it is blocked until they update.
+What `/app-version.json` serves:
+- The latest version is the highest published release. `downloadUrl`, `apkSha256` and `apkSize`
+  come from that release's row.
+- `minVersionCode` is the highest published **mandatory** release, else 1.
+- Make a release mandatory only when old builds really can't work any more (for example, an API
+  change). Everyone below it is blocked until they update.
 
 ## Store releases
 
 Upload `nobatet-bazaar-<n>.aab` (or `.apk`) in the Bazaar developer panel and `nobatet-myket-<n>` in
 Myket's. Use the same key as the direct build, so users can move between channels.
-**The store builds read the same `app-version.json`.** Raise `latestVersionCode`, and especially
-`minVersionCode`, only once the store versions are live. Otherwise store users get an update prompt
+**The store builds read the same `/app-version.json`.** Publish a release on /admin/app-releases,
+and especially a mandatory one, only once the store versions are live. Otherwise store users get an update prompt
 that opens a store page with nothing new (Bazaar normally publishes updates 1–3 hours after upload,
 longer when review is needed).
 
 ## Rolling back
 
-Put the previous values back in `app-version.json` and deploy. Leave the APK files in place. A phone
-that already installed the newer build keeps it: Android doesn't install a lower versionCode over a
-higher one.
+Unpublish the bad release on /admin/app-releases. The previous published release becomes the latest
+again. Unpublished releases can be deleted (the row and the file). A phone that already installed the
+newer build keeps it: Android doesn't install a lower versionCode over a higher one.
 
 ## Checking an update by hand
 
-1. `latestVersionCode` = the installed build's: no sheet.
-2. Installed build + 1, with the real APK and hash: the sheet shows, progress moves, the first time the
+1. The latest published release is the installed build: no sheet.
+2. A newer published release: the sheet shows, progress moves, the first time the
    «نصب از منابع ناشناس» screen opens, then the installer. After the update you're still signed in.
-3. A wrong `apkSha256`: «فایل دریافتی سالم نیست»; the file is deleted and the installer doesn't open.
-4. `minVersionCode` above the installed build: the sheet can't be closed (swipe, back, tap outside).
+3. A download whose hash doesn't match: «فایل دریافتی سالم نیست»; the file is deleted and the installer doesn't open.
+4. A newer **mandatory** release: the sheet can't be closed (swipe, back, tap outside).
 5. Network off mid-download: the sheet says it's waiting for the connection and offers «تلاش دوباره»;
    «بعداً» closes an optional update and the app works normally.
 6. Bazaar build: the button opens Bazaar. `aapt dump permissions nobatet-bazaar-<n>.apk` shows no
