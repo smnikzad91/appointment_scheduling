@@ -143,14 +143,24 @@ private fun TxRow(t: WalletTx) {
 fun WalletBalanceCard(container: AppContainer, onOpen: () -> Unit) {
     val c = LocalAppColors.current
     var balance by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(Unit) { balance = runCatching { container.api.walletMe().balanceToman }.getOrNull() }
-    val b = balance ?: return
+    var failed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { runCatching { container.api.walletMe().balanceToman }.onSuccess { balance = it }.onFailure { failed = true } }
+    // always shown (as on the web), so the wallet is never out of sight: «…» while loading, a plain
+    // «کیف پول» link if the balance couldn't be read — tapping opens the wallet either way
+    val b = balance
     AppCard(Modifier.clickable(onClick = onOpen)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Icon(Icons.Outlined.AccountBalanceWallet, null, tint = c.accent)
             Column(Modifier.weight(1f)) {
-                Muted(if (b < 0) "بدهی کیف پول" else "موجودی کیف پول")
-                Text("${fa(kotlin.math.abs(b))} تومان", color = if (b < 0) c.danger else c.ink, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Muted(if (b != null && b < 0) "بدهی کیف پول" else "موجودی کیف پول")
+                Text(
+                    when {
+                        b != null -> "${fa(kotlin.math.abs(b))} تومان"
+                        failed -> "برای دیدن موجودی بزنید"
+                        else -> "…"
+                    },
+                    color = if (b != null && b < 0) c.danger else c.ink, fontWeight = FontWeight.Bold, fontSize = if (b != null) 18.sp else 15.sp,
+                )
             }
             Text("کیف پول", color = c.accent, fontWeight = FontWeight.Bold)
         }

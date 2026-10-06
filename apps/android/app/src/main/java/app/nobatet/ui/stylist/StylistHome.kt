@@ -161,6 +161,7 @@ fun StylistHomeScreen(stylist: SelfStylist, appointments: List<StaffAppointment>
         if (pendingReviews > 0) item(key = "reviews") {
             LinkCard(Icons.Outlined.RateReview, "نظرهای تازه مشتری‌ها", "${pendingReviews.toString().toPersianDigits()} نظر منتظر تایید شما", badge = pendingReviews) { onOpenPage(StylistPage.REVIEWS) }
         }
+        item(key = "wallet") { app.nobatet.ui.wallet.WalletBalanceCard(actions.container) { onOpenPage(StylistPage.WALLET) } }
         item(key = "share") { LinkCard(Icons.Outlined.QrCode2, "کیت معرفی من", "لینک رزرو مستقیم با شما، کد QR و پوستر") { onOpenPage(StylistPage.SHARE) } }
         item(key = "stats") {
             if (appointments == null) app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(110.dp))
@@ -170,7 +171,6 @@ fun StylistHomeScreen(stylist: SelfStylist, appointments: List<StaffAppointment>
                 StatTile("نوبت‌های آینده", upcoming.size, Icons.Outlined.Schedule)
             }
         }
-        item(key = "wallet") { app.nobatet.ui.wallet.WalletBalanceCard(actions.container) { onOpenPage(StylistPage.WALLET) } }
         item(key = "earnings") { LinkCard(Icons.Outlined.AccountBalanceWallet, "درآمد من", "سهم شما از نوبت‌ها، پرداخت‌های سالن و مانده حساب") { onOpenPage(StylistPage.EARNINGS) } }
         item(key = "expenses") { LinkCard(Icons.Outlined.ReceiptLong, "هزینه‌های من", "مواد مصرفی، ابزار و خریدهای کاری") { onOpenPage(StylistPage.EXPENSES) } }
         if (pending.isNotEmpty()) {

@@ -278,6 +278,7 @@ fun SalonHomeScreen(container: AppContainer, data: SalonData, sheets: SalonSheet
         if (pendingReviews > 0) item(key = "reviews") {
             LinkCard(Icons.Outlined.RateReview, "نظرهای تازه مشتری‌ها", "${pendingReviews.toString().toPersianDigits()} نظر منتظر تایید شما", badge = pendingReviews) { onOpenPage(SalonPage.REVIEWS) }
         }
+        item(key = "wallet") { app.nobatet.ui.wallet.WalletBalanceCard(container) { onOpenPage(SalonPage.WALLET) } }
         item(key = "stats") {
             if (loaded == null) app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(110.dp))
             else Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -286,7 +287,6 @@ fun SalonHomeScreen(container: AppContainer, data: SalonData, sheets: SalonSheet
                 StatTile("نوبت‌های آینده", upcoming.size, Icons.Outlined.Schedule)
             }
         }
-        item(key = "wallet") { app.nobatet.ui.wallet.WalletBalanceCard(container) { onOpenPage(SalonPage.WALLET) } }
         item(key = "accounting") {
             LinkCard(Icons.Outlined.Calculate, "حسابداری", if (independent) "درآمد، هزینه‌ها و سود خالص ماه" else "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها") { onOpenPage(SalonPage.ACCOUNTING) }
         }
