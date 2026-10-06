@@ -49,13 +49,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       ? `${salon.name}، آرایشگر مستقل در ${salon.city} — مشاهده خدمات و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`
       : `${salon.name}، سالن زیبایی در ${salon.city} — مشاهده خدمات، آرایشگرها و نظرات، و رزرو آنلاین نوبت در ${SITE_NAME}.`);
 
+  const title = `${salon.name} — رزرو آنلاین نوبت${salon.city ? ` در ${salon.city}` : ""}`;
   return {
-    title: salon.name,
+    title,
     description,
     // Prefill links (?book=1…) are the same page — point search engines at the clean URL.
     alternates: { canonical: `${SITE_URL}/s/${encodeURIComponent(slug)}` },
     openGraph: {
-      title: salon.name,
+      title,
       description,
       type: "website",
       locale: "fa_IR",

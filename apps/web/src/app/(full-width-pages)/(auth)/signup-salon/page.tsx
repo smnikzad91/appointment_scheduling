@@ -1,11 +1,17 @@
 import SignUpSalonForm from "@/components/auth/SignUpSalonForm";
 import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { SITE_URL } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "ثبت‌نام سالن",
-  description: "سالن زیبایی خود را رایگان در نوبتت ثبت کنید و نوبت‌دهی آنلاین را همین امروز شروع کنید.",
-};
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ type?: string }> }): Promise<Metadata> {
+  const independent = (await searchParams).type === "independent";
+  const title = independent ? "ثبت‌نام آرایشگر مستقل — صفحه رزرو آنلاین شخصی" : "ثبت‌نام رایگان سالن زیبایی و آرایشگاه";
+  const description = independent
+    ? "آرایشگر مستقل هستید؟ در نوبتت صفحه رزرو آنلاین خودتان را بسازید: نوبت اینترنتی، پیامک یادآوری، پیش‌پرداخت و حسابداری؛ در سالن، استودیو یا منزل مشتری."
+    : "سالن زیبایی یا آرایشگاه خود را در نوبتت ثبت کنید: نوبت‌دهی آنلاین، تقویم آرایشگرها، پیامک یادآوری، پیش‌پرداخت با کیف پول و حسابداری سالن.";
+  const url = `${SITE_URL}/signup-salon${independent ? "?type=independent" : ""}`;
+  return { title, description, alternates: { canonical: url }, openGraph: { title, description, url, type: "website" } };
+}
 
 // ?plan=<id> comes from a plan's button in the landing page's pricing section;
 // ?type=independent opens it for an independent stylist (their own business, no salon).

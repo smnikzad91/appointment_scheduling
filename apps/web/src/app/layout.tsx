@@ -13,7 +13,7 @@ import { VisitTracker } from "@/lib/analytics/client";
 import SplashScreen from "@/components/common/SplashScreen";
 import FormDraftKeeper from "@/components/common/FormDraftKeeper";
 import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL, SITE_KEYWORDS } from "@/lib/site";
 
 // viewport-fit=cover lets the app shell paint under the notch / home indicator (it pads itself
 // with env(safe-area-inset-*)); the theme color tints the status bar to match the app bar.
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
-  keywords: ["نوبت‌دهی آنلاین", "رزرو آنلاین سالن زیبایی", "نرم‌افزار آرایشگاه", "مدیریت سالن", "نوبتت"],
+  keywords: SITE_KEYWORDS,
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
   publisher: SITE_NAME,
