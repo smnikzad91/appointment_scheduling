@@ -60,9 +60,6 @@ What `/app-version.json` serves:
 - Make a release mandatory only when old builds really can't work any more (for example, an API
   change). Everyone below it is blocked until they update.
 
-(`scripts/publish-apk.sh` predates the admin page. It still writes the old static
-`apps/web/public/app-version.json`, which is no longer served. Use the admin page instead.)
-
 ## Store releases
 
 Upload `nobatet-bazaar-<n>.aab` (or `.apk`) in the Bazaar developer panel and `nobatet-myket-<n>` in
