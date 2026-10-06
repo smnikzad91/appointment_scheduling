@@ -65,6 +65,11 @@
        role so default privileges grant DML to the app roles.
      - `salon_web` (apps/web), `salon_api` (apps/api) — SELECT/INSERT/UPDATE/DELETE only,
        no DDL/TRUNCATE, can't touch `_prisma_migrations`, 30s statement timeout.
+       apps/api must load its own `.env` before anything imports `@prisma/client`, which otherwise
+       auto-loads packages/database/.env (the migrator's URL) first. That's `src/load-env.ts`, the
+       first import of `main.ts`. Without it the API ran as `salon_migrator` until 2026-10-06. apps/web
+       keeps one Prisma client per process with `connection_limit=5` (`src/lib/prisma.ts`), under
+       salon_web's limit of 40 even while a deploy overlaps old and new workers.
      - `postgres` superuser has no password: `sudo -u postgres psql` (peer auth) only.
      pg_hba rejects everything else; hardening lives in `/etc/postgresql/17/main/pg_hba.conf`
      and `conf.d/10-security.conf` (originals saved as `*.orig`).
