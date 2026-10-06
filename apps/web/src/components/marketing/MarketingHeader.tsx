@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: "/download-app", label: "اپلیکیشن" },
   { href: "/#pricing", label: "تعرفه‌ها" },
   { href: "/tutorials", label: "راهنما" },
+  { href: "/blog", label: "وبلاگ" },
   { href: "/#faq", label: "سؤالات متداول" },
 ];
 
