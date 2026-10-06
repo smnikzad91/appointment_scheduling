@@ -260,8 +260,9 @@ describe('ReminderService: booking still open 24 h after its end', () => {
     expect(msg.text).toContain('هنوز باز است');
     expect(msg.text.length).toBeLessThanOrEqual(70);
     const where = prisma.appointment.findMany.mock.calls.at(-1)![0].where;
-    expect(where.endAt.lt).toEqual(new Date(at('12:00').getTime() - 24 * 3600_000));
-    expect(where.endAt.gt).toEqual(new Date(at('12:00').getTime() - 7 * 24 * 3600_000));
+    const endAt = where.endAt as { lt: Date; gt: Date };
+    expect(endAt.lt).toEqual(new Date(at('12:00').getTime() - 24 * 3600_000));
+    expect(endAt.gt).toEqual(new Date(at('12:00').getTime() - 7 * 24 * 3600_000));
     expect(prisma.appointment.updateMany).toHaveBeenCalledWith({ where: { id: 'o1', stateNudgedAt: null }, data: { stateNudgedAt: at('12:00') } });
   });
 

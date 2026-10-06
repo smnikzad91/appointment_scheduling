@@ -37,6 +37,7 @@ type Candidate = {
   rebookCode: string | null;
   salon: { name: string; slug: string; timezone: string };
   stylist: {
+    userId: string;
     displayName: string;
     services: { serviceId: string; overrideRebookReminderEnabled: boolean | null; overrideRebookReminderDays: number | null }[];
   };
@@ -125,6 +126,7 @@ export class RebookReminderService implements OnApplicationBootstrap, OnModuleDe
           salon: { select: { name: true, slug: true, timezone: true } },
           stylist: {
             select: {
+              userId: true,
               displayName: true,
               services: { select: { serviceId: true, overrideRebookReminderEnabled: true, overrideRebookReminderDays: true } },
             },
@@ -208,7 +210,7 @@ export class RebookReminderService implements OnApplicationBootstrap, OnModuleDe
     const text = rebookText(params);
     // The allowance is charged once per appointment, on its first try, by SMS parts (this is 2).
     if (a.rebookReminderAttempts === 0 && !(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text)))) return false;
-    if (await this.sms.send({ kind: "rebook-customer", to: a.customer.phone, params, text })) return true;
+    if (await this.sms.send({ kind: "rebook-customer", to: a.customer.phone, params, text }, { userId: a.stylist.userId, appointmentId: a.id, note: "یادآوری نوبت بعدی به مشتری" })) return true;
 
     // Failed: release the claim for a retry on a later run, unless that was the last try.
     if (a.rebookReminderAttempts + 1 < MAX_ATTEMPTS) {

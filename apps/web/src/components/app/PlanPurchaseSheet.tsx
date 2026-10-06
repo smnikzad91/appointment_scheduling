@@ -122,7 +122,12 @@ export default function PlanPurchaseSheet({ token, sub, open, onClose, onBought 
               {credit > 0 && (
                 <p className="flex justify-between text-app-done"><span>اعتبار باقی‌مانده پلن فعلی</span><span>{formatToman(credit)}</span></p>
               )}
-              <p className="flex justify-between text-app-muted"><span>موجودی کیف پول</span><span>{balance === null ? "…" : formatToman(balance)}</span></p>
+              {balance !== null && balance < 0 ? (
+                // a debt (SMS costs, an undone completion…) is paid off with this purchase
+                <p className="flex justify-between text-app-danger"><span>بدهی کیف پول (هزینه پیامک‌ها و …)</span><span>{formatToman(-balance)}</span></p>
+              ) : (
+                <p className="flex justify-between text-app-muted"><span>موجودی کیف پول</span><span>{balance === null ? "…" : formatToman(balance)}</span></p>
+              )}
               <p className="pt-1 text-xs leading-6 text-app-muted">
                 {renewing
                   ? "به انتهای اشتراک فعلی اضافه می‌شود."

@@ -10,7 +10,7 @@ import WalletWithdraw from "./WalletWithdraw";
 // Wallet balance and its movements (GET /api/user/finance/wallet): top-ups, booking pre-payments
 // and refunds for a customer; pre-payments received (and any taken back) for a salon owner.
 
-export type WalletTxKind = "top_up" | "prepayment" | "prepayment_refund" | "prepayment_income" | "prepayment_income_reversal" | "withdrawal" | "withdrawal_reversal" | "payout_sent" | "payout_received" | "plan_purchase" | "plan_credit" | "balance_payment" | "balance_income" | "balance_income_reversal" | "balance_refund";
+export type WalletTxKind = "top_up" | "prepayment" | "prepayment_refund" | "prepayment_income" | "prepayment_income_reversal" | "withdrawal" | "withdrawal_reversal" | "payout_sent" | "payout_received" | "plan_purchase" | "plan_credit" | "balance_payment" | "balance_income" | "balance_income_reversal" | "balance_refund" | "sms_cost";
 
 interface WalletTx {
   id: string;
@@ -21,6 +21,8 @@ interface WalletTx {
   appointment: { startAt: string; salonName: string; timezone: string } | null;
   /** payouts: the stylist / salon on the other side; plan purchases: plan and months */
   detail: string | null;
+  /** SMS_COST: which SMS («یادآوری ۱ ساعته به مشتری»…) */
+  note: string | null;
 }
 
 const KIND_LABEL: Record<WalletTxKind, string> = {
@@ -39,6 +41,7 @@ const KIND_LABEL: Record<WalletTxKind, string> = {
   balance_income: "باقی‌مانده نوبت (از کیف پول مشتری)",
   balance_income_reversal: "برگشت باقی‌مانده دریافتی",
   balance_refund: "بازگشت باقی‌مانده پرداختی",
+  sms_cost: "هزینه پیامک",
 };
 
 const fa = (n: number) => toPersianDigits(Math.abs(n).toLocaleString("en-US").replace(/,/g, "٬"));
@@ -93,7 +96,10 @@ export default function WalletHistory({ reloadKey = 0, title = "کیف پول" }
                 {/* no +/− sign next to a Persian amount (it drifts in RTL): the arrow and colour say it */}
                 <Icon className={`h-5 w-5 shrink-0 ${credit ? "text-app-done" : "text-app-danger"}`} aria-label={credit ? "واریز" : "برداشت"} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-app-ink">{KIND_LABEL[t.kind] ?? t.kind}</p>
+                  <p className="text-sm font-bold text-app-ink">
+                    {KIND_LABEL[t.kind] ?? t.kind}
+                    {t.note && <span className="font-normal text-app-muted">: {t.note}</span>}
+                  </p>
                   <p className="text-xs text-app-muted">
                     {t.appointment
                       ? `${t.appointment.salonName}، نوبت ${formatSalonDateTime(t.appointment.startAt, t.appointment.timezone)}`

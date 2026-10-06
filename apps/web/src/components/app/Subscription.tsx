@@ -125,7 +125,7 @@ export function SubscriptionCard({ sub, className, token, onChanged }: { sub: Ow
       <Usage icon={MessageSquareText} label="پیامک این ماه" used={sub.sms.sent} limit={sub.sms.limit} none="در این پلن نیست" />
       {sub.sms.limit !== 0 && (
         <p className="-mt-2 ps-8 text-xs leading-6 text-app-muted">
-          هر ۷۰ نویسه یک پیامک حساب می‌شود؛ پیامک «وقت نوبت بعدی» (با لینک رزرو) معمولاً ۲ پیامک است.
+          محدودیتی ندارد؛ هزینه هر پیامک نوبت (برای مشتری یا آرایشگر) از کیف پول آرایشگرِ همان نوبت کم می‌شود و در «کیف پول» دیده می‌شود.
         </p>
       )}
 

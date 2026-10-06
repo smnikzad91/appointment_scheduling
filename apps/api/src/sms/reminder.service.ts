@@ -65,7 +65,7 @@ type DueAppointment = {
   stylistReminderSentAt: Date | null;
   stylistReminderAttempts: number;
   salon: { name: string; timezone: string; kind?: string };
-  stylist: { displayName: string; user: { phone: string | null; firstName?: string } };
+  stylist: { userId: string; displayName: string; user: { phone: string | null; firstName?: string } };
   customer: { firstName: string; lastName: string; phone: string | null };
   services: { service: { name: string } }[];
 };
@@ -110,7 +110,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
         },
         include: {
           salon: { select: { name: true, timezone: true, kind: true } },
-          stylist: { select: { displayName: true, user: { select: { phone: true, firstName: true } } } },
+          stylist: { select: { userId: true, displayName: true, user: { select: { phone: true, firstName: true } } } },
           customer: { select: { firstName: true, lastName: true, phone: true } },
           services: { select: { service: { select: { name: true } } } },
         },
@@ -170,7 +170,9 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
         done[who] = true;
         continue;
       }
-      if (await this.sms.send(message)) {
+      // the booking's stylist pays what the gateway charged (SmsService)
+      const note = who === "customer" ? "یادآوری ۱ ساعته به مشتری" : "یادآوری ۱ ساعته به آرایشگر";
+      if (await this.sms.send(message, { userId: a.stylist.userId, appointmentId: a.id, note })) {
         await this.prisma.appointment.update({ where: { id: a.id }, data: { [SENT_AT[who]]: now } });
         done[who] = true;
         sent++;
@@ -192,7 +194,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       where: { status: AppointmentStatus.PENDING, newBookingTextedAt: null, startAt: { gt: now } },
       include: {
         salon: { select: { timezone: true } },
-        stylist: { select: { user: { select: { phone: true } } } },
+        stylist: { select: { userId: true, user: { select: { phone: true } } } },
         customer: { select: { firstName: true, lastName: true } },
       },
     });
@@ -213,7 +215,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       // A prepaid booking is always announced (the customer paid): counted against the allowance
       // when there is some, sent anyway when there isn't.
       if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text))) && !prepaid) continue;
-      if (await this.sms.send({ kind: "new-booking-stylist", to: a.stylist.user.phone, params, text })) sent++;
+      if (await this.sms.send({ kind: "new-booking-stylist", to: a.stylist.user.phone, params, text }, { userId: a.stylist.userId, appointmentId: a.id, note: "اطلاع نوبت جدید به آرایشگر" })) sent++;
     }
     return sent;
   }
@@ -228,7 +230,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       },
       include: {
         salon: { select: { timezone: true } },
-        stylist: { select: { user: { select: { phone: true } } } },
+        stylist: { select: { userId: true, user: { select: { phone: true } } } },
         customer: { select: { firstName: true, lastName: true } },
       },
     });
@@ -244,7 +246,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       };
       const text = stylistConfirmNudgeText(params);
       if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text)))) continue;
-      if (await this.sms.send({ kind: "confirm-nudge-stylist", to: a.stylist.user.phone, params, text })) sent++;
+      if (await this.sms.send({ kind: "confirm-nudge-stylist", to: a.stylist.user.phone, params, text }, { userId: a.stylist.userId, appointmentId: a.id, note: "یادآوری تایید نوبت به آرایشگر" })) sent++;
     }
     return sent;
   }
@@ -267,7 +269,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       take: 20,
       include: {
         salon: { select: { timezone: true } },
-        stylist: { select: { user: { select: { phone: true } } } },
+        stylist: { select: { userId: true, user: { select: { phone: true } } } },
         customer: { select: { firstName: true, lastName: true } },
       },
     });
@@ -283,7 +285,7 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       };
       const text = stylistStateNudgeText(params);
       if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text))) && !(a.prepaidToman > 0)) continue;
-      if (await this.sms.send({ kind: "state-nudge-stylist", to: a.stylist.user.phone, params, text })) sent++;
+      if (await this.sms.send({ kind: "state-nudge-stylist", to: a.stylist.user.phone, params, text }, { userId: a.stylist.userId, appointmentId: a.id, note: "یادآوری وضعیت نوبت به آرایشگر" })) sent++;
     }
     return sent;
   }

@@ -27,6 +27,7 @@ export async function GET() {
       kind: t.kind.toLowerCase(),
       amountToman: t.amountToman,
       balanceAfter: t.balanceAfter,
+      note: t.note,
       createdAt: t.createdAt,
       detail:
         t.kind === "PAYOUT_SENT" ? t.payout?.stylist.displayName ?? null

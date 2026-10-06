@@ -362,13 +362,13 @@ export class AppointmentsService {
     try {
       const a = await this.prisma.appointment.findUnique({
         where: { id: appointmentId },
-        select: { salonId: true, balanceDueToman: true, salon: { select: { name: true } }, customer: { select: { phone: true } } },
+        select: { salonId: true, balanceDueToman: true, salon: { select: { name: true } }, stylist: { select: { userId: true } }, customer: { select: { phone: true } } },
       });
       if (!a?.customer.phone || a.balanceDueToman <= 0) return;
       const params = { amount: faMoney(a.balanceDueToman), salon: a.salon.name };
       const text = balanceRequestText(params);
       await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text));
-      await this.sms.send({ kind: "balance-request-customer", to: a.customer.phone, params, text });
+      await this.sms.send({ kind: "balance-request-customer", to: a.customer.phone, params, text }, { userId: a.stylist.userId, appointmentId, note: "درخواست باقی‌مانده به مشتری" });
     } catch (err) {
       this.logger.warn(`balance-request SMS for ${appointmentId} failed: ${(err as Error).message}`);
     }
@@ -498,7 +498,7 @@ export class AppointmentsService {
           prepaidToman: true,
           prepaymentStatus: true,
           salon: { select: { name: true, timezone: true, kind: true } },
-          stylist: { select: { displayName: true, user: { select: { firstName: true } } } },
+          stylist: { select: { userId: true, displayName: true, user: { select: { firstName: true } } } },
           customer: { select: { phone: true } },
         },
       });
@@ -520,7 +520,13 @@ export class AppointmentsService {
       // A prepaid booking's confirmation / cancellation always reaches the customer (they paid):
       // counted against the salon's allowance when there is some, sent anyway when there isn't.
       if (!(await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text))) && !prepaid) return;
-      await this.sms.send({ kind, to: a.customer.phone, params, text });
+      const NOTE: Record<CustomerSmsKind, string> = {
+        "booked-customer": "اطلاع ثبت نوبت به مشتری",
+        "rescheduled-customer": "اطلاع جابه‌جایی نوبت به مشتری",
+        "cancelled-customer": "اطلاع لغو نوبت به مشتری",
+        "confirmed-customer": "اطلاع تایید نوبت به مشتری",
+      };
+      await this.sms.send({ kind, to: a.customer.phone, params, text }, { userId: a.stylist.userId, appointmentId, note: NOTE[kind] });
     } catch (err) {
       this.logger.warn(`${kind} SMS for ${appointmentId} failed: ${(err as Error).message}`);
     }

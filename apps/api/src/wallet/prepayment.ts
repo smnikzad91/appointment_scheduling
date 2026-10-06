@@ -37,6 +37,7 @@ export interface WalletRefs {
   appointmentId?: string;
   payoutId?: string;
   planPurchaseId?: string;
+  note?: string;
 }
 
 export async function moveWallet(

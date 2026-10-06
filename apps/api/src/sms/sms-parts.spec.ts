@@ -30,11 +30,11 @@ describe('SubscriptionsService.takeReminderSms by parts', () => {
     return { prisma, service: new SubscriptionsService(prisma as unknown as PrismaService) };
   }
 
-  it('charges all parts at once, only if they all fit', async () => {
+  it('counts all parts at once', async () => {
     const { prisma, service } = setup(100);
     expect(await service.takeReminderSms('s1', new Date('2026-10-05T09:00:00Z'), 2)).toBe(true);
     expect(prisma.salonSmsUsage.updateMany).toHaveBeenCalledWith({
-      where: { salonId: 's1', period: expect.any(String), sent: { lte: 98 } },
+      where: { salonId: 's1', period: expect.any(String) },
       data: { sent: { increment: 2 } },
     });
   });

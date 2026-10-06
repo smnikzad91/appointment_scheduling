@@ -408,6 +408,8 @@ enum WalletTxKind {
   BALANCE_INCOME
   BALANCE_INCOME_REVERSAL
   BALANCE_REFUND
+  /// a booking SMS (to its customer or stylist), charged to the booking's stylist at the gateway's cost (apps/api SmsService)
+  SMS_COST
 }
 
 /// How the stylist takes the rest of a completed booking's price (chosen when marking it done).
@@ -428,6 +430,8 @@ model WalletTransaction {
   kind           WalletTxKind
   amountToman    Int
   balanceAfter   Int
+  /// what it was for, when the kind alone doesn't say (SMS_COST: which SMS)
+  note           String?
   appointmentId  String?
   appointment    Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   topUpId        String?            @unique

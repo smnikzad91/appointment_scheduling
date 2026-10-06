@@ -67,5 +67,14 @@ export type SmsKind = SmsMessage["kind"];
 /** A provider. Throw on failure — SmsService logs it to the admin error log. */
 export interface SmsDriver {
   readonly name: string;
-  send(message: SmsMessage): Promise<void>;
+  /** Resolves with what the gateway charged (toman), when it says; the log driver costs nothing. */
+  send(message: SmsMessage): Promise<{ cost?: number } | void>;
+}
+
+/** Who pays for a booking SMS: the booking's stylist (SmsService charges their wallet the gateway's cost). */
+export interface SmsCharge {
+  userId: string;
+  appointmentId?: string;
+  /** shown in the wallet history, e.g. «یادآوری به مشتری» */
+  note: string;
 }

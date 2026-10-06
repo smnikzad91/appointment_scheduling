@@ -49,31 +49,17 @@ export class SubscriptionsService {
   }
 
   /**
-   * Takes one reminder SMS from the salon's allowance for the current Jalali month; false means
-   * don't send. The conditional increment is atomic, so parallel senders can't overshoot.
-   */
-  /**
-   * Takes `parts` SMS (see smsParts: what the gateway bills) from the salon's monthly allowance, all
-   * or nothing: false when they don't all fit (or the plan has none / has expired).
+   * Counts `parts` SMS (see smsParts) against the salon's month, for the owner's usage line. Since
+   * 2026-10-05 the plan's allowance no longer limits anything (owner's rule): every booking SMS is
+   * sent and its real cost is charged to the booking's stylist's wallet (SmsService.send). Always true.
    */
   async takeReminderSms(salonId: string, now = new Date(), parts = 1): Promise<boolean> {
-    const salon = await this.prisma.salon.findUnique({
-      where: { id: salonId },
-      select: { timezone: true, planId: true, planExpiresAt: true, plan: { select: { smsPerMonth: true } } },
-    });
-    if (!salon) return false;
-    const status = subscriptionStatus(salon, now);
-    if (status === "expired") return false;
-    const limit = salon.plan ? (salon.plan.smsPerMonth ?? 0) : null;
-    if (limit === 0) return false;
-
+    const salon = await this.prisma.salon.findUnique({ where: { id: salonId }, select: { timezone: true } });
+    if (!salon) return true;
     const period = jalaliPeriod(now, salon.timezone);
     await this.prisma.salonSmsUsage.createMany({ data: [{ salonId, period }], skipDuplicates: true });
-    const taken = await this.prisma.salonSmsUsage.updateMany({
-      where: { salonId, period, ...(limit !== null && { sent: { lte: limit - parts } }) },
-      data: { sent: { increment: parts } },
-    });
-    return taken.count === 1;
+    await this.prisma.salonSmsUsage.updateMany({ where: { salonId, period }, data: { sent: { increment: parts } } });
+    return true;
   }
 
   /** The owner's view: plan, end date and how much of each limit is used. */
@@ -93,7 +79,8 @@ export class SubscriptionsService {
       plan: salon.plan,
       expiresAt: salon.planExpiresAt,
       stylists: { active: activeStylists, limit: salon.plan ? salon.plan.maxStylists : null },
-      sms: { period, sent: usage?.sent ?? 0, limit: salon.plan ? (salon.plan.smsPerMonth ?? 0) : null },
+      // no limit any more: each SMS costs the booking's stylist (wallet «هزینه پیامک»)
+      sms: { period, sent: usage?.sent ?? 0, limit: null },
     };
   }
 
