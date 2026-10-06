@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CircleCheck, Download, Hourglass, Info, ShoppingBag, Smartphone, Star } from "lucide-react";
-import { latestPublished, storeLinks } from "@/lib/appReleases/releases";
+import { publishedReleases, storeLinks } from "@/lib/appReleases/releases";
 import { rise } from "@/components/guest/motion";
 import { toPersianDigits } from "@/lib/persian";
 import { formatSalonDate } from "@/lib/salonTime";
@@ -26,7 +26,8 @@ const STEPS = [
 ];
 
 export default async function DownloadAppPage() {
-  const [release, links] = await Promise.all([latestPublished().catch(() => null), storeLinks().catch(() => null)]);
+  const [history, links] = await Promise.all([publishedReleases().catch(() => []), storeLinks().catch(() => null)]);
+  const release = history[0] ?? null;
   const stores = [
     { key: "bazaar", name: "کافه‌بازار", url: links?.bazaarUrl, soon: links?.bazaarComingSoon ?? true },
     { key: "myket", name: "مایکت", url: links?.myketUrl, soon: links?.myketComingSoon ?? true },
@@ -62,6 +63,7 @@ export default async function DownloadAppPage() {
               <span className="inline-flex items-center gap-1 rounded-full bg-g-accent/15 px-2.5 py-0.5 text-xs font-bold text-g-accent">
                 <Star className="h-3.5 w-3.5" aria-hidden /> {formatSalonDate(release.publishedAt ?? release.createdAt)}
               </span>
+              <TypeBadge mandatory={release.mandatory} />
             </div>
             <a href={`/download/${release.fileName}`} className="g-btn-primary mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-base font-bold sm:w-auto">
               <Download className="h-5 w-5" aria-hidden /> دانلود مستقیم برای اندروید
@@ -94,8 +96,28 @@ export default async function DownloadAppPage() {
 
       {release?.notes && (
         <section className="g-glass rounded-3xl p-6">
-          <h2 className="font-bold text-g-ink">تازه‌های این نسخه</h2>
+          <h2 className="font-bold text-g-ink">
+            تازه‌های نسخه <span dir="ltr">{release.versionName}</span>
+          </h2>
           <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-g-muted">{release.notes}</p>
+        </section>
+      )}
+
+      {history.length > 1 && (
+        <section className="g-glass rounded-3xl p-6">
+          <h2 className="font-bold text-g-ink">تاریخچه نسخه‌ها</h2>
+          <ul className="mt-3 divide-y divide-g-line">
+            {history.map((r) => (
+              <li key={r.versionCode} className="py-3 first:pt-0 last:pb-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <strong className="text-g-ink" dir="ltr">{r.versionName}</strong>
+                  <span className="text-xs text-g-faint">{formatSalonDate(r.publishedAt ?? r.createdAt)}</span>
+                  <TypeBadge mandatory={r.mandatory} />
+                </div>
+                {r.notes && <p className="mt-1.5 whitespace-pre-wrap text-sm leading-7 text-g-muted">{r.notes}</p>}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
@@ -117,5 +139,14 @@ export default async function DownloadAppPage() {
         </p>
       </section>
     </div>
+  );
+}
+
+/** «اختیاری» / «اجباری»: whether installed apps must take this update before they can be used. */
+function TypeBadge({ mandatory }: { mandatory: boolean }) {
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${mandatory ? "border-[#ff8a7a]/50 text-[#ff8a7a]" : "border-white/20 text-g-muted"}`}>
+      {mandatory ? "به‌روزرسانی اجباری" : "به‌روزرسانی اختیاری"}
+    </span>
   );
 }

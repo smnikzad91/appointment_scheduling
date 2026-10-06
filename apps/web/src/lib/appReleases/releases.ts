@@ -64,8 +64,19 @@ export interface UploadResult {
   signatureWarning: string | null;
 }
 
-/** Receives an APK, checks it, keeps it as nobatet-<versionCode>.apk and records it unpublished. */
-export async function uploadRelease(body: ReadableStream<Uint8Array>, createdById: string): Promise<UploadResult> {
+/** What the admin filled in with the upload (like devtrader's form); version fields must match the APK. */
+export interface UploadMeta {
+  versionName?: string;
+  versionCode?: number;
+  /** اجباری: every older install must update */
+  mandatory?: boolean;
+  notes?: string;
+  /** publish right after the checks pass */
+  publish?: boolean;
+}
+
+/** Receives an APK, checks it, keeps it as nobatet-<versionCode>.apk and records it (unpublished unless meta.publish). */
+export async function uploadRelease(body: ReadableStream<Uint8Array>, createdById: string, meta: UploadMeta = {}): Promise<UploadResult> {
   const tmp = await streamToTemp(body);
   try {
     let info;
@@ -76,6 +87,13 @@ export async function uploadRelease(body: ReadableStream<Uint8Array>, createdByI
       throw err;
     }
     if (info.packageName !== APP_PACKAGE) throw new ReleaseError(`این فایل اپ نوبتت نیست (بسته ${info.packageName})`);
+    // what the admin typed must be what the APK says — a typo would announce the wrong version
+    if (meta.versionCode !== undefined && meta.versionCode !== info.versionCode) {
+      throw new ReleaseError(`شماره ساخت واردشده (${meta.versionCode}) با فایل (${info.versionCode}) یکی نیست`);
+    }
+    if (meta.versionName && meta.versionName !== info.versionName) {
+      throw new ReleaseError(`نام نسخه واردشده (${meta.versionName}) با فایل (${info.versionName}) یکی نیست`);
+    }
     if (await prisma.appRelease.findUnique({ where: { versionCode: info.versionCode }, select: { id: true } })) {
       throw new ReleaseError(`نسخه ${info.versionCode} قبلاً بارگذاری شده است`, 409);
     }
@@ -97,7 +115,17 @@ export async function uploadRelease(body: ReadableStream<Uint8Array>, createdByI
     let release;
     try {
       release = await prisma.appRelease.create({
-        data: { versionCode: info.versionCode, versionName: info.versionName, fileName, sha256: tmp.sha256, size: tmp.size, certSha256: info.certSha256, createdById },
+        data: {
+          versionCode: info.versionCode,
+          versionName: info.versionName,
+          fileName,
+          sha256: tmp.sha256,
+          size: tmp.size,
+          certSha256: info.certSha256,
+          createdById,
+          notes: (meta.notes ?? "").slice(0, 2000),
+          mandatory: meta.mandatory === true,
+        },
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") throw new ReleaseError(`نسخه ${info.versionCode} قبلاً بارگذاری شده است`, 409);
@@ -109,10 +137,20 @@ export async function uploadRelease(body: ReadableStream<Uint8Array>, createdByI
       await prisma.appRelease.delete({ where: { id: release.id } }).catch(() => {});
       throw err;
     }
+    if (meta.publish) release = await publishRelease(release.id);
     return { release, signatureWarning };
   } finally {
     await rm(tmp.path, { force: true }); // no-op once renamed
   }
+}
+
+/** Published releases, newest first — the version history on /download-app. */
+export function publishedReleases() {
+  return prisma.appRelease.findMany({
+    where: { published: true },
+    orderBy: { versionCode: "desc" },
+    select: { versionCode: true, versionName: true, notes: true, mandatory: true, size: true, publishedAt: true, createdAt: true, fileName: true },
+  });
 }
 
 export function latestPublished() {
