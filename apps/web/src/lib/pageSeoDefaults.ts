@@ -25,6 +25,7 @@ export interface PageSeoEntry extends PageSeoValues {
 export const PAGE_SEO_KEYS = [
   "home",
   "salons",
+  "city-page",
   "signup-salon",
   "signup-independent",
   "salon-page",
@@ -57,6 +58,14 @@ export const PAGE_SEO_DEFAULTS: Record<PageSeoKey, PageSeoEntry> = {
     title: "جستجوی سالن زیبایی و آرایشگاه نزدیک شما",
     description: `سالن‌های زیبایی و آرایشگاه‌های نزدیک خود را پیدا کنید: مقایسه امتیاز، خدمات و فاصله، و رزرو آنلاین نوبت در ${SITE_NAME}.`,
     keywords: ["آرایشگاه نزدیک من", "سالن زیبایی نزدیک من", "رزرو آنلاین آرایشگاه", "نوبت آرایشگاه", "بهترین آرایشگاه"],
+  },
+  "city-page": {
+    label: { fa: "صفحه هر شهر (الگو)", en: "Each city page (template)" },
+    path: "/salons/<شهر>",
+    placeholders: ["{city}", "{province}", "{count}"],
+    title: "آرایشگاه و سالن زیبایی در {city} — رزرو آنلاین نوبت",
+    description: "آرایشگاه‌ها و سالن‌های زیبایی {city}: خدمات، قیمت، امتیاز و نظرات مشتری‌ها را ببینید و بدون تماس، آنلاین نوبت بگیرید.",
+    keywords: ["آرایشگاه {city}", "سالن زیبایی {city}", "نوبت آرایشگاه {city}", "رزرو آنلاین آرایشگاه {city}", "آرایشگر {city}"],
   },
   "signup-salon": {
     label: { fa: "ثبت‌نام سالن", en: "Salon sign-up" },

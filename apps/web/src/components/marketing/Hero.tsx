@@ -14,7 +14,7 @@ export default function Hero() {
           {/* Full brand logo (medal + arched text + wordmark), branding/logo_vertical_with_text.png */}
           <Image
             src="/images/logo/logo_vertical_with_text.png"
-            alt="نوبتت — سامانه نوبت دهی آنلاین زیبایی"
+            alt="نوبتت — نرم‌افزار نوبت‌دهی آنلاین آرایشگاه و سالن زیبایی"
             width={554}
             height={610}
             priority
@@ -23,13 +23,14 @@ export default function Hero() {
             style={rise(0)}
           />
           <span className="g-kicker g-rise" style={rise(0)}>
-            سامانه نوبت‌دهی آنلاین مخصوص سالن‌های زیبایی
+            نوبت بگیرید، بدون تماس و انتظار
           </span>
 
-          <h1 className="g-rise mt-6 text-[40px] font-black leading-[1.25] text-g-ink sm:text-6xl sm:leading-[1.2]" style={rise(1)}>
-            نوبت بگیرید،
+          {/* the page's main heading carries the phrase people search for (SEO) */}
+          <h1 className="g-rise mt-6 text-[36px] font-black leading-[1.3] text-g-ink sm:text-[52px] sm:leading-[1.2]" style={rise(1)}>
+            نرم‌افزار نوبت‌دهی آنلاین
             <br />
-            <span className="g-gradient-text">بدون تماس و انتظار</span>
+            <span className="g-gradient-text">آرایشگاه و سالن زیبایی</span>
           </h1>
 
           <p className="g-rise mx-auto mt-6 max-w-lg text-[17px] leading-9 text-g-muted md:mx-0" style={rise(2)}>

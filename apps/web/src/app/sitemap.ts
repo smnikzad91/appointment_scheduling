@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { salonApiFetch } from "@/lib/api/salonApiClient";
 import { SITE_URL } from "@/lib/site";
 import { TUTORIALS } from "@/content/tutorials";
+import { activeCities } from "@/lib/cityPages";
 
 const BASE_URL = SITE_URL;
 
@@ -58,5 +59,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...salonRoutes, ...blogRoutes, ...newsRoutes];
+  // city landing pages: only cities that have active salons (lib/cityPages.ts)
+  const cityRoutes: MetadataRoute.Sitemap = (await activeCities()).map((c) => ({
+    url: `${BASE_URL}/salons/${encodeURIComponent(c.slug)}`,
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
+  return [...staticRoutes, ...cityRoutes, ...salonRoutes, ...blogRoutes, ...newsRoutes];
 }

@@ -159,7 +159,7 @@ Wallet money comes in **only** by automatic top-up (below) — the old receipt-u
 
 ## Static Content
 
-Blog posts also live as a static array in `src/data/blogPosts.ts`. The seed endpoint `POST /api/admin/blog/seed` reads from this file and inserts missing posts into Postgres. Prefer adding new posts to `blogPosts.ts` first (so they survive a DB reset), then trigger the seed endpoint.
+Blog posts also live as a static array in `src/data/blogPosts.ts` (salon-owner / independent / customer articles; the old product's crypto posts were removed 2026-10-06), with `blogCategories`. The seed endpoint `POST /api/admin/blog/seed` («وارد کردن داده‌های اولیه» in /admin/blog) creates missing categories and inserts missing posts **as drafts** — the admin reviews and publishes. Prefer adding new posts to `blogPosts.ts` first (so they survive a DB reset), then trigger the seed endpoint. Bodies are plain text (`whitespace-pre-line`), no markdown; describe only features and rules the product really has.
 
 News items are seeded from the inline `seedData` array in `src/app/api/admin/news/seed/route.ts`. Use `category` (not `tag` — legacy field name) when adding new items.
 
@@ -208,6 +208,10 @@ One Android app for every role (package `app.nobatet`). Releases are uploaded an
 ## Page SEO (/admin/seo-settings)
 
 Every public page's search-engine title / description / keywords lives in `PageSeo` (one row per key), edited at `/admin/seo-settings` (`components/admin/AdminSeoSettings.tsx`, `GET/PUT /api/admin/seo`). `src/lib/pageSeoDefaults.ts` lists the keys (home, salons, signup-salon, signup-independent, salon-page / independent-page templates with `{name}` `{city}`, download-app, tutorials, faq, blog, news, contact, privacy, terms) and their defaults; migration `20261027000000_page_seo` seeded the same values. Pages call `seoMetadata(key, path)` (`src/lib/pageSeo.ts`): each empty field falls back to the default, and so does a missing row or an unreachable DB, so a page never loses its metadata. Titles get « | نوبتت» from the root template, except `home` (absolute). Keywords fall back to `SITE_KEYWORDS`; never return `keywords: undefined`, which clears the layout's list. Static pages using it carry `revalidate = 60`, so edits show within a minute without a deploy. To add a page: a key + default in pageSeoDefaults.ts and `generateMetadata` → `seoMetadata`. A row for it isn't required, since the default applies. The root layout's metadata stays code-only (`lib/site.ts`), so it doesn't make every route dynamic. Salon pages use the salon's own description when it has one. Blog/news posts use their own title and excerpt.
+
+## City pages (/salons/<city>)
+
+`app/salons/[city]/page.tsx` + `src/lib/cityPages.ts`: one landing page per city that has at least one active salon or independent stylist (`activeCities()` groups apps/api `GET /salons` by city; a city with none → 404, no thin pages). URL = the Persian city name with spaces as "-" (`citySlug`), e.g. `/salons/قائم‌شهر`. Server-rendered for search engines: h1 «آرایشگاه و سالن زیبایی <city>», an intro built from the data (counts, the most offered services), the salons (`SalonResultCard`, from `GET /salons/search?city=`, by rating), how to book, a short FAQ (pre-payment rules as they really are), a sign-up CTA for owners, links to other cities; BreadcrumbList + ItemList + FAQPage JSON-LD. Title/description/keywords: the `city-page` template at /admin/seo-settings (`{city}`, `{province}`, `{count}`). Revalidated every 5 min. Listed in the sitemap and linked from `/salons` («آرایشگاه‌ها بر اساس شهر»).
 
 ## Home page showcase
 
