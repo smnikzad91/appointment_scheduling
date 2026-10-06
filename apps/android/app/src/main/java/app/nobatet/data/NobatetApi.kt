@@ -298,11 +298,14 @@ interface NobatetApi {
     suspend fun salonReviews(): List<ModerationReview>
 }
 
-/** apps/web's own routes (https://nobatet.app/api/…), with the same apps/api token. */
-interface WebApi {
+/** The update check (apps/web /app-version.json): public, on a client without the sign-in token. */
+interface UpdateApi {
     @GET("app-version.json")
     suspend fun appVersion(): AppVersion
+}
 
+/** apps/web's own routes (https://nobatet.app/api/…), with the same apps/api token. */
+interface WebApi {
     /** Automatic top-ups (card to card, confirmed by the bank SMS): recent ones + whether any card is set up. */
     @GET("api/user/finance/top-ups")
     suspend fun topUps(): TopUpList

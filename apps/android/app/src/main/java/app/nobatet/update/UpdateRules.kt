@@ -47,3 +47,11 @@ fun hashMatches(file: File, expected: String?): Boolean {
     val want = normalizedSha256(expected) ?: return false
     return file.isFile && sha256Hex(file) == want
 }
+
+/** The update check's result, kept for the life of the process (the app container holds one). */
+class UpdateCheckCache {
+    @Volatile var version: app.nobatet.data.AppVersion? = null
+    @Volatile var checked: Boolean = false
+    /** «بعداً» on an optional update: not offered again until the next cold start. */
+    @Volatile var dismissed: Boolean = false
+}
