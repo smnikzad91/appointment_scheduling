@@ -106,6 +106,13 @@ data class StaffAppointment(
     val customerLastName: String? = null,
     /** Salon lists (owner): who it's with. */
     val stylist: BookingStylist? = null,
+    /** Online bookings: half the price, paid from the wallet. HELD | SETTLED | REFUNDED */
+    val prepaidToman: Int = 0,
+    val prepaymentStatus: String? = null,
+    /** The rest, once COMPLETED: ON_SITE or WALLET (balanceDueToman requested; paid when balancePaidAt) */
+    val balanceMethod: String? = null,
+    val balanceDueToman: Int = 0,
+    val balancePaidAt: String? = null,
 ) {
     /** This booking's name if staff set one, else the account's (apps/api already overlays it). */
     val customerName get() = "${customer.firstName} ${customer.lastName}".trim()
@@ -208,7 +215,7 @@ data class HandleRequest(val handle: String)
 @Serializable
 data class UploadResponse(val url: String)
 
-val PAYOUT_METHOD_LABEL = mapOf("CASH" to "نقدی", "CARD_TO_CARD" to "کارت به کارت", "BANK_TRANSFER" to "واریز بانکی", "OTHER" to "سایر")
+val PAYOUT_METHOD_LABEL = mapOf("CASH" to "نقدی", "CARD_TO_CARD" to "کارت به کارت", "BANK_TRANSFER" to "واریز بانکی", "OTHER" to "سایر", "WALLET" to "کیف پول")
 
 /** A stylist's own work costs (apps/web STYLIST_EXPENSE_CATEGORY_LABEL). */
 val STYLIST_EXPENSE_CATEGORIES = linkedMapOf(

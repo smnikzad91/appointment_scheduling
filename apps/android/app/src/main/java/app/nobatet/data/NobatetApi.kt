@@ -68,6 +68,14 @@ interface NobatetApi {
     @PATCH("appointments/{id}/status")
     suspend fun setStatus(@Path("id") id: String, @Body body: StatusUpdate): kotlinx.serialization.json.JsonObject
 
+    /** The customer pays the rest of a completed booking from their wallet (402 when short). */
+    @POST("appointments/{id}/pay-balance")
+    suspend fun payBalance(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+
+    /** The signed-in account's wallet balance and the booking pre-payment percent. */
+    @GET("wallet/me")
+    suspend fun walletMe(): WalletMe
+
     @POST("auth/register")
     suspend fun register(@Body body: RegisterRequest): AuthResponse
 
@@ -199,6 +207,13 @@ interface NobatetApi {
     @GET("salons/mine/subscription")
     suspend fun mySubscription(): OwnerSubscription
 
+    /** Plans the owner can buy from the wallet, and the credit for switching away from the running one. */
+    @GET("salons/mine/subscription/plans")
+    suspend fun purchasablePlans(): PurchasablePlans
+
+    @POST("salons/mine/subscription/purchase")
+    suspend fun purchasePlan(@Body body: PurchasePlanRequest): PurchasePlanResult
+
     @GET("salons/mine/categories")
     suspend fun myCategories(): List<OwnerCategory>
 
@@ -288,30 +303,31 @@ interface WebApi {
     @GET("app-version.json")
     suspend fun appVersion(): AppVersion
 
-    /** walletBalance (from /api/user/profile). */
-    @GET("api/user/profile")
-    suspend fun walletProfile(): WalletProfile
+    /** Automatic top-ups (card to card, confirmed by the bank SMS): recent ones + whether any card is set up. */
+    @GET("api/user/finance/top-ups")
+    suspend fun topUps(): TopUpList
 
-    @GET("api/user/finance/cards")
-    suspend fun bankCards(): List<BankCard>
+    @POST("api/user/finance/top-ups")
+    suspend fun createTopUp(@Body body: NewTopUp): TopUp
 
-    @POST("api/user/finance/cards")
-    suspend fun addBankCard(@Body body: NewBankCard): kotlinx.serialization.json.JsonObject
+    @GET("api/user/finance/top-ups/{id}")
+    suspend fun topUp(@Path("id") id: String): TopUp
 
-    @DELETE("api/user/finance/cards/{id}")
-    suspend fun deleteBankCard(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+    @DELETE("api/user/finance/top-ups/{id}")
+    suspend fun cancelTopUp(@Path("id") id: String): kotlinx.serialization.json.JsonObject
 
-    @GET("api/user/finance/admin-cards")
-    suspend fun platformCards(): List<BankCard>
+    /** Balance and the last 50 movements. */
+    @GET("api/user/finance/wallet")
+    suspend fun wallet(): WalletInfo
 
-    @GET("api/user/finance/deposits")
-    suspend fun deposits(): List<Deposit>
+    @GET("api/user/finance/withdrawals")
+    suspend fun withdrawals(): WithdrawalList
 
-    @POST("api/user/finance/deposits")
-    suspend fun addDeposit(@Body body: NewDeposit): kotlinx.serialization.json.JsonObject
+    @POST("api/user/finance/withdrawals")
+    suspend fun createWithdrawal(@Body body: NewWithdrawal): Withdrawal
 
-    @DELETE("api/user/finance/deposits/{id}")
-    suspend fun deleteDeposit(@Path("id") id: String): kotlinx.serialization.json.JsonObject
+    @DELETE("api/user/finance/withdrawals/{id}")
+    suspend fun cancelWithdrawal(@Path("id") id: String): kotlinx.serialization.json.JsonObject
 
     @GET("api/user/profile")
     suspend fun profile(): Profile

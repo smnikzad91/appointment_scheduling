@@ -16,3 +16,14 @@ fun String.normalizeDigits(): String = map { c ->
 
 /** 09xxxxxxxxx, the only format apps/api accepts. */
 fun isValidIranianMobile(phone: String): Boolean = Regex("^09[0-9]{9}$").matches(phone)
+
+/** +989… / 00989… / 989… (and Persian digits, spaces, dashes) → 09…, as apps/api ToIranianMobile; anything else as typed. */
+fun toIranianMobile(input: String): String {
+    val s = input.normalizeDigits().filter { it.isDigit() || it == '+' }
+    return when {
+        s.startsWith("+98") -> "0" + s.drop(3)
+        s.startsWith("0098") -> "0" + s.drop(4)
+        s.startsWith("98") && s.length == 12 -> "0" + s.drop(2)
+        else -> s
+    }
+}

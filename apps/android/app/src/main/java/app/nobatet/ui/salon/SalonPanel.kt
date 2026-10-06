@@ -2,6 +2,7 @@ package app.nobatet.ui.salon
 
 import app.nobatet.util.toPersianDigits
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Groups
@@ -51,7 +52,11 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
     if (showNotifications) {
         app.nobatet.ui.customer.NotificationsScreen(container, app.nobatet.notify.NotificationScope.SALON, onBack = { showNotifications = false }) { t ->
             showNotifications = false
-            if (t.target == app.nobatet.notify.NotificationTarget.REVIEWS) page = SalonPage.REVIEWS else { tab = 1; data.loadAppointments() }
+            when (t.target) {
+                app.nobatet.notify.NotificationTarget.REVIEWS -> page = SalonPage.REVIEWS
+                app.nobatet.notify.NotificationTarget.WALLET -> page = SalonPage.WALLET
+                else -> { tab = 1; data.loadAppointments() }
+            }
         }
         return
     }
@@ -64,7 +69,10 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
         panelName = if (independent) "پنل آرایشگر مستقل" else "پنل سالن",
         identity = app.nobatet.ui.panels.ShellIdentity(salon.name, salon.logoUrl, square = true),
         accountName = "${user.firstName} ${user.lastName}".trim(),
-        accountLinks = listOf(app.nobatet.ui.panels.tutorialsLink(context, if (independent) "independent" else "owner")),
+        accountLinks = listOf(
+            app.nobatet.ui.panels.AccountLink("کیف پول", Icons.Outlined.AccountBalanceWallet) { page = SalonPage.WALLET },
+            app.nobatet.ui.panels.tutorialsLink(context, if (independent) "independent" else "owner"),
+        ),
         onSignOut = onSignOut,
         selectedTab = tab,
         onSelectTab = { tab = it; if (it <= 1) data.loadAppointments() },

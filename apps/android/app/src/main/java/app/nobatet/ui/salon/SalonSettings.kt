@@ -104,6 +104,7 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val provinces = rememberProvinces(container)
+    var buyingPlan by remember { mutableStateOf(false) }
     val indie = salon.independent
     var name by remember(salon) { mutableStateOf(salon.name) }
     var description by remember(salon) { mutableStateOf(salon.description.orEmpty()) }
@@ -155,9 +156,12 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                         Text(sub.plan?.name ?: "بدون پلن", color = c.ink)
                         sub.expiresAt?.let { Muted("تا ${Instant.parse(it).toSalonDateTime(salon.timezone).toLocalDate().persianLabel()}" + if (sub.status == "expired") "، به پایان رسیده" else "") }
                         if (!indie) Muted("آرایشگر فعال: ${sub.stylists.active.toString().toPersianDigits()}" + (sub.stylists.limit?.let { " از ${it.toString().toPersianDigits()}" } ?: ""))
-                        Muted("پیامک این ماه: ${sub.sms.sent.toString().toPersianDigits()}" + (sub.sms.limit?.let { " از ${it.toString().toPersianDigits()}" } ?: ""))
+                        Muted("پیامک این ماه: ${sub.sms.sent.toString().toPersianDigits()}")
+                        Muted("هزینه هر پیامک نوبت از کیف پول آرایشگر همان نوبت کم می‌شود.")
+                        PrimaryButton(if (sub.status == "active" && sub.plan != null) "تمدید یا تغییر پلن از کیف پول" else "خرید پلن از کیف پول", Modifier.fillMaxWidth()) { buyingPlan = true }
                     }
                 }
+                if (buyingPlan) PlanPurchaseSheet(container, data.subscription, onDismiss = { buyingPlan = false }) { buyingPlan = false; data.loadSubscription() }
                 AppCard {
                     SectionTitle(if (indie) "اطلاعات شما" else "اطلاعات سالن")
                     AppTextField(name, { name = it.take(100) }, label = { Text(if (indie) "نام کاری" else "نام سالن") }, singleLine = true, modifier = Modifier.fillMaxWidth())

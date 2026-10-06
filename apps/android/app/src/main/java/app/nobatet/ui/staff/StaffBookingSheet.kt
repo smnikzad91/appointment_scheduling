@@ -49,6 +49,7 @@ import app.nobatet.ui.theme.LocalAppColors
 import app.nobatet.util.formatDuration
 import app.nobatet.util.formatToman
 import app.nobatet.util.isValidIranianMobile
+import app.nobatet.util.toIranianMobile
 import app.nobatet.util.normalizeDigits
 import app.nobatet.util.salonToday
 import app.nobatet.util.salonWallTimeToInstant
@@ -97,9 +98,11 @@ fun StaffBookingSheet(
     var saving by remember { mutableStateOf(false) }
 
     // a returning customer: fill in their name
-    LaunchedEffect(phone) {
-        if (editing == null && isValidIranianMobile(phone)) {
-            runCatching { container.api.lookupCustomer(phone) }.getOrNull()?.let { r ->
+    // 09… or +989… typed; always sent as 09…
+    val mobile = toIranianMobile(phone)
+    LaunchedEffect(mobile) {
+        if (editing == null && isValidIranianMobile(mobile)) {
+            runCatching { container.api.lookupCustomer(mobile) }.getOrNull()?.let { r ->
                 known = r.found
                 if (r.found) {
                     if (firstName.isBlank()) firstName = r.firstName.orEmpty()
@@ -125,7 +128,7 @@ fun StaffBookingSheet(
                     SectionTitle(if (editing == null) "نوبت تازه" else "ویرایش نوبت")
                     if (editing == null) {
                         AppTextField(
-                            phone, { phone = it.normalizeDigits().filter(Char::isDigit).take(11) }, label = { Text("شماره موبایل مشتری") }, singleLine = true,
+                            phone, { phone = it.normalizeDigits().filter { ch -> ch.isDigit() || ch == '+' }.take(14) }, label = { Text("شماره موبایل مشتری") }, placeholder = { Text("۰۹… یا ‎+۹۸۹…") }, singleLine = true,
                             modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         )
                         if (known) Muted("مشتری قبلی؛ نام از نوبت‌های قبلی پر شد.")
@@ -157,7 +160,7 @@ fun StaffBookingSheet(
                     PrimaryButton(if (saving) "در حال ذخیره..." else if (editing == null) "ثبت نوبت" else "ذخیره تغییرات", enabled = !saving) {
                         val m = minute
                         val problem = when {
-                            editing == null && !isValidIranianMobile(phone) -> "شماره موبایل مشتری باید با ۰۹ شروع شده و ۱۱ رقم باشد"
+                            editing == null && !isValidIranianMobile(mobile) -> "شماره موبایل مشتری باید با ۰۹ یا ‎+۹۸ شروع شود"
                             !known && editing == null && firstName.isBlank() -> "نام مشتری را وارد کنید"
                             chosen.isEmpty() -> "دست‌کم یک خدمت انتخاب کنید"
                             m == null -> "ساعت نوبت را انتخاب کنید"
@@ -173,7 +176,7 @@ fun StaffBookingSheet(
                                 val startAt = salonWallTimeToInstant(date, m!!, timezone).toString()
                                 if (editing == null) {
                                     container.api.staffBook(
-                                        StaffBookingRequest(phone, firstName.trim().ifEmpty { null }, lastName.trim().ifEmpty { null }, stylistId, chosen, startAt, notes.trim().ifEmpty { null }),
+                                        StaffBookingRequest(mobile, firstName.trim().ifEmpty { null }, lastName.trim().ifEmpty { null }, stylistId, chosen, startAt, notes.trim().ifEmpty { null }),
                                     )
                                 } else {
                                     // only what changed

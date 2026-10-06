@@ -72,7 +72,28 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
     var host by rememberSaveable { mutableStateOf("") }
     var picking by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    // the phone is confirmed by SMS before anything is created: form → code → account (its state stays)
+    var codeSent by remember { mutableStateOf(false) }
+    var devCode by remember { mutableStateOf<String?>(null) }
     val independent = kind == SalonKind.INDEPENDENT
+    if (codeSent) return PhoneCodeStep(
+        container, phone, devCode, "تایید و ثبت‌نام",
+        onSubmit = { code ->
+            val p = pin!!
+            onSignedIn(
+                container.api.registerSalonOwner(
+                    RegisterSalonRequest(
+                        firstName.trim(), lastName.trim(), phone, code, password, salonName.trim(), province, city, address.trim(), p.first, p.second, kind,
+                        serviceLocations = if (independent) places.toList() else null,
+                        hostSalonName = if (independent && ServiceLocation.IN_SALON in places) host.trim().ifEmpty { null } else null,
+                    ),
+                ),
+            )
+        },
+        onResend = { container.api.requestOtp(app.nobatet.data.OtpRequest(phone, "register")).devCode },
+        onBack = { codeSent = false; devCode = null },
+        onError = onError,
+    )
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         app.nobatet.ui.components.ChipTabs(listOf(SalonKind.SALON to "سالن", SalonKind.INDEPENDENT to "آرایشگر مستقل هستم"), kind, Modifier.padding(horizontal = 0.dp)) { kind = it }
@@ -102,7 +123,7 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
         AppTextField(address, { address = it.take(300) }, label = { Text("آدرس دقیق") }, minLines = 2, modifier = Modifier.fillMaxWidth())
         Muted(if (independent && ServiceLocation.IN_SALON !in places && ServiceLocation.STUDIO !in places) "محل را روی نقشه بزنید؛ نشانی شما عمومی نمایش داده نمی‌شود." else "محل را روی نقشه بزنید.")
         PinMap(pin, provinces.firstOrNull { it.name == province }?.center) { pin = it }
-        PrimaryButton(if (busy) "در حال ثبت‌نام..." else "ثبت‌نام", enabled = !busy) {
+        PrimaryButton(if (busy) "در حال ارسال کد..." else "ثبت‌نام", enabled = !busy) {
             val p = pin
             val problem = when {
                 firstName.isBlank() || lastName.isBlank() -> "نام و نام خانوادگی را وارد کنید"
@@ -118,15 +139,9 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
             if (problem != null) return@PrimaryButton onError(problem)
             scope.launch {
                 busy = true
-                runCatching {
-                    container.api.registerSalonOwner(
-                        RegisterSalonRequest(
-                            firstName.trim(), lastName.trim(), phone, password, salonName.trim(), province, city, address.trim(), p!!.first, p.second, kind,
-                            serviceLocations = if (independent) places.toList() else null,
-                            hostSalonName = if (independent && ServiceLocation.IN_SALON in places) host.trim().ifEmpty { null } else null,
-                        ),
-                    )
-                }.onSuccess(onSignedIn).onFailure { onError(persianError(it, "ثبت‌نام انجام نشد؛ دوباره تلاش کنید", container.json)) }
+                runCatching { container.api.requestOtp(app.nobatet.data.OtpRequest(phone, "register")) }
+                    .onSuccess { devCode = it.devCode; codeSent = true }
+                    .onFailure { onError(persianError(it, "ارسال کد تایید ممکن نشد، دوباره تلاش کنید", container.json)) }
                 busy = false
             }
         }

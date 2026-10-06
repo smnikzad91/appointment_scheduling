@@ -40,6 +40,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,7 +95,21 @@ fun BookingSheet(vm: SalonViewModel, salon: SalonDetail, b: BookingState, onSeeB
             }
             Box(Modifier.padding(16.dp)) {
                 when (b.step) {
-                    BookingStep.SUMMARY -> PrimaryButton(if (b.submitting) "در حال ثبت نوبت..." else "ثبت نوبت", enabled = !b.submitting, onClick = vm::submit)
+                    BookingStep.SUMMARY -> {
+                        val checking = b.wallet == null && !b.walletFailed
+                        val short = vm.walletShort()
+                        val prepay = vm.prepayment()
+                        PrimaryButton(
+                            when {
+                                b.submitting -> "در حال ثبت نوبت..."
+                                checking -> "در حال بررسی کیف پول..."
+                                short > 0 -> "اول کیف پول را شارژ کنید"
+                                prepay > 0 -> "پرداخت ${formatToman(prepay)} از کیف پول و ثبت رزرو"
+                                else -> "ثبت نوبت"
+                            },
+                            enabled = !b.submitting && !checking && short == 0, onClick = vm::submit,
+                        )
+                    }
                     BookingStep.SUCCESS -> PrimaryButton("مشاهده نوبت‌های من", onClick = onSeeBookings)
                     else -> PrimaryButton("ادامه", onClick = vm::next)
                 }
@@ -232,6 +247,25 @@ private fun SummaryStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState)
     if (salon.independent) b.place?.let { SummaryLine("محل", it.label(salon.hostSalonName) + if (it == ServiceLocation.CLIENT_HOME) ": ${b.visitAddress.trim()}" else "") }
     SummaryLine("مدت", formatDuration(vm.totalDuration()))
     SummaryLine("مبلغ", (if (b.stylistId == null && !salon.independent) "از " else "") + formatToman(vm.totalPrice()))
+    // Online bookings pre-pay part of the price from the wallet (the only way to pay); short of
+    // balance, a top-up of the difference right here, then the summary reads the wallet again.
+    LaunchedEffect(Unit) { vm.loadWallet() }
+    val wallet = b.wallet
+    val prepay = vm.prepayment()
+    if (wallet != null && prepay > 0) {
+        SummaryLine("پیش‌پرداخت", "${formatToman(prepay)} از کیف پول (${wallet.prepaymentPercent.toString().toPersianDigits()}٪)")
+        SummaryLine("در محل", formatToman(vm.totalPrice() - prepay))
+        SummaryLine("کیف پول", formatToman(wallet.balanceToman))
+        Muted(
+            (if (b.stylistId == null && !salon.independent) "مبلغ نهایی با آرایشگری که تعیین می‌شود قطعی می‌شود. " else "") +
+                "اگر نوبت لغو شود، پیش‌پرداخت کامل به کیف پول شما برمی‌گردد.",
+        )
+    }
+    val short = vm.walletShort()
+    if (short > 0) {
+        Text("موجودی کیف پول برای پیش‌پرداخت کافی نیست؛ حداقل ${formatToman(short)} شارژ کنید.", color = c.ink, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+        app.nobatet.ui.wallet.WalletTopUp(vm.container, suggestedToman = maxOf(10_000, (short + 999) / 1000 * 1000), onPaid = vm::loadWallet)
+    }
     AppTextField(b.notes, vm::setNotes, label = { Text("یادداشت برای سالن (اختیاری)") }, minLines = 2, modifier = Modifier.fillMaxWidth())
     Muted("نوبت پس از تایید آرایشگر قطعی می‌شود و پیامک تایید برایتان ارسال می‌شود.")
 }

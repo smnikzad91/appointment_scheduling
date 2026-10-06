@@ -1,6 +1,7 @@
 package app.nobatet.ui.stylist
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Home
@@ -58,6 +59,7 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
             when (t.target) {
                 app.nobatet.notify.NotificationTarget.REVIEWS -> page = StylistPage.REVIEWS
                 app.nobatet.notify.NotificationTarget.EARNINGS -> page = StylistPage.EARNINGS
+                app.nobatet.notify.NotificationTarget.WALLET -> page = StylistPage.WALLET
                 else -> { tab = 1; loadAppointments() }
             }
         }
@@ -72,7 +74,10 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
         panelName = "پنل آرایشگر",
         identity = app.nobatet.ui.panels.ShellIdentity(s.displayName, s.avatarUrl),
         accountName = "${user.firstName} ${user.lastName}".trim(),
-        accountLinks = listOf(app.nobatet.ui.panels.tutorialsLink(context, "stylist")),
+        accountLinks = listOf(
+            app.nobatet.ui.panels.AccountLink("کیف پول", Icons.Outlined.AccountBalanceWallet) { page = StylistPage.WALLET },
+            app.nobatet.ui.panels.tutorialsLink(context, "stylist"),
+        ),
         onSignOut = onSignOut,
         selectedTab = tab,
         onSelectTab = { tab = it; if (it <= 1) loadAppointments() },

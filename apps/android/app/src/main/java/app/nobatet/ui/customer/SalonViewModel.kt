@@ -42,6 +42,10 @@ data class BookingState(
     val notes: String = "",
     val submitting: Boolean = false,
     val result: CreatedAppointment? = null,
+    /** The customer's wallet, read on the summary: online bookings pre-pay [WalletMe.prepaymentPercent] from it. */
+    val wallet: app.nobatet.data.WalletMe? = null,
+    /** Couldn't read it: let the booking go — the server checks the balance itself (402). */
+    val walletFailed: Boolean = false,
 )
 
 /** Choices to open the booking sheet with: «رزرو دوباره», or a "time opened up" notification. */
@@ -55,7 +59,7 @@ data class SalonUiState(
     val booking: BookingState = BookingState(),
 )
 
-class SalonViewModel(private val container: AppContainer, private val slug: String) : ViewModel() {
+class SalonViewModel(val container: AppContainer, private val slug: String) : ViewModel() {
     private val _state = MutableStateFlow(SalonUiState())
     val state: StateFlow<SalonUiState> = _state
     private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 4)
@@ -216,6 +220,20 @@ class SalonViewModel(private val container: AppContainer, private val slug: Stri
         }
     }
 
+    fun loadWallet() {
+        viewModelScope.launch {
+            runCatching { container.api.walletMe() }
+                .onSuccess { w -> setBooking { it.copy(wallet = w, walletFailed = false) } }
+                .onFailure { setBooking { it.copy(walletFailed = true) } }
+        }
+    }
+
+    /** 50% of the price, rounded up (apps/api prepaymentFor). */
+    fun prepayment(): Int = b.wallet?.let { w -> Math.ceil(totalPrice() * w.prepaymentPercent / 100.0).toInt() } ?: 0
+
+    /** How much the wallet lacks for the pre-payment. */
+    fun walletShort(): Int = b.wallet?.let { (prepayment() - it.balanceToman).coerceAtLeast(0) } ?: 0
+
     fun submit() {
         val date = b.date ?: return
         val minute = b.startMinute ?: return
@@ -238,6 +256,8 @@ class SalonViewModel(private val container: AppContainer, private val slug: Stri
                 setBooking { it.copy(submitting = false, result = created, step = BookingStep.SUCCESS) }
             } catch (e: Exception) {
                 setBooking { it.copy(submitting = false) }
+                // 402: the actual price (an auto-assigned stylist's) needs more than the balance — show the top-up
+                if (e is retrofit2.HttpException && e.code() == 402) loadWallet()
                 fail(persianError(e, "ثبت نوبت انجام نشد", container.json))
             }
         }

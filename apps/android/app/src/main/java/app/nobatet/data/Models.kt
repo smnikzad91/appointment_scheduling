@@ -30,8 +30,9 @@ data class AuthResponse(val accessToken: String, val user: ApiUser)
 @Serializable
 data class LoginRequest(val identifier: String, val password: String)
 
+/** `purpose: "register"` = confirming a new account's phone (refused for a taken number, before any SMS). */
 @Serializable
-data class OtpRequest(val phone: String)
+data class OtpRequest(val phone: String, val purpose: String? = null)
 
 /** `devCode` comes back only while the API's SMS driver doesn't really deliver (see apps/web CLAUDE.md «SMS»). */
 @Serializable
