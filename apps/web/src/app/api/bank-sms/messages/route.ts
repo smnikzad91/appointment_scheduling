@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verify } from "@/lib/bankSms/signature";
 import { ingestSms } from "@/lib/bankSms/topUps";
+import { forwardDepositSms } from "@/lib/bankSms/forward";
 
 // The bank-SMS device (apps/bank-sms-agent) forwards each received SMS here, signed with
 // BANK_SMS_DEVICE_SECRET. Idempotent: a resend of the same SMS answers { duplicate: true }, so the
-// device deletes it from the SIM only after a 200.
+// device deletes it from the SIM only after a 200. New deposit SMS are also copied to
+// BANK_SMS_FORWARD_PHONE (lib/bankSms/forward.ts).
 
 export async function POST(req: NextRequest) {
   const raw = await req.text();
@@ -24,5 +26,6 @@ export async function POST(req: NextRequest) {
   }
   if (input.body.length > 2000 || input.sender.length > 64) return NextResponse.json({ error: "Too long" }, { status: 400 });
   const result = await ingestSms({ deviceId: input.deviceId.slice(0, 64), sender: input.sender, body: input.body, receivedAt });
+  if (!result.duplicate && result.status !== "NOT_DEPOSIT") void forwardDepositSms(input as { sender: string; body: string }, result.status);
   return NextResponse.json({ ok: true, ...result });
 }
