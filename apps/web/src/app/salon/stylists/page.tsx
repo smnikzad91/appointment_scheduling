@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { getMySalon } from "@/lib/api/ownerSalon";
 import { isIndependent } from "@/lib/independent";
-import { Check, KeyRound, Link2, Plus, UserPlus, Users } from "lucide-react";
+import { CalendarClock, Check, KeyRound, Link2, Plus, Scissors, UserPlus, Users } from "lucide-react";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { SubscriptionNotice, useMySubscription } from "@/components/app/Subscription";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyStylists,
+  addSelfAsStylist,
   inviteStylist,
   regenerateStylistSetupLink,
   updateStylist,
@@ -43,6 +46,7 @@ import {
 } from "@/components/app/ui";
 import Sep from "@/components/common/Sep";
 import { toastError } from "@/lib/toastError";
+import { toast } from "sonner";
 
 /** New stylists start at a 20% share; the owner can change it in the form or later. */
 const DEFAULT_COMMISSION = "20";
@@ -104,6 +108,26 @@ export default function SalonStylistsPage() {
   useEffect(reload, [reload]);
 
   const selected = stylists?.find((s) => s.id === selectedId) ?? null;
+  // The owner's own stylist profile, when they also work as a stylist here («من هم آرایشگری می‌کنم»)
+  const { data: session } = useSession();
+  const ownerId = session?.user?.id;
+  const isSelf = (s: OwnerStylist) => !!ownerId && s.userId === ownerId;
+  const self = stylists?.find(isSelf) ?? null;
+  const [addingSelf, setAddingSelf] = useState(false);
+
+  async function handleAddSelf() {
+    if (!token) return;
+    setAddingSelf(true);
+    try {
+      await addSelfAsStylist(token);
+      toast.success("شما هم به آرایشگرها اضافه شدید؛ ساعات کاری خودتان را تنظیم کنید.");
+      reload();
+    } catch (err) {
+      toastError(persianApiError(err, "انجام نشد، دوباره تلاش کنید"));
+    } finally {
+      setAddingSelf(false);
+    }
+  }
 
   function openStylist(stylist: OwnerStylist) {
     setOverrideDrafts({});
@@ -308,13 +332,28 @@ export default function SalonStylistsPage() {
       {error && <ErrorBanner onRetry={reload}>{error}</ErrorBanner>}
       <SubscriptionNotice sub={subscription} seats className="mb-4" />
       <ZeroCommissionNotice
-        stylists={stylists}
+        stylists={stylists.filter((s) => !isSelf(s))}
         onPick={(id) => {
           const s = stylists.find((x) => x.id === id);
           if (s) openStylist(s);
         }}
         className="mb-4"
       />
+
+      {!self && (
+        <div className="app-rise mb-4 rounded-3xl border border-app-line bg-app-card p-4 shadow-app">
+          <p className="flex items-center gap-2 text-[15px] font-bold text-app-ink">
+            <Scissors className="h-4 w-4 text-app-accent" aria-hidden />
+            خودتان هم آرایشگری می‌کنید؟
+          </p>
+          <p className="mt-1.5 text-sm leading-7 text-app-muted">
+            خودتان را به آرایشگرها اضافه کنید تا مشتری‌ها بتوانند با شما نوبت بگیرند و شما هم برای خودتان نوبت ثبت کنید. درآمد نوبت‌های شما کامل مال سالن است.
+          </p>
+          <Button block className="mt-3" icon={UserPlus} busy={addingSelf} onClick={handleAddSelf}>
+            افزودن خودم به آرایشگرها
+          </Button>
+        </div>
+      )}
 
       {stylists.length === 0 ? (
         <EmptyState
@@ -334,7 +373,17 @@ export default function SalonStylistsPage() {
               <button type="button" onClick={() => openStylist(stylist)} className="flex min-w-0 flex-1 items-center gap-3 text-start active:opacity-70">
                 <Avatar name={stylist.displayName} src={stylist.avatarUrl} size={52} />
                 <span className="min-w-0">
-                  <span className="block truncate text-[15px] font-bold text-app-ink">{stylist.displayName}</span>
+                  <span className="block truncate text-[15px] font-bold text-app-ink">
+                    {stylist.displayName}
+                    {isSelf(stylist) && <span className="ms-2 rounded-full bg-app-accent-soft px-2 py-0.5 text-[11px] font-bold text-app-accent">شما</span>}
+                  </span>
+                  {isSelf(stylist) ? (
+                    <span className="mt-0.5 block text-[13px] text-app-muted">
+                      {toPersianDigits(stylist.services.length)} خدمت
+                      <Sep />
+                      درآمد نوبت‌ها مال سالن
+                    </span>
+                  ) : (
                   <span className="mt-0.5 block text-[13px] text-app-muted">
                     {stylist.user.mustSetPassword && (
                       <>
@@ -356,6 +405,7 @@ export default function SalonStylistsPage() {
                       </>
                     )}
                   </span>
+                  )}
                 </span>
               </button>
               <Toggle checked={stylist.active} onChange={() => handleToggleActive(stylist)} label={`فعال بودن ${stylist.displayName}`} />
@@ -380,6 +430,21 @@ export default function SalonStylistsPage() {
             <div className="mb-5" />
 
 
+            {isSelf(selected) ? (
+              <>
+                <h3 className="mb-2 px-1 text-[13px] font-bold text-app-muted">ساعات کاری شما</h3>
+                <div className="mb-5 rounded-3xl border border-app-line bg-app-card p-4">
+                  <p className="text-sm leading-7 text-app-muted">
+                    مشتری‌ها فقط در ساعت‌های کاری خودتان می‌توانند با شما نوبت بگیرند. ساعت‌ها و روزهای مرخصی‌تان را تنظیم کنید.
+                  </p>
+                  <Link href="/salon/schedule" className="mt-3 flex h-12 items-center justify-center gap-2 rounded-2xl bg-app-accent text-[15px] font-bold text-app-accent-ink">
+                    <CalendarClock className="h-4 w-4" aria-hidden />
+                    ساعات کاری و مرخصی من
+                  </Link>
+                </div>
+              </>
+            ) : (
+            <>
             <h3 className="mb-2 px-1 text-[13px] font-bold text-app-muted">ورود آرایشگر</h3>
             <div className="mb-5 rounded-3xl border border-app-line bg-app-card p-4">
               <p className="mb-3 flex items-center gap-2 text-sm font-bold text-app-ink">
@@ -420,6 +485,8 @@ export default function SalonStylistsPage() {
               )}
               <p className="mt-2 px-1 text-xs leading-6 text-app-muted">تغییر سهم فقط روی نوبت‌هایی اثر دارد که از این به بعد «انجام‌شده» می‌شوند.</p>
             </div>
+            </>
+            )}
 
             <h3 className="mb-2 px-1 text-[13px] font-bold text-app-muted">خدماتی که ارائه می‌دهد</h3>
             {activeServices.length === 0 ? (

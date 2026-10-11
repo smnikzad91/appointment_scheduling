@@ -246,6 +246,14 @@ export function listMyStylists(token: string) {
   return salonApiFetch<OwnerStylist[]>("/salons/mine/stylists", { headers: authHeaders(token) });
 }
 
+/**
+ * The owner works as a stylist in their own salon too: creates (or switches back on) their own
+ * stylist profile — 0% commission, every active service; hours are set on /salon/schedule.
+ */
+export function addSelfAsStylist(token: string) {
+  return salonApiFetch<OwnerStylist>("/salons/mine/self-stylist", { method: "POST", headers: authHeaders(token) });
+}
+
 export interface InviteStylistInput {
   phone: string;
   firstName: string;

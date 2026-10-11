@@ -32,6 +32,15 @@ export class StylistsController {
     return this.stylistsService.invite((req.user as JwtPayload).sub, dto);
   }
 
+  /**
+   * The owner works as a stylist in their own salon too («من هم آرایشگری می‌کنم»): creates (or
+   * re-activates) their own stylist profile, so bookings can be made with them.
+   */
+  @Post("salons/mine/self-stylist")
+  addSelf(@Req() req: Request) {
+    return this.stylistsService.addSelf((req.user as JwtPayload).sub);
+  }
+
   /** New one-time "set your password" link for a stylist; the previous link stops working. */
   @Post("salons/mine/stylists/:id/setup-link")
   regenerateSetupLink(@Req() req: Request, @Param("id") id: string) {
@@ -42,7 +51,7 @@ export class StylistsController {
   // routes below — Nest matches path patterns in registration order, and
   // ":id" would otherwise greedily match the literal segment "me" first.
   @Get("stylists/me")
-  @Roles(Role.STYLIST)
+  @Roles(Role.STYLIST, Role.SALON_OWNER) // an owner with their own stylist profile (addSelf)
   me(@Req() req: Request) {
     return this.stylistsService.findMe((req.user as JwtPayload).sub);
   }
@@ -70,25 +79,25 @@ export class StylistsController {
   }
 
   @Put("stylists/me/working-hours")
-  @Roles(Role.STYLIST)
+  @Roles(Role.STYLIST, Role.SALON_OWNER) // an owner with their own stylist profile (addSelf)
   setMyWorkingHours(@Req() req: Request, @Body() dto: SetWorkingHoursDto) {
     return this.stylistsService.setOwnWorkingHours((req.user as JwtPayload).sub, dto.hours);
   }
 
   @Get("stylists/me/time-off")
-  @Roles(Role.STYLIST)
+  @Roles(Role.STYLIST, Role.SALON_OWNER) // an owner with their own stylist profile (addSelf)
   listMyTimeOff(@Req() req: Request) {
     return this.stylistsService.listOwnTimeOff((req.user as JwtPayload).sub);
   }
 
   @Post("stylists/me/time-off")
-  @Roles(Role.STYLIST)
+  @Roles(Role.STYLIST, Role.SALON_OWNER) // an owner with their own stylist profile (addSelf)
   createMyTimeOff(@Req() req: Request, @Body() dto: CreateTimeOffDto) {
     return this.stylistsService.createOwnTimeOff((req.user as JwtPayload).sub, dto);
   }
 
   @Delete("stylists/me/time-off/:id")
-  @Roles(Role.STYLIST)
+  @Roles(Role.STYLIST, Role.SALON_OWNER) // an owner with their own stylist profile (addSelf)
   removeMyTimeOff(@Req() req: Request, @Param("id") id: string) {
     return this.stylistsService.removeOwnTimeOff((req.user as JwtPayload).sub, id);
   }

@@ -96,6 +96,35 @@ export class StylistsService {
   }
 
   /**
+   * A salon owner who also works as a stylist in their own salon: their own stylist profile (same
+   * account, like an independent stylist's), commission 0% — what they earn is the salon's. It
+   * offers every active service at the salon's price; hours are set on /salon/schedule (stylists/me).
+   * Already there but switched off → switched back on. Takes a plan seat like any active stylist.
+   */
+  async addSelf(userId: string) {
+    const salon = await this.salonsService.findMine(userId);
+    if (salon.kind === SalonKind.INDEPENDENT) throw new ForbiddenException("An independent stylist works alone and can't add stylists");
+    const existing = await this.prisma.stylist.findUnique({ where: { userId } });
+    if (existing && existing.salonId !== salon.id) throw new ConflictException("This phone number is already a stylist at another salon");
+    if (existing?.active) return existing;
+    await this.subscriptions.assertCanAddStylist(salon.id);
+    if (existing) return this.prisma.stylist.update({ where: { id: existing.id }, data: { active: true } });
+
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { firstName: true, lastName: true, avatarUrl: true } });
+    const services = await this.prisma.service.findMany({ where: { salonId: salon.id, active: true }, select: { id: true } });
+    return this.prisma.stylist.create({
+      data: {
+        userId,
+        salonId: salon.id,
+        displayName: `${user.firstName} ${user.lastName}`.trim() || salon.name,
+        avatarUrl: user.avatarUrl,
+        commissionPercent: 0,
+        services: { create: services.map((s) => ({ serviceId: s.id })) },
+      },
+    });
+  }
+
+  /**
    * A new one-time "set your password" link for one of the owner's stylists — the first one got
    * lost, expired, or the stylist forgot their password. Any earlier unused link stops working.
    */
@@ -108,10 +137,17 @@ export class StylistsService {
 
   async update(userId: string, stylistId: string, dto: UpdateStylistDto) {
     const stylist = await this.findOwned(userId, stylistId);
-    // An independent stylist is their business's only stylist: never switched off, and with no
-    // salon to share the money with, their commission stays 0% (the whole amount is their income).
-    if (stylist.userId === userId && (dto.active === false || (dto.commissionPercent !== undefined && dto.commissionPercent !== 0))) {
-      throw new ForbiddenException("Your own stylist profile can't be deactivated or given a commission");
+    // The owner's own stylist profile (an independent stylist's, or a salon owner who also works
+    // as a stylist): no commission — the money is the business's. An independent stylist is their
+    // business's only stylist, so theirs is never switched off; a salon owner may switch theirs off.
+    if (stylist.userId === userId) {
+      if (dto.commissionPercent !== undefined && dto.commissionPercent !== 0) {
+        throw new ForbiddenException("Your own stylist profile can't be deactivated or given a commission");
+      }
+      if (dto.active === false) {
+        const salon = await this.prisma.salon.findUnique({ where: { id: stylist.salonId }, select: { kind: true } });
+        if (salon?.kind === SalonKind.INDEPENDENT) throw new ForbiddenException("Your own stylist profile can't be deactivated or given a commission");
+      }
     }
     // Re-activating a stylist takes a seat on the plan like adding one.
     if (dto.active === true && !stylist.active) await this.subscriptions.assertCanAddStylist(stylist.salonId);

@@ -2,6 +2,7 @@
 // user goes through here so they always get Persian. Keep in sync with the API's messages.
 
 const BY_API_MESSAGE: Record<string, string> = {
+  "This phone number is already a stylist at another salon": "این شماره آرایشگر سالن دیگری است",
   "This time slot is no longer available": "این زمان همین حالا پر شد؛ لطفاً زمان دیگری انتخاب کنید",
   "Enter the bank transfer's tracking code": "کد پیگیری واریز بانکی را وارد کنید",
   "This request is no longer pending": "این درخواست دیگر در انتظار نیست",
