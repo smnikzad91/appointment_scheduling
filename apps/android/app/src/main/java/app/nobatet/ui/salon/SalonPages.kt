@@ -79,6 +79,7 @@ fun SalonPageScreen(page: SalonPage, container: AppContainer, data: SalonData, o
             SalonPage.GALLERY -> SalonGalleryPage(container, data)
             SalonPage.SHARE -> SalonSharePage(container, data)
             SalonPage.WALLET -> app.nobatet.ui.wallet.WalletScreen(container)
+            SalonPage.SCHEDULE -> OwnSchedulePage(container)
         }
     }
 }
@@ -195,5 +196,24 @@ private fun SalonSharePage(container: AppContainer, data: SalonData) {
     )
     ShareKit(container, subject, "لینک مستقیم رزرو، کد QR و پوستر آماده برای استوری و چاپ") { h ->
         container.api.setSalonHandle(HandleRequest(h)).handle.also { data.loadSalon() }
+    }
+}
+
+/** An owner who also works as a stylist: their own hours and days off (apps/api stylists/me, open to owners). */
+@Composable
+private fun OwnSchedulePage(container: AppContainer) {
+    val scope = rememberCoroutineScope()
+    var self by remember { mutableStateOf<app.nobatet.data.SelfStylist?>(null) }
+    var failed by remember { mutableStateOf<String?>(null) }
+    fun load() = scope.launch {
+        runCatching { container.api.myStylist() }.onSuccess { self = it; failed = null }
+            .onFailure { failed = persianError(it, "اطلاعات ساعات کاری دریافت نشد", container.json) }
+    }
+    LaunchedEffect(Unit) { load() }
+    val s = self
+    when {
+        s != null -> app.nobatet.ui.stylist.StylistScheduleScreen(container, s) { load() }
+        failed != null -> app.nobatet.ui.components.LoadError(failed!!, { load() })
+        else -> Loading()
     }
 }
