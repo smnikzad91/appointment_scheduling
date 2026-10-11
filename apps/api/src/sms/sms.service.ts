@@ -7,6 +7,7 @@ import type { SmsCharge, SmsDriver, SmsMessage } from "./sms.types.js";
 import { WalletTxKind } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { moveWallet } from "../wallet/prepayment.js";
+import { adminNewAccountText } from "./sms.text.js";
 
 /**
  * Sends SMS through the driver chosen by SMS_DRIVER ("log" — the default — or "provider").
@@ -17,6 +18,9 @@ import { moveWallet } from "../wallet/prepayment.js";
 export class SmsService {
   private readonly logger = new Logger(SmsService.name);
   private readonly driver: SmsDriver;
+
+  /** ADMIN_ALERT_PHONE (apps/api/.env): who gets the «someone signed up» SMS; unset = none. */
+  private readonly adminPhone?: string;
 
   constructor(
     config: ConfigService,
@@ -38,6 +42,18 @@ export class SmsService {
           })
         : new LogSmsDriver();
     this.logger.log(`SMS driver: ${this.driver.name}`);
+    this.adminPhone = config.get<string>("ADMIN_ALERT_PHONE")?.trim() || undefined;
+  }
+
+  /**
+   * Tells the platform admin a new salon, independent stylist or stylist signed up (ADMIN_ALERT_PHONE).
+   * Fire and forget: never throws, never delays or fails the sign-up; the platform's SMS (no charge),
+   * sent at any hour.
+   */
+  notifyAdmin(params: { who: "salon" | "independent" | "stylist"; name: string; place: string }): void {
+    const to = this.adminPhone;
+    if (!to) return;
+    void this.send({ kind: "admin-new-account", to, params, text: adminNewAccountText(params) }).catch(() => {});
   }
 
   /** True when the driver is a real provider (the log driver doesn't deliver anything). */

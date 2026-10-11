@@ -153,6 +153,11 @@ export class AuthService {
       return owner;
     });
 
+    this.sms.notifyAdmin({
+      who: independent ? "independent" : "salon",
+      name: independent ? `${dto.firstName} ${dto.lastName}`.trim() : dto.salonName.trim(),
+      place: location.city,
+    });
     return this.buildAuthResponse(user);
   }
 

@@ -40,6 +40,18 @@ export const withdrawalText = (kind: "withdrawal-paid" | "withdrawal-rejected", 
   return p.trackingCode && withCode.length <= SMS_SEGMENT ? withCode : base;
 };
 
+/**
+ * For the platform admin when someone signs up, one segment (the names are cut first):
+ * «سالن تازه ثبت‌نام کرد: رز، قائم‌شهر؛ منتظر تایید» / «آرایشگر مستقل تازه: سارا، تهران؛ منتظر تایید» /
+ * «آرایشگر تازه در سالن رز: مریم احمدی».
+ */
+export const adminNewAccountText = (p: { who: "salon" | "independent" | "stylist"; name: string; place: string }) =>
+  fitSms({ name: p.name, place: p.place }, ["name", "place"], (q) =>
+    p.who === "stylist"
+      ? `آرایشگر تازه در ${q.place}: ${q.name}`
+      : `${p.who === "salon" ? "سالن تازه ثبت‌نام کرد" : "آرایشگر مستقل تازه"}: ${q.name}، ${q.place}؛ منتظر تایید`,
+  );
+
 /** «باقی‌مانده نوبتت در سالن رز: ۱۹۰٬۰۰۰ تومان؛ در پنل از کیف پول پرداخت کنید» (the salon name is cut first). */
 export const balanceRequestText = (p: { amount: string; salon: string }) =>
   fitSms(p, ["salon"], (q) => `باقی‌مانده نوبتت در ${q.salon}: ${q.amount} تومان؛ در پنل از کیف پول پرداخت کنید`);

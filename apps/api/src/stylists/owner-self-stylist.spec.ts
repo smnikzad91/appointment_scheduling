@@ -3,6 +3,7 @@ import { StylistsService } from './stylists.service.js';
 import { roleSatisfies } from '../auth/guards/roles.guard.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import type { SubscriptionsService } from '../subscriptions/subscriptions.service.js';
+import type { SmsService } from '../sms/sms.service.js';
 import type { SalonsService } from '../salons/salons.service.js';
 
 // A salon owner who also works as a stylist in their own salon (StylistsService.addSelf).
@@ -22,7 +23,7 @@ function setup(opts: { kind?: SalonKind; existing?: { id: string; userId: string
   };
   const salons = { findMine: vi.fn().mockResolvedValue(salon) };
   const subscriptions = { assertCanAddStylist: vi.fn() };
-  const service = new StylistsService(prisma as unknown as PrismaService, salons as unknown as SalonsService, subscriptions as unknown as SubscriptionsService);
+  const service = new StylistsService(prisma as unknown as PrismaService, salons as unknown as SalonsService, subscriptions as unknown as SubscriptionsService, { notifyAdmin: vi.fn() } as unknown as SmsService);
   return { service, prisma, subscriptions };
 }
 

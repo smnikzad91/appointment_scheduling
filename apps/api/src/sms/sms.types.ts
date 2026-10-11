@@ -55,6 +55,13 @@ export type SmsMessage =
       text: string;
     }
   | {
+      /** The platform admin (ADMIN_ALERT_PHONE): a new salon / independent stylist / stylist signed up. */
+      kind: "admin-new-account";
+      to: string;
+      params: { who: "salon" | "independent" | "stylist"; name: string; place: string };
+      text: string;
+    }
+  | {
       /** The stylist asked for the rest of a completed booking from the customer's wallet. */
       kind: "balance-request-customer";
       to: string;

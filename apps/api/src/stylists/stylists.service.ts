@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { assertOwnsSalon } from "../salons/salon-ownership.util.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
+import { SmsService } from "../sms/sms.service.js";
 import { issueSetupToken, unusablePassword } from "../auth/password-setup.util.js";
 import {
   InviteStylistDto,
@@ -26,6 +27,7 @@ export class StylistsService {
     private readonly prisma: PrismaService,
     private readonly salonsService: SalonsService,
     private readonly subscriptions: SubscriptionsService,
+    private readonly sms: SmsService,
   ) {}
 
   async listMine(userId: string) {
@@ -92,6 +94,7 @@ export class StylistsService {
 
     // setupToken is returned only here and by regenerateSetupLink — the owner shares the link
     // (/set-password/<token>) with the stylist, who then chooses their own password.
+    this.sms.notifyAdmin({ who: "stylist", name: stylist.displayName, place: salon.name });
     return { ...stylist, setupToken: setup?.setupToken, setupExpiresAt: setup?.expiresAt };
   }
 
