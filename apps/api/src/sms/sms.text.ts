@@ -41,6 +41,35 @@ export const withdrawalText = (kind: "withdrawal-paid" | "withdrawal-rejected", 
 };
 
 /**
+ * To the owner when the platform admin changes their salon's status, one segment (the name is cut
+ * first; an independent stylist's page is «صفحه رزرو شما»): approved «سالن «رز» در نوبتت تایید شد؛
+ * صفحه رزرو فعال است», rejected «ثبت‌نام «رز» در نوبتت تایید نشد؛ با پشتیبانی تماس بگیرید»,
+ * suspended «صفحه «رز» در نوبتت معلق شد؛ با پشتیبانی تماس بگیرید», reactivated «صفحه «رز» در
+ * نوبتت دوباره فعال شد».
+ */
+export const salonStatusText = (change: "approved" | "rejected" | "suspended" | "reactivated", p: { name: string; independent: boolean }) =>
+  fitSms({ name: p.name }, ["name"], (q) => {
+    switch (change) {
+      case "approved":
+        return p.independent ? `صفحه رزرو شما «${q.name}» در نوبتت تایید و فعال شد` : `سالن «${q.name}» در نوبتت تایید شد؛ صفحه رزرو فعال است`;
+      case "rejected":
+        return `ثبت‌نام «${q.name}» در نوبتت تایید نشد؛ با پشتیبانی تماس بگیرید`;
+      case "suspended":
+        return `صفحه «${q.name}» در نوبتت معلق شد؛ با پشتیبانی تماس بگیرید`;
+      case "reactivated":
+        return `صفحه «${q.name}» در نوبتت دوباره فعال شد`;
+    }
+  });
+
+/** Which message a status change sends its owner; null = none (no change, or back to «waiting»). */
+export function salonStatusChange(from: string, to: string): "approved" | "rejected" | "suspended" | "reactivated" | null {
+  if (from === to) return null;
+  if (to === "ACTIVE") return from === "PENDING" ? "approved" : "reactivated";
+  if (to === "SUSPENDED") return from === "PENDING" ? "rejected" : "suspended";
+  return null;
+}
+
+/**
  * For the platform admin when someone signs up, one segment (the names are cut first):
  * «سالن تازه ثبت‌نام کرد: رز، قائم‌شهر؛ منتظر تایید» / «آرایشگر مستقل تازه: سارا، تهران؛ منتظر تایید» /
  * «آرایشگر تازه در سالن رز: مریم احمدی».

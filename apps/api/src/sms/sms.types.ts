@@ -62,6 +62,13 @@ export type SmsMessage =
       text: string;
     }
   | {
+      /** The platform admin approved / rejected / suspended / re-activated a salon (to its owner). */
+      kind: "salon-status-owner";
+      to: string;
+      params: { change: SalonStatusChange; name: string };
+      text: string;
+    }
+  | {
       /** The stylist asked for the rest of a completed booking from the customer's wallet. */
       kind: "balance-request-customer";
       to: string;
@@ -70,6 +77,9 @@ export type SmsMessage =
     };
 
 export type SmsKind = SmsMessage["kind"];
+
+/** What the admin did to a salon, as its owner hears it (salonStatusText). */
+export type SalonStatusChange = "approved" | "rejected" | "suspended" | "reactivated";
 
 /** A provider. Throw on failure — SmsService logs it to the admin error log. */
 export interface SmsDriver {

@@ -5,10 +5,15 @@ import { UpdateSalonDto } from "./dto/update-salon.dto.js";
 import { publicLocation } from "./public-location.util.js";
 import { assertIranCoordinates, resolveProvinceCity } from "../common/location.js";
 import { UpdateSalonStatusDto } from "./dto/update-salon-status.dto.js";
+import { SmsService } from "../sms/sms.service.js";
+import { salonStatusChange, salonStatusText } from "../sms/sms.text.js";
 
 @Injectable()
 export class SalonsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sms: SmsService,
+  ) {}
 
   async findPublicBySlug(slug: string) {
     const salon = await this.prisma.salon.findFirst({
@@ -66,9 +71,21 @@ export class SalonsService {
     });
   }
 
+  /**
+   * The platform admin approves (→ ACTIVE), rejects / suspends (→ SUSPENDED) or re-activates a salon.
+   * A real change texts the owner what happened (salonStatusText) — the platform's SMS, no charge,
+   * never failing the change. A closed (deleted) owner has no phone and gets nothing.
+   */
   async setStatus(id: string, dto: UpdateSalonStatusDto) {
-    const salon = await this.prisma.salon.findUnique({ where: { id } });
+    const salon = await this.prisma.salon.findUnique({ where: { id }, include: { owner: { select: { phone: true } } } });
     if (!salon) throw new NotFoundException("Salon not found");
-    return this.prisma.salon.update({ where: { id }, data: { status: dto.status } });
+    const updated = await this.prisma.salon.update({ where: { id }, data: { status: dto.status } });
+    const change = salonStatusChange(salon.status, dto.status);
+    const to = salon.owner?.phone;
+    if (change && to) {
+      const text = salonStatusText(change, { name: salon.name, independent: salon.kind === SalonKind.INDEPENDENT });
+      void this.sms.send({ kind: "salon-status-owner", to, params: { change, name: salon.name }, text }).catch(() => {});
+    }
+    return updated;
   }
 }
