@@ -32,15 +32,18 @@ export function expireStale(now = new Date()) {
 
 export class TopUpError extends Error {}
 
-/** A new top-up for this user (any earlier pending one is cancelled): card + exact rial amount to pay. */
-export async function createTopUp(userId: string, amountToman: number) {
+/**
+ * A new top-up for this user: card + exact rial amount to pay. Any earlier pending one is cancelled,
+ * except with keepPending (the mychatbot.ir service account has many customers paying at once).
+ */
+export async function createTopUp(userId: string, amountToman: number, { keepPending = false } = {}) {
   if (!Number.isInteger(amountToman) || amountToman < MIN_TOP_UP_TOMAN || amountToman > MAX_TOP_UP_TOMAN) {
     throw new TopUpError(`مبلغ باید بین ${MIN_TOP_UP_TOMAN.toLocaleString("fa-IR")} و ${MAX_TOP_UP_TOMAN.toLocaleString("fa-IR")} تومان باشد`);
   }
   const cards = await autoCards();
   if (cards.length === 0) throw new TopUpError("افزایش خودکار موجودی فعلاً فعال نیست؛ از «ثبت واریز» با رسید استفاده کنید");
   await expireStale();
-  await prisma.walletTopUp.updateMany({ where: { userId, status: "PENDING" }, data: { status: "CANCELLED" } });
+  if (!keepPending) await prisma.walletTopUp.updateMany({ where: { userId, status: "PENDING" }, data: { status: "CANCELLED" } });
   const card = cards[Math.floor(Math.random() * cards.length)];
   const baseRial = BigInt(amountToman) * BigInt(10);
   for (let attempt = 0; attempt < 5; attempt++) {
