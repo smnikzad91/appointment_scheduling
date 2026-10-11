@@ -73,6 +73,7 @@ private val PERSIAN = mapOf(
     "Send both latitude and longitude" to "محل سالن را روی نقشه مشخص کنید",
     "The map pin must be inside Iran" to "پین نقشه باید داخل ایران باشد",
     "Choose where you work" to "محل ارائه خدمات را انتخاب کنید",
+    "This phone number is already a stylist at another salon" to "این شماره آرایشگر سالن دیگری است",
     "Invalid handle" to "نام کاربری باید ۳ تا ۳۰ حرف انگلیسی کوچک، عدد، نقطه، خط تیره یا زیرخط باشد و با حرف یا عدد شروع و تمام شود",
     "Enter the bank transfer's tracking code" to "کد پیگیری واریز بانکی را وارد کنید",
     "This request is no longer pending" to "این درخواست دیگر در انتظار نیست",

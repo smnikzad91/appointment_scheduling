@@ -83,7 +83,7 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
             PanelTab("خدمات", Icons.Outlined.ContentCut, title = "خدمات", subtitle = "${data.services.count { it.active }.toString().toPersianDigits()} خدمت فعال") { SalonServicesScreen(container, data) },
             if (independent) PanelTab("ساعات کاری", Icons.Outlined.Schedule, title = "ساعات کاری", subtitle = "مشتری‌ها فقط در همین ساعت‌ها می‌توانند با شما نوبت بگیرند.") {
                 self?.let { StylistScheduleScreen(container, it) { loadSelf() } } ?: Loading()
-            } else PanelTab("آرایشگرها", Icons.Outlined.Groups, title = "آرایشگرها", subtitle = stylistsSubtitle(data)) { SalonStylistsScreen(container, data) },
+            } else PanelTab("آرایشگرها", Icons.Outlined.Groups, title = "آرایشگرها", subtitle = stylistsSubtitle(data)) { SalonStylistsScreen(container, data, ownerId = user.id) { page = SalonPage.SCHEDULE } },
             PanelTab(
                 "تنظیمات", Icons.Outlined.Settings, title = if (independent) "تنظیمات کسب‌وکار" else "تنظیمات سالن",
                 subtitle = if (independent) "این اطلاعات در صفحه رزرو شما به مشتری‌ها نشان داده می‌شود." else "این اطلاعات در صفحه رزرو سالن به مشتری‌ها نشان داده می‌شود.",

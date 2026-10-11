@@ -64,14 +64,36 @@ import kotlinx.serialization.json.JsonObject
 
 /** «آرایشگرها»: invite, activation links, on/off, commission and which services each does. */
 @Composable
-fun SalonStylistsScreen(container: AppContainer, data: SalonData) {
+fun SalonStylistsScreen(container: AppContainer, data: SalonData, ownerId: String, onOpenOwnSchedule: () -> Unit) {
     val c = LocalAppColors.current
+    val scope = rememberCoroutineScope()
+    // the owner's own stylist profile, when they also work as a stylist here («من هم آرایشگری می‌کنم»)
+    val self = data.stylists.firstOrNull { it.userId == ownerId }
+    var addingSelf by remember { mutableStateOf(false) }
     var inviting by remember { mutableStateOf(false) }
     var open by remember { mutableStateOf<OwnerStylist?>(null) }
     var link by remember { mutableStateOf<Pair<String, String>?>(null) } // name, token
     Box(Modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { PrimaryButton("افزودن آرایشگر") { inviting = true } }
+            if (self == null) item {
+                AppCard {
+                    Text("خودتان هم آرایشگری می‌کنید؟", color = c.ink, style = MaterialTheme.typography.titleSmall)
+                    Muted("خودتان را به آرایشگرها اضافه کنید تا مشتری‌ها بتوانند با شما نوبت بگیرند و شما هم برای خودتان نوبت ثبت کنید. درآمد نوبت‌های شما کامل مال سالن است.")
+                    PrimaryButton(if (addingSelf) "در حال افزودن..." else "افزودن خودم به آرایشگرها", Modifier.fillMaxWidth(), enabled = !addingSelf) {
+                        addingSelf = true
+                        scope.launch {
+                            runCatching { container.api.addSelfStylist() }
+                                .onSuccess {
+                                    data.loadCatalog(); data.loadSubscription()
+                                    app.nobatet.ui.components.Toasts.success("شما هم به آرایشگرها اضافه شدید؛ ساعات کاری خودتان را تنظیم کنید.")
+                                }
+                                .onFailure { app.nobatet.ui.components.Toasts.error(persianError(it, "انجام نشد، دوباره تلاش کنید", container.json)) }
+                            addingSelf = false
+                        }
+                    }
+                }
+            }
             if (data.stylists.isEmpty()) item { Empty("هنوز آرایشگری اضافه نکرده‌اید") }
             items(data.stylists, key = { it.id }) { st ->
                 AppCard(Modifier.clickable { open = st }) {
@@ -79,9 +101,9 @@ fun SalonStylistsScreen(container: AppContainer, data: SalonData) {
                         RemoteImage(st.avatarUrl, Modifier.size(44.dp).clip(CircleShape))
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(st.displayName, color = if (st.active) c.ink else c.muted, style = MaterialTheme.typography.titleSmall)
+                            Text(st.displayName + if (st.userId == ownerId) " (شما)" else "", color = if (st.active) c.ink else c.muted, style = MaterialTheme.typography.titleSmall)
                             Muted(buildList {
-                                add("سهم ${st.commissionPercent.toInt().toString().toPersianDigits()}٪")
+                                if (st.userId == ownerId) add("درآمد نوبت‌ها مال سالن") else add("سهم ${st.commissionPercent.toInt().toString().toPersianDigits()}٪")
                                 add("${st.services.size.toString().toPersianDigits()} خدمت")
                                 if (!st.active) add("غیرفعال")
                                 if (st.user.mustSetPassword) add("منتظر فعال‌سازی")
@@ -97,7 +119,13 @@ fun SalonStylistsScreen(container: AppContainer, data: SalonData) {
         data.loadCatalog(); data.loadSubscription()
         st.setupToken?.let { link = st.displayName to it }
     }
-    open?.let { st -> StylistDialog(container, data, st, onDismiss = { open = null }, onLink = { token -> open = null; link = st.displayName to token }) }
+    open?.let { st ->
+        StylistDialog(
+            container, data, st, isSelf = st.userId == ownerId, onDismiss = { open = null },
+            onLink = { token -> open = null; link = st.displayName to token },
+            onOpenOwnSchedule = { open = null; onOpenOwnSchedule() },
+        )
+    }
     link?.let { (name, token) -> SetupLinkDialog(name, token) { link = null } }
 }
 
@@ -162,7 +190,10 @@ private fun InviteDialog(container: AppContainer, data: SalonData, onDismiss: ()
 }
 
 @Composable
-private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerStylist, onDismiss: () -> Unit, onLink: (String) -> Unit) {
+private fun StylistDialog(
+    container: AppContainer, data: SalonData, st: OwnerStylist, isSelf: Boolean,
+    onDismiss: () -> Unit, onLink: (String) -> Unit, onOpenOwnSchedule: () -> Unit,
+) {
     val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
     var active by remember { mutableStateOf(st.active) }
@@ -179,16 +210,22 @@ private fun StylistDialog(container: AppContainer, data: SalonData, st: OwnerSty
         title = { Text(st.displayName) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                st.user.phone?.let { Muted(it.toPersianDigits()) }
-                if (st.user.mustSetPassword) Muted("هنوز حساب را فعال نکرده است.")
-                AppTextButton(onClick = {
-                    scope.launch { runCatching { container.api.newSetupLink(st.id) }.onSuccess { onLink(it.setupToken) }.onFailure { error = persianError(it, "ساخت لینک انجام نشد", container.json) } }
-                }) { Text(if (st.user.mustSetPassword) "لینک فعال‌سازی تازه" else "لینک تعیین رمز تازه") }
+                if (isSelf) {
+                    // the owner's own profile: no sign-in link or commission; their hours are on their own page
+                    Muted("مشتری‌ها فقط در ساعت‌های کاری خودتان می‌توانند با شما نوبت بگیرند.")
+                    PrimaryButton("ساعات کاری و مرخصی من", Modifier.fillMaxWidth(), onClick = onOpenOwnSchedule)
+                } else {
+                    st.user.phone?.let { Muted(it.toPersianDigits()) }
+                    if (st.user.mustSetPassword) Muted("هنوز حساب را فعال نکرده است.")
+                    AppTextButton(onClick = {
+                        scope.launch { runCatching { container.api.newSetupLink(st.id) }.onSuccess { onLink(it.setupToken) }.onFailure { error = persianError(it, "ساخت لینک انجام نشد", container.json) } }
+                    }) { Text(if (st.user.mustSetPassword) "لینک فعال‌سازی تازه" else "لینک تعیین رمز تازه") }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("فعال", color = c.ink, modifier = Modifier.weight(1f))
                     AppSwitch(checked = active, onCheckedChange = { active = it })
                 }
-                AppTextField(commission.toPersianDigits(), { commission = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("سهم آرایشگر (٪)") }, singleLine = true,
+                if (!isSelf) AppTextField(commission.toPersianDigits(), { commission = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("سهم آرایشگر (٪)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 Muted("خدماتی که انجام می‌دهد (خالی = قیمت و مدت سالن، سهم پیش‌فرض)")
                 data.services.filter { it.active }.forEach { s ->

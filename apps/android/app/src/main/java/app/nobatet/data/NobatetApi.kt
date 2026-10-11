@@ -245,6 +245,10 @@ interface NobatetApi {
     @POST("salons/mine/stylists")
     suspend fun inviteStylist(@Body body: InviteStylistRequest): OwnerStylist
 
+    /** The owner works as a stylist in their own salon too: their own stylist profile (0% commission, every active service). */
+    @POST("salons/mine/self-stylist")
+    suspend fun addSelfStylist(): OwnerStylist
+
     @POST("salons/mine/stylists/{id}/setup-link")
     suspend fun newSetupLink(@Path("id") id: String): SetupLink
 

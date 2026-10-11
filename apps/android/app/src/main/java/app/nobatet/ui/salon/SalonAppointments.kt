@@ -209,7 +209,7 @@ fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
     }
 }
 
-enum class SalonPage(val title: String) { ACCOUNTING("حسابداری"), REVIEWS("نظرات مشتری‌ها"), GALLERY("گالری نمونه کارها"), SHARE("کیت معرفی"), WALLET("کیف پول") }
+enum class SalonPage(val title: String) { ACCOUNTING("حسابداری"), REVIEWS("نظرات مشتری‌ها"), GALLERY("گالری نمونه کارها"), SHARE("کیت معرفی"), WALLET("کیف پول"), SCHEDULE("ساعات کاری من") }
 
 /**
  * The salon home, as the web's app/salon/page.tsx: the dark hero (logo, status, today's forecast,
