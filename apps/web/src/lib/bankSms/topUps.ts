@@ -163,6 +163,54 @@ export async function payTopUp(topUpId: string, sms: SmsRow | { existingSmsId: s
   });
 }
 
+export type ExternalMatch = "ok" | "sms_taken" | "top_up_taken" | "sms_mismatch";
+
+/**
+ * mychatbot.ir's admin settles an UNMATCHED deposit SMS against one of its top-ups (also an expired or
+ * cancelled one: the customer paid late or the wrong amount). The SMS must have come to the same card and
+ * not before the top-up was made (2 min of clock skew) — so it can't take a deposit made for something
+ * else — and the wallet is credited what the SMS says was paid, not the amount asked for. Both are claimed
+ * conditionally in one transaction, so an SMS pays at most one top-up even if nobatet's own admin matches
+ * it at the same time.
+ */
+export async function matchExternalSms(topUpId: string, smsId: string): Promise<ExternalMatch> {
+  class Abort extends Error {
+    constructor(readonly result: ExternalMatch) { super(result); }
+  }
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const topUp = await tx.walletTopUp.findUnique({ where: { id: topUpId } });
+      if (!topUp) throw new Abort("top_up_taken");
+      const found = await tx.bankSms.findUnique({ where: { id: smsId } });
+      if (!found || found.status !== "UNMATCHED" || found.topUpId) throw new Abort("sms_taken");
+      if (
+        found.adminCardId !== topUp.adminCardId ||
+        found.amountRial === null ||
+        found.amountRial <= BigInt(0) ||
+        found.receivedAt.getTime() < topUp.createdAt.getTime() - 2 * 60_000
+      ) {
+        throw new Abort("sms_mismatch");
+      }
+      const sms = await tx.bankSms.updateMany({ where: { id: smsId, status: "UNMATCHED", topUpId: null }, data: { status: "MATCHED", topUpId, note: "mychatbot.ir" } });
+      if (sms.count !== 1) throw new Abort("sms_taken");
+      const credited = creditOf(found.amountRial);
+      const claimed = await tx.walletTopUp.updateMany({
+        where: { id: topUpId, status: { in: ["PENDING", "EXPIRED", "CANCELLED"] } },
+        data: { status: "PAID", paidAt: new Date(), creditedToman: credited },
+      });
+      if (claimed.count !== 1) throw new Abort("top_up_taken");
+      const user = await tx.user.update({ where: { id: topUp.userId }, data: { walletBalance: { increment: credited } }, select: { walletBalance: true } });
+      await tx.walletTransaction.create({ data: { userId: topUp.userId, kind: "TOP_UP", amountToman: credited, balanceAfter: user.walletBalance, topUpId } });
+      return "ok" as const;
+    });
+  } catch (err) {
+    if (err instanceof Abort) return err.result;
+    // the top-up already has an SMS (bank_sms.topUpId is unique)
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return "top_up_taken";
+    throw err;
+  }
+}
+
 /** JSON-safe top-up for the customer (BigInt → string). */
 export function topUpJson(t: { id: string; amountToman: number; offsetRial: number; payableRial: bigint; status: string; expiresAt: Date; paidAt: Date | null; creditedToman: number | null; createdAt: Date; adminCard?: { cardNumber: string; ownerName: string; bankName: string } }) {
   return {
