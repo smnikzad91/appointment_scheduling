@@ -57,6 +57,7 @@ const AppSidebar: React.FC = () => {
     { icon: <MegaphoneIcon />,  name: t("navAnnouncements"),  path: "/admin/announcements" },
     { icon: <FaqIcon />,        name: t("navFaq"),             path: "/admin/faqs" },
     { icon: <EnvelopeIcon />,  name: t("navContact"),         path: "/admin/contact" },
+    { icon: <ChatIcon />,      name: t("navFeedback"),        path: "/admin/feedback" },
     { icon: <ShieldIcon />,    name: t("navLegal"),           path: "/admin/legal" },
     { icon: <PageIcon />,      name: t("navSeoSettings"),     path: "/admin/seo-settings" },
     { icon: <ChatIcon />,       name: t("navTickets"),      path: "/admin/tickets" },

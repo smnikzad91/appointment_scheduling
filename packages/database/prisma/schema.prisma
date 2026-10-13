@@ -322,6 +322,25 @@ model ContactMessage {
   @@map("contact_messages")
 }
 
+/// Public «نظرات و پیشنهادات» form (/feedback, apps/web lib/feedback.ts); read at /admin/feedback.
+model Feedback {
+  id        String    @id @default(cuid())
+  /// SUGGESTION | CRITICISM | PRAISE | BUG | OTHER
+  kind      String
+  /// Who sent it: CUSTOMER | SALON_OWNER | STYLIST | VISITOR (null = not said)
+  role      String?
+  name      String?
+  phone     String?
+  message   String
+  /// The signed-in sender, if any (no relation: the message stays if the account is deleted).
+  userId    String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+  @@map("feedback")
+}
+
 model Ticket {
   id        String       @id @default(cuid())
   userId    String

@@ -26,7 +26,7 @@ export default function MobileNav({ links }: { links: { href: string; label: str
   }, [open]);
 
   return (
-    <div className="md:hidden">
+    <div className="xl:hidden">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

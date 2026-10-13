@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/tutorials", label: "راهنما" },
   { href: "/blog", label: "وبلاگ" },
   { href: "/#faq", label: "سؤالات متداول" },
+  { href: "/feedback", label: "نظرات و پیشنهادات" },
 ];
 
 export default function MarketingHeader() {
@@ -19,9 +20,9 @@ export default function MarketingHeader() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
         <GuestLogo />
 
-        <nav className="hidden items-center gap-1 text-sm font-medium text-g-muted md:flex">
+        <nav className="hidden items-center gap-1 text-sm font-medium text-g-muted xl:flex">
           {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="rounded-full px-3 py-1.5 transition hover:bg-white/5 hover:text-g-ink">
+            <a key={link.href} href={link.href} className="whitespace-nowrap rounded-full px-3 py-1.5 transition hover:bg-white/5 hover:text-g-ink">
               {link.label}
             </a>
           ))}
