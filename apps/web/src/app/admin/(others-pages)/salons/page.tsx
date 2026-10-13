@@ -11,6 +11,8 @@ import SelectField from "@/components/admin/SelectField";
 import Sep from "@/components/common/Sep";
 import { useT } from "@/i18n/useT";
 import { useLocaleFormat } from "@/i18n/useLocaleFormat";
+import { useLanguage } from "@/context/LanguageContext";
+import { SIGNUP_SOURCE_LABEL, SIGNUP_SOURCE_LABEL_EN, type SignupSource } from "@/lib/signupSource";
 import type { TranslationKey } from "@/i18n/translations";
 import { toastError } from "@/lib/toastError";
 
@@ -37,6 +39,8 @@ export default function AdminSalonsPage() {
   const token = useApiAccessToken();
   const t = useT();
   const { date } = useLocaleFormat();
+  const { lang } = useLanguage();
+  const sourceLabel = (s: string) => (lang === "fa" ? SIGNUP_SOURCE_LABEL : SIGNUP_SOURCE_LABEL_EN)[s as SignupSource] ?? s;
   const [tab, setTab] = useState<AdminSalon["status"] | "ALL">("PENDING");
   // Salons, independent stylists, or both (filtered here; the list is small).
   const [kindFilter, setKindFilter] = useState<"ALL" | "SALON" | "INDEPENDENT">("ALL");
@@ -158,6 +162,13 @@ export default function AdminSalonsPage() {
                     <span dir="ltr">{salon.owner.phone}</span>
                     <Sep />
                     {t("slRegistered")}: {date(salon.createdAt)}
+                    {salon.signupSource && (
+                      <>
+                        <Sep />
+                        {t("slFoundUs")}: {sourceLabel(salon.signupSource)}
+                        {salon.signupSourceNote && <> ({salon.signupSourceNote})</>}
+                      </>
+                    )}
                   </p>
                   <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
                     {t("slPlan")}:{" "}

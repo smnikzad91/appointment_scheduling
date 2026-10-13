@@ -1,6 +1,7 @@
 import { IsIn, IsLatitude, IsLongitude, IsOptional, IsString, Length, MaxLength, MinLength } from "class-validator";
 import type { SalonKind, ServiceLocation } from "@appointment-scheduling/database";
 import { IsHostSalonName, IsServiceArea, IsServiceLocations } from "../../salons/dto/service-locations.js";
+import { SIGNUP_SOURCES, type SignupSource } from "../signup-source.js";
 
 export class RegisterSalonOwnerDto {
   // Owner account
@@ -75,4 +76,15 @@ export class RegisterSalonOwnerDto {
   @IsOptional()
   @IsString()
   planId?: string;
+
+  /** «از کجا با ما آشنا شدید؟» (the web form requires it; optional for older app versions). */
+  @IsOptional()
+  @IsIn(SIGNUP_SOURCES)
+  signupSource?: SignupSource;
+
+  /** Their own words with OTHER. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  signupSourceNote?: string;
 }

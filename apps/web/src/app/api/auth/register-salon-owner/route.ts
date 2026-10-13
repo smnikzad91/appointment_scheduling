@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   try {
     const {
       firstName, lastName, email, phone, password, code, salonName, province, city, address, latitude, longitude, planId,
-      kind, serviceLocations, serviceArea, hostSalonName,
+      kind, serviceLocations, serviceArea, hostSalonName, signupSource, signupSourceNote,
     } = await req.json();
     // kind INDEPENDENT = an independent stylist signing up their own business (apps/api validates the rest).
     const independent = kind === "INDEPENDENT";
@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
     await apiRegisterSalonOwner({
       firstName, lastName, email, phone, password, code: String(code ?? ""), salonName, province, city, address, latitude, longitude,
       planId: typeof planId === "string" && planId ? planId : undefined,
+      signupSource: typeof signupSource === "string" && signupSource ? signupSource : undefined,
+      signupSourceNote: typeof signupSourceNote === "string" && signupSourceNote.trim() ? signupSourceNote.trim().slice(0, 200) : undefined,
       ...(independent && {
         kind: "INDEPENDENT" as const,
         serviceLocations: Array.isArray(serviceLocations) ? serviceLocations : [],

@@ -19,6 +19,9 @@ export interface AdminSalon {
   plan: { id: string; name: string } | null;
   /** null = no end date */
   planExpiresAt: string | null;
+  /** «از کجا با ما آشنا شدید؟» at sign-up (lib/signupSource.ts); null = not asked */
+  signupSource?: string | null;
+  signupSourceNote?: string | null;
 }
 
 export function listAdminSalons(token: string, status?: AdminSalon["status"]) {

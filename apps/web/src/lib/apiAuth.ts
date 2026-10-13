@@ -64,6 +64,9 @@ export function apiRegisterSalonOwner(input: {
   longitude: number;
   salonPhone?: string;
   planId?: string;
+  /** «از کجا با ما آشنا شدید؟» (lib/signupSource.ts keys) + their words for OTHER */
+  signupSource?: string;
+  signupSourceNote?: string;
   /** An independent stylist's own business (salonName = their business/display name). */
   kind?: "SALON" | "INDEPENDENT";
   serviceLocations?: string[];

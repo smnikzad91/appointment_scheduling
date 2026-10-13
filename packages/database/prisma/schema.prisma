@@ -596,6 +596,10 @@ model Salon {
   serviceArea      String?
   // INDEPENDENT + IN_SALON: the salon they work in (free text, shown on their page).
   hostSalonName    String?
+  // Sign-up «از کجا با ما آشنا شدید؟» (apps/api auth/signup-source.ts keys); null = not asked (older
+  // sign-ups, the Android app). signupSourceNote: their own words when they picked OTHER.
+  signupSource     String?
+  signupSourceNote String?
   // Subscription (apps/api src/subscriptions): no plan = no limits (salons from before plans
   // existed, until the admin assigns one). planExpiresAt null = no end date.
   planId           String?

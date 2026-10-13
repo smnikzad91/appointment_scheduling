@@ -19,6 +19,7 @@ import { toastError } from "@/lib/toastError";
 import PhoneCodeStep from "@/components/guest/PhoneCodeStep";
 import { requestOtp } from "@/lib/api/bookings";
 import { persianApiError } from "@/lib/api/errorMessages";
+import { SIGNUP_SOURCES, SIGNUP_SOURCE_LABEL, type SignupSource } from "@/lib/signupSource";
 
 export type SignUpPlan = Pick<PricingPlanData, "id" | "name" | "monthlyPriceToman" | "maxStylists" | "smsPerMonth" | "features" | "recommended">;
 
@@ -49,6 +50,8 @@ export default function SignUpSalonForm({
   const [place, setPlace] = useState({ province: "", city: "" });
   const [address, setAddress] = useState("");
   const [pin, setPin] = useState<GeoLocation | null>(null);
+  const [signupSource, setSignupSource] = useState<SignupSource | null>(null);
+  const [signupSourceNote, setSignupSourceNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [codeSent, setCodeSent] = useState<{ devCode?: string } | null>(null);
 
@@ -57,8 +60,8 @@ export default function SignUpSalonForm({
   useBackgroundDraft(
     "signup-salon",
     () =>
-      place.province || pin || serviceLocations.length || kind !== initialKind
-        ? { kind, serviceLocations, place, pin, planId }
+      place.province || pin || serviceLocations.length || signupSource || kind !== initialKind
+        ? { kind, serviceLocations, place, pin, planId, signupSource }
         : null,
     (d) => {
       setKind(d.kind);
@@ -66,6 +69,7 @@ export default function SignUpSalonForm({
       setPlace(d.place);
       setPin(d.pin);
       setPlanId(d.planId);
+      setSignupSource(d.signupSource ?? null);
     },
   );
 
@@ -92,6 +96,10 @@ export default function SignUpSalonForm({
           ? "محل کارتان را روی نقشه مشخص کنید تا مشتری‌های نزدیک شما را پیدا کنند"
           : "محل سالن را روی نقشه مشخص کنید تا مشتری‌ها بتوانند آن را پیدا کنند",
       );
+      return;
+    }
+    if (!signupSource) {
+      toastError("بگویید از کجا با نوبتت آشنا شدید");
       return;
     }
 
@@ -124,6 +132,8 @@ export default function SignUpSalonForm({
         latitude: pin.lat,
         longitude: pin.lng,
         planId: planId ?? undefined,
+        signupSource: signupSource ?? undefined,
+        signupSourceNote: (signupSource === "OTHER" && signupSourceNote.trim()) || undefined,
         ...(independent && {
           kind,
           serviceLocations,
@@ -343,6 +353,40 @@ export default function SignUpSalonForm({
             </p>
           </>
         )}
+
+        <StepTitle n={plans.length > 0 ? "۴" : "۳"} i={7.85}>آشنایی با نوبتت</StepTitle>
+        <div className="g-rise flex flex-col gap-2" style={rise(7.9)}>
+          <p className="px-1 text-[13px] text-g-muted">
+            از کجا با ما آشنا شدید؟<span className="text-g-danger"> *</span>
+          </p>
+          <div role="radiogroup" aria-label="از کجا با ما آشنا شدید؟" className="flex flex-wrap gap-2">
+            {SIGNUP_SOURCES.map((source) => (
+              <button
+                key={source}
+                type="button"
+                role="radio"
+                aria-checked={signupSource === source}
+                onClick={() => setSignupSource(source)}
+                className={`rounded-full border px-3.5 py-2 text-sm transition ${
+                  signupSource === source
+                    ? "border-g-accent bg-g-accent/10 font-bold text-g-ink"
+                    : "border-g-line-strong text-g-muted hover:border-g-accent/50"
+                }`}
+              >
+                {SIGNUP_SOURCE_LABEL[source]}
+              </button>
+            ))}
+          </div>
+          {signupSource === "OTHER" && (
+            <FloatingInput
+              label="کجا؟"
+              hint="اختیاری؛ مثلاً یک رویداد یا سایت"
+              maxLength={200}
+              value={signupSourceNote}
+              onChange={(e) => setSignupSourceNote(e.target.value)}
+            />
+          )}
+        </div>
 
         <GradientButton type="submit" loading={loading} loadingLabel="در حال ارسال کد…" className="g-rise mt-2" style={rise(8)}>
           {independent ? "ثبت‌نام آرایشگر مستقل" : "ثبت‌نام و ساخت سالن"}
