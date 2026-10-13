@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidIranianMobile, normalizeIranianMobile } from "@/lib/persian";
+import { alertNewFeedback } from "@/lib/feedbackAlert";
 import { FEEDBACK_KINDS, FEEDBACK_MESSAGE_MAX, FEEDBACK_MESSAGE_MIN, FEEDBACK_ROLES, type FeedbackKind, type FeedbackRole } from "@/lib/feedback";
 
 // The public «نظرات و پیشنهادات» form (/feedback). Anyone may send; a signed-in sender's id is kept.
 // Each IP gets 5 messages per 10 minutes (per instance, in memory), and a filled honeypot field
-// (`website`, hidden from people) is silently accepted and dropped.
+// (`website`, hidden from people) is silently accepted and dropped. A stored message is texted to
+// FEEDBACK_ALERT_PHONE (lib/feedbackAlert.ts).
 
 const WINDOW_MS = 10 * 60_000;
 const MAX_PER_WINDOW = 5;
@@ -46,8 +48,9 @@ export async function POST(req: NextRequest) {
   if (rateLimited(ip)) return NextResponse.json({ error: "پیام‌های زیادی فرستادید؛ چند دقیقه دیگر دوباره تلاش کنید" }, { status: 429 });
 
   const session = await auth().catch(() => null);
-  await prisma.feedback.create({
+  const created = await prisma.feedback.create({
     data: { kind, role, name, phone, message, userId: session?.user?.id ?? null },
   });
+  void alertNewFeedback({ id: created.id, kind, name, phone, message });
   return NextResponse.json({ ok: true }, { status: 201 });
 }
