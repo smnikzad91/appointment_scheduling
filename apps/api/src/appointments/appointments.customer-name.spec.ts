@@ -102,3 +102,36 @@ describe('AppointmentsService.updateDetails customer name', () => {
     await expect(service.updateDetails({ sub: 'someone-else', role: 'SALON_OWNER' } as JwtPayload, 'appt-1', { customerFirstName: 'x' })).rejects.toThrow(/Not your salon/);
   });
 });
+
+describe('AppointmentsService.findOrCreateCustomer (salon booking by phone)', () => {
+  function setup(existing: { id: string; role: string } | null) {
+    const prisma = { user: { findUnique: vi.fn().mockResolvedValue(existing), create: vi.fn().mockResolvedValue({ id: 'new-1' }) } };
+    const service = new AppointmentsService(
+      prisma as unknown as PrismaService,
+      {} as NotificationsService,
+      {} as WaitlistService,
+      {} as SmsService,
+      {} as SubscriptionsService,
+    );
+    const find = (dto: object) =>
+      (service as unknown as { findOrCreateCustomer: (d: object) => Promise<unknown> }).findOrCreateCustomer({ customerPhone: '09120000000', ...dto });
+    return { find, prisma };
+  }
+
+  it.each(['STYLIST', 'SALON_OWNER', 'INDEPENDENT_STYLIST'])('a %s phone is booked under that account, with the typed name on the booking', async (role) => {
+    const { find, prisma } = setup({ id: 'staff-1', role });
+    await expect(find({ customerFirstName: ' سارا ', customerLastName: ' احمدی ' })).resolves.toEqual({
+      customerId: 'staff-1',
+      bookingName: { customerFirstName: 'سارا', customerLastName: 'احمدی' },
+    });
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('a staff phone without a typed name keeps the account name', async () => {
+    await expect(setup({ id: 'staff-1', role: 'STYLIST' }).find({})).resolves.toEqual({ customerId: 'staff-1' });
+  });
+
+  it('an existing customer keeps their account name', async () => {
+    await expect(setup({ id: 'cust-1', role: 'CUSTOMER' }).find({ customerFirstName: 'سارا' })).resolves.toEqual({ customerId: 'cust-1' });
+  });
+});

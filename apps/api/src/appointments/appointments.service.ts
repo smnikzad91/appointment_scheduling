@@ -1,5 +1,5 @@
 import { bookingCustomerFullName, withBookingCustomerName } from "./booking-customer-name.util.js";
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { AppointmentStatus, NotificationType, PrepaymentStatus, Role, SalonKind, ServiceLocation } from "@appointment-scheduling/database";
@@ -99,9 +99,9 @@ export class AppointmentsService {
    */
   async createForSalon(user: JwtPayload, dto: CreateSalonAppointmentDto) {
     const booker = await this.salonBooker(user);
-    const customerId = await this.findOrCreateCustomer(dto);
+    const { customerId, bookingName } = await this.findOrCreateCustomer(dto);
     const stylistId = booker.stylistId ?? dto.stylistId;
-    return this.book(customerId, { ...dto, stylistId, salonId: booker.salonId }, booker.timezone, true, user.sub);
+    return this.book(customerId, { ...dto, stylistId, salonId: booker.salonId }, booker.timezone, true, user.sub, bookingName);
   }
 
   /**
@@ -141,11 +141,20 @@ export class AppointmentsService {
     return { salonId: salon.id, timezone: salon.timezone };
   }
 
-  private async findOrCreateCustomer(dto: CreateSalonAppointmentDto) {
+  /**
+   * The account booked for, by phone. A staff account's phone (a stylist or salon owner booked as a
+   * customer) is booked under that account too; the name the salon typed is then kept on the booking
+   * (customerFirstName/LastName) so it doesn't show the staff profile's name.
+   */
+  private async findOrCreateCustomer(dto: CreateSalonAppointmentDto): Promise<{ customerId: string; bookingName?: { customerFirstName: string; customerLastName: string | null } }> {
     const existing = await this.prisma.user.findUnique({ where: { phone: dto.customerPhone }, select: { id: true, role: true } });
     if (existing) {
-      if (existing.role !== Role.CUSTOMER) throw new ConflictException("This phone number belongs to a staff account");
-      return existing.id;
+      const firstName = dto.customerFirstName?.trim();
+      const staff = existing.role !== Role.CUSTOMER;
+      return {
+        customerId: existing.id,
+        ...(staff && firstName && { bookingName: { customerFirstName: firstName, customerLastName: dto.customerLastName?.trim() || null } }),
+      };
     }
     const firstName = dto.customerFirstName?.trim();
     const lastName = dto.customerLastName?.trim() ?? "";
@@ -161,10 +170,17 @@ export class AppointmentsService {
       },
       select: { id: true },
     });
-    return user.id;
+    return { customerId: user.id };
   }
 
-  private async book(customerId: string, dto: CreateAppointmentDto, timeZone: string, bySalon: boolean, actorUserId: string) {
+  private async book(
+    customerId: string,
+    dto: CreateAppointmentDto,
+    timeZone: string,
+    bySalon: boolean,
+    actorUserId: string,
+    bookingName?: { customerFirstName: string; customerLastName: string | null },
+  ) {
     const place = await this.bookingPlace(dto, bySalon);
 
     const services = await this.prisma.service.findMany({
@@ -230,6 +246,7 @@ export class AppointmentsService {
             priceToman,
             notes: dto.notes,
             ...place,
+            ...bookingName,
             ...(bySalon && { status: AppointmentStatus.CONFIRMED }),
             ...(prepaidToman > 0 && { prepaidToman, prepaymentStatus: PrepaymentStatus.HELD }),
             services: {
