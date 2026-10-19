@@ -3,7 +3,8 @@ import { AppointmentStatus, PayoutMethod, Prisma, PrepaymentStatus, WalletTxKind
 
 // Booking pre-payment, paid only from the customer's wallet (topped up by card-to-card, confirmed
 // by the bank SMS — apps/web lib/bankSms). Rules (decided by the platform owner, 2026-10-05):
-//   * every online booking pre-pays half its price, taken when it's booked; staff-made bookings
+//   * every online booking pre-pays PREPAYMENT_PERCENT of its price (25% since 2026-10-19, 50%
+//     before — bookings keep the share they paid), taken when it's booked; staff-made bookings
 //     (phone, walk-in) don't — the customer isn't there to pay;
 //   * any cancellation, by anyone, refunds it in full to the customer's wallet;
 //   * COMPLETED: it goes to the salon owner's wallet, except a salon stylist's commission share of
@@ -12,7 +13,7 @@ import { AppointmentStatus, PayoutMethod, Prisma, PrepaymentStatus, WalletTxKind
 //   * a mistaken status tap is undone: leaving COMPLETED/NO_SHOW takes it back from the owner.
 // Every wallet change writes a WalletTransaction in the same DB transaction.
 
-export const PREPAYMENT_PERCENT = 50;
+export const PREPAYMENT_PERCENT = 25;
 
 export function prepaymentFor(priceToman: number): number {
   return Math.ceil((priceToman * PREPAYMENT_PERCENT) / 100);
@@ -74,18 +75,21 @@ export function prepaymentStateFor(status: AppointmentStatus): PrepaymentStatus 
 }
 
 /**
- * Staff changed an open prepaid booking's services and the price went down: the pre-payment must
- * not stay above half the new price, so the excess goes back to the customer's wallet (inside the
- * edit's transaction). A higher price takes nothing more — the customer didn't agree to it; they
- * pay the rest on site. Conditional on the stored amount, so two edits can't both refund it.
+ * Staff changed an open prepaid booking's services and the price went down: the pre-payment shrinks
+ * in the same proportion (the booking keeps the share it was booked with — 50% for bookings made
+ * before 2026-10-19, PREPAYMENT_PERCENT after), so the excess goes back to the customer's wallet
+ * (inside the edit's transaction). A same or higher price takes and gives nothing — the customer
+ * didn't agree to more; they pay the rest on site. Conditional on the stored amount, so two edits
+ * can't both refund it.
  */
 export async function refundExcessPrepayment(
   tx: Prisma.TransactionClient,
-  a: { id: string; customerId: string; prepaidToman: number; prepaymentStatus: PrepaymentStatus | null },
+  a: { id: string; customerId: string; priceToman: number; prepaidToman: number; prepaymentStatus: PrepaymentStatus | null },
   newPriceToman: number,
 ) {
   if (a.prepaymentStatus !== PrepaymentStatus.HELD) return 0;
-  const target = Math.min(a.prepaidToman, prepaymentFor(newPriceToman));
+  if (a.priceToman <= 0 || newPriceToman >= a.priceToman) return 0;
+  const target = Math.min(a.prepaidToman, Math.ceil((a.prepaidToman * newPriceToman) / a.priceToman));
   const excess = a.prepaidToman - target;
   if (excess <= 0) return 0;
   const switched = await tx.appointment.updateMany({

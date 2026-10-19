@@ -241,7 +241,7 @@ export class AppointmentsService {
         if (timeOff || conflict) return null;
 
         const priceToman = pricing.reduce((sum, p) => sum + p.priceToman, 0);
-        // Online bookings pre-pay half from the wallet (wallet/prepayment.ts); staff bookings don't.
+        // Online bookings pre-pay PREPAYMENT_PERCENT from the wallet (wallet/prepayment.ts); staff bookings don't.
         const prepaidToman = bySalon ? 0 : prepaymentFor(priceToman);
         const created = await tx.appointment.create({
           data: {
@@ -470,7 +470,7 @@ export class AppointmentsService {
       if (servicesChanged) {
         await tx.appointmentService.deleteMany({ where: { appointmentId: appointment.id } });
         await tx.appointmentService.createMany({ data: pricing.map((p) => ({ appointmentId: appointment.id, ...p })) });
-        // cheaper now: a pre-payment above half the new price goes back to the customer
+        // cheaper now: the pre-payment shrinks in proportion, the excess goes back to the customer
         await refundExcessPrepayment(tx, appointment, pricing.reduce((sum, p) => sum + p.priceToman, 0));
       }
       return tx.appointment.update({

@@ -173,7 +173,7 @@ export const stylistReminderText = (p: { time: string; customer: string }) =>
  */
 export const stylistNewBookingText = (p: { day: string; time: string; customer: string; homeVisit?: boolean; prepaid?: boolean }) => {
   const { homeVisit, prepaid, ...rest } = p;
-  // the customer already paid half from their wallet: say so, so the stylist checks it promptly
+  // the customer already pre-paid part of it from their wallet: say so, so the stylist checks it promptly
   if (prepaid) {
     return homeVisit
       ? fitSms(rest, ["customer"], (q) => `منزل ${q.customer} پیش‌پرداخت‌شده، ${q.day} ${q.time}؛ تایید کنید`)
