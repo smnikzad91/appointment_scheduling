@@ -17,6 +17,7 @@ import { effectiveCommissionPercent, splitCharge } from "../accounting/share.uti
 import { NotificationsService, type BookingData } from "../notifications/notifications.service.js";
 import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
+import { onlineBookingOpen } from "../subscriptions/subscription.util.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
 import { balanceRequestText, clock, customerBookingText, faMoney, independentBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
 import { applyPrepayment, prepaymentFor, refundExcessPrepayment, takePrepayment } from "../wallet/prepayment.js";
@@ -85,8 +86,14 @@ export class AppointmentsService {
   ) {}
 
   async create(customerId: string, dto: CreateAppointmentDto) {
-    const salon = await this.prisma.salon.findUnique({ where: { id: dto.salonId }, select: { status: true, timezone: true } });
+    const salon = await this.prisma.salon.findUnique({
+      where: { id: dto.salonId },
+      select: { status: true, timezone: true, planId: true, planExpiresAt: true },
+    });
     if (!salon || salon.status !== "ACTIVE") throw new NotFoundException("Salon not found");
+    // Trial or paid month over and not renewed: online booking is closed until the owner renews
+    // (the salon and its stylists can still book customers themselves).
+    if (!onlineBookingOpen(salon)) throw new ForbiddenException("This salon isn't taking online bookings right now");
     return forCustomer(await this.book(customerId, dto, salon.timezone, false, customerId));
   }
 

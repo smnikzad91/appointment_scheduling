@@ -43,6 +43,8 @@ export interface OwnerSubscription {
   plan: { id: string; name: string; monthlyPriceToman: number | null; maxStylists: number | null; smsPerMonth: number | null } | null;
   /** null = no end date */
   expiresAt: string | null;
+  /** set while the sign-up's free month runs (a plan bought meanwhile starts after it) */
+  trialEndsAt: string | null;
   /** limit null = unlimited */
   stylists: { active: number; limit: number | null };
   /** This Jalali month's reminder SMS; limit null = unlimited (no plan) */

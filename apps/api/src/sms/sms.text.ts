@@ -29,6 +29,9 @@ export const faMoney = (n: number) => faDigits(Math.round(n).toLocaleString("en-
 /** «کیف پول نوبتت ۳۰۰٬۰۰۰ تومان شارژ شد\nموجودی: ۶۱۰٬۴۰۰ تومان» — one segment for any real amount. */
 export const topUpPaidText = (p: { amount: string; balance: string }) => `کیف پول نوبتت ${p.amount} تومان شارژ شد\nموجودی: ${p.balance} تومان`;
 
+/** «کیف پول نوبتت منفی ۱۰٬۰۰۰ تومان شد؛ برای ادامه پیامک نوبت‌ها شارژ کنید» — exactly one segment. */
+export const lowBalanceText = (p: { limit: string }) => `کیف پول نوبتت منفی ${p.limit} تومان شد؛ برای ادامه پیامک نوبت‌ها شارژ کنید`;
+
 /**
  * «برداشت ۵۰۰٬۰۰۰ تومان به حسابتان واریز شد\nپیگیری: 1402…» — the tracking line is left out when it
  * would push the text past one segment; «درخواست برداشت … تومان رد شد؛ مبلغ به کیف پول برگشت».

@@ -69,6 +69,13 @@ export type SmsMessage =
       text: string;
     }
   | {
+      /** The stylist's wallet reached SMS_DEBT_LIMIT_TOMAN: their booking SMS stop until they top up. */
+      kind: "low-balance-stylist";
+      to: string;
+      params: { limit: string };
+      text: string;
+    }
+  | {
       /** The stylist asked for the rest of a completed booking from the customer's wallet. */
       kind: "balance-request-customer";
       to: string;

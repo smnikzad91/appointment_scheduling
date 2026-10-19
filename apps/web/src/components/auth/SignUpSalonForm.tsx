@@ -12,7 +12,7 @@ import AuthCard, { AuthLink } from "@/components/guest/AuthCard";
 import { FloatingInput, FloatingTextArea, PasswordInput, PasswordStrength } from "@/components/guest/fields";
 import GradientButton from "@/components/guest/GradientButton";
 import { rise } from "@/components/guest/motion";
-import { planFeatureLines, planPriceLabel, type PricingPlanData } from "@/lib/pricing";
+import { planFeatureLines, planPriceLabel, SMS_BILLING_NOTE, type PricingPlanData } from "@/lib/pricing";
 import { SERVICE_LOCATIONS, SERVICE_LOCATION_HINT, SERVICE_LOCATION_LABEL, type SalonKind, type ServiceLocation } from "@/lib/independent";
 import { useBackgroundDraft } from "@/lib/useBackgroundDraft";
 import { toastError } from "@/lib/toastError";
@@ -21,7 +21,7 @@ import { requestOtp } from "@/lib/api/bookings";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { SIGNUP_SOURCES, SIGNUP_SOURCE_LABEL, type SignupSource } from "@/lib/signupSource";
 
-export type SignUpPlan = Pick<PricingPlanData, "id" | "name" | "monthlyPriceToman" | "maxStylists" | "smsPerMonth" | "features" | "recommended">;
+export type SignUpPlan = Pick<PricingPlanData, "id" | "name" | "audience" | "monthlyPriceToman" | "maxStylists" | "smsPerMonth" | "features" | "recommended">;
 
 export default function SignUpSalonForm({
   plans,
@@ -42,6 +42,9 @@ export default function SignUpSalonForm({
   const [serviceArea, setServiceArea] = useState("");
   const [hostSalonName, setHostSalonName] = useState("");
   const [planId, setPlanId] = useState(initialPlanId);
+  // Only the plans for this kind of business; switching kind falls back to its recommended/first plan.
+  const kindPlans = plans.filter((p) => p.audience === (independent ? "INDEPENDENT" : "SALON"));
+  const chosenPlanId = kindPlans.some((p) => p.id === planId) ? planId : ((kindPlans.find((p) => p.recommended) ?? kindPlans[0])?.id ?? null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -131,7 +134,7 @@ export default function SignUpSalonForm({
         address,
         latitude: pin.lat,
         longitude: pin.lng,
-        planId: planId ?? undefined,
+        planId: chosenPlanId ?? undefined,
         signupSource: signupSource ?? undefined,
         signupSourceNote: (signupSource === "OTHER" && signupSourceNote.trim()) || undefined,
         ...(independent && {
@@ -338,23 +341,24 @@ export default function SignUpSalonForm({
           </p>
         </div>
 
-        {plans.length > 0 && (
+        {kindPlans.length > 0 && (
           <>
             <StepTitle n="۳" i={7.5}>پلن</StepTitle>
             <div role="radiogroup" aria-label="انتخاب پلن" className="g-rise grid gap-2.5 sm:grid-cols-2" style={rise(7.75)}>
-              {plans.map((plan) => (
-                <PlanOption key={plan.id} plan={plan} selected={plan.id === planId} onSelect={() => setPlanId(plan.id)} />
+              {kindPlans.map((plan) => (
+                <PlanOption key={plan.id} plan={plan} selected={plan.id === chosenPlanId} onSelect={() => setPlanId(plan.id)} />
               ))}
             </div>
             <p className="g-rise -mt-1 px-1 text-xs leading-5 text-g-faint" style={rise(7.75)}>
               {trialDays > 0
-                ? `${toPersianDigits(trialDays)} روز اول رایگان است؛ بعداً می‌توانید پلن را عوض کنید.`
-                : "بعداً می‌توانید پلن را عوض کنید."}
+                ? `${toPersianDigits(trialDays)} روز اول رایگان است؛ بعداً می‌توانید پلن را عوض کنید. `
+                : "بعداً می‌توانید پلن را عوض کنید. "}
+              {SMS_BILLING_NOTE}
             </p>
           </>
         )}
 
-        <StepTitle n={plans.length > 0 ? "۴" : "۳"} i={7.85}>آشنایی با نوبتت</StepTitle>
+        <StepTitle n={kindPlans.length > 0 ? "۴" : "۳"} i={7.85}>آشنایی با نوبتت</StepTitle>
         <div className="g-rise flex flex-col gap-2" style={rise(7.9)}>
           <p className="px-1 text-[13px] text-g-muted">
             از کجا با ما آشنا شدید؟<span className="text-g-danger"> *</span>

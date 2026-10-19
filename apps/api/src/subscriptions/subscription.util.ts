@@ -13,6 +13,11 @@ export function subscriptionStatus(salon: { planId: string | null; planExpiresAt
   return salon.planExpiresAt && salon.planExpiresAt <= now ? "expired" : "active";
 }
 
+/** Customers can book online unless the salon's plan (trial or bought) has run out. */
+export function onlineBookingOpen(salon: { planId: string | null; planExpiresAt: Date | null }, now = new Date()): boolean {
+  return subscriptionStatus(salon, now) !== "expired";
+}
+
 const DAY_MS = 86_400_000;
 
 /** End of a new salon's free trial, or null (no end date) when the trial is off. */

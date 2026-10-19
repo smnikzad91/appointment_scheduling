@@ -99,7 +99,7 @@ export class AuthService {
     await this.useOtp(dto.phone, dto.code);
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const slug = await generateUniqueSlug(this.prisma, dto.salonName);
-    const subscription = await this.subscriptions.initialFor(dto.planId);
+    const subscription = await this.subscriptions.initialFor(dto.planId, independent ? SalonKind.INDEPENDENT : SalonKind.SALON);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const owner = await tx.user.create({

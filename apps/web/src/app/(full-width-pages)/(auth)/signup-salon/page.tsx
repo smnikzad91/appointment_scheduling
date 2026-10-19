@@ -16,11 +16,13 @@ export default async function SignUpSalon({ searchParams }: { searchParams: Prom
     prisma.pricingPlan.findMany({
       where: { active: true },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      select: { id: true, name: true, monthlyPriceToman: true, maxStylists: true, smsPerMonth: true, features: true, recommended: true },
+      select: { id: true, name: true, audience: true, monthlyPriceToman: true, maxStylists: true, smsPerMonth: true, features: true, recommended: true },
     }),
     prisma.pricingSettings.findUnique({ where: { id: "singleton" } }),
   ]);
-  const initial = plans.find((p) => p.id === plan) ?? plans.find((p) => p.recommended) ?? plans[0] ?? null;
+  const audience = type === "independent" ? "INDEPENDENT" : "SALON";
+  const ofKind = plans.filter((p) => p.audience === audience);
+  const initial = ofKind.find((p) => p.id === plan) ?? ofKind.find((p) => p.recommended) ?? ofKind[0] ?? null;
 
   return (
     <SignUpSalonForm

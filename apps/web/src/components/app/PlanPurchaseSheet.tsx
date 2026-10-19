@@ -129,7 +129,9 @@ export default function PlanPurchaseSheet({ token, sub, open, onClose, onBought 
                 <p className="flex justify-between text-app-muted"><span>موجودی کیف پول</span><span>{balance === null ? "…" : formatToman(balance)}</span></p>
               )}
               <p className="pt-1 text-xs leading-6 text-app-muted">
-                {renewing
+                {sub?.trialEndsAt
+                  ? "از پایان ماه رایگان شروع می‌شود."
+                  : renewing
                   ? "به انتهای اشتراک فعلی اضافه می‌شود."
                   : credit > 0
                     ? "از امروز شروع می‌شود؛ بخش استفاده‌نشده پلن فعلی به کیف پول برمی‌گردد."

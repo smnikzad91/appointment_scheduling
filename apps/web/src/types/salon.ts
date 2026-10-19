@@ -76,6 +76,8 @@ export interface Salon {
   logoUrl?: string | null;
   coverImageUrl?: string | null;
   brandColor: string; // hex, e.g. "#e0447b"
+  /** false once the salon's plan (free month or bought) ran out: customers can't book online until it's renewed */
+  onlineBooking: boolean;
   timezone: string; // IANA, e.g. "Asia/Tehran" — slots and working hours are wall-clock time here
   province: string | null; // استان; null on salons created before provinces were recorded
   city: string;

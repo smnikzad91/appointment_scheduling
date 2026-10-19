@@ -54,6 +54,7 @@ interface RawSalon {
   coverImageUrl: string | null;
   brandColor: string;
   timezone: string;
+  onlineBooking?: boolean;
   latitude: number | null;
   longitude: number | null;
   serviceCategories: { id: string; name: string; order: number }[];
@@ -196,6 +197,7 @@ export const getSalonBySlug = cache(async (slug: string): Promise<Salon | null> 
     coverImageUrl: raw.coverImageUrl,
     brandColor: raw.brandColor,
     timezone: raw.timezone,
+    onlineBooking: raw.onlineBooking !== false,
     province: raw.province,
     city: raw.city,
     address: raw.address,

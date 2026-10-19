@@ -157,6 +157,9 @@ model User {
   /// Promotional SMS ("time to book again") stopped by the customer — via the link in the text
   /// (/r/<code>) or their dashboard. Transactional texts (codes, reminders, booking changes) still go.
   promoSmsOptOut     Boolean             @default(false)
+  /// Last «کیف پول را شارژ کنید» SMS: booking SMS paid by this user stop once their wallet is at
+  /// SMS_DEBT_LIMIT_TOMAN (apps/api SmsService); sent at most once a day.
+  lowBalanceSmsAt    DateTime?
   /// Closed by the platform admin while history still points at the account (bookings, a stylist
   /// profile, a salon, wallet records): personal data wiped, no login (apps/web lib/userDeletion.ts).
   deletedAt          DateTime?
@@ -624,6 +627,9 @@ model Salon {
   planId           String?
   plan             PricingPlan?      @relation(fields: [planId], references: [id], onDelete: Restrict)
   planExpiresAt    DateTime?
+  /// End of the free trial given at sign-up (PricingSettings.trialDays); cleared once a plan is
+  /// bought or set by the admin. Non-null and in the future = «دوره آزمایشی».
+  trialEndsAt      DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -1121,9 +1127,16 @@ model WaitlistEntry {
 
 // Salon subscription plans: the landing page's pricing section and each salon's limits. Edited at
 // /admin/pricing (apps/web, Prisma directly); enforced by apps/api (src/subscriptions).
+/// Who a plan is for: an independent stylist's one-person business or a salon (Salon.kind).
+enum PlanAudience {
+  SALON
+  INDEPENDENT
+}
+
 model PricingPlan {
-  id                String   @id @default(cuid())
+  id                String       @id @default(cuid())
   name              String
+  audience          PlanAudience @default(SALON)
   description       String?
   // null = negotiated price ("توافقی"), 0 = free
   monthlyPriceToman Int?
@@ -1133,13 +1146,13 @@ model PricingPlan {
   smsPerMonth       Int?
   // Extra feature lines, shown after the generated stylist/SMS lines
   features          String[]
-  recommended       Boolean  @default(false)
-  ctaLabel          String   @default("انتخاب پلن")
-  ctaHref           String   @default("/signup-salon")
-  sortOrder         Int      @default(0)
-  active            Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  recommended       Boolean      @default(false)
+  ctaLabel          String       @default("انتخاب پلن")
+  ctaHref           String       @default("/signup-salon")
+  sortOrder         Int          @default(0)
+  active            Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   salons    Salon[]
   purchases PlanPurchase[]
@@ -1155,6 +1168,30 @@ model PricingSettings {
   updatedAt DateTime @updatedAt
 
   @@map("pricing_settings")
+}
+
+enum SmsLogStatus {
+  SENT
+  FAILED
+  /// not sent: the paying stylist's wallet was at SMS_DEBT_LIMIT_TOMAN or below
+  SKIPPED_LOW_BALANCE
+}
+
+/// Every booking SMS (one paid from a stylist's wallet — SmsService.send with a charge): sent,
+/// failed or skipped for low balance. No phone number or text is kept (personal data).
+model SmsLog {
+  id            String       @id @default(cuid())
+  kind          String
+  payerUserId   String
+  appointmentId String?
+  parts         Int
+  costToman     Int          @default(0)
+  status        SmsLogStatus
+  createdAt     DateTime     @default(now())
+
+  @@index([payerUserId, createdAt])
+  @@index([appointmentId])
+  @@map("sms_logs")
 }
 
 // Reminder SMS sent per salon per Jalali month ("1405-07", salon timezone), checked against the

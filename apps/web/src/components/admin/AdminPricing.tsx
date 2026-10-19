@@ -15,7 +15,7 @@ import {
   updatePricingSettings,
   type PlanDraft,
 } from "@/lib/api/adminPricing";
-import { isSafeCtaHref, PLAN_LIMITS, planFeatureLines, planPriceLabel, type PricingPlanData } from "@/lib/pricing";
+import { isSafeCtaHref, PLAN_LIMITS, planFeatureLines, planPriceLabel, type PlanAudience, type PricingPlanData } from "@/lib/pricing";
 import { normalizeDigits } from "@/lib/persian";
 import { useT } from "@/i18n/useT";
 import { useLocaleFormat } from "@/i18n/useLocaleFormat";
@@ -269,6 +269,9 @@ function PlanCard({
                 {t("prRecommended")}
               </span>
             )}
+            <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+              {plan.audience === "INDEPENDENT" ? t("prAudienceIndependent") : t("prAudienceSalon")}
+            </span>
             {!plan.active && (
               <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-400">
                 {t("prHidden")}
@@ -348,6 +351,7 @@ function PlanEditor({
   const t = useT();
   const { apiError, num } = useLocaleFormat();
   const [name, setName] = useState(plan?.name ?? "");
+  const [audience, setAudience] = useState<PlanAudience>(plan?.audience ?? "SALON");
   const [description, setDescription] = useState(plan?.description ?? "");
   const [price, setPrice] = useState(toText(plan?.monthlyPriceToman ?? null));
   const [maxStylists, setMaxStylists] = useState(toText(plan?.maxStylists ?? null));
@@ -361,6 +365,7 @@ function PlanEditor({
 
   const draft: PlanDraft = {
     name: name.trim(),
+    audience,
     description: description.trim() || null,
     monthlyPriceToman: toNumberOrNull(price),
     maxStylists: toNumberOrNull(maxStylists),
@@ -408,6 +413,14 @@ function PlanEditor({
           <label className="sm:col-span-2">
             <span className={label}>{t("prName")}</span>
             <input className={input} value={name} maxLength={PLAN_LIMITS.name} onChange={(e) => setName(e.target.value)} dir="rtl" />
+          </label>
+
+          <label className="sm:col-span-2">
+            <span className={label}>{t("prAudience")}</span>
+            <select className={input} value={audience} onChange={(e) => setAudience(e.target.value as PlanAudience)}>
+              <option value="SALON">{t("prAudienceSalon")}</option>
+              <option value="INDEPENDENT">{t("prAudienceIndependent")}</option>
+            </select>
           </label>
 
           <label className="sm:col-span-2">

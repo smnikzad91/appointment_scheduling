@@ -7,6 +7,7 @@ import { assertIranCoordinates, resolveProvinceCity } from "../common/location.j
 import { UpdateSalonStatusDto } from "./dto/update-salon-status.dto.js";
 import { SmsService } from "../sms/sms.service.js";
 import { salonStatusChange, salonStatusText } from "../sms/sms.text.js";
+import { onlineBookingOpen } from "../subscriptions/subscription.util.js";
 
 @Injectable()
 export class SalonsService {
@@ -30,7 +31,7 @@ export class SalonsService {
         galleryImages: { orderBy: { createdAt: "desc" }, select: { id: true, url: true, caption: true, stylistId: true } },
       },
     });
-    return salon && publicLocation(salon);
+    return salon && { ...publicLocation(salon), onlineBooking: onlineBookingOpen(salon) };
   }
 
   async listPublic() {

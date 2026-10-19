@@ -1,4 +1,4 @@
-import { jalaliPeriod, purchaseEnd, purchaseStart, subscriptionStatus, trialEnd, unusedPurchaseCredit } from './subscription.util.js';
+import { jalaliPeriod, onlineBookingOpen, purchaseEnd, purchaseStart, subscriptionStatus, trialEnd, unusedPurchaseCredit } from './subscription.util.js';
 
 describe('jalaliPeriod', () => {
   it('uses the Jalali month in the salon timezone', () => {
@@ -58,5 +58,15 @@ describe('switching plans: unused credit', () => {
   });
   it('nothing for a period already over', () => {
     expect(unusedPurchaseCredit([{ amountToman: 300_000, startsAt: new Date(now.getTime() - 40 * day), endsAt: new Date(now.getTime() - day) }], now)).toBe(0);
+  });
+});
+
+describe('onlineBookingOpen', () => {
+  const now = new Date('2026-10-19T12:00:00Z');
+  it('is closed only once the plan (trial or bought) has ended', () => {
+    expect(onlineBookingOpen({ planId: 'p', planExpiresAt: new Date('2026-10-20T00:00:00Z') }, now)).toBe(true);
+    expect(onlineBookingOpen({ planId: 'p', planExpiresAt: null }, now)).toBe(true);
+    expect(onlineBookingOpen({ planId: null, planExpiresAt: null }, now)).toBe(true);
+    expect(onlineBookingOpen({ planId: 'p', planExpiresAt: new Date('2026-10-19T11:59:00Z') }, now)).toBe(false);
   });
 });

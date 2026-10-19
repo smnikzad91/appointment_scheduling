@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CalendarClock, MessageSquareText, Users } from "lucide-react";
 import { getMySubscription, type OwnerSubscription } from "@/lib/api/ownerSalon";
-import { planPriceLabel } from "@/lib/pricing";
+import { planPriceLabel, SMS_BILLING_NOTE } from "@/lib/pricing";
 import { toPersianDigits } from "@/lib/persian";
 import { formatSalonDate } from "@/lib/salonTime";
 import { Button, Card, cx } from "@/components/app/ui";
@@ -27,10 +27,15 @@ export function useMySubscription(token: string | null | undefined, reloadKey?: 
   return sub;
 }
 
-function daysLeft(sub: OwnerSubscription): number | null {
-  if (!sub.expiresAt) return null;
-  return Math.max(0, Math.ceil((new Date(sub.expiresAt).getTime() - Date.now()) / DAY_MS));
+function daysUntil(at: string | null): number | null {
+  if (!at) return null;
+  return Math.max(0, Math.ceil((new Date(at).getTime() - Date.now()) / DAY_MS));
 }
+
+const daysLeft = (sub: OwnerSubscription) => daysUntil(sub.expiresAt);
+
+/** The free month runs and nothing is bought after it: online booking closes when it ends. */
+const trialOnly = (sub: OwnerSubscription) => !!sub.trialEndsAt && sub.expiresAt === sub.trialEndsAt;
 
 export function stylistSeatsFull(sub: OwnerSubscription | null): boolean {
   return !!sub && sub.stylists.limit !== null && sub.stylists.active >= sub.stylists.limit;
@@ -106,7 +111,7 @@ export function SubscriptionCard({ sub, className, token, onChanged }: { sub: Ow
             sub.status === "expired" ? "bg-app-danger/15 text-app-danger" : "bg-app-accent-soft text-app-accent",
           )}
         >
-          {sub.status === "expired" ? "منقضی شده" : "فعال"}
+          {sub.status === "expired" ? "منقضی شده" : sub.trialEndsAt ? "ماه رایگان" : "فعال"}
         </span>
       </div>
 
@@ -116,16 +121,24 @@ export function SubscriptionCard({ sub, className, token, onChanged }: { sub: Ow
           {!sub.expiresAt
             ? "بدون تاریخ پایان"
             : sub.status === "expired"
-              ? `پایان یافته در ${formatSalonDate(sub.expiresAt)}`
-              : `تا ${formatSalonDate(sub.expiresAt)} (${toPersianDigits(left ?? 0)} روز مانده)`}
+              ? `پایان یافته در ${formatSalonDate(sub.expiresAt)}؛ نوبت‌دهی آنلاین تا تمدید بسته است`
+              : sub.trialEndsAt
+                ? `رایگان تا ${formatSalonDate(sub.trialEndsAt)} (${toPersianDigits(daysUntil(sub.trialEndsAt) ?? 0)} روز مانده)` +
+                  (trialOnly(sub) ? "" : `، سپس پرداخت‌شده تا ${formatSalonDate(sub.expiresAt)}`)
+                : `تا ${formatSalonDate(sub.expiresAt)} (${toPersianDigits(left ?? 0)} روز مانده)`}
         </span>
       </div>
+      {trialOnly(sub) && (
+        <p className="-mt-2 ps-8 text-xs leading-6 text-app-muted">
+          همه امکانات این پلن در ماه رایگان باز است. برای این‌که نوبت‌دهی آنلاین بعد از آن بسته نشود، پلن را از کیف پول بخرید؛ دوره پولی از پایان ماه رایگان شروع می‌شود.
+        </p>
+      )}
 
       <Usage icon={Users} label="آرایشگر فعال" used={sub.stylists.active} limit={sub.stylists.limit} />
       <Usage icon={MessageSquareText} label="پیامک این ماه" used={sub.sms.sent} limit={sub.sms.limit} none="در این پلن نیست" />
       {sub.sms.limit !== 0 && (
         <p className="-mt-2 ps-8 text-xs leading-6 text-app-muted">
-          محدودیتی ندارد؛ هزینه هر پیامک نوبت (برای مشتری یا آرایشگر) از کیف پول آرایشگرِ همان نوبت کم می‌شود و در «کیف پول» دیده می‌شود.
+          {SMS_BILLING_NOTE} تا ۱۰٬۰۰۰ تومان بدهی، پیامک‌ها ارسال می‌شوند؛ بعد از آن تا شارژ کیف پول متوقف می‌شوند و به آرایشگر پیامک داده می‌شود. هزینه‌ها در «کیف پول» دیده می‌شوند.
         </p>
       )}
 
@@ -148,9 +161,11 @@ export function SubscriptionNotice({ sub, seats, className }: { sub: OwnerSubscr
   const left = daysLeft(sub);
   let text: string | null = null;
   if (sub.status === "expired") {
-    text = "اشتراک سالن به پایان رسیده است؛ تا تمدید (از کیف پول، در تنظیمات)، افزودن آرایشگر و پیامک یادآوری متوقف است.";
+    text = "اشتراک به پایان رسیده است؛ تا تمدید (از کیف پول، در تنظیمات)، مشتری‌ها نمی‌توانند آنلاین نوبت بگیرند و افزودن آرایشگر ممکن نیست. نوبت‌گرفتن توسط خود شما ادامه دارد.";
   } else if (left !== null && left <= SOON_DAYS) {
-    text = `${toPersianDigits(left)} روز تا پایان اشتراک سالن مانده است.`;
+    text = trialOnly(sub)
+      ? `${toPersianDigits(left)} روز از ماه رایگان مانده است؛ برای باز ماندن نوبت‌دهی آنلاین، پلن را از کیف پول بخرید.`
+      : `${toPersianDigits(left)} روز تا پایان اشتراک مانده است؛ بعد از آن نوبت‌دهی آنلاین تا تمدید بسته می‌شود.`;
   } else if (seats && stylistSeatsFull(sub)) {
     text = `ظرفیت آرایشگر پلن ${sub.plan?.name ?? ""} پر است (${toPersianDigits(sub.stylists.limit ?? 0)} آرایشگر فعال). برای افزودن، یک آرایشگر را غیرفعال کنید یا پلن را ارتقا دهید.`;
   }

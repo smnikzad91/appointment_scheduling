@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { WalletTxKind, type Prisma } from "@appointment-scheduling/database";
+import { PlanAudience, SalonKind, WalletTxKind, type Prisma } from "@appointment-scheduling/database";
 import { InsufficientWalletError, moveWallet } from "../wallet/prepayment.js";
 import { PurchasePlanDto } from "./dto/purchase-plan.dto.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -13,7 +13,9 @@ const PLAN_SUMMARY = { id: true, name: true, monthlyPriceToman: true, maxStylist
 /**
  * Salon plans (PricingPlan rows, edited at /admin/pricing in apps/web) and their limits:
  * how many active stylists a salon may have and how many reminder SMS it gets per Jalali month.
- * A salon without a plan has no limits; an expired one can't add stylists and gets no reminders.
+ * A salon without a plan has no limits; an expired one can't add stylists and takes no online
+ * bookings (AppointmentsService.create). Plans are for salons or for independent stylists
+ * (PricingPlan.audience = Salon.kind); every new account starts with a free trial (trialEndsAt).
  * The owner buys or renews a plan from their platform wallet (purchase); the platform admin can
  * still assign any plan and end date by hand (setForSalon).
  */
@@ -22,17 +24,20 @@ export class SubscriptionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Plan for a salon signing up: the one they picked (must be shown on the site), else the
-   * recommended/first visible plan, else none. The free trial (PricingSettings) sets the end date.
+   * Plan for a salon or independent stylist signing up: the one they picked (shown on the site and
+   * meant for their kind), else the recommended/first such plan, else none. The free trial
+   * (PricingSettings.trialDays) sets the end date — full access to that plan until then.
    */
-  async initialFor(planId: string | undefined, db: Db = this.prisma) {
+  async initialFor(planId: string | undefined, kind: SalonKind = SalonKind.SALON, db: Db = this.prisma) {
+    const where = { active: true, audience: audienceOf(kind) };
     const plan = planId
-      ? await db.pricingPlan.findFirst({ where: { id: planId, active: true }, select: { id: true } })
-      : await db.pricingPlan.findFirst({ where: { active: true }, orderBy: [{ recommended: "desc" }, { sortOrder: "asc" }], select: { id: true } });
+      ? await db.pricingPlan.findFirst({ where: { ...where, id: planId }, select: { id: true } })
+      : await db.pricingPlan.findFirst({ where, orderBy: [{ recommended: "desc" }, { sortOrder: "asc" }], select: { id: true } });
     if (planId && !plan) throw new BadRequestException("This plan is no longer available");
-    if (!plan) return { planId: null, planExpiresAt: null };
+    if (!plan) return { planId: null, planExpiresAt: null, trialEndsAt: null };
     const settings = await db.pricingSettings.findUnique({ where: { id: "singleton" }, select: { trialDays: true } });
-    return { planId: plan.id, planExpiresAt: trialEnd(settings?.trialDays ?? 0) };
+    const end = trialEnd(settings?.trialDays ?? 0);
+    return { planId: plan.id, planExpiresAt: end, trialEndsAt: end };
   }
 
   /** Throws unless the salon's plan leaves room for one more active stylist. */
@@ -66,7 +71,7 @@ export class SubscriptionsService {
   async getForOwner(userId: string, now = new Date()) {
     const salon = await this.prisma.salon.findFirst({
       where: { ownerId: userId },
-      select: { id: true, timezone: true, planId: true, planExpiresAt: true, plan: { select: PLAN_SUMMARY } },
+      select: { id: true, timezone: true, planId: true, planExpiresAt: true, trialEndsAt: true, plan: { select: PLAN_SUMMARY } },
     });
     if (!salon) throw new NotFoundException("You don't own a salon yet");
     const period = jalaliPeriod(now, salon.timezone);
@@ -78,6 +83,8 @@ export class SubscriptionsService {
       status: subscriptionStatus(salon, now),
       plan: salon.plan,
       expiresAt: salon.planExpiresAt,
+      /** set while the sign-up's free month runs */
+      trialEndsAt: salon.trialEndsAt && salon.trialEndsAt > now ? salon.trialEndsAt : null,
       stylists: { active: activeStylists, limit: salon.plan ? salon.plan.maxStylists : null },
       // no limit any more: each SMS costs the booking's stylist (wallet «هزینه پیامک»)
       sms: { period, sent: usage?.sent ?? 0, limit: null },
@@ -89,10 +96,10 @@ export class SubscriptionsService {
    * and what switching away from their running plan would credit back (switchCreditToman).
    */
   async purchasablePlans(userId: string, now = new Date()) {
-    const salon = await this.prisma.salon.findFirst({ where: { ownerId: userId }, select: { id: true, planId: true } });
+    const salon = await this.prisma.salon.findFirst({ where: { ownerId: userId }, select: { id: true, planId: true, kind: true } });
     const [plans, running] = await Promise.all([
       this.prisma.pricingPlan.findMany({
-        where: { active: true, monthlyPriceToman: { not: null } },
+        where: { active: true, monthlyPriceToman: { not: null }, audience: audienceOf(salon?.kind ?? SalonKind.SALON) },
         orderBy: { sortOrder: "asc" },
         select: { ...PLAN_SUMMARY, recommended: true },
       }),
@@ -116,8 +123,14 @@ export class SubscriptionsService {
       const found = await tx.salon.findFirst({ where: { ownerId: userId }, select: { id: true } });
       if (!found) throw new NotFoundException("You don't own a salon yet");
       await tx.$queryRaw`SELECT 1 FROM salons WHERE id = ${found.id} FOR UPDATE`;
-      const salon = await tx.salon.findUniqueOrThrow({ where: { id: found.id }, select: { id: true, ownerId: true, planId: true, planExpiresAt: true } });
-      const plan = await tx.pricingPlan.findFirst({ where: { id: dto.planId, active: true }, select: { id: true, name: true, monthlyPriceToman: true } });
+      const salon = await tx.salon.findUniqueOrThrow({
+        where: { id: found.id },
+        select: { id: true, ownerId: true, kind: true, planId: true, planExpiresAt: true, trialEndsAt: true },
+      });
+      const plan = await tx.pricingPlan.findFirst({
+        where: { id: dto.planId, active: true, audience: audienceOf(salon.kind) },
+        select: { id: true, name: true, monthlyPriceToman: true },
+      });
       if (!plan) throw new BadRequestException("This plan is no longer available");
       if (plan.monthlyPriceToman === null) throw new BadRequestException("This plan's price is arranged with the platform");
       if (salon.planId === plan.id && salon.planExpiresAt === null) throw new BadRequestException("Your plan has no end date");
@@ -134,7 +147,8 @@ export class SubscriptionsService {
         }
       }
 
-      const startsAt = purchaseStart(salon, plan.id, now);
+      // Bought during the free month: the paid period starts when the trial ends (on any plan).
+      const startsAt = salon.trialEndsAt && salon.trialEndsAt > now ? salon.trialEndsAt : purchaseStart(salon, plan.id, now);
       const endsAt = purchaseEnd(startsAt, dto.months);
       const amountToman = plan.monthlyPriceToman * dto.months;
       const purchase = await tx.planPurchase.create({
@@ -162,8 +176,11 @@ export class SubscriptionsService {
     }
     return this.prisma.salon.update({
       where: { id: salonId },
-      data: { planId: dto.planId, planExpiresAt: dto.planId && dto.expiresAt ? new Date(dto.expiresAt) : null },
+      data: { planId: dto.planId, planExpiresAt: dto.planId && dto.expiresAt ? new Date(dto.expiresAt) : null, trialEndsAt: null },
       select: { id: true, planId: true, planExpiresAt: true, plan: { select: { id: true, name: true } } },
     });
   }
 }
+
+/** Which plans a salon of this kind can be on. */
+export const audienceOf = (kind: SalonKind) => (kind === SalonKind.INDEPENDENT ? PlanAudience.INDEPENDENT : PlanAudience.SALON);
