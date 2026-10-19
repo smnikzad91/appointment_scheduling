@@ -44,6 +44,29 @@ export const withdrawalText = (kind: "withdrawal-paid" | "withdrawal-rejected", 
 };
 
 /**
+ * After approval, the free trial: «نوبتت: یک ماه رایگان پلن «سالن استارتر» برای سالنتان فعال شد (تا
+ * ۲۸ آبان). بعد از آن برای ادامه رزرو آنلاین، پلن را از کیف پول بخرید.» — two segments at most
+ * (a long plan name is cut). `length` is «یک ماه» for 30 days, else «۱۴ روز».
+ */
+export const trialStartedText = (p: { plan: string; until: string; length: string }, independent: boolean) =>
+  fitSms(
+    { plan: p.plan },
+    ["plan"],
+    (q) => `نوبتت: ${p.length} رایگان پلن «${q.plan}» برای ${independent ? "شما" : "سالنتان"} فعال شد (تا ${p.until}). بعد از آن برای ادامه رزرو آنلاین، پلن را از کیف پول بخرید.`,
+    SMS_TWO_SEGMENTS,
+  );
+
+/** «یک ماه» / «۱۴ روز»: how long a trial from `from` to `until` is, in whole days. */
+export function trialLength(from: Date, until: Date): string {
+  const days = Math.round((until.getTime() - from.getTime()) / 86_400_000);
+  return days === 30 ? "یک ماه" : `${faDigits(days)} روز`;
+}
+
+/** «۲۸ آبان» — a Jalali day and month in the salon's timezone. */
+export const jalaliDayMonth = (at: Date, timeZone: string) =>
+  new Intl.DateTimeFormat("fa-IR-u-ca-persian", { timeZone, day: "numeric", month: "long" }).format(at);
+
+/**
  * To the owner when the platform admin changes their salon's status, one segment (the name is cut
  * first; an independent stylist's page is «صفحه رزرو شما»): approved «سالن «رز» در نوبتت تایید شد؛
  * صفحه رزرو فعال است», rejected «ثبت‌نام «رز» در نوبتت تایید نشد؛ با پشتیبانی تماس بگیرید»,

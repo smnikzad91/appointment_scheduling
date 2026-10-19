@@ -69,6 +69,13 @@ export type SmsMessage =
       text: string;
     }
   | {
+      /** Sent right after the «approved» text: the sign-up's free trial of their plan runs until `until`. */
+      kind: "trial-started-owner";
+      to: string;
+      params: { plan: string; until: string; length: string };
+      text: string;
+    }
+  | {
       /** The stylist's wallet reached SMS_DEBT_LIMIT_TOMAN: their booking SMS stop until they top up. */
       kind: "low-balance-stylist";
       to: string;
