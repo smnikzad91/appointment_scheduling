@@ -8,6 +8,7 @@ import { Calculator, CalendarCheck2, CalendarClock, ExternalLink, Hourglass, QrC
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, listMySalonAppointments, listMyStylists, updateAppointmentStatus, type OwnerSalon, type OwnerAppointment, type OwnerStylist } from "@/lib/api/ownerSalon";
 import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
+import InsightsHomeCards from "@/components/app/insights/InsightsHomeCards";
 import { isIndependent } from "@/lib/independent";
 import { SubscriptionNotice, useMySubscription } from "@/components/app/Subscription";
 import { formatToman } from "@/lib/persian";
@@ -156,6 +157,8 @@ export default function SalonOverviewPage() {
         <StatTile icon={Hourglass} label="منتظر تایید" value={needsConfirmation.length} tone={needsConfirmation.length ? "pending" : "ink"} />
         <StatTile icon={CalendarClock} label="نوبت‌های آینده" value={upcoming.length} />
       </div>
+
+      <InsightsHomeCards token={token} className="mt-3" />
 
       <LinkCard
         href="/salon/accounting"

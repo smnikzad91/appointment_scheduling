@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CalendarDays,
   Clock3,
+  Eye,
   Home,
   LifeBuoy,
   Scissors,
@@ -12,6 +13,7 @@ import {
   Settings,
   UserRound,
   Users,
+  UsersRound,
   Wallet,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -93,6 +95,8 @@ export function SalonShell({ children }: { children: React.ReactNode }) {
       ]}
       accountLinks={[
         { href: "/salon/wallet", label: "کیف پول", icon: Wallet },
+        { href: "/salon/insights/visits", label: "آمار بازدید", icon: Eye },
+        { href: "/salon/insights/customers", label: "آنالیز رفتار مشتری", icon: UsersRound },
         { href: independent ? "/tutorials?role=independent" : "/tutorials?role=owner", label: "راهنمای استفاده", icon: BookOpen },
       ]}
     >

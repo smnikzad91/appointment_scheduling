@@ -23,6 +23,7 @@ import { WaitlistModule } from './waitlist/waitlist.module.js';
 import { SmsModule } from './sms/sms.module.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 import { WalletModule } from './wallet/wallet.module.js';
+import { InsightsModule } from './insights/insights.module.js';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { WalletModule } from './wallet/wallet.module.js';
     SmsModule,
     SubscriptionsModule,
     WalletModule,
+    InsightsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],
