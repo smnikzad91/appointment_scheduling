@@ -92,7 +92,7 @@ export class SalonsService {
       const text = salonStatusText(change, { name: salon.name, independent });
       const trial =
         change === "approved" && salon.plan && salon.trialEndsAt && salon.trialEndsAt > now
-          ? { plan: salon.plan.name, until: jalaliDayMonth(salon.trialEndsAt, salon.timezone), length: trialLength(salon.createdAt, salon.trialEndsAt) }
+          ? { plan: salon.plan.name, until: jalaliDayMonth(salon.trialEndsAt, salon.timezone), length: trialLength(salon.createdAt, salon.trialEndsAt, salon.timezone) }
           : null;
       // one after the other, so the trial text arrives after «تایید شد»
       void (async () => {

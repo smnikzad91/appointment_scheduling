@@ -78,7 +78,7 @@ export default function SalonVisitsPage() {
   const funnel = [
     { key: "visit", label: "بازدید صفحه", value: data.totals.visitors },
     { key: "open", label: "شروع رزرو", value: data.funnel.openedVisitors },
-    { key: "done", label: "ثبت نوبت", value: data.funnel.doneVisitors },
+    { key: "done", label: "نوبت آنلاین", value: Math.min(data.onlineBookings, funnelTop) },
   ];
 
   return (
@@ -106,11 +106,11 @@ export default function SalonVisitsPage() {
           <div className="grid grid-cols-2 gap-2.5">
             <Kpi label="بازدیدکننده یکتا" value={faNum(data.totals.visitors)} delta={visitorsDelta} tone="accent" />
             <Kpi label="بازدید صفحه" value={faNum(data.totals.views)} delta={viewsDelta} />
-            <Kpi label="نوبت ثبت‌شده از صفحه" value={faNum(data.funnel.done)} hint={`${faNum(data.funnel.doneVisitors)} نفر`} />
+            <Kpi label="نوبت آنلاین" value={faNum(data.onlineBookings)} delta={change(data.onlineBookings, data.previous.onlineBookings)} hint="رزرو خود مشتری‌ها (سایت و اپ)" />
             <Kpi
               label="نرخ تبدیل بازدید به نوبت"
               value={faPct(data.conversion)}
-              hint={data.previous.visitors ? `دوره قبل: ${faPct(data.previous.conversion)}` : "بازدیدکننده‌هایی که نوبت گرفتند"}
+              hint={data.previous.visitors ? `دوره قبل: ${faPct(data.previous.conversion)}` : "نوبت آنلاین به ازای هر ۱۰۰ بازدیدکننده"}
             />
           </div>
 
@@ -119,14 +119,14 @@ export default function SalonVisitsPage() {
           </Panel>
 
           <div className="grid gap-3">
-            <Panel title="مسیر رزرو" hint="چند نفر از بازدیدکننده‌ها رزرو را شروع و تمام کردند.">
+            <Panel title="مسیر رزرو" hint="بازدیدکننده‌ها، کسانی که رزرو را شروع کردند و نوبت‌های آنلاین ثبت‌شده.">
               <ol className="space-y-3">
                 {funnel.map((f, i) => (
                   <li key={f.key}>
                     <div className="mb-1 flex justify-between text-sm">
                       <span className="font-semibold text-app-ink">{f.label}</span>
                       <span className="text-app-muted">
-                        {faNum(f.value)} نفر{i > 0 && <span className="ms-1.5 text-[11px]">({faPct(Math.round((f.value / funnelTop) * 1000) / 10)})</span>}
+                        {faNum(f.value)} {f.key === "done" ? "نوبت" : "نفر"}{i > 0 && <span className="ms-1.5 text-[11px]">({faPct(Math.round((f.value / funnelTop) * 1000) / 10)})</span>}
                       </span>
                     </div>
                     <div className="h-3 overflow-hidden rounded-full bg-app-card-2">
@@ -135,7 +135,7 @@ export default function SalonVisitsPage() {
                   </li>
                 ))}
               </ol>
-              {data.funnel.openedVisitors > 0 && data.funnel.doneVisitors / data.funnel.openedVisitors < 0.3 && (
+              {data.funnel.openedVisitors >= 5 && data.onlineBookings / data.funnel.openedVisitors < 0.3 && (
                 <p className="mt-4 rounded-2xl bg-app-pending/12 p-3 text-xs leading-6 text-app-pending">
                   بیشتر کسانی که رزرو را شروع می‌کنند آن را تمام نمی‌کنند. ساعات کاری بیشتر، قیمت شفاف خدمات و عکس نمونه‌کار در گالری کمک می‌کند.
                 </p>

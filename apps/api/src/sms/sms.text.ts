@@ -69,9 +69,11 @@ export const trialEndingText = (p: { plan: string; until: string; left: string }
     SMS_TWO_SEGMENTS,
   );
 
-/** «یک ماه» / «۱۴ روز»: how long a trial from `from` to `until` is, in whole days. */
-export function trialLength(from: Date, until: Date): string {
-  const days = Math.round((until.getTime() - from.getTime()) / 86_400_000);
+/** «یک ماه» / «۱۴ روز»: how long a trial from `from` to `until` is, in salon-local calendar days. */
+export function trialLength(from: Date, until: Date, timeZone = "Asia/Tehran"): string {
+  // calendar days in the salon's timezone: a trial ends at 23:59:59 of its last day
+  const day = (d: Date) => Date.parse(new Intl.DateTimeFormat("en-CA", { timeZone }).format(d));
+  const days = Math.round((day(until) - day(from)) / 86_400_000);
   return days === 30 ? "یک ماه" : `${faDigits(days)} روز`;
 }
 

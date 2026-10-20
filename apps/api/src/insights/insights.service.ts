@@ -14,6 +14,8 @@ const DAY_MS = 86_400_000;
 
 const num = (v: bigint | number | null | undefined) => Number(v ?? 0);
 const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0);
+/** Bookings per 100 visitors; capped since app bookings and repeat bookers aren't page visitors. */
+const conversion = (bookings: number, visitors: number) => Math.min(100, pct(bookings, visitors));
 
 /**
  * The salon owner's (or independent stylist's) analytics:
@@ -48,7 +50,7 @@ export class InsightsService {
     const totals = (a: Date, b: Date) => this.prisma.$queryRaw<{ views: bigint; visitors: bigint }[]>`
       SELECT count(*) AS views, count(DISTINCT "visitorHash") AS visitors FROM page_visits WHERE ${views(a, b)}`;
 
-    const [current, previous, today, live, perDay, referrers, devices, events, prevEvents] = await Promise.all([
+    const [current, previous, today, live, perDay, referrers, devices, events] = await Promise.all([
       totals(from, now),
       totals(prevFrom, from),
       totals(todayFrom, now),
@@ -62,7 +64,12 @@ export class InsightsService {
         ELSE coalesce("referrerSource", "referrerType") END`),
       breakdown(Prisma.sql`device`),
       this.events(salon.slug, from, now),
-      this.events(salon.slug, prevFrom, from),
+    ]);
+    // Bookings come from the appointments table, not the page's «booking done» beacon, which some
+    // browsers and blockers drop (it under-counted by a quarter at one salon).
+    const [onlineBookings, prevOnlineBookings] = await Promise.all([
+      this.onlineBookings(salon.id, from, now),
+      this.onlineBookings(salon.id, prevFrom, from),
     ]);
 
     const byDay = new Map(perDay.map((d) => [d.day, d]));
@@ -82,7 +89,7 @@ export class InsightsService {
       from: from.toISOString(),
       to: now.toISOString(),
       totals: { views: num(current[0]?.views), visitors },
-      previous: { views: num(previous[0]?.views), visitors: prevVisitors, conversion: pct(prevEvents.doneVisitors, prevVisitors) },
+      previous: { views: num(previous[0]?.views), visitors: prevVisitors, onlineBookings: prevOnlineBookings, conversion: conversion(prevOnlineBookings, prevVisitors) },
       today: { views: num(today[0]?.views), visitors: num(today[0]?.visitors) },
       liveVisitors: num(live[0]?.visitors),
       liveMinutes: LIVE_MINUTES,
@@ -90,9 +97,15 @@ export class InsightsService {
       referrers: list(referrers),
       devices: list(devices),
       funnel: events,
-      /** visitors who finished a booking ÷ unique visitors */
-      conversion: pct(events.doneVisitors, visitors),
+      /** customers' own bookings made in the window (site or app) */
+      onlineBookings,
+      /** online bookings ÷ unique visitors, at most 100 */
+      conversion: conversion(onlineBookings, visitors),
     };
+  }
+
+  private onlineBookings(salonId: string, from: Date, to: Date) {
+    return this.prisma.appointment.count({ where: { salonId, bookedOnline: true, createdAt: { gte: from, lt: to } } });
   }
 
   private async events(slug: string, from: Date, to: Date) {

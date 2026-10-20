@@ -23,7 +23,7 @@ export interface VisitInsights {
   to: string;
   totals: { views: number; visitors: number };
   /** the window of the same length just before */
-  previous: { views: number; visitors: number; conversion: number };
+  previous: { views: number; visitors: number; onlineBookings: number; conversion: number };
   today: { views: number; visitors: number };
   liveVisitors: number;
   liveMinutes: number;
@@ -31,7 +31,9 @@ export interface VisitInsights {
   referrers: Breakdown[];
   devices: Breakdown[];
   funnel: { opened: number; openedVisitors: number; done: number; doneVisitors: number };
-  /** percent of unique visitors who finished a booking */
+  /** customers' own bookings made in the window (site or app; Appointment.bookedOnline) */
+  onlineBookings: number;
+  /** online bookings per 100 unique visitors, at most 100 */
   conversion: number;
 }
 

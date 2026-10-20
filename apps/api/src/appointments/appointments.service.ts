@@ -254,6 +254,7 @@ export class AppointmentsService {
             notes: dto.notes,
             ...place,
             ...bookingName,
+            bookedOnline: !bySalon,
             ...(bySalon && { status: AppointmentStatus.CONFIRMED }),
             ...(prepaidToman > 0 && { prepaidToman, prepaymentStatus: PrepaymentStatus.HELD }),
             services: {

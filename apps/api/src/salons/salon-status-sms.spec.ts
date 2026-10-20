@@ -109,6 +109,8 @@ describe('free-trial SMS after approval', () => {
 
   it('says «۱۴ روز» for a trial that is not a month, and stays within two segments for a long plan name', () => {
     expect(trialLength(createdAt, new Date(createdAt.getTime() + 14 * 86_400_000))).toBe('۱۴ روز');
+    // a 30-day trial that ends at 23:59:59 is still «یک ماه»
+    expect(trialLength(new Date('2026-10-19T21:10:00Z'), new Date('2026-11-19T20:29:59Z'))).toBe('یک ماه');
     const text = trialStartedText({ plan: 'پلن ویژه '.repeat(10), until: '۲۷ آبان', length: 'یک ماه' }, false);
     expect(smsParts(text)).toBeLessThanOrEqual(2);
   });

@@ -830,6 +830,9 @@ model Appointment {
   /// owner's wallet (COMPLETED / NO_SHOW); REFUNDED = back to the customer (CANCELLED). Null = none.
   prepaidToman             Int               @default(0)
   prepaymentStatus         PrepaymentStatus?
+  /// Booked by the customer (site or app, POST /appointments) rather than by the salon or a stylist.
+  /// Set since 2026-10-20; older rows were backfilled from prepaymentStatus (online bookings pre-pay).
+  bookedOnline             Boolean           @default(false)
   /// Of a SETTLED pre-payment, the part paid to a salon's stylist (their commission share); the rest went to the owner.
   prepaymentStylistToman   Int               @default(0)
   /// The rest of the price after the pre-payment, set when marked COMPLETED (apps/api wallet/balance.ts):

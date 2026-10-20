@@ -1,3 +1,5 @@
+import { addDaysToDateKey, instantToSalonWallTime, salonWallTimeToInstant } from "../availability/salon-time.util.js";
+
 /** Jalali year-month ("1405-07") of an instant in the salon's timezone — the SMS allowance period. */
 export function jalaliPeriod(at: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-US-u-ca-persian-nu-latn", { timeZone, year: "numeric", month: "2-digit" }).formatToParts(at);
@@ -21,8 +23,11 @@ export function onlineBookingOpen(salon: { planId: string | null; planExpiresAt:
 const DAY_MS = 86_400_000;
 
 /** End of a new salon's free trial, or null (no end date) when the trial is off. */
-export function trialEnd(trialDays: number, now = new Date()): Date | null {
-  return trialDays > 0 ? new Date(now.getTime() + trialDays * DAY_MS) : null;
+export function trialEnd(trialDays: number, now = new Date(), timeZone = "Asia/Tehran"): Date | null {
+  if (trialDays <= 0) return null;
+  // The end of the last day (23:59:59 salon-local), so «تا ۲۸ آبان» in the SMS means the whole day.
+  const nextDay = addDaysToDateKey(instantToSalonWallTime(now, timeZone).dateKey, trialDays + 1);
+  return new Date(salonWallTimeToInstant(nextDay, 0, timeZone).getTime() - 1000);
 }
 
 /** A bought month is 30 days. */
