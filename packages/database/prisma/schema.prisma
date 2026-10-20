@@ -630,6 +630,8 @@ model Salon {
   /// End of the free trial given at sign-up (PricingSettings.trialDays); cleared once a plan is
   /// bought or set by the admin. Non-null and in the future = «دوره آزمایشی».
   trialEndsAt      DateTime?
+  /// When the «free month ends in 3 days» SMS went to the owner (TrialReminderService); once per salon.
+  trialReminderSentAt DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 

@@ -56,6 +56,19 @@ export const trialStartedText = (p: { plan: string; until: string; length: strin
     SMS_TWO_SEGMENTS,
   );
 
+/**
+ * To the owner a few days before their free trial ends (TrialReminderService), at most two segments
+ * (the plan name is cut first): «نوبتت: ماه رایگان سالنتان ۳ روز دیگر (۲۸ آبان) تمام و رزرو
+ * آنلاین بسته می‌شود. برای ادامه، پلن «سالن استارتر» را از کیف پول بخرید.»
+ */
+export const trialEndingText = (p: { plan: string; until: string; left: string }, independent: boolean) =>
+  fitSms(
+    { plan: p.plan },
+    ["plan"],
+    (q) => `نوبتت: ماه رایگان ${independent ? "شما" : "سالنتان"} ${p.left} (${p.until}) تمام و رزرو آنلاین بسته می‌شود. برای ادامه، پلن «${q.plan}» را از کیف پول بخرید.`,
+    SMS_TWO_SEGMENTS,
+  );
+
 /** «یک ماه» / «۱۴ روز»: how long a trial from `from` to `until` is, in whole days. */
 export function trialLength(from: Date, until: Date): string {
   const days = Math.round((until.getTime() - from.getTime()) / 86_400_000);

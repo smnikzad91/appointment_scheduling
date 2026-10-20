@@ -76,6 +76,13 @@ export type SmsMessage =
       text: string;
     }
   | {
+      /** A few days before the free trial ends, if no plan was bought (TrialReminderService). */
+      kind: "trial-ending-owner";
+      to: string;
+      params: { plan: string; until: string; left: string };
+      text: string;
+    }
+  | {
       /** The stylist's wallet reached SMS_DEBT_LIMIT_TOMAN: their booking SMS stop until they top up. */
       kind: "low-balance-stylist";
       to: string;
