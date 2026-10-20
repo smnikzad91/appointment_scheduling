@@ -1,27 +1,47 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requestSession } from "@/lib/requestSession";
+import { parseWalletQuery, walletOrderBy, walletWhere } from "@/lib/walletQuery";
+import type { Prisma } from "@appointment-scheduling/database";
 
-// The signed-in account's wallet: balance and its latest movements (WalletTransaction) — top-ups,
+// The signed-in account's wallet: balance and its movements (WalletTransaction) — top-ups,
 // booking pre-payments and their refunds, and for a salon owner the pre-payments they received.
-export async function GET() {
+// Paged, filtered and sorted by the query string (lib/walletQuery.ts: direction, kind, period,
+// sort, page, pageSize); with none it's the newest 50 (the Android app). Also returns the
+// matching count, the money in / out over the matching rows, and the kinds this account has
+// (for the type filter).
+export async function GET(req: Request) {
   const session = await requestSession();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const [user, items] = await Promise.all([
-    prisma.user.findUnique({ where: { id: session.user.id }, select: { walletBalance: true } }),
+  const userId = session.user.id;
+  const q = parseWalletQuery(new URL(req.url).searchParams);
+  const where = { userId, ...walletWhere(q) } as Prisma.WalletTransactionWhereInput;
+  const [user, items, total, sumIn, sumOut, kinds] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { walletBalance: true } }),
     prisma.walletTransaction.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+      where,
+      orderBy: walletOrderBy(q.sort),
+      skip: (q.page - 1) * q.pageSize,
+      take: q.pageSize,
       include: {
         appointment: { select: { startAt: true, salon: { select: { name: true, timezone: true } } } },
         payout: { select: { stylist: { select: { displayName: true } }, salon: { select: { name: true } } } },
         planPurchase: { select: { planName: true, months: true } },
       },
     }),
+    prisma.walletTransaction.count({ where }),
+    prisma.walletTransaction.aggregate({ where: { AND: [where, { amountToman: { gt: 0 } }] }, _sum: { amountToman: true } }),
+    prisma.walletTransaction.aggregate({ where: { AND: [where, { amountToman: { lt: 0 } }] }, _sum: { amountToman: true } }),
+    prisma.walletTransaction.groupBy({ by: ["kind"], where: { userId } }),
   ]);
   return NextResponse.json({
     balanceToman: user?.walletBalance ?? 0,
+    total,
+    page: q.page,
+    pageSize: q.pageSize,
+    inToman: sumIn._sum.amountToman ?? 0,
+    outToman: -(sumOut._sum.amountToman ?? 0),
+    kinds: kinds.map((k) => k.kind.toLowerCase()),
     items: items.map((t) => ({
       id: t.id,
       kind: t.kind.toLowerCase(),
