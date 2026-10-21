@@ -10,6 +10,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Modal } from "@/components/ui/modal";
 import DeleteConfirmModal from "@/components/admin/DeleteConfirmModal";
+import AdminWalletAdjustModal, { type WalletAdjustTarget } from "@/components/admin/AdminWalletAdjustModal";
+import { Wallet } from "lucide-react";
 import { toast } from "sonner";
 import SelectField from "@/components/admin/SelectField";
 import type { UserRole } from "@/types/content";
@@ -46,7 +48,8 @@ type GridCtx = {
   isRTL: boolean;
   onEdit: (user: UserRow) => void;
   onDelete: (id: string, name: string) => void;
-  labels: { edit: string; del: string; roles: Record<UserRole, string> };
+  onWallet: (user: UserRow) => void;
+  labels: { edit: string; del: string; wallet: string; roles: Record<UserRole, string> };
 };
 
 // ── Themes ─────────────────────────────────────────────────────────────────────
@@ -191,6 +194,9 @@ function ActionsCell({ data, context }: { data: UserRow; context: GridCtx }) {
       <IconBtn label={context.labels.edit} color="text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-500/10" onClick={() => context.onEdit(data)}>
         <PencilIcon className="w-4 h-4" />
       </IconBtn>
+      <IconBtn label={context.labels.wallet} color="text-brand-500 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10" onClick={() => context.onWallet(data)}>
+        <Wallet className="w-4 h-4" />
+      </IconBtn>
       <IconBtn label={context.labels.del} color="text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10" onClick={() => context.onDelete(data.id, `${data.firstName} ${data.lastName}`)}>
         <TrashBinIcon className="w-4 h-4" />
       </IconBtn>
@@ -218,6 +224,8 @@ export default function AdminUsersList() {
   const [editPhone, setEditPhone] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
+
+  const [walletTarget, setWalletTarget] = useState<WalletAdjustTarget | null>(null);
 
   const fetchUsers = () => {
     setLoading(true);
@@ -303,9 +311,11 @@ export default function AdminUsersList() {
     isRTL,
     onEdit: handleEdit,
     onDelete: handleDelete,
+    onWallet: (u: UserRow) => setWalletTarget({ id: u.id, name: `${u.firstName} ${u.lastName}`.trim(), walletBalance: u.walletBalance }),
     labels: {
       edit: t("userEdit"),
       del:  t("userDelete"),
+      wallet: t("walletAdjust"),
       roles: {
         platform_admin: t(ROLE_LABEL.platform_admin),
         salon_owner:    t(ROLE_LABEL.salon_owner),
@@ -325,7 +335,7 @@ export default function AdminUsersList() {
       { field: "phone", headerName: t("colPhone"), width: 150, sortable: false, filter: false, cellRenderer: PhoneCell },
       { field: "walletBalance", headerName: t("colWallet"), width: 130, sortable: true, filter: false, cellRenderer: WalletCell },
       { field: "createdAt", headerName: t("colJoined"), width: 150, sortable: true, filter: false, cellRenderer: DateCell },
-      { headerName: t("colActions"), width: 110, sortable: false, filter: false, cellRenderer: ActionsCell },
+      { headerName: t("colActions"), width: 140, sortable: false, filter: false, cellRenderer: ActionsCell },
     ];
     return isRTL ? [...cols].reverse() : cols;
   }, [t, isRTL]);
@@ -464,6 +474,8 @@ export default function AdminUsersList() {
           </div>
         </form>
       </Modal>
+
+      <AdminWalletAdjustModal target={walletTarget} onClose={() => setWalletTarget(null)} onDone={fetchUsers} />
 
       {/* Delete Modal */}
       <DeleteConfirmModal

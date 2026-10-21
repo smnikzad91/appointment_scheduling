@@ -14,7 +14,7 @@ import WalletWithdraw from "./WalletWithdraw";
 // The movements are paged (PAGE_SIZE) and can be filtered by direction, type and period and sorted
 // by date or amount — all done by the route (lib/walletQuery.ts).
 
-export type WalletTxKind = "top_up" | "prepayment" | "prepayment_refund" | "prepayment_income" | "prepayment_income_reversal" | "withdrawal" | "withdrawal_reversal" | "payout_sent" | "payout_received" | "plan_purchase" | "plan_credit" | "balance_payment" | "balance_income" | "balance_income_reversal" | "balance_refund" | "sms_cost";
+export type WalletTxKind = "top_up" | "prepayment" | "prepayment_refund" | "prepayment_income" | "prepayment_income_reversal" | "withdrawal" | "withdrawal_reversal" | "payout_sent" | "payout_received" | "plan_purchase" | "plan_credit" | "balance_payment" | "balance_income" | "balance_income_reversal" | "balance_refund" | "sms_cost" | "admin_adjustment";
 
 interface WalletTx {
   id: string;
@@ -25,7 +25,7 @@ interface WalletTx {
   appointment: { startAt: string; salonName: string; timezone: string } | null;
   /** payouts: the stylist / salon on the other side; plan purchases: plan and months */
   detail: string | null;
-  /** SMS_COST: which SMS («یادآوری ۱ ساعته به مشتری»…) */
+  /** SMS_COST: which SMS («یادآوری ۱ ساعته به مشتری»…); ADMIN_ADJUSTMENT: the admin's reason */
   note: string | null;
 }
 
@@ -46,6 +46,7 @@ const KIND_LABEL: Record<WalletTxKind, string> = {
   balance_income_reversal: "برگشت باقی‌مانده دریافتی",
   balance_refund: "بازگشت باقی‌مانده پرداختی",
   sms_cost: "هزینه پیامک",
+  admin_adjustment: "اصلاح موجودی توسط پشتیبانی",
 };
 
 interface WalletData {

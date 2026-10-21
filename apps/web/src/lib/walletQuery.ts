@@ -5,7 +5,7 @@
 export const WALLET_TX_KINDS = [
   "top_up", "prepayment", "prepayment_refund", "prepayment_income", "prepayment_income_reversal",
   "withdrawal", "withdrawal_reversal", "payout_sent", "payout_received", "plan_purchase", "plan_credit",
-  "balance_payment", "balance_income", "balance_income_reversal", "balance_refund", "sms_cost",
+  "balance_payment", "balance_income", "balance_income_reversal", "balance_refund", "sms_cost", "admin_adjustment",
 ] as const;
 export type WalletTxKindWire = (typeof WALLET_TX_KINDS)[number];
 

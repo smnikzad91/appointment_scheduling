@@ -90,6 +90,7 @@ fun walletTxLabel(kind: String) = when (kind) {
     "balance_income_reversal" -> "برگشت باقی‌مانده دریافتی"
     "balance_refund" -> "بازگشت باقی‌مانده پرداختی"
     "sms_cost" -> "هزینه پیامک"
+    "admin_adjustment" -> "اصلاح موجودی توسط پشتیبانی"
     else -> kind
 }
 
