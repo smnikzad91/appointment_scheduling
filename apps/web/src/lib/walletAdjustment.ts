@@ -17,8 +17,8 @@ export function parseToman(value: unknown): number {
   return /^\d+$/.test(plain) ? Number(plain) : NaN;
 }
 
-export function parseAdjustment(body: unknown): { amountToman: number; note: string } | { error: AdjustmentError } {
-  const b = (body ?? {}) as { direction?: unknown; amountToman?: unknown; note?: unknown };
+export function parseAdjustment(body: unknown): { amountToman: number; note: string; notify: boolean } | { error: AdjustmentError } {
+  const b = (body ?? {}) as { direction?: unknown; amountToman?: unknown; note?: unknown; notify?: unknown };
   const amount = parseToman(b.amountToman);
   if (b.direction !== "credit" && b.direction !== "debit") return { error: "Invalid amount" };
   if (!Number.isSafeInteger(amount) || amount < 1) return { error: "Invalid amount" };
@@ -26,5 +26,21 @@ export function parseAdjustment(body: unknown): { amountToman: number; note: str
   const note = typeof b.note === "string" ? b.note.trim().replace(/\s+/g, " ") : "";
   if (!note) return { error: "A reason is required" };
   if (note.length > MAX_ADJUSTMENT_NOTE) return { error: "Reason too long" };
-  return { amountToman: b.direction === "debit" ? -amount : amount, note };
+  // SMS to the user unless the admin turns it off (`notify: false`)
+  return { amountToman: b.direction === "debit" ? -amount : amount, note, notify: b.notify !== false };
+}
+
+const faMoney = (n: number) =>
+  Math.round(n).toLocaleString("en-US").replace(/,/g, "٬").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+
+/**
+ * The user's SMS after a manual change, one segment. A credit reads like an automatic top-up's
+ * (apps/api topUpPaidText): «کیف پول نوبتت ۵۰۰٬۰۰۰ تومان شارژ شد\nموجودی: ۶۲۰٬۰۰۰ تومان»; a debit
+ * «از کیف پول نوبتت ۵۰٬۰۰۰ تومان کسر شد\nموجودی: …». The reason stays in the wallet history.
+ */
+export function adjustmentSmsText(amountToman: number, balanceToman: number): string {
+  const balance = `موجودی: ${faMoney(balanceToman)} تومان`;
+  return amountToman > 0
+    ? `کیف پول نوبتت ${faMoney(amountToman)} تومان شارژ شد\n${balance}`
+    : `از کیف پول نوبتت ${faMoney(-amountToman)} تومان کسر شد\n${balance}`;
 }

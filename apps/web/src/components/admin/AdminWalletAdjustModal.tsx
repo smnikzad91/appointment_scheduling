@@ -10,7 +10,8 @@ import { MAX_ADJUSTMENT_NOTE, parseToman } from "@/lib/walletAdjustment";
 
 // /admin/users: add to or take from one user's wallet (POST /api/admin/users/:id/wallet), e.g. when
 // a card payment came without the top-up's last rials and so wasn't confirmed automatically. The
-// reason is shown to the user in their wallet history.
+// reason is shown to the user in their wallet history; by default they also get an SMS with the
+// amount and the new balance.
 
 const ERRORS: Record<string, TranslationKey> = {
   "Not enough wallet balance": "walletAdjustErrShort",
@@ -33,6 +34,7 @@ export default function AdminWalletAdjustModal({ target, onClose, onDone }: { ta
   const [direction, setDirection] = useState<"credit" | "debit">("credit");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [notify, setNotify] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -46,6 +48,7 @@ export default function AdminWalletAdjustModal({ target, onClose, onDone }: { ta
     setDirection("credit");
     setAmount("");
     setNote("");
+    setNotify(true);
     setError("");
     onClose();
   };
@@ -61,7 +64,7 @@ export default function AdminWalletAdjustModal({ target, onClose, onDone }: { ta
     const res = await fetch(`/api/admin/users/${target.id}/wallet`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ direction, amountToman: parsed, note }),
+      body: JSON.stringify({ direction, amountToman: parsed, note, notify }),
     }).catch(() => null);
     setSaving(false);
     if (!res?.ok) {
@@ -70,7 +73,9 @@ export default function AdminWalletAdjustModal({ target, onClose, onDone }: { ta
       setError(t(key ?? "userErrGeneric"));
       return;
     }
-    toast.success(t("walletAdjustDone"));
+    const done = await res.json().catch(() => ({}));
+    toast.success(t(done?.sms ? "walletAdjustDoneSms" : "walletAdjustDone"));
+    setNotify(true);
     setAmount("");
     setNote("");
     setDirection("credit");
@@ -140,6 +145,11 @@ export default function AdminWalletAdjustModal({ target, onClose, onDone }: { ta
             className={inputClass}
           />
         </div>
+
+        <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="h-4 w-4 rounded accent-brand-500" />
+          {t("walletAdjustNotify")}
+        </label>
 
         {after !== null && (
           <div className="flex items-center justify-between text-sm">
