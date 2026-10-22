@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useBooking } from "./BookingProvider";
 import { getAvailableSlots } from "@/lib/api/slots";
 import { dateKeyToDate, getUpcomingDays } from "@/lib/jalali";
@@ -10,13 +10,43 @@ import DateStrip from "./DateStrip";
 import TimeSlotGrid from "./TimeSlotGrid";
 import WaitlistButton from "./WaitlistButton";
 
+/** How many days ahead the first free day is looked for (one availability request each). */
+const AUTO_PICK_DAYS = 7;
+
 export default function StepDateTime() {
   const { salon, state, updateState, goNext } = useBooking();
   // "Today" is the salon's today, not the browser's — the API computes slots in salon time.
   const days = getUpcomingDays(14, dateKeyToDate(toSalonWallTime(new Date(), salon.timezone).dateKey));
   const dateKey = state.dateKey ?? days[0].dateKey;
 
+  // No day chosen yet (not from a link either): open on the first of the next week's days with a free
+  // time, so late in the day — or on a full or closed day — the customer doesn't start at «no time».
+  const serviceKey = state.serviceIds.join(",");
+  // A day the customer taps while the search runs wins over what the search finds.
+  const pickedByHand = useRef(false);
+  const firstDayKey = days[0].dateKey;
+  useEffect(() => {
+    if (state.dateKey) return;
+    let cancelled = false;
+    (async () => {
+      for (const day of getUpcomingDays(AUTO_PICK_DAYS, dateKeyToDate(firstDayKey))) {
+        const slots = await getAvailableSlots({ salon, stylistId: state.stylistId, serviceIds: state.serviceIds, dateKey: day.dateKey }).catch(() => null);
+        if (cancelled || pickedByHand.current || slots === null) return; // an error: stay on today, its panel shows it
+        if (slots.some((s) => s.available)) {
+          if (day.dateKey !== firstDayKey) updateState({ dateKey: day.dateKey, startMinute: null });
+          return;
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // once per services / stylist choice, while no day is picked
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceKey, state.stylistId, firstDayKey]);
+
   function selectDate(nextDateKey: string) {
+    pickedByHand.current = true;
     updateState({ dateKey: nextDateKey, startMinute: null });
   }
 

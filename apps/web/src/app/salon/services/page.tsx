@@ -45,6 +45,20 @@ interface ServiceDraft {
   rebookDays: string;
 }
 
+/** Quick picks for a service's length; owners typed hours into the minutes box (3 for «3 hours»). */
+const DURATION_CHIPS = [15, 30, 45, 60, 90, 120, 180, 240];
+/** Below these the save asks first — seen in real data as hours typed as minutes and prices in thousands. */
+const SHORT_DURATION_MINUTES = 10;
+const LOW_PRICE_TOMAN = 10_000;
+
+/** «۴۵ دقیقه», «۱ ساعت», «۲ ساعت و ۳۰ دقیقه» */
+function durationLabel(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (!h) return `${toPersianDigits(m)} دقیقه`;
+  return m ? `${toPersianDigits(h)} ساعت و ${toPersianDigits(m)} دقیقه` : `${toPersianDigits(h)} ساعت`;
+}
+
 /** "Time to book again" SMS defaults for a new service. */
 const REBOOK_DEFAULT_DAYS = 30;
 const REBOOK_MAX_DAYS = 365;
@@ -127,6 +141,18 @@ export default function SalonServicesPage() {
     const price = Number(normalizeDigits(draft.priceToman));
     if (!draft.name.trim() || !duration || !price) {
       toastError("نام، مدت و قیمت خدمت را کامل کنید");
+      return;
+    }
+    if (
+      duration < SHORT_DURATION_MINUTES &&
+      !confirm(`مدت این خدمت ${toPersianDigits(duration)} دقیقه است. اگر منظورتان ${toPersianDigits(duration)} ساعت است، ${toPersianDigits(duration * 60)} دقیقه وارد کنید.\n\nبا همین ${toPersianDigits(duration)} دقیقه ذخیره شود؟`)
+    ) {
+      return;
+    }
+    if (
+      price < LOW_PRICE_TOMAN &&
+      !confirm(`قیمت این خدمت ${formatToman(price)} است. اگر منظورتان ${formatToman(price * 1000)} است، قیمت را کامل به تومان وارد کنید.\n\nبا همین قیمت ذخیره شود؟`)
+    ) {
       return;
     }
     const rebookDays = Number(normalizeDigits(draft.rebookDays));
@@ -441,7 +467,7 @@ export default function SalonServicesPage() {
               )}
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="مدت (دقیقه)">
+              <Field label="مدت (دقیقه)" hint={Number(draft.durationMinutes) >= 60 ? durationLabel(Number(draft.durationMinutes)) : undefined}>
                 <TextInput
                   inputMode="numeric"
                   dir="ltr"
@@ -461,6 +487,25 @@ export default function SalonServicesPage() {
                   placeholder="۳۵۰۰۰۰"
                 />
               </Field>
+            </div>
+            <div className="-mt-1 flex flex-wrap gap-1.5" role="group" aria-label="انتخاب سریع مدت">
+              {DURATION_CHIPS.map((m) => {
+                const active = Number(draft.durationMinutes) === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setDraft({ ...draft, durationMinutes: String(m) })}
+                    aria-pressed={active}
+                    className={cx(
+                      "h-8 rounded-full px-3 text-xs font-semibold transition active:scale-95",
+                      active ? "bg-app-ink text-app-bg" : "border border-app-line bg-app-card text-app-muted",
+                    )}
+                  >
+                    {durationLabel(m)}
+                  </button>
+                );
+              })}
             </div>
             <div className="rounded-2xl border border-app-line bg-app-card p-3.5">
               <div className="flex items-center justify-between gap-3">
