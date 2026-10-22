@@ -5,6 +5,7 @@ import { useBooking } from "./BookingProvider";
 import { formatToman, toPersianDigits } from "@/lib/persian";
 import { getTotalDurationMinutes } from "@/lib/api/slots";
 import Sep from "@/components/common/Sep";
+import { groupServicesByCategory } from "@/lib/serviceGroups";
 
 export default function StepServices() {
   const { salon, state, toggleService, updateState, goNext } = useBooking();
@@ -35,13 +36,10 @@ export default function StepServices() {
         </p>
       )}
       <div className="flex flex-col gap-2">
-        {salon.serviceCategories.map((category) => {
-          const services = activeServices.filter((s) => s.categoryId === category.id);
-          if (services.length === 0) return null;
-
+        {groupServicesByCategory(salon.serviceCategories, activeServices).map(({ key, name, services }) => {
           return (
-            <div key={category.id}>
-              <h3 className="mb-1.5 text-xs font-semibold text-g-muted">{category.name}</h3>
+            <div key={key}>
+              {name && <h3 className="mb-1.5 text-xs font-semibold text-g-muted">{name}</h3>}
               <div className="flex flex-col gap-1.5">
                 {services.map((service) => {
                   const isSelected = state.serviceIds.includes(service.id);

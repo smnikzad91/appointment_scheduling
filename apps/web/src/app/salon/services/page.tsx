@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BellOff, BellRing, Clock, FolderCog, Plus, Scissors, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, BellOff, BellRing, ChevronLeft, Clock, FolderCog, FolderPlus, Plus, Scissors, Trash2 } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import {
   listMyCategories,
   createCategory,
   deleteCategory,
+  updateCategory,
   listMyServices,
   createService,
   updateService,
@@ -70,6 +71,11 @@ export default function SalonServicesPage() {
 
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  // The category being renamed in the categories sheet (it switches to an edit view).
+  const [editingCategory, setEditingCategory] = useState<{ id: string; name: string } | null>(null);
+  const [categoryBusy, setCategoryBusy] = useState(false);
+  // «+ دسته جدید» inside the service sheet: a name being typed (null = closed).
+  const [inlineCategory, setInlineCategory] = useState<string | null>(null);
 
   // Services whose on/off switch is being saved (locked until the server answers).
   const [pendingActive, setPendingActive] = useState<Set<string>>(() => new Set());
@@ -183,26 +189,85 @@ export default function SalonServicesPage() {
     }
   }
 
-  async function handleAddCategory(e: React.FormEvent) {
-    e.preventDefault();
-    if (!token || !newCategoryName.trim()) return;
+  /** Creates a category at the end of the list; returns it (null on failure, already reported). */
+  async function addCategory(name: string): Promise<OwnerCategory | null> {
+    if (!token || !name.trim()) return null;
+    const order = Math.max(-1, ...(categories ?? []).map((c) => c.order)) + 1;
     try {
-      await createCategory(token, { name: newCategoryName.trim(), order: categories?.length ?? 0 });
-      setNewCategoryName("");
-      reload();
+      const created = await createCategory(token, { name: name.trim(), order });
+      setCategories((list) => (list ? [...list, created] : list));
+      return created;
     } catch {
       toastError("افزودن دسته‌بندی انجام نشد");
+      return null;
     }
   }
 
-  async function handleDeleteCategory(category: OwnerCategory) {
-    if (!token || !confirm(`دسته «${category.name}» حذف شود؟ خدمات آن بدون دسته می‌مانند.`)) return;
+  async function handleAddCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (await addCategory(newCategoryName)) setNewCategoryName("");
+  }
+
+  /** «+ دسته جدید» in the service sheet: create it and pick it for this service. */
+  async function handleInlineCategory() {
+    if (inlineCategory === null || !draft) return;
+    const created = await addCategory(inlineCategory);
+    if (created) {
+      setDraft((d) => (d ? { ...d, categoryId: created.id } : d));
+      setInlineCategory(null);
+    }
+  }
+
+  async function handleRenameCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !editingCategory) return;
+    const name = editingCategory.name.trim();
+    if (!name) return toastError("نام دسته را بنویسید");
+    setCategoryBusy(true);
+    try {
+      const saved = await updateCategory(token, editingCategory.id, { name });
+      setCategories((list) => list?.map((c) => (c.id === saved.id ? saved : c)) ?? list);
+      setEditingCategory(null);
+    } catch {
+      toastError("ذخیره دسته‌بندی انجام نشد");
+    } finally {
+      setCategoryBusy(false);
+    }
+  }
+
+  /** Swap a category with its neighbour; orders are rewritten 0..n so older equal values sort out too. */
+  async function moveCategory(index: number, delta: -1 | 1) {
+    if (!token || !categories || categoryBusy) return;
+    const sorted = [...categories].sort((a, b) => a.order - b.order);
+    const target = index + delta;
+    if (target < 0 || target >= sorted.length) return;
+    [sorted[index], sorted[target]] = [sorted[target], sorted[index]];
+    const next = sorted.map((c, order) => ({ ...c, order }));
+    const changed = next.filter((c) => categories.find((o) => o.id === c.id)?.order !== c.order);
+    setCategories(next);
+    setCategoryBusy(true);
+    try {
+      await Promise.all(changed.map((c) => updateCategory(token, c.id, { order: c.order })));
+    } catch {
+      toastError("تغییر ترتیب انجام نشد");
+      reload();
+    } finally {
+      setCategoryBusy(false);
+    }
+  }
+
+  async function handleDeleteCategory(category: { id: string; name: string }) {
+    if (!token || !confirm(`دسته «${category.name}» حذف شود؟ خدمات آن بدون دسته می‌مانند و همچنان قابل رزرو هستند.`)) return;
+    setCategoryBusy(true);
     try {
       await deleteCategory(token, category.id);
       if (filter === category.id) setFilter("all");
+      setEditingCategory(null);
       reload();
     } catch {
       toastError("حذف دسته‌بندی انجام نشد");
+    } finally {
+      setCategoryBusy(false);
     }
   }
 
@@ -211,6 +276,7 @@ export default function SalonServicesPage() {
   }
 
   const categoryName = (id: string | null) => categories.find((c) => c.id === id)?.name;
+  const sortedCategories = [...categories].sort((a, b) => a.order - b.order);
   const visible = services
     .filter((s) => (filter === "all" ? true : filter === "none" ? !s.categoryId : s.categoryId === filter))
     .sort((a, b) => Number(b.active) - Number(a.active));
@@ -232,7 +298,7 @@ export default function SalonServicesPage() {
             onChange={setFilter}
             options={[
               { value: "all", label: "همه" },
-              ...categories.map((c) => ({ value: c.id, label: c.name, count: services.filter((s) => s.categoryId === c.id).length })),
+              ...sortedCategories.map((c) => ({ value: c.id, label: c.name, count: services.filter((s) => s.categoryId === c.id).length })),
               ...(hasUncategorized ? [{ value: "none", label: "بدون دسته" }] : []),
             ]}
           />
@@ -240,10 +306,10 @@ export default function SalonServicesPage() {
         <button
           type="button"
           onClick={() => setCategoriesOpen(true)}
-          aria-label="مدیریت دسته‌بندی‌ها"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-app-line bg-app-card text-app-muted active:scale-90"
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-app-accent-soft px-3.5 text-sm font-bold text-app-accent active:scale-95"
         >
           <FolderCog className="h-[18px] w-[18px]" aria-hidden />
+          دسته‌بندی‌ها
         </button>
       </div>
 
@@ -315,7 +381,10 @@ export default function SalonServicesPage() {
       {/* Add / edit service */}
       <Sheet
         open={draft !== null}
-        onClose={() => setDraft(null)}
+        onClose={() => {
+          setDraft(null);
+          setInlineCategory(null);
+        }}
         title={draft?.id ? "ویرایش خدمت" : "خدمت جدید"}
         footer={
           <Button block busy={saving} onClick={handleSave}>
@@ -328,13 +397,48 @@ export default function SalonServicesPage() {
             <Field label="نام خدمت">
               <TextInput value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="مثلاً کوتاهی مو" autoFocus={!draft.id} />
             </Field>
-            <Field label="دسته‌بندی">
-              <PickerSelect
-                title="دسته‌بندی"
-                value={draft.categoryId}
-                onChange={(categoryId) => setDraft({ ...draft, categoryId })}
-                options={[{ value: "", label: "بدون دسته" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
-              />
+            <Field label="دسته‌بندی (اختیاری)" hint="خدمت بدون دسته هم در صفحه رزرو نمایش داده می‌شود.">
+              {inlineCategory === null ? (
+                <div className="flex gap-2">
+                  <PickerSelect
+                    title="دسته‌بندی"
+                    value={draft.categoryId}
+                    onChange={(categoryId) => setDraft({ ...draft, categoryId })}
+                    options={[{ value: "", label: "بدون دسته" }, ...sortedCategories.map((c) => ({ value: c.id, label: c.name }))]}
+                    className="min-w-0 flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setInlineCategory("")}
+                    className="flex h-12 shrink-0 items-center gap-1.5 rounded-2xl bg-app-accent-soft px-3.5 text-sm font-bold text-app-accent active:scale-95"
+                  >
+                    <FolderPlus className="h-[18px] w-[18px]" aria-hidden />
+                    دسته جدید
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <TextInput
+                    autoFocus
+                    value={inlineCategory}
+                    onChange={(e) => setInlineCategory(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void handleInlineCategory();
+                      }
+                    }}
+                    placeholder="نام دسته، مثلاً ناخن"
+                    maxLength={40}
+                  />
+                  <Button className="shrink-0 px-4" disabled={!inlineCategory.trim()} onClick={handleInlineCategory}>
+                    افزودن
+                  </Button>
+                  <Button variant="ghost" className="shrink-0 px-3" onClick={() => setInlineCategory(null)} aria-label="انصراف">
+                    انصراف
+                  </Button>
+                </div>
+              )}
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="مدت (دقیقه)">
@@ -391,37 +495,94 @@ export default function SalonServicesPage() {
         )}
       </Sheet>
 
-      {/* Categories */}
-      <Sheet open={categoriesOpen} onClose={() => setCategoriesOpen(false)} title="دسته‌بندی‌ها">
-        <form onSubmit={handleAddCategory} className="mb-4 flex gap-2">
-          <TextInput value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="نام دسته جدید، مثلاً ناخن" />
-          <Button type="submit" icon={Plus} className="shrink-0 px-4" aria-label="افزودن دسته">
-            افزودن
-          </Button>
-        </form>
-        {categories.length === 0 ? (
-          <p className="py-6 text-center text-sm text-app-muted">هنوز دسته‌بندی ندارید.</p>
+      {/* Categories: add, rename (tap a row), reorder, delete */}
+      <Sheet
+        open={categoriesOpen}
+        onClose={() => {
+          setCategoriesOpen(false);
+          setEditingCategory(null);
+        }}
+        title={editingCategory ? "ویرایش دسته" : "دسته‌بندی‌ها"}
+      >
+        {editingCategory ? (
+          <form onSubmit={handleRenameCategory} className="flex flex-col gap-4">
+            <button type="button" onClick={() => setEditingCategory(null)} className="flex items-center gap-1 self-start text-sm font-bold text-app-accent">
+              <ArrowRight className="h-4 w-4" aria-hidden />
+              همه دسته‌ها
+            </button>
+            <Field label="نام دسته">
+              <TextInput
+                autoFocus
+                value={editingCategory.name}
+                onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                maxLength={40}
+              />
+            </Field>
+            <Button type="submit" block busy={categoryBusy}>
+              ذخیره نام
+            </Button>
+            <Button
+              variant="danger"
+              block
+              icon={Trash2}
+              disabled={categoryBusy}
+              onClick={() => handleDeleteCategory(editingCategory)}
+            >
+              حذف دسته
+            </Button>
+          </form>
         ) : (
-          <ListGroup>
-            {categories.map((c) => (
-              <div key={c.id} className="flex h-14 items-center justify-between px-4">
-                <span className="font-semibold text-app-ink">
-                  {c.name}
-                  <span className="ms-2 text-xs font-medium text-app-muted">
-                    {toPersianDigits(services.filter((s) => s.categoryId === c.id).length)} خدمت
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteCategory(c)}
-                  aria-label={`حذف ${c.name}`}
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-app-muted active:bg-app-danger/10 active:text-app-danger"
-                >
-                  <Trash2 className="h-[18px] w-[18px]" aria-hidden />
-                </button>
-              </div>
-            ))}
-          </ListGroup>
+          <>
+            <p className="mb-3 text-xs leading-6 text-app-muted">
+              دسته‌بندی اختیاری است و فقط خدمات را در صفحه رزرو گروه‌بندی می‌کند؛ خدمات بدون دسته زیر «سایر خدمات» نمایش داده می‌شوند.
+            </p>
+            <form onSubmit={handleAddCategory} className="mb-4 flex gap-2">
+              <TextInput value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="نام دسته جدید، مثلاً ناخن" maxLength={40} />
+              <Button type="submit" icon={Plus} className="shrink-0 px-4" disabled={!newCategoryName.trim()}>
+                افزودن
+              </Button>
+            </form>
+            {sortedCategories.length === 0 ? (
+              <p className="py-6 text-center text-sm text-app-muted">هنوز دسته‌بندی ندارید.</p>
+            ) : (
+              <ListGroup>
+                {sortedCategories.map((c, i) => (
+                  <div key={c.id} className="flex h-14 items-center gap-1 pe-1 ps-4">
+                    <button
+                      type="button"
+                      onClick={() => setEditingCategory({ id: c.id, name: c.name })}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-start active:opacity-70"
+                      aria-label={`ویرایش ${c.name}`}
+                    >
+                      <span className="truncate font-semibold text-app-ink">{c.name}</span>
+                      <span className="shrink-0 text-xs font-medium text-app-muted">
+                        {toPersianDigits(services.filter((s) => s.categoryId === c.id).length)} خدمت
+                      </span>
+                      <ChevronLeft className="ms-auto h-4 w-4 shrink-0 text-app-muted" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveCategory(i, -1)}
+                      disabled={i === 0 || categoryBusy}
+                      aria-label={`بردن ${c.name} به بالا`}
+                      className="flex h-10 w-9 items-center justify-center rounded-full text-app-muted active:bg-app-card-2 disabled:opacity-25"
+                    >
+                      <ArrowUp className="h-[18px] w-[18px]" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveCategory(i, 1)}
+                      disabled={i === sortedCategories.length - 1 || categoryBusy}
+                      aria-label={`بردن ${c.name} به پایین`}
+                      className="flex h-10 w-9 items-center justify-center rounded-full text-app-muted active:bg-app-card-2 disabled:opacity-25"
+                    >
+                      <ArrowDown className="h-[18px] w-[18px]" aria-hidden />
+                    </button>
+                  </div>
+                ))}
+              </ListGroup>
+            )}
+          </>
         )}
       </Sheet>
     </>
