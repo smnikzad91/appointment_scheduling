@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { applyNodepassPayment } from "@/lib/bankSms/topUps";
+import { applyPayment } from "@/lib/topUps";
 import { verifyWebhook, type NodepassPayment } from "@/lib/nodepass";
 
 // nodepass.ir → us when a top-up's payment is paid / expired / cancelled (lib/nodepass.ts). Signed over
@@ -18,6 +18,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
   if (!payment?.id) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
-  await applyNodepassPayment(payment);
+  await applyPayment(payment);
   return NextResponse.json({ ok: true });
 }

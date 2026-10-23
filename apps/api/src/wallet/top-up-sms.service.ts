@@ -10,8 +10,8 @@ const MAX_ATTEMPTS = 3;
 const FRESH_MS = 24 * 60 * 60_000;
 
 /**
- * Texts the customer when their wallet top-up is paid — matched by the bank SMS or by the admin,
- * both in apps/web (lib/bankSms/topUps.ts payTopUp), which only flips the row to PAID; this job
+ * Texts the customer when their wallet top-up is paid — nodepass.ir's webhook / poll in apps/web
+ * (lib/topUps.ts payTopUp), which only flips the row to PAID; this job
  * (api instance 0, every 20 s) sends «کیف پول نوبتت … تومان شارژ شد / موجودی: …». Each top-up
  * is claimed by a conditional update of paidSmsAt before sending, so it's never sent twice; a
  * failed send is released and retried, up to 3 tries. Transactional: no opt-out, no salon allowance.

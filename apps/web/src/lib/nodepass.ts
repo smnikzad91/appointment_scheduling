@@ -1,13 +1,13 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-// nodepass.ir (/root/projects/nodepass.ir): card-to-card payments confirmed by the bank SMS, shared with
-// mychatbot.ir. With NODEPASS_ENABLED=1 wallet top-ups are created there (lib/bankSms/topUps.ts): we send
-// the amount, our top-up id as clientOrderId and our webhook URL; nodepass picks the card and the extra
-// 1–1000 rial and calls /api/nodepass/webhook when the payment is paid, expired or cancelled.
-// Env: NODEPASS_ENABLED=1, NODEPASS_URL (default https://nodepass.ir), NODEPASS_API_KEY, NODEPASS_WEBHOOK_SECRET;
-// the webhook is on NEXT_PUBLIC_SITE_URL.
+// nodepass.ir (/root/projects/nodepass.ir): card-to-card payments confirmed by the bank's deposit SMS, shared with
+// mychatbot.ir — the only way money comes into a wallet (lib/topUps.ts): we send the amount, our top-up id
+// as clientOrderId and our webhook URL; nodepass picks the card and the extra 1–1000 rial and calls
+// /api/nodepass/webhook when the payment is paid, expired or cancelled.
+// Env: NODEPASS_API_KEY (unset = top-ups unavailable), NODEPASS_URL (default https://nodepass.ir),
+// NODEPASS_WEBHOOK_SECRET; the webhook is on NEXT_PUBLIC_SITE_URL.
 
-export const nodepassEnabled = () => process.env.NODEPASS_ENABLED === "1" && !!process.env.NODEPASS_API_KEY;
+export const nodepassConfigured = () => !!process.env.NODEPASS_API_KEY;
 
 export interface NodepassPayment {
   id: string;
@@ -24,8 +24,12 @@ export interface NodepassPayment {
 }
 
 export class NodepassError extends Error {
-  constructor(readonly status: number, readonly code: string | null, message: string) {
+  readonly status: number;
+  readonly code: string | null;
+  constructor(status: number, code: string | null, message: string) {
     super(message);
+    this.status = status;
+    this.code = code;
   }
 }
 

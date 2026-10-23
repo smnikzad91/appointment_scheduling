@@ -10,7 +10,6 @@ interface Overview {
   users: number;
   customers: number;
   openTickets: number;
-  unmatchedBankSms: number;
   pendingWithdrawals: number;
   negativeWallets: number;
 }
@@ -36,7 +35,6 @@ export default function AdminOverview() {
     { label: t("overviewActiveSalons"), value: data?.salons?.active, href: "/admin/salons" },
     { label: t("overviewCustomers"), value: data?.customers, href: "/admin/users" },
     { label: t("overviewOpenTickets"), value: data?.openTickets, href: "/admin/tickets", alert: !!data?.openTickets },
-    { label: t("overviewUnmatchedBankSms"), value: data?.unmatchedBankSms, href: "/admin/bank-sms", alert: !!data?.unmatchedBankSms },
     { label: t("overviewPendingWithdrawals"), value: data?.pendingWithdrawals, href: "/admin/finance#withdrawals", alert: !!data?.pendingWithdrawals },
     { label: t("overviewNegativeWallets"), value: data?.negativeWallets, href: "/admin/users", alert: !!data?.negativeWallets },
   ];

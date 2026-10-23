@@ -8,8 +8,8 @@ import { useOptionalWallet } from "@/context/WalletContext";
 import { normalizeDigits, toPersianDigits } from "@/lib/persian";
 import { toastError } from "@/lib/toastError";
 
-// «افزایش خودکار موجودی»: card-to-card to the platform's card, confirmed by the bank's SMS
-// (apps/bank-sms-agent). The customer pays the requested amount plus 1–1000 rial — that exact rial
+// «افزایش خودکار موجودی»: card-to-card through nodepass.ir (lib/topUps.ts), which gives the card and
+// confirms the deposit. The customer pays the requested amount plus 1–1000 rial — that exact rial
 // amount identifies them — so both the card number and the amount must be copied before «واریز کردم».
 // This is the only way to add money to a wallet. In the public booking sheet (no NextAuth session)
 // it's given the customer's apps/api token, which these routes accept too (requestSession).
@@ -22,7 +22,7 @@ interface TopUp {
   expiresAt: string;
   creditedToman: number | null;
   card: { cardNumber: string; ownerName: string; bankName: string } | null;
-  /** nodepass.ir's receipt code (top-ups made through it) */
+  /** nodepass.ir's receipt code */
   trackingCode?: string | null;
 }
 
@@ -108,7 +108,7 @@ export default function WalletTopUp({ accessToken, suggestedToman, onPaid }: { a
 
   if (available === null) return null;
   if (!available) {
-    // no platform card with a deposit SMS template yet
+    // nodepass isn't configured (NODEPASS_API_KEY)
     return (
       <Card className="p-5">
         <p className="text-sm leading-7 text-app-muted">شارژ کیف پول فعلاً در دسترس نیست؛ کمی بعد دوباره سر بزنید.</p>

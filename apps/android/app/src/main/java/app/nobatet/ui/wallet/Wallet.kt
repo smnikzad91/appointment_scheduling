@@ -74,7 +74,7 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 
 // «کیف پول» for every role (apps/web components/app/WalletScreen.tsx): automatic top-up (card to
-// card, confirmed by the bank SMS), the balance (or «بدهی»), withdrawal to a Sheba and the history.
+// card through nodepass.ir), the balance (or «بدهی»), withdrawal to a Sheba and the history.
 
 private fun fa(n: Long) = formatAmount(n)
 private fun fa(n: Int) = formatAmount(n.toLong())
@@ -171,7 +171,7 @@ private val QUICK = listOf(100_000, 200_000, 500_000, 1_000_000)
 
 /**
  * Automatic top-up (apps/web WalletTopUp): an amount → the card and the exact rial amount (both must
- * be copied before «واریز کردم»), polled every 8 s until the bank SMS confirms it. Also embedded in
+ * be copied before «واریز کردم»), polled every 8 s until nodepass.ir confirms it. Also embedded in
  * the booking summary and the pay-balance sheet with [suggestedToman].
  */
 @Composable

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requestSession } from "@/lib/requestSession";
-import { cancelTopUp, expireStale, syncNodepassTopUp, topUpJson } from "@/lib/bankSms/topUps";
+import { cancelTopUp, expireStale, syncTopUp, topUpJson } from "@/lib/topUps";
 
-// One top-up (polled while the customer waits for the bank SMS) / cancel it while pending.
+// One top-up (polled while the customer waits for nodepass to confirm the deposit) / cancel it while pending.
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requestSession();
@@ -11,8 +11,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   await expireStale();
   const owned = await prisma.walletTopUp.findFirst({ where: { id, userId: session.user.id }, select: { id: true } });
-  if (owned) await syncNodepassTopUp(id);
-  const topUp = await prisma.walletTopUp.findFirst({ where: { id, userId: session.user.id }, include: { adminCard: true } });
+  if (owned) await syncTopUp(id);
+  const topUp = await prisma.walletTopUp.findFirst({ where: { id, userId: session.user.id } });
   if (!topUp) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(topUpJson(topUp));
 }

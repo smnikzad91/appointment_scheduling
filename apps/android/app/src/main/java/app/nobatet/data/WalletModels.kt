@@ -3,7 +3,7 @@ package app.nobatet.data
 import kotlinx.serialization.Serializable
 
 // «کیف پول» (apps/web /api/user/finance/**, same token), for every role: automatic top-ups (card to
-// card, confirmed by the bank SMS — the only way in), the history, withdrawals to a Sheba. Booking
+// card through nodepass.ir — the only way in), the history, withdrawals to a Sheba. Booking
 // pre-payments, the rest of a booking, plan purchases, wallet payouts and SMS costs all move this
 // balance (see apps/web CLAUDE.md «Finance Flow»).
 

@@ -41,7 +41,7 @@ export type SmsMessage =
       text: string;
     }
   | {
-      /** A wallet top-up was confirmed by the bank SMS (or matched by the admin) — wallet/top-up-sms. */
+      /** A wallet top-up was paid (nodepass.ir, apps/web lib/topUps.ts) — wallet/top-up-sms. */
       kind: "topup-paid";
       to: string;
       params: { amount: string; balance: string };

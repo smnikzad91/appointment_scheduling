@@ -310,7 +310,7 @@ interface UpdateApi {
 
 /** apps/web's own routes (https://nobatet.app/api/…), with the same apps/api token. */
 interface WebApi {
-    /** Automatic top-ups (card to card, confirmed by the bank SMS): recent ones + whether any card is set up. */
+    /** Automatic top-ups (card to card through nodepass.ir): recent ones + whether top-ups are available. */
     @GET("api/user/finance/top-ups")
     suspend fun topUps(): TopUpList
 

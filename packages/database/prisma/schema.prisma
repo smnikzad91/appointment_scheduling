@@ -374,24 +374,6 @@ model TicketReply {
   @@map("ticket_replies")
 }
 
-model AdminCard {
-  id          String   @id @default(cuid())
-  cardNumber  String   @unique
-  ownerName   String
-  bankName    String
-  /// Bank SMS sender of this card's account (e.g. "BankMellat" or a number); with smsTemplate,
-  /// deposits are confirmed automatically from the SMS (apps/bank-sms-agent → /api/bank-sms).
-  smsSender   String?
-  /// The deposit SMS with {amount} (rial), optional {balance}, {card}, {date}, {time}, {*}.
-  smsTemplate String?
-  createdAt   DateTime @default(now())
-
-  topUps  WalletTopUp[]
-  bankSms BankSms[]
-
-  @@map("admin_cards")
-}
-
 enum TopUpStatus {
   PENDING
   PAID
@@ -399,16 +381,14 @@ enum TopUpStatus {
   CANCELLED
 }
 
-/// A wallet top-up by card-to-card, confirmed by the bank's deposit SMS: the customer pays
-/// amountToman×10 + offsetRial (1–1000 rial) — that exact rial amount identifies them while pending.
+/// A wallet top-up by card-to-card through nodepass.ir: the customer pays payableRial (amountToman×10 +
+/// offsetRial, 1–1000 rial, picked by nodepass) to the card on the row; nodepass's webhook pays it.
 model WalletTopUp {
   id              String             @id @default(cuid())
   userId          String
   user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// null for a top-up made through nodepass.ir (NODEPASS_ENABLED): its card is the snapshot below
-  adminCardId     String?
-  adminCard       AdminCard?         @relation(fields: [adminCardId], references: [id], onDelete: Restrict)
-  /// nodepass.ir payment (its clientOrderId is this id); paid by nodepass's webhook / poll, not a BankSms
+  /// nodepass.ir payment (its clientOrderId is this id); null on top-ups from before 2026-10-23,
+  /// which were matched by the platform's own bank-SMS device
   nodepassPaymentId String?          @unique
   trackingCode    String?
   cardNumber      String?
@@ -426,10 +406,8 @@ model WalletTopUp {
   paidSmsAt       DateTime?
   paidSmsAttempts Int                @default(0)
   createdAt       DateTime           @default(now())
-  bankSms         BankSms?
   transaction     WalletTransaction?
 
-  @@index([adminCardId, status, payableRial])
   @@index([userId, createdAt])
   @@map("wallet_top_ups")
 }
@@ -454,7 +432,7 @@ enum WalletTxKind {
   BALANCE_REFUND
   /// a booking SMS (to its customer or stylist), charged to the booking's stylist at the gateway's cost (apps/api SmsService)
   SMS_COST
-  /// set by the platform admin on /admin/users (e.g. a card payment the bank SMS couldn't match); `note` says why
+  /// set by the platform admin on /admin/users (e.g. a card payment nodepass couldn't match); `note` says why
   ADMIN_ADJUSTMENT
 }
 
@@ -555,46 +533,6 @@ enum PrepaymentStatus {
   HELD
   SETTLED
   REFUNDED
-}
-
-enum BankSmsStatus {
-  MATCHED
-  UNMATCHED
-  NOT_DEPOSIT
-  IGNORED
-}
-
-/// Every SMS the bank-SMS device forwarded, kept raw for audit; `hash` makes resends idempotent.
-model BankSms {
-  id          String        @id @default(cuid())
-  hash        String        @unique
-  deviceId    String
-  sender      String
-  body        String
-  receivedAt  DateTime
-  adminCardId String?
-  adminCard   AdminCard?    @relation(fields: [adminCardId], references: [id], onDelete: SetNull)
-  amountRial  BigInt?
-  balanceRial BigInt?
-  status      BankSmsStatus
-  note        String        @default("")
-  topUpId     String?       @unique
-  topUp       WalletTopUp?  @relation(fields: [topUpId], references: [id], onDelete: SetNull)
-  createdAt   DateTime      @default(now())
-
-  @@index([status, createdAt])
-  @@map("bank_sms")
-}
-
-/// The bank-SMS device's last heartbeat (signal, SIM, queue), for the admin page and alerts.
-model BankSmsDevice {
-  id         String   @id
-  lastSeenAt DateTime
-  signal     Int?
-  info       Json?
-  updatedAt  DateTime @updatedAt
-
-  @@map("bank_sms_devices")
 }
 
 model Salon {

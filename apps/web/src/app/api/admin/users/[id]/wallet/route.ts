@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { adjustmentSmsText, parseAdjustment } from "@/lib/walletAdjustment";
 import { sendPlatformSms } from "@/lib/notifycloud";
 
-// Platform admin adds to or takes from a user's wallet by hand — e.g. a card payment the bank SMS
+// Platform admin adds to or takes from a user's wallet by hand — e.g. a card payment nodepass
 // couldn't match (paid without the top-up's rial offset). One ADMIN_ADJUSTMENT WalletTransaction
 // whose note (the reason) the user sees in their wallet history. A debit never takes the balance
 // below zero (409). Unless `notify: false`, the user gets an SMS with the amount and new balance

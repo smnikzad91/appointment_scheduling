@@ -132,7 +132,7 @@ export default function AdminWithdrawals() {
                 filter === s ? "bg-brand-500 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
               }`}
             >
-              {s ? t(STATUS_KEY[s]) : t("receivedSmsAll")} {num(s ? counts[s] ?? 0 : rows?.length ?? 0)}
+              {s ? t(STATUS_KEY[s]) : t("filterAll")} {num(s ? counts[s] ?? 0 : rows?.length ?? 0)}
             </button>
           ))}
         </div>

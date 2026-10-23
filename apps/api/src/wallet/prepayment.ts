@@ -1,8 +1,8 @@
 import { BadRequestException, ConflictException, HttpException, HttpStatus } from "@nestjs/common";
 import { AppointmentStatus, PayoutMethod, Prisma, PrepaymentStatus, WalletTxKind } from "@appointment-scheduling/database";
 
-// Booking pre-payment, paid only from the customer's wallet (topped up by card-to-card, confirmed
-// by the bank SMS — apps/web lib/bankSms). Rules (decided by the platform owner, 2026-10-05):
+// Booking pre-payment, paid only from the customer's wallet (topped up by card-to-card through
+// nodepass.ir — apps/web lib/topUps.ts). Rules (decided by the platform owner, 2026-10-05):
 //   * every online booking pre-pays PREPAYMENT_PERCENT of its price (25% since 2026-10-19, 50%
 //     before — bookings keep the share they paid), taken when it's booked; staff-made bookings
 //     (phone, walk-in) don't — the customer isn't there to pay;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { expireStale } from "@/lib/bankSms/topUps";
+import { expireStale } from "@/lib/topUps";
 
 // The latest 200 wallet top-up requests for /admin/finance («درخواست‌های افزایش موجودی»).
 export async function GET() {
@@ -11,13 +11,14 @@ export async function GET() {
   const rows = await prisma.walletTopUp.findMany({
     orderBy: { createdAt: "desc" },
     take: 200,
-    include: { user: { select: { firstName: true, lastName: true, phone: true } }, adminCard: { select: { cardNumber: true } } },
+    include: { user: { select: { firstName: true, lastName: true, phone: true } } },
   });
   return NextResponse.json(
     rows.map((t) => ({
       id: t.id,
       user: t.user,
-      cardNumber: t.adminCard?.cardNumber ?? t.cardNumber ?? "",
+      cardNumber: t.cardNumber ?? "",
+      trackingCode: t.trackingCode,
       amountToman: t.amountToman,
       payableRial: t.payableRial.toString(),
       status: t.status.toLowerCase(),
