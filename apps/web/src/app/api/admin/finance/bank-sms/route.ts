@@ -33,7 +33,7 @@ export async function GET() {
     topUps: topUps.map((t) => ({
       id: t.id,
       user: t.user,
-      cardNumber: t.adminCard.cardNumber,
+      cardNumber: t.adminCard?.cardNumber ?? t.cardNumber ?? "",
       amountToman: t.amountToman,
       payableRial: t.payableRial.toString(),
       status: t.status.toLowerCase(),

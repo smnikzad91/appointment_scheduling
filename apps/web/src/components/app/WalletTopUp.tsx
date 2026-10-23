@@ -22,6 +22,8 @@ interface TopUp {
   expiresAt: string;
   creditedToman: number | null;
   card: { cardNumber: string; ownerName: string; bankName: string } | null;
+  /** nodepass.ir's receipt code (top-ups made through it) */
+  trackingCode?: string | null;
 }
 
 const QUICK = [100_000, 200_000, 500_000, 1_000_000];
@@ -134,6 +136,11 @@ export default function WalletTopUp({ accessToken, suggestedToman, onPaid }: { a
           </Button>
         ) : (
           <p className="rounded-2xl bg-app-accent-soft px-4 py-3 text-sm text-app-ink">در انتظار پیامک بانک… معمولاً کمتر از یک دقیقه طول می‌کشد؛ بعد از تایید، موجودی خودکار اضافه می‌شود.</p>
+        )}
+        {topUp.trackingCode && (
+          <p className="text-sm text-app-muted">
+            کد پیگیری: <span dir="ltr" className="font-bold text-app-ink">{topUp.trackingCode}</span>
+          </p>
         )}
         <div className="flex items-center justify-between text-sm text-app-muted">
           <span>مهلت واریز: {toPersianDigits(`${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`)}</span>

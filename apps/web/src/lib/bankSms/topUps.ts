@@ -1,7 +1,8 @@
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { Prisma } from "@appointment-scheduling/database";
 import { prisma } from "@/lib/prisma";
 import { compileTemplate, parseSms, pickOffsetRial, senderMatches } from "./template";
+import { cancelPayment, createPayment, getPayment, nodepassEnabled, NodepassError, type NodepassPayment } from "@/lib/nodepass";
 
 // Wallet top-ups confirmed by the bank's deposit SMS (apps/bank-sms-agent on the BeagleBone
 // forwards every SMS to /api/bank-sms/messages). The customer pays amountToman×10 + 1–1000 rial to
@@ -40,6 +41,7 @@ export async function createTopUp(userId: string, amountToman: number, { keepPen
   if (!Number.isInteger(amountToman) || amountToman < MIN_TOP_UP_TOMAN || amountToman > MAX_TOP_UP_TOMAN) {
     throw new TopUpError(`مبلغ باید بین ${MIN_TOP_UP_TOMAN.toLocaleString("fa-IR")} و ${MAX_TOP_UP_TOMAN.toLocaleString("fa-IR")} تومان باشد`);
   }
+  if (nodepassEnabled()) return createNodepassTopUp(userId, amountToman, keepPending);
   const cards = await autoCards();
   if (cards.length === 0) throw new TopUpError("افزایش خودکار موجودی فعلاً فعال نیست؛ از «ثبت واریز» با رسید استفاده کنید");
   await expireStale();
@@ -69,6 +71,106 @@ export async function createTopUp(userId: string, amountToman: number, { keepPen
     }
   }
   throw new TopUpError("ساخت درخواست انجام نشد؛ دوباره تلاش کنید");
+}
+
+/** createTopUp through nodepass.ir: it picks the card and the extra rial; our id is its clientOrderId. */
+async function createNodepassTopUp(userId: string, amountToman: number, keepPending: boolean) {
+  await expireStale();
+  if (!keepPending) {
+    const open = await prisma.walletTopUp.findMany({ where: { userId, status: "PENDING" }, select: { id: true, nodepassPaymentId: true } });
+    for (const t of open) await cancelTopUp(t.id, t.nodepassPaymentId);
+  }
+  const id = randomUUID();
+  let p: NodepassPayment;
+  try {
+    p = await createPayment(amountToman, id);
+  } catch (err) {
+    // amount out of range / no card online: nodepass's Persian message is meant for the customer
+    if (err instanceof NodepassError && (err.status === 400 || err.status === 503)) throw new TopUpError(err.message);
+    throw err;
+  }
+  return prisma.walletTopUp.create({
+    data: {
+      id,
+      userId,
+      amountToman,
+      offsetRial: p.offsetRial,
+      payableRial: BigInt(p.payableRial),
+      expiresAt: new Date(p.expiresAt),
+      nodepassPaymentId: p.id,
+      trackingCode: p.trackingCode,
+      cardNumber: p.card.number,
+      cardOwnerName: p.card.ownerName,
+      cardBankName: p.card.bankName,
+    },
+    include: { adminCard: true },
+  });
+}
+
+/** Cancel a pending top-up here and at nodepass. False if nodepass says it's no longer pending (maybe paid). */
+export async function cancelTopUp(id: string, nodepassPaymentId: string | null): Promise<boolean> {
+  if (nodepassPaymentId) {
+    try {
+      await cancelPayment(nodepassPaymentId);
+    } catch (err) {
+      if (err instanceof NodepassError && err.code === "not_pending") {
+        await syncNodepassTopUp(id, { force: true });
+        return false;
+      }
+      throw err;
+    }
+  }
+  const { count } = await prisma.walletTopUp.updateMany({ where: { id, status: "PENDING" }, data: { status: "CANCELLED" } });
+  return count === 1;
+}
+
+/**
+ * nodepass says this payment is paid: the top-up is PAID and the wallet credited what was really paid
+ * (paidRial: an admin may match a deposit of another amount), once. Also an EXPIRED or CANCELLED top-up —
+ * the money arrived. Called from the webhook and the poll.
+ */
+export async function payNodepassTopUp(p: NodepassPayment): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const topUp = await tx.walletTopUp.findUnique({ where: { nodepassPaymentId: p.id } });
+    if (!topUp) return false;
+    const credited = creditOf(BigInt(p.paidRial ?? p.payableRial));
+    const claimed = await tx.walletTopUp.updateMany({
+      where: { id: topUp.id, status: { in: ["PENDING", "EXPIRED", "CANCELLED"] } },
+      data: { status: "PAID", paidAt: p.paidAt ? new Date(p.paidAt) : new Date(), creditedToman: credited },
+    });
+    if (claimed.count !== 1) return false;
+    const user = await tx.user.update({ where: { id: topUp.userId }, data: { walletBalance: { increment: credited } }, select: { walletBalance: true } });
+    await tx.walletTransaction.create({ data: { userId: topUp.userId, kind: "TOP_UP", amountToman: credited, balanceAfter: user.walletBalance, topUpId: topUp.id } });
+    return true;
+  });
+}
+
+/** Apply a nodepass payment's state to its top-up (webhook payload or a fresh GET). */
+export async function applyNodepassPayment(p: NodepassPayment) {
+  if (p.status === "PAID") return payNodepassTopUp(p);
+  if (p.status === "CANCELLED") await prisma.walletTopUp.updateMany({ where: { nodepassPaymentId: p.id, status: "PENDING" }, data: { status: "CANCELLED" } });
+  // EXPIRED: expireStale() does it by time; nodepass may still pay it within the late-SMS grace
+  return false;
+}
+
+const lastSync = new Map<string, number>();
+/**
+ * Fallback for a missed webhook while the customer waits: ask nodepass about a pending (or recently
+ * expired) top-up, at most every 10 s per top-up.
+ */
+export async function syncNodepassTopUp(id: string, { force = false } = {}) {
+  const topUp = await prisma.walletTopUp.findUnique({ where: { id }, select: { nodepassPaymentId: true, status: true, expiresAt: true } });
+  if (!topUp?.nodepassPaymentId || topUp.status === "PAID") return;
+  if (topUp.status !== "PENDING" && topUp.expiresAt.getTime() < Date.now() - LATE_SMS_GRACE_MS) return;
+  const last = lastSync.get(id) ?? 0;
+  if (!force && Date.now() - last < 10_000) return;
+  lastSync.set(id, Date.now());
+  if (lastSync.size > 1000) lastSync.delete(lastSync.keys().next().value!);
+  try {
+    await applyNodepassPayment(await getPayment(topUp.nodepassPaymentId));
+  } catch (err) {
+    console.error("[nodepass] sync top-up", id, err instanceof Error ? err.message : err);
+  }
 }
 
 export interface IncomingSms {
@@ -212,7 +314,13 @@ export async function matchExternalSms(topUpId: string, smsId: string): Promise<
 }
 
 /** JSON-safe top-up for the customer (BigInt → string). */
-export function topUpJson(t: { id: string; amountToman: number; offsetRial: number; payableRial: bigint; status: string; expiresAt: Date; paidAt: Date | null; creditedToman: number | null; createdAt: Date; adminCard?: { cardNumber: string; ownerName: string; bankName: string } }) {
+export function topUpJson(t: {
+  id: string; amountToman: number; offsetRial: number; payableRial: bigint; status: string; expiresAt: Date; paidAt: Date | null; creditedToman: number | null; createdAt: Date;
+  adminCard?: { cardNumber: string; ownerName: string; bankName: string } | null;
+  trackingCode?: string | null; cardNumber?: string | null; cardOwnerName?: string | null; cardBankName?: string | null;
+}) {
+  // nodepass top-ups carry the card on the row
+  const card = t.adminCard ?? (t.cardNumber ? { cardNumber: t.cardNumber, ownerName: t.cardOwnerName ?? "", bankName: t.cardBankName ?? "" } : null);
   return {
     id: t.id,
     amountToman: t.amountToman,
@@ -223,6 +331,7 @@ export function topUpJson(t: { id: string; amountToman: number; offsetRial: numb
     paidAt: t.paidAt,
     creditedToman: t.creditedToman,
     createdAt: t.createdAt,
-    card: t.adminCard ? { cardNumber: t.adminCard.cardNumber, ownerName: t.adminCard.ownerName, bankName: t.adminCard.bankName } : null,
+    card: card ? { cardNumber: card.cardNumber, ownerName: card.ownerName, bankName: card.bankName } : null,
+    trackingCode: t.trackingCode ?? null,
   };
 }

@@ -405,8 +405,15 @@ model WalletTopUp {
   id              String             @id @default(cuid())
   userId          String
   user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  adminCardId     String
-  adminCard       AdminCard          @relation(fields: [adminCardId], references: [id])
+  /// null for a top-up made through nodepass.ir (NODEPASS_ENABLED): its card is the snapshot below
+  adminCardId     String?
+  adminCard       AdminCard?         @relation(fields: [adminCardId], references: [id], onDelete: Restrict)
+  /// nodepass.ir payment (its clientOrderId is this id); paid by nodepass's webhook / poll, not a BankSms
+  nodepassPaymentId String?          @unique
+  trackingCode    String?
+  cardNumber      String?
+  cardOwnerName   String?
+  cardBankName    String?
   amountToman     Int
   offsetRial      Int
   payableRial     BigInt
