@@ -246,6 +246,12 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
                     modifier = Modifier.fillMaxWidth().background(c.accentSoft, RoundedCornerShape(16.dp)).padding(horizontal = 16.dp, vertical = 12.dp),
                 )
             }
+            t.trackingCode?.takeIf { it.isNotBlank() }?.let { code ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Muted("کد پیگیری: ")
+                    Text(code, color = c.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, style = androidx.compose.ui.text.TextStyle(textDirection = TextDirection.Ltr))
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Muted("مهلت واریز: " + "%02d:%02d".format(left / 60, left % 60).toPersianDigits(), Modifier.weight(1f))
                 AppTextButton(onClick = {

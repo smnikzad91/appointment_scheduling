@@ -22,6 +22,8 @@ data class TopUp(
     val expiresAt: String = "",
     val creditedToman: Int? = null,
     val card: TopUpCard? = null,
+    /** nodepass.ir's receipt code («کد پیگیری»), for support if the payment isn't confirmed */
+    val trackingCode: String? = null,
 )
 
 @Serializable
