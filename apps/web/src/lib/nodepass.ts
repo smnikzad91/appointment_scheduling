@@ -5,7 +5,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 // as clientOrderId and our webhook URL; nodepass picks the card and the extra 1–1000 rial and calls
 // /api/nodepass/webhook when the payment is paid, expired or cancelled.
 // Env: NODEPASS_API_KEY (unset = top-ups unavailable), NODEPASS_URL (default https://nodepass.ir),
-// NODEPASS_WEBHOOK_SECRET; the webhook is on NEXT_PUBLIC_SITE_URL.
+// NODEPASS_WEBHOOK_SECRET; the webhook and the status page's «بازگشت» link (returnUrl) are on NEXT_PUBLIC_SITE_URL.
 
 export const nodepassConfigured = () => !!process.env.NODEPASS_API_KEY;
 
@@ -46,13 +46,15 @@ async function call(method: string, path: string, body?: unknown): Promise<Nodep
   return data as NodepassPayment;
 }
 
+const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL || "https://nobatet.app").replace(/\/$/, "");
+
 export function webhookUrl() {
-  const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://nobatet.app").replace(/\/$/, "");
-  return `${site}/api/nodepass/webhook`;
+  return `${siteUrl()}/api/nodepass/webhook`;
 }
 
-export const createPayment = (amountToman: number, clientOrderId: string) =>
-  call("POST", "/payments", { amountToman, clientOrderId, webhookUrl: webhookUrl() });
+/** returnPath: the wallet page the top-up was started from (nodepass needs an absolute https URL). */
+export const createPayment = (amountToman: number, clientOrderId: string, returnPath: string) =>
+  call("POST", "/payments", { amountToman, clientOrderId, webhookUrl: webhookUrl(), returnUrl: `${siteUrl()}${returnPath}` });
 export const getPayment = (id: string) => call("GET", `/payments/${encodeURIComponent(id)}`);
 export const cancelPayment = (id: string) => call("POST", `/payments/${encodeURIComponent(id)}/cancel`);
 

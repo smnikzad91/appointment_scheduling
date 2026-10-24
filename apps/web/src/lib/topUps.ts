@@ -29,8 +29,12 @@ export function expireStale(now = new Date()) {
 
 export class TopUpError extends Error {}
 
+/** Wallet pages a top-up can start from; nodepass's status page links back to it. */
+const WALLET_PATHS = ["/dashboard/finance", "/salon/wallet", "/stylist/wallet"];
+export const walletPath = (path: unknown) => (typeof path === "string" && WALLET_PATHS.includes(path) ? path : WALLET_PATHS[0]);
+
 /** A new top-up for this user: nodepass's card + exact rial amount to pay. Any earlier pending one is cancelled. */
-export async function createTopUp(userId: string, amountToman: number) {
+export async function createTopUp(userId: string, amountToman: number, returnPath = WALLET_PATHS[0]) {
   if (!Number.isInteger(amountToman) || amountToman < MIN_TOP_UP_TOMAN || amountToman > MAX_TOP_UP_TOMAN) {
     throw new TopUpError(`مبلغ باید بین ${MIN_TOP_UP_TOMAN.toLocaleString("fa-IR")} و ${MAX_TOP_UP_TOMAN.toLocaleString("fa-IR")} تومان باشد`);
   }
@@ -41,7 +45,7 @@ export async function createTopUp(userId: string, amountToman: number) {
   const id = randomUUID();
   let p: NodepassPayment;
   try {
-    p = await createPayment(amountToman, id);
+    p = await createPayment(amountToman, id, walletPath(returnPath));
   } catch (err) {
     // amount out of range / no card online: nodepass's Persian message is meant for the customer
     if (err instanceof NodepassError && (err.status === 400 || err.status === 503)) throw new TopUpError(err.message);

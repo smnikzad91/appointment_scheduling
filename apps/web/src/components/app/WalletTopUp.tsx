@@ -80,7 +80,7 @@ export default function WalletTopUp({ accessToken, suggestedToman, onPaid }: { a
 
   async function start(amountToman: number) {
     setBusy(true);
-    const r = await fetch("/api/user/finance/top-ups", { method: "POST", headers: { "Content-Type": "application/json", ...auth }, body: JSON.stringify({ amountToman }) });
+    const r = await fetch("/api/user/finance/top-ups", { method: "POST", headers: { "Content-Type": "application/json", ...auth }, body: JSON.stringify({ amountToman, returnPath: window.location.pathname }) });
     const d = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) return toastError(d.error ?? "ساخت درخواست انجام نشد");

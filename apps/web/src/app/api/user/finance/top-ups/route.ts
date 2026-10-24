@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requestSession } from "@/lib/requestSession";
-import { createTopUp, expireStale, syncTopUp, topUpJson, topUpsAvailable, TopUpError } from "@/lib/topUps";
+import { createTopUp, expireStale, syncTopUp, topUpJson, topUpsAvailable, TopUpError, walletPath } from "@/lib/topUps";
 
 // Wallet top-ups (card-to-card through nodepass.ir, lib/topUps.ts). GET: recent ones + whether it's
-// available; POST {amountToman}: a new one with the card and the exact rial amount to pay.
+// available; POST {amountToman, returnPath?}: a new one with the card and the exact rial amount to pay
+// (returnPath: the wallet page it was started from, for the «بازگشت» link on nodepass's status page).
 
 export async function GET() {
   const session = await requestSession();
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const amountToman = Number(body?.amountToman);
   try {
-    const topUp = await createTopUp(session.user.id, amountToman);
+    const topUp = await createTopUp(session.user.id, amountToman, walletPath(body?.returnPath));
     return NextResponse.json(topUpJson(topUp), { status: 201 });
   } catch (err) {
     if (err instanceof TopUpError) return NextResponse.json({ error: err.message }, { status: 400 });
