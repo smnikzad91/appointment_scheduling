@@ -68,6 +68,8 @@ data class OwnerSubscription(
     val status: String,
     val plan: SubscriptionPlan? = null,
     val expiresAt: String? = null,
+    /** set while the sign-up's free month runs (a plan bought meanwhile starts after it) */
+    val trialEndsAt: String? = null,
     val stylists: SeatUsage = SeatUsage(),
     val sms: SmsUsage = SmsUsage(),
 )
@@ -76,7 +78,8 @@ data class OwnerSubscription(
 data class OwnerCategory(val id: String, val name: String, val order: Int = 0)
 
 @Serializable
-data class CategoryInput(val name: String, val order: Int? = null)
+/** POST needs a name; PATCH sends either (nulls are left out). */
+data class CategoryInput(val name: String? = null, val order: Int? = null)
 
 @Serializable
 data class OwnerService(
@@ -219,6 +222,26 @@ data class RegisterSalonRequest(
     val serviceLocations: List<ServiceLocation>? = null,
     val hostSalonName: String? = null,
     val serviceArea: String? = null,
+    /** «از کجا با ما آشنا شدید؟» — a key of [SIGNUP_SOURCE_LABEL] (apps/api auth/signup-source.ts) */
+    val signupSource: String? = null,
+    /** their own words with OTHER */
+    val signupSourceNote: String? = null,
+)
+
+/** apps/web lib/pricing.ts SMS_BILLING_NOTE */
+const val SMS_BILLING_NOTE =
+    "پیامک‌ها جزو اشتراک نیستند: هزینه هر پیامک نوبت از کیف پول آرایشگر کم می‌شود. در ماه رایگان هم برای ارسال پیامک باید کیف پول را شارژ کنید."
+
+/** Sign-up «از کجا با ما آشنا شدید؟» answers, in the web's order (apps/web lib/signupSource.ts). */
+val SIGNUP_SOURCE_LABEL = linkedMapOf(
+    "INSTAGRAM" to "اینستاگرام",
+    "GOOGLE" to "جستجو در گوگل",
+    "FRIEND" to "معرفی دوستان یا آشنایان",
+    "COLLEAGUE" to "معرفی همکار (سالن یا آرایشگر دیگر)",
+    "TELEGRAM" to "تلگرام یا شبکه‌های اجتماعی دیگر",
+    "ADVERTISEMENT" to "تبلیغات (بنر، پیامک، تراکت)",
+    "CUSTOMER" to "از طرف مشتری‌ها",
+    "OTHER" to "سایر",
 )
 
 @Serializable

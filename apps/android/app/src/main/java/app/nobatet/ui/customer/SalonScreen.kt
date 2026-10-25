@@ -56,6 +56,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.nobatet.data.AppContainer
 import app.nobatet.data.SalonDetail
+import app.nobatet.data.groupServicesByCategory
 import app.nobatet.data.SalonService
 import app.nobatet.data.label
 import app.nobatet.ui.components.AppCard
@@ -135,8 +136,6 @@ private fun SalonScreenContent(container: AppContainer, vm: SalonViewModel, onBa
 @Composable
 private fun SalonContent(salon: SalonDetail, reviews: List<app.nobatet.data.PublicReview>, onBook: (String?) -> Unit, onBookStylist: (String) -> Unit) {
     val c = LocalAppColors.current
-    val byCategory = salon.activeServices.groupBy { it.categoryId }
-    val categories = salon.serviceCategories.sortedBy { it.order }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 96.dp)) {
         item {
             Box {
@@ -169,9 +168,8 @@ private fun SalonContent(salon: SalonDetail, reviews: List<app.nobatet.data.Publ
             }
         }
         item { SectionTitle("خدمات", Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp)) }
-        val groups = categories.map { it.name to byCategory[it.id].orEmpty() } + listOf("سایر خدمات" to byCategory[null].orEmpty())
-        groups.filter { it.second.isNotEmpty() }.forEach { (name, services) ->
-            item { Muted(name, Modifier.padding(start = 20.dp, top = 8.dp, bottom = 4.dp)) }
+        groupServicesByCategory(salon.serviceCategories, salon.activeServices).forEach { (name, services) ->
+            if (name != null) item { Muted(name, Modifier.padding(start = 20.dp, top = 8.dp, bottom = 4.dp)) }
             items(services, key = { it.id }) { ServiceRow(it) { onBook(it.id) } }
         }
         if (!salon.independent && salon.stylists.isNotEmpty()) {

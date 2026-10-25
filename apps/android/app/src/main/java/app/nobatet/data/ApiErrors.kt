@@ -20,6 +20,7 @@ private val PERSIAN = mapOf(
     "This time slot is no longer available" to "این زمان همین حالا پر شد؛ لطفاً زمان دیگری انتخاب کنید",
     "This time is in the past" to "این زمان گذشته است؛ لطفاً زمان دیگری انتخاب کنید",
     "Salon not found" to "این سالن در حال حاضر نوبت نمی‌پذیرد",
+    "This salon isn't taking online bookings right now" to "نوبت‌دهی آنلاین این سالن فعلاً بسته است؛ برای رزرو با خود سالن تماس بگیرید",
     "One or more services were not found for this salon" to "برخی از خدمات انتخاب‌شده دیگر ارائه نمی‌شوند",
     "Choose where the appointment takes place" to "محل انجام نوبت را انتخاب کنید",
     "This stylist doesn't work at that place" to "این آرایشگر در این محل خدمت نمی‌دهد",

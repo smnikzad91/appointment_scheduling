@@ -209,7 +209,7 @@ fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
     }
 }
 
-enum class SalonPage(val title: String) { ACCOUNTING("حسابداری"), REVIEWS("نظرات مشتری‌ها"), GALLERY("گالری نمونه کارها"), SHARE("کیت معرفی"), WALLET("کیف پول"), SCHEDULE("ساعات کاری من") }
+enum class SalonPage(val title: String) { ACCOUNTING("حسابداری"), REVIEWS("نظرات مشتری‌ها"), GALLERY("گالری نمونه کارها"), SHARE("کیت معرفی"), WALLET("کیف پول"), SCHEDULE("ساعات کاری من"), VISITS("آمار بازدید"), CUSTOMERS("آنالیز رفتار مشتری") }
 
 /**
  * The salon home, as the web's app/salon/page.tsx: the dark hero (logo, status, today's forecast,
@@ -287,6 +287,7 @@ fun SalonHomeScreen(container: AppContainer, data: SalonData, sheets: SalonSheet
                 StatTile("نوبت‌های آینده", upcoming.size, Icons.Outlined.Schedule)
             }
         }
+        item(key = "insights") { InsightsHomeCards(container, onOpenVisits = { onOpenPage(SalonPage.VISITS) }, onOpenCustomers = { onOpenPage(SalonPage.CUSTOMERS) }) }
         item(key = "accounting") {
             LinkCard(Icons.Outlined.Calculate, "حسابداری", if (independent) "درآمد، هزینه‌ها و سود خالص ماه" else "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها") { onOpenPage(SalonPage.ACCOUNTING) }
         }
@@ -364,10 +365,13 @@ private fun ZeroCommissionNotice(stylists: List<app.nobatet.data.OwnerStylist>, 
 @Composable
 private fun SubscriptionNotice(sub: app.nobatet.data.OwnerSubscription?, onDetails: () -> Unit) {
     if (sub == null || sub.status == "none") return
-    val left = sub.expiresAt?.let { java.time.Duration.between(Instant.now(), Instant.parse(it)).toHours().let { h -> maxOf(0L, (h + 23) / 24) } }
+    val left = daysUntil(sub.expiresAt)
     val text = when {
-        sub.status == "expired" -> "اشتراک سالن به پایان رسیده است؛ تا تمدید، افزودن آرایشگر و پیامک یادآوری متوقف است."
-        left != null && left <= 7 -> "${left.toString().toPersianDigits()} روز تا پایان اشتراک سالن مانده است."
+        sub.status == "expired" ->
+            "اشتراک به پایان رسیده است؛ تا تمدید (از کیف پول، در تنظیمات)، مشتری‌ها نمی‌توانند آنلاین نوبت بگیرند و افزودن آرایشگر ممکن نیست. نوبت‌گرفتن توسط خود شما ادامه دارد."
+        left != null && left <= 7 ->
+            if (sub.trialOnly()) "${left.toString().toPersianDigits()} روز از ماه رایگان مانده است؛ برای باز ماندن نوبت‌دهی آنلاین، پلن را از کیف پول بخرید."
+            else "${left.toString().toPersianDigits()} روز تا پایان اشتراک مانده است؛ بعد از آن نوبت‌دهی آنلاین تا تمدید بسته می‌شود."
         else -> return
     }
     NoticeCard(text, onClick = onDetails)

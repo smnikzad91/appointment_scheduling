@@ -6,6 +6,8 @@ import app.nobatet.ui.components.AppTextField
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -29,9 +31,12 @@ import androidx.compose.ui.unit.dp
 import app.nobatet.data.AppContainer
 import app.nobatet.data.AuthResponse
 import app.nobatet.data.RegisterSalonRequest
+import app.nobatet.data.SIGNUP_SOURCE_LABEL
+import app.nobatet.data.SMS_BILLING_NOTE
 import app.nobatet.data.SalonKind
 import app.nobatet.data.ServiceLocation
 import app.nobatet.data.persianError
+import app.nobatet.ui.components.AppChip
 import app.nobatet.ui.components.Muted
 import app.nobatet.ui.components.PickerField
 import app.nobatet.ui.components.PrimaryButton
@@ -52,6 +57,7 @@ private val PLACE_LABEL = linkedMapOf(
  * independent stylist's one-person business) in one go, signed in straight away; the platform
  * admin approves it before it shows publicly.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit, onError: (String) -> Unit) {
     val c = LocalAppColors.current
@@ -70,6 +76,8 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
     // IN_SALON first: most independent stylists rent a chair in a salon, under their own name
     var places by remember { mutableStateOf(setOf(ServiceLocation.IN_SALON)) }
     var host by rememberSaveable { mutableStateOf("") }
+    var source by rememberSaveable { mutableStateOf<String?>(null) }
+    var sourceNote by rememberSaveable { mutableStateOf("") }
     var picking by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     // the phone is confirmed by SMS before anything is created: form → code → account (its state stays)
@@ -86,6 +94,8 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
                         firstName.trim(), lastName.trim(), phone, code, password, salonName.trim(), province, city, address.trim(), p.first, p.second, kind,
                         serviceLocations = if (independent) places.toList() else null,
                         hostSalonName = if (independent && ServiceLocation.IN_SALON in places) host.trim().ifEmpty { null } else null,
+                        signupSource = source,
+                        signupSourceNote = if (source == "OTHER") sourceNote.trim().ifEmpty { null } else null,
                     ),
                 ),
             )
@@ -123,6 +133,12 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
         AppTextField(address, { address = it.take(300) }, label = { Text("آدرس دقیق") }, minLines = 2, modifier = Modifier.fillMaxWidth())
         Muted(if (independent && ServiceLocation.IN_SALON !in places && ServiceLocation.STUDIO !in places) "محل را روی نقشه بزنید؛ نشانی شما عمومی نمایش داده نمی‌شود." else "محل را روی نقشه بزنید.")
         PinMap(pin, provinces.firstOrNull { it.name == province }?.center) { pin = it }
+        Muted("از کجا با ما آشنا شدید؟")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SIGNUP_SOURCE_LABEL.forEach { (key, label) -> AppChip(source == key, { source = key }, { Text(label) }) }
+        }
+        if (source == "OTHER") AppTextField(sourceNote, { sourceNote = it.take(200) }, label = { Text("کجا؟ (اختیاری)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Muted(SMS_BILLING_NOTE)
         PrimaryButton(if (busy) "در حال ارسال کد..." else "ثبت‌نام", enabled = !busy) {
             val p = pin
             val problem = when {
@@ -134,6 +150,7 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
                 province.isEmpty() || city.isEmpty() -> "استان و شهر را انتخاب کنید"
                 address.isBlank() -> "آدرس را وارد کنید"
                 p == null -> "محل را روی نقشه مشخص کنید"
+                source == null -> "بگویید از کجا با نوبتت آشنا شدید"
                 else -> null
             }
             if (problem != null) return@PrimaryButton onError(problem)

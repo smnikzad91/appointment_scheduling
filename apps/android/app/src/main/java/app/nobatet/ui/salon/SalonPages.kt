@@ -71,7 +71,7 @@ import app.nobatet.util.toPersianDigits
 import kotlinx.coroutines.launch
 
 @Composable
-fun SalonPageScreen(page: SalonPage, container: AppContainer, data: SalonData, onBack: () -> Unit) {
+fun SalonPageScreen(page: SalonPage, container: AppContainer, data: SalonData, onBack: () -> Unit, onOpenPage: (SalonPage) -> Unit) {
     PageScaffold(page.title, onBack) {
         when (page) {
             SalonPage.ACCOUNTING -> SalonAccountingPage(container, data)
@@ -80,6 +80,8 @@ fun SalonPageScreen(page: SalonPage, container: AppContainer, data: SalonData, o
             SalonPage.SHARE -> SalonSharePage(container, data)
             SalonPage.WALLET -> app.nobatet.ui.wallet.WalletScreen(container)
             SalonPage.SCHEDULE -> OwnSchedulePage(container)
+            SalonPage.VISITS -> SalonVisitsPage(container, onOpenShare = { onOpenPage(SalonPage.SHARE) })
+            SalonPage.CUSTOMERS -> SalonCustomerInsightsPage(container, data.salon?.timezone)
         }
     }
 }

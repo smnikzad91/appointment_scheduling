@@ -11,6 +11,7 @@ import app.nobatet.data.ServiceLocation
 import app.nobatet.data.TimeSlot
 import app.nobatet.data.persianError
 import app.nobatet.util.salonToday
+import app.nobatet.util.toPersianDigits
 import app.nobatet.util.salonWallTimeToInstant
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -59,6 +60,9 @@ data class SalonUiState(
     val booking: BookingState = BookingState(),
 )
 
+/** How many days ahead the first free day is looked for (one availability request each). */
+private const val AUTO_PICK_DAYS = 7
+
 class SalonViewModel(val container: AppContainer, private val slug: String) : ViewModel() {
     private val _state = MutableStateFlow(SalonUiState())
     val state: StateFlow<SalonUiState> = _state
@@ -98,13 +102,22 @@ class SalonViewModel(val container: AppContainer, private val slug: String) : Vi
         add(BookingStep.SUMMARY)
     }
 
+    /** The salon's plan ran out (apps/api refuses the booking too): say so instead of opening the sheet. */
+    private fun refuseIfClosed(): Boolean {
+        if (salon.onlineBooking) return false
+        fail("نوبت‌دهی آنلاین ${salon.name} فعلاً بسته است؛ برای رزرو تماس بگیرید" + (salon.phone?.let { ": ${it.toPersianDigits()}" } ?: ""))
+        return true
+    }
+
     fun openBooking(serviceId: String? = null) {
+        if (refuseIfClosed()) return
         val only = salon.serviceLocations.singleOrNull()
         setBooking { BookingState(open = true, serviceIds = listOfNotNull(serviceId), place = if (salon.independent) only else null) }
     }
 
     /** Straight to the day/time step with these choices (services no longer offered are dropped). */
     fun openBookingPrefilled(prefill: BookingPrefill) {
+        if (refuseIfClosed()) return
         val ids = prefill.serviceIds.filter { id -> salon.activeServices.any { it.id == id } }
         val stylist = prefill.stylistId?.takeIf { id -> salon.stylists.any { it.id == id } }
         // no services chosen (a short link, «?book=1»): start at the services step, with the stylist if one came
@@ -117,7 +130,7 @@ class SalonViewModel(val container: AppContainer, private val slug: String) : Vi
             BookingState(open = true, step = BookingStep.DATETIME, serviceIds = ids, stylistId = stylist,
                 place = if (salon.independent) salon.serviceLocations.singleOrNull() else null)
         }
-        chooseDate(prefill.date?.takeIf { !it.isBefore(salonToday(salon.timezone)) } ?: salonToday(salon.timezone))
+        prefill.date?.takeIf { !it.isBefore(salonToday(salon.timezone)) }?.let(::chooseDate) ?: pickFirstFreeDay()
     }
 
     /** «خبرم کن»: a fully booked day — a text/notification when a time opens up (POST /salons/:slug/waitlist). */
@@ -135,6 +148,7 @@ class SalonViewModel(val container: AppContainer, private val slug: String) : Vi
 
     /** «رزرو با …» on a stylist card: their services only, that stylist chosen. */
     fun openBookingWithStylist(stylistId: String) {
+        if (refuseIfClosed()) return
         setBooking { BookingState(open = true, stylistId = stylistId, place = if (salon.independent) salon.serviceLocations.singleOrNull() else null) }
     }
 
@@ -193,7 +207,7 @@ class SalonViewModel(val container: AppContainer, private val slug: String) : Vi
         val nextStep = steps.getOrNull(i + 1) ?: return
         setBooking { it.copy(step = nextStep) }
         if (nextStep == BookingStep.DATETIME) {
-            if (b.date == null) chooseDate(salonToday(salon.timezone)) else loadSlots()
+            if (b.date == null) pickFirstFreeDay() else loadSlots()
         }
     }
 
@@ -201,6 +215,39 @@ class SalonViewModel(val container: AppContainer, private val slug: String) : Vi
         val steps = steps()
         val i = steps.indexOf(b.step)
         if (i > 0) setBooking { it.copy(step = steps[i - 1]) } else closeBooking()
+    }
+
+    /**
+     * No day chosen yet: open on the first of the next [AUTO_PICK_DAYS] days with a free time (apps/web
+     * StepDateTime), so late in the day — or on a full or closed day — the customer doesn't start at «no time».
+     * Shares [slotsJob], so a day tapped meanwhile ([chooseDate]) cancels the search and wins.
+     */
+    private fun pickFirstFreeDay() {
+        if (b.serviceIds.isEmpty()) return
+        val today = salonToday(salon.timezone)
+        setBooking { it.copy(date = today, startMinute = null) }
+        slotsJob?.cancel()
+        slotsJob = viewModelScope.launch {
+            setBooking { it.copy(slotsLoading = true, slots = emptyList()) }
+            var todays: List<TimeSlot>? = null
+            for (i in 0 until AUTO_PICK_DAYS) {
+                val day = today.plusDays(i.toLong())
+                val slots = try {
+                    container.api.availability(salon.slug, day.toString(), b.serviceIds.joinToString(","), b.stylistId)
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    null
+                }
+                // an error: stay on today and load it as usual (its own failure shows the message)
+                if (slots == null) return@launch loadSlots()
+                if (i == 0) todays = slots
+                if (slots.any { it.available }) {
+                    setBooking { it.copy(date = day, slots = slots, slotsLoading = false) }
+                    return@launch
+                }
+            }
+            setBooking { it.copy(slots = todays.orEmpty(), slotsLoading = false) }
+        }
     }
 
     private fun loadSlots() {
@@ -228,7 +275,7 @@ class SalonViewModel(val container: AppContainer, private val slug: String) : Vi
         }
     }
 
-    /** 50% of the price, rounded up (apps/api prepaymentFor). */
+    /** [WalletMe.prepaymentPercent] (25%) of the price, rounded up (apps/api prepaymentFor). */
     fun prepayment(): Int = b.wallet?.let { w -> Math.ceil(totalPrice() * w.prepaymentPercent / 100.0).toInt() } ?: 0
 
     /** How much the wallet lacks for the pre-payment. */

@@ -33,6 +33,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,6 +44,10 @@ import app.nobatet.data.AppContainer
 import app.nobatet.data.NewTopUp
 import app.nobatet.data.NewWithdrawal
 import app.nobatet.data.TopUp
+import app.nobatet.data.WALLET_DIRECTIONS
+import app.nobatet.data.WALLET_PERIODS
+import app.nobatet.data.WALLET_SORTS
+import app.nobatet.data.WalletFilters
 import app.nobatet.data.WalletInfo
 import app.nobatet.data.WalletTx
 import app.nobatet.data.Withdrawal
@@ -58,6 +63,7 @@ import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.LoadError
 import app.nobatet.ui.components.Loading
 import app.nobatet.ui.components.Muted
+import app.nobatet.ui.components.PickerField
 import app.nobatet.ui.components.PrimaryButton
 import app.nobatet.ui.components.SecondaryButton
 import app.nobatet.ui.components.SectionTitle
@@ -81,30 +87,120 @@ private fun fa(n: Int) = formatAmount(n.toLong())
 
 private fun instant(iso: String?): Instant? = iso?.let { runCatching { Instant.parse(it) }.getOrNull() }
 
-/** The whole wallet page: top-up, balance + withdrawal, history. */
+private const val PAGE_SIZE = 20
+
+/**
+ * The whole wallet page: top-up, balance + withdrawal, history. The history is paged ([PAGE_SIZE]) and
+ * filtered by direction, type and period and sorted by date or amount — all by the route (apps/web
+ * lib/walletQuery.ts), as the web's WalletHistory.
+ */
 @Composable
 fun WalletScreen(container: AppContainer) {
+    val c = LocalAppColors.current
     var wallet by remember { mutableStateOf<WalletInfo?>(null) }
     var failed by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
-    LaunchedEffect(reload) {
-        runCatching { container.web.wallet() }.onSuccess { wallet = it; failed = false }.onFailure { if (wallet == null) failed = true }
+    var filters by remember { mutableStateOf(WalletFilters()) }
+    var page by remember { mutableIntStateOf(1) }
+    var picking by remember { mutableStateOf<String?>(null) }
+    val scroll = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    // a newer request (filters, page) cancels the older one, so a slow answer can't replace it
+    LaunchedEffect(reload, filters, page) {
+        loading = true
+        runCatching { container.web.wallet(filters.params(page, PAGE_SIZE)) }
+            .onSuccess { w ->
+                // the last page emptied (fewer rows after a refresh): step back to the new last page
+                if (w.items.isEmpty() && w.total > 0 && page > 1) page = (w.total + PAGE_SIZE - 1) / PAGE_SIZE
+                wallet = w; failed = false
+            }
+            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it; failed = true }
+        loading = false
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    fun change(next: WalletFilters) { filters = next; page = 1 }
+
+    Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         WalletTopUp(container, onPaid = { reload++ })
         val w = wallet
         when {
             w != null -> {
                 BalanceCard(w.balanceToman)
                 WalletWithdraw(container, w.balanceToman) { reload++ }
-                SectionTitle("گردش کیف پول")
-                if (w.items.isEmpty()) Muted("هنوز تراکنشی ثبت نشده است.")
-                w.items.forEach { TxRow(it) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SectionTitle("گردش کیف پول", Modifier.weight(1f))
+                    if (filters != WalletFilters()) AppTextButton(onClick = { change(WalletFilters()) }) { Text("پاک کردن فیلترها") }
+                }
+                app.nobatet.ui.components.ChipTabs(WALLET_DIRECTIONS, filters.direction) { change(filters.copy(direction = it)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PickerField("نوع تراکنش", if (filters.kind.isEmpty()) "همه نوع‌ها" else walletTxLabel(filters.kind), Modifier.weight(1f)) { picking = "kind" }
+                    PickerField("بازه زمانی", WALLET_PERIODS.first { it.first == filters.period }.second, Modifier.weight(1f)) { picking = "period" }
+                }
+                PickerField("مرتب‌سازی", WALLET_SORTS.first { it.first == filters.sort }.second, Modifier.fillMaxWidth()) { picking = "sort" }
+                if (w.total > 0) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Muted("${w.total.toString().toPersianDigits()} تراکنش")
+                    if (w.inToman > 0) Text("واریز ${fa(w.inToman)} تومان", color = c.done, fontSize = 12.sp)
+                    if (w.outToman > 0) Text("برداشت ${fa(w.outToman)} تومان", color = c.danger, fontSize = 12.sp)
+                }
+                if (failed) LoadError("گردش کیف پول بارگذاری نشد", onRetry = { reload++ })
+                when {
+                    w.items.isEmpty() && filters.filtered -> {
+                        Muted("تراکنشی با این فیلترها نیست.")
+                        SecondaryButton(onClick = { change(WalletFilters()) }) { Text("پاک کردن فیلترها") }
+                    }
+                    w.items.isEmpty() -> Muted("هنوز تراکنشی ثبت نشده است.")
+                    else -> Column(Modifier.alpha(if (loading) 0.6f else 1f), verticalArrangement = Arrangement.spacedBy(12.dp)) { w.items.forEach { TxRow(it) } }
+                }
+                val pages = maxOf(1, (w.total + PAGE_SIZE - 1) / PAGE_SIZE)
+                if (pages > 1) {
+                    fun goTo(p: Int) { page = p; scope.launch { scroll.animateScrollTo(0) } }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppTextButton(onClick = { goTo(page - 1) }, enabled = page > 1 && !loading) { Text("قبلی") }
+                        Muted("صفحه ${page.toString().toPersianDigits()} از ${pages.toString().toPersianDigits()}", Modifier.weight(1f))
+                        AppTextButton(onClick = { goTo(page + 1) }, enabled = page < pages && !loading) { Text("بعدی") }
+                    }
+                }
+                picking?.let { what ->
+                    val options = when (what) {
+                        "kind" -> listOf("" to "همه نوع‌ها") + w.kinds.map { it to walletTxLabel(it) }.sortedBy { it.second }
+                        "period" -> WALLET_PERIODS
+                        else -> WALLET_SORTS
+                    }
+                    val current = when (what) { "kind" -> filters.kind; "period" -> filters.period; else -> filters.sort }
+                    OptionDialog(
+                        when (what) { "kind" -> "نوع تراکنش"; "period" -> "بازه زمانی"; else -> "مرتب‌سازی" }, options, current,
+                        onDismiss = { picking = null },
+                    ) { v ->
+                        picking = null
+                        change(when (what) { "kind" -> filters.copy(kind = v); "period" -> filters.copy(period = v); else -> filters.copy(sort = v) })
+                    }
+                }
             }
             failed -> LoadError("کیف پول بارگذاری نشد", onRetry = { reload++ })
             else -> Loading(rows = 3)
         }
     }
+}
+
+/** One choice from a short list (the web's PickerSelect). */
+@Composable
+private fun OptionDialog(title: String, options: List<Pair<String, String>>, value: String, onDismiss: () -> Unit, onPick: (String) -> Unit) {
+    val c = LocalAppColors.current
+    AppDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                options.forEach { (v, label) ->
+                    Row(Modifier.fillMaxWidth().clickable { onPick(v) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(label, color = c.ink, fontWeight = if (v == value) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f))
+                        if (v == value) Icon(Icons.Outlined.Check, null, tint = c.accent)
+                    }
+                }
+            }
+        },
+        confirmButton = { AppTextButton(onClick = onDismiss) { Text("بستن") } },
+    )
 }
 
 @Composable

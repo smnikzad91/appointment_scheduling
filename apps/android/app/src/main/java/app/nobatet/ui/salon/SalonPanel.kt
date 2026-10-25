@@ -7,6 +7,8 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
@@ -61,7 +63,7 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
         return
     }
     page?.let { p ->
-        SalonPageScreen(p, container, data, onBack = { page = null })
+        SalonPageScreen(p, container, data, onBack = { page = null }, onOpenPage = { page = it })
         return
     }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -71,6 +73,8 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
         accountName = "${user.firstName} ${user.lastName}".trim(),
         accountLinks = listOf(
             app.nobatet.ui.panels.AccountLink("کیف پول", Icons.Outlined.AccountBalanceWallet) { page = SalonPage.WALLET },
+            app.nobatet.ui.panels.AccountLink("آمار بازدید", Icons.Outlined.Visibility) { page = SalonPage.VISITS },
+            app.nobatet.ui.panels.AccountLink("آنالیز رفتار مشتری", Icons.Outlined.Insights) { page = SalonPage.CUSTOMERS },
             app.nobatet.ui.panels.tutorialsLink(context, if (independent) "independent" else "owner"),
         ),
         onSignOut = onSignOut,

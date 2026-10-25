@@ -99,9 +99,25 @@ data class SalonDetail(
     val services: List<SalonService> = emptyList(),
     val stylists: List<SalonStylist> = emptyList(),
     val galleryImages: List<GalleryImage> = emptyList(),
+    /** false once the salon's plan (or free month) ran out: apps/api refuses online bookings (403) */
+    val onlineBooking: Boolean = true,
 ) {
     val independent: Boolean get() = kind == SalonKind.INDEPENDENT
     val activeServices: List<SalonService> get() = services.filter { it.active }
+}
+
+/**
+ * Services grouped under their categories (by `order`), as apps/web lib/serviceGroups.ts: services with no
+ * category — or one that no longer exists — come last as «سایر خدمات», or with no heading (null) when no
+ * category is in use, so every service stays bookable.
+ */
+fun groupServicesByCategory(categories: List<ServiceCategory>, services: List<SalonService>): List<Pair<String?, List<SalonService>>> {
+    val known = categories.map { it.id }.toSet()
+    val groups = categories.sortedBy { it.order }
+        .map { c -> c.name as String? to services.filter { it.categoryId == c.id } }
+        .filter { it.second.isNotEmpty() }
+    val rest = services.filter { it.categoryId == null || it.categoryId !in known }
+    return if (rest.isEmpty()) groups else groups + ((if (groups.isEmpty()) null else "سایر خدمات") to rest)
 }
 
 @Serializable

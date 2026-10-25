@@ -207,6 +207,14 @@ interface NobatetApi {
     @GET("salons/mine/subscription")
     suspend fun mySubscription(): OwnerSubscription
 
+    /** «آمار بازدید» of the owner's public page: days = 7 | 30 | 90. */
+    @GET("salons/mine/insights/visits")
+    suspend fun visitInsights(@Query("days") days: Int): VisitInsights
+
+    /** «آنالیز رفتار مشتری» from past bookings: days = 30 | 90 | 365. */
+    @GET("salons/mine/insights/customers")
+    suspend fun customerInsights(@Query("days") days: Int): CustomerInsights
+
     /** Plans the owner can buy from the wallet, and the credit for switching away from the running one. */
     @GET("salons/mine/subscription/plans")
     suspend fun purchasablePlans(): PurchasablePlans
@@ -323,9 +331,12 @@ interface WebApi {
     @DELETE("api/user/finance/top-ups/{id}")
     suspend fun cancelTopUp(@Path("id") id: String): kotlinx.serialization.json.JsonObject
 
-    /** Balance and the last 50 movements. */
+    /**
+     * Balance and a page of movements: page, pageSize, direction (all|in|out), kind, period (all|7|30|90|365),
+     * sort (newest|oldest|credit|debit) — apps/web lib/walletQuery.ts. None: the newest 50.
+     */
     @GET("api/user/finance/wallet")
-    suspend fun wallet(): WalletInfo
+    suspend fun wallet(@QueryMap params: Map<String, String> = emptyMap()): WalletInfo
 
     @GET("api/user/finance/withdrawals")
     suspend fun withdrawals(): WithdrawalList

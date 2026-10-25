@@ -49,6 +49,7 @@ import androidx.core.content.ContextCompat
 import app.nobatet.data.AppContainer
 import app.nobatet.data.OwnerSalon
 import app.nobatet.data.Province
+import app.nobatet.data.SMS_BILLING_NOTE
 import app.nobatet.data.SalonPatch
 import app.nobatet.data.ServiceLocation
 import app.nobatet.data.persianError
@@ -153,11 +154,30 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                 data.subscription?.let { sub ->
                     AppCard {
                         SectionTitle("اشتراک")
-                        Text(sub.plan?.name ?: "بدون پلن", color = c.ink)
-                        sub.expiresAt?.let { Muted("تا ${Instant.parse(it).toSalonDateTime(salon.timezone).toLocalDate().persianLabel()}" + if (sub.status == "expired") "، به پایان رسیده" else "") }
+                        val day = { at: String -> Instant.parse(at).toSalonDateTime(salon.timezone).toLocalDate().persianLabel() }
+                        Text(
+                            (sub.plan?.name ?: "بدون پلن") + when {
+                                sub.status == "expired" -> " · منقضی شده"
+                                sub.trialEndsAt != null -> " · ماه رایگان"
+                                else -> ""
+                            },
+                            color = c.ink,
+                        )
+                        sub.expiresAt?.let { end ->
+                            Muted(
+                                when {
+                                    sub.status == "expired" -> "پایان یافته در ${day(end)}؛ نوبت‌دهی آنلاین تا تمدید بسته است"
+                                    sub.trialEndsAt != null ->
+                                        "رایگان تا ${day(sub.trialEndsAt)} (${(daysUntil(sub.trialEndsAt) ?: 0).toString().toPersianDigits()} روز مانده)" +
+                                            if (sub.trialOnly()) "" else "، سپس پرداخت‌شده تا ${day(end)}"
+                                    else -> "تا ${day(end)} (${(daysUntil(end) ?: 0).toString().toPersianDigits()} روز مانده)"
+                                },
+                            )
+                        }
+                        if (sub.trialOnly()) Muted("همه امکانات این پلن در ماه رایگان باز است. برای این‌که نوبت‌دهی آنلاین بعد از آن بسته نشود، پلن را از کیف پول بخرید؛ دوره پولی از پایان ماه رایگان شروع می‌شود.")
                         if (!indie) Muted("آرایشگر فعال: ${sub.stylists.active.toString().toPersianDigits()}" + (sub.stylists.limit?.let { " از ${it.toString().toPersianDigits()}" } ?: ""))
                         Muted("پیامک این ماه: ${sub.sms.sent.toString().toPersianDigits()}")
-                        Muted("هزینه هر پیامک نوبت از کیف پول آرایشگر همان نوبت کم می‌شود.")
+                        Muted("$SMS_BILLING_NOTE تا ۱۰٬۰۰۰ تومان بدهی، پیامک‌ها ارسال می‌شوند؛ بعد از آن تا شارژ کیف پول متوقف می‌شوند و به آرایشگر پیامک داده می‌شود. هزینه‌ها در «کیف پول» دیده می‌شوند.")
                         PrimaryButton(if (sub.status == "active" && sub.plan != null) "تمدید یا تغییر پلن از کیف پول" else "خرید پلن از کیف پول", Modifier.fillMaxWidth()) { buyingPlan = true }
                     }
                 }

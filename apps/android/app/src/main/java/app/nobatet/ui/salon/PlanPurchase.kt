@@ -43,6 +43,14 @@ import kotlinx.coroutines.launch
 
 private val MONTHS = listOf(1, 3, 6, 12)
 
+/** Whole days until [at] (an ISO instant), never negative; null without a date. */
+internal fun daysUntil(at: String?): Long? = at?.let {
+    java.time.Duration.between(java.time.Instant.now(), java.time.Instant.parse(it)).toHours().let { h -> maxOf(0L, (h + 23) / 24) }
+}
+
+/** The free month runs and nothing is bought after it: online booking closes when it ends (apps/web Subscription.tsx). */
+internal fun OwnerSubscription.trialOnly() = trialEndsAt != null && expiresAt == trialEndsAt
+
 /**
  * Buy or renew the plan from the owner's wallet (apps/web PlanPurchaseSheet, apps/api POST
  * salons/mine/subscription/purchase): renewing the current plan adds to its end; another plan starts
@@ -109,6 +117,7 @@ fun PlanPurchaseSheet(container: AppContainer, sub: OwnerSubscription?, onDismis
                             else Row { Muted("موجودی کیف پول", Modifier.weight(1f)); Muted(b?.let { formatToman(it) } ?: "…") }
                             Muted(
                                 when {
+                                    sub?.trialEndsAt != null -> "از پایان ماه رایگان شروع می‌شود."
                                     renewing -> "به انتهای اشتراک فعلی اضافه می‌شود."
                                     credit > 0 -> "از امروز شروع می‌شود؛ بخش استفاده‌نشده پلن فعلی به کیف پول برمی‌گردد."
                                     else -> "از امروز شروع می‌شود."
