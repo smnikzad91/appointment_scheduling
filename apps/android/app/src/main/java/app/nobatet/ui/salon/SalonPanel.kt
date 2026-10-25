@@ -67,6 +67,8 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
         return
     }
     val context = androidx.compose.ui.platform.LocalContext.current
+    var feedbackOpen by rememberSaveable { mutableStateOf(false) }
+    if (feedbackOpen) app.nobatet.ui.panels.FeedbackDialog(container, "SALON_OWNER") { feedbackOpen = false }
     PanelScaffold(
         panelName = if (independent) "پنل آرایشگر مستقل" else "پنل سالن",
         identity = app.nobatet.ui.panels.ShellIdentity(salon.name, salon.logoUrl, square = true),
@@ -75,6 +77,7 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
             app.nobatet.ui.panels.AccountLink("کیف پول", Icons.Outlined.AccountBalanceWallet) { page = SalonPage.WALLET },
             app.nobatet.ui.panels.AccountLink("آمار بازدید", Icons.Outlined.Visibility) { page = SalonPage.VISITS },
             app.nobatet.ui.panels.AccountLink("آنالیز رفتار مشتری", Icons.Outlined.Insights) { page = SalonPage.CUSTOMERS },
+            app.nobatet.ui.panels.feedbackLink { feedbackOpen = true },
             app.nobatet.ui.panels.tutorialsLink(context, if (independent) "independent" else "owner"),
         ),
         onSignOut = onSignOut,

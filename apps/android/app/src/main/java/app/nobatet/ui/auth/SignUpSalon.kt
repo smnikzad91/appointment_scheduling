@@ -18,6 +18,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import app.nobatet.util.formatAmount
+import app.nobatet.util.toPersianDigits
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +42,9 @@ import app.nobatet.data.AuthResponse
 import app.nobatet.data.RegisterSalonRequest
 import app.nobatet.data.SIGNUP_SOURCE_LABEL
 import app.nobatet.data.SMS_BILLING_NOTE
+import app.nobatet.data.SignUpPlan
+import app.nobatet.data.SignUpPlans
+import app.nobatet.data.trialBadge
 import app.nobatet.data.SalonKind
 import app.nobatet.data.ServiceLocation
 import app.nobatet.data.persianError
@@ -76,6 +88,10 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
     // IN_SALON first: most independent stylists rent a chair in a salon, under their own name
     var places by remember { mutableStateOf(setOf(ServiceLocation.IN_SALON)) }
     var host by rememberSaveable { mutableStateOf("") }
+    // plans for this kind of business (apps/web /api/public/pricing); switching kind falls back to its recommended/first plan
+    var offer by remember { mutableStateOf<SignUpPlans?>(null) }
+    LaunchedEffect(Unit) { offer = runCatching { container.web.signUpPlans() }.getOrDefault(SignUpPlans()) }
+    var planId by rememberSaveable { mutableStateOf<String?>(null) }
     var source by rememberSaveable { mutableStateOf<String?>(null) }
     var sourceNote by rememberSaveable { mutableStateOf("") }
     var picking by remember { mutableStateOf<String?>(null) }
@@ -84,6 +100,8 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
     var codeSent by remember { mutableStateOf(false) }
     var devCode by remember { mutableStateOf<String?>(null) }
     val independent = kind == SalonKind.INDEPENDENT
+    val kindPlans = offer?.plans.orEmpty().filter { it.audience == if (independent) "INDEPENDENT" else "SALON" }
+    val chosenPlan = kindPlans.firstOrNull { it.id == planId } ?: kindPlans.firstOrNull { it.recommended } ?: kindPlans.firstOrNull()
     if (codeSent) return PhoneCodeStep(
         container, phone, devCode, "تایید و ثبت‌نام",
         onSubmit = { code ->
@@ -95,6 +113,7 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
                         serviceLocations = if (independent) places.toList() else null,
                         hostSalonName = if (independent && ServiceLocation.IN_SALON in places) host.trim().ifEmpty { null } else null,
                         signupSource = source,
+                        planId = chosenPlan?.id,
                         signupSourceNote = if (source == "OTHER") sourceNote.trim().ifEmpty { null } else null,
                     ),
                 ),
@@ -133,6 +152,15 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
         AppTextField(address, { address = it.take(300) }, label = { Text("آدرس دقیق") }, minLines = 2, modifier = Modifier.fillMaxWidth())
         Muted(if (independent && ServiceLocation.IN_SALON !in places && ServiceLocation.STUDIO !in places) "محل را روی نقشه بزنید؛ نشانی شما عمومی نمایش داده نمی‌شود." else "محل را روی نقشه بزنید.")
         PinMap(pin, provinces.firstOrNull { it.name == province }?.center) { pin = it }
+        if (kindPlans.isNotEmpty()) {
+            Muted("پلن")
+            kindPlans.forEach { plan -> PlanOption(plan, plan.id == chosenPlan?.id, trialBadge(offer?.trialDays ?: 0)) { planId = plan.id } }
+            val trialDays = offer?.trialDays ?: 0
+            Muted(
+                (if (trialDays > 0) "${trialDays.toString().toPersianDigits()} روز اول رایگان است؛ بعداً می‌توانید پلن را عوض کنید."
+                else "بعداً می‌توانید پلن را عوض کنید."),
+            )
+        }
         Muted("از کجا با ما آشنا شدید؟")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SIGNUP_SOURCE_LABEL.forEach { (key, label) -> AppChip(source == key, { source = key }, { Text(label) }) }
@@ -184,5 +212,30 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
             },
             confirmButton = { AppTextButton(onClick = { picking = null }) { Text("بستن") } },
         )
+    }
+}
+
+/** One plan at sign-up (the web's PlanOption): name, «پیشنهادی», the price and its first two feature lines. */
+@Composable
+private fun PlanOption(plan: SignUpPlan, selected: Boolean, badge: String?, onSelect: () -> Unit) {
+    val c = LocalAppColors.current
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (selected) c.accentSoft else c.card)
+            .border(1.dp, if (selected) c.accent else c.line, RoundedCornerShape(16.dp)).clickable(onClick = onSelect).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Text(plan.name, color = c.ink, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            if (plan.recommended) Text("پیشنهادی", color = c.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+        Text(
+            when (val price = plan.monthlyPriceToman) {
+                null -> "توافقی"
+                0 -> "رایگان"
+                else -> "${formatAmount(price.toLong())} تومان / ماه"
+            } + (badge?.let { " · $it" } ?: ""),
+            color = c.ink, fontSize = 14.sp,
+        )
+        plan.features.take(2).takeIf { it.isNotEmpty() }?.let { Muted(it.joinToString("، ")) }
     }
 }

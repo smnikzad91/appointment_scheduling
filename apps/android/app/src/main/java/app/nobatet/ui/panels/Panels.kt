@@ -102,6 +102,8 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
         null -> Unit
     }
     val context = LocalContext.current
+    var feedbackOpen by rememberSaveable { mutableStateOf(false) }
+    if (feedbackOpen) FeedbackDialog(container, "CUSTOMER") { feedbackOpen = false }
     PanelScaffold(
         panelName = "حساب مشتری",
         identity = ShellIdentity("${user.firstName} ${user.lastName}".trim().ifEmpty { "?" }, user.avatarUrl),
@@ -109,6 +111,7 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
         accountLinks = listOf(
             AccountLink("پشتیبانی", Icons.Outlined.SupportAgent) { overlay = CustomerOverlay.Support },
             AccountLink("امنیت و رمز عبور", Icons.Outlined.Settings) { tab = TAB_PROFILE },
+            feedbackLink { feedbackOpen = true },
             tutorialsLink(context, "customer"),
         ),
         selectedTab = tab,

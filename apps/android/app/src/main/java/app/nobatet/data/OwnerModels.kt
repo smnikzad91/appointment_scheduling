@@ -1,5 +1,6 @@
 package app.nobatet.data
 
+import app.nobatet.util.toPersianDigits
 import kotlinx.serialization.Serializable
 
 // The salon panel (salon owners and independent stylists): apps/api /salons/mine…, /services,
@@ -226,7 +227,32 @@ data class RegisterSalonRequest(
     val signupSource: String? = null,
     /** their own words with OTHER */
     val signupSourceNote: String? = null,
+    /** the plan picked at sign-up (its free month starts now); null = the recommended one */
+    val planId: String? = null,
 )
+
+/** A plan offered at sign-up (apps/web GET /api/public/pricing); `features` are ready display lines. */
+@Serializable
+data class SignUpPlan(
+    val id: String,
+    val name: String,
+    /** SALON | INDEPENDENT */
+    val audience: String,
+    /** null = negotiated («توافقی»), 0 = free */
+    val monthlyPriceToman: Int? = null,
+    val recommended: Boolean = false,
+    val features: List<String> = emptyList(),
+)
+
+@Serializable
+data class SignUpPlans(val trialDays: Int = 0, val plans: List<SignUpPlan> = emptyList())
+
+/** «۱ ماه رایگان» / «۱۴ روز رایگان» (apps/web lib/pricing.ts trialBadge) */
+fun trialBadge(trialDays: Int): String? = when {
+    trialDays <= 0 -> null
+    trialDays % 30 == 0 -> "${(trialDays / 30).toString().toPersianDigits()} ماه رایگان"
+    else -> "${trialDays.toString().toPersianDigits()} روز رایگان"
+}
 
 /** apps/web lib/pricing.ts SMS_BILLING_NOTE */
 const val SMS_BILLING_NOTE =

@@ -318,6 +318,14 @@ interface UpdateApi {
 
 /** apps/web's own routes (https://nobatet.app/api/…), with the same apps/api token. */
 interface WebApi {
+    /** Plans a new salon / independent stylist can sign up with, and the free-trial days (public). */
+    @GET("api/public/pricing")
+    suspend fun signUpPlans(): SignUpPlans
+
+    /** «نظرات و پیشنهادات» (public; a signed-in sender's account is kept). */
+    @POST("api/public/feedback")
+    suspend fun sendFeedback(@Body body: FeedbackRequest): kotlinx.serialization.json.JsonObject
+
     /** Automatic top-ups (card to card through nodepass.ir): recent ones + whether top-ups are available. */
     @GET("api/user/finance/top-ups")
     suspend fun topUps(): TopUpList

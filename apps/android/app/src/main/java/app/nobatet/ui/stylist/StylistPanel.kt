@@ -70,12 +70,15 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
         return
     }
     val context = androidx.compose.ui.platform.LocalContext.current
+    var feedbackOpen by rememberSaveable { mutableStateOf(false) }
+    if (feedbackOpen) app.nobatet.ui.panels.FeedbackDialog(container, "STYLIST") { feedbackOpen = false }
     PanelScaffold(
         panelName = "پنل آرایشگر",
         identity = app.nobatet.ui.panels.ShellIdentity(s.displayName, s.avatarUrl),
         accountName = "${user.firstName} ${user.lastName}".trim(),
         accountLinks = listOf(
             app.nobatet.ui.panels.AccountLink("کیف پول", Icons.Outlined.AccountBalanceWallet) { page = StylistPage.WALLET },
+            app.nobatet.ui.panels.feedbackLink { feedbackOpen = true },
             app.nobatet.ui.panels.tutorialsLink(context, "stylist"),
         ),
         onSignOut = onSignOut,

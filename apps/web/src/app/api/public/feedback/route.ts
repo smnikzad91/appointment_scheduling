@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requestSession } from "@/lib/requestSession";
 import { prisma } from "@/lib/prisma";
 import { isValidIranianMobile, normalizeIranianMobile } from "@/lib/persian";
 import { alertNewFeedback } from "@/lib/feedbackAlert";
 import { FEEDBACK_KINDS, FEEDBACK_MESSAGE_MAX, FEEDBACK_MESSAGE_MIN, FEEDBACK_ROLES, type FeedbackKind, type FeedbackRole } from "@/lib/feedback";
 
-// The public «نظرات و پیشنهادات» form (/feedback). Anyone may send; a signed-in sender's id is kept.
+// The public «نظرات و پیشنهادات» form (/feedback, and the Android app). Anyone may send; a signed-in
+// sender's id is kept (the site's session, or the app's Bearer token — lib/requestSession).
 // Each IP gets 5 messages per 10 minutes (per instance, in memory), and a filled honeypot field
 // (`website`, hidden from people) is silently accepted and dropped. A stored message is texted to
 // FEEDBACK_ALERT_PHONE (lib/feedbackAlert.ts).
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (rateLimited(ip)) return NextResponse.json({ error: "پیام‌های زیادی فرستادید؛ چند دقیقه دیگر دوباره تلاش کنید" }, { status: 429 });
 
-  const session = await auth().catch(() => null);
+  const session = await requestSession().catch(() => null);
   const created = await prisma.feedback.create({
     data: { kind, role, name, phone, message, userId: session?.user?.id ?? null },
   });
