@@ -258,7 +258,7 @@ const translations = {
 
     // Admin users page
     statTotalUsers: "Total Users",
-    statAdmins: "Admins",
+    statAdmins: "Platform admins",
     statRegularUsers: "Regular Users",
     statNewThisMonth: "New This Month",
     statActive: "Active",
@@ -287,7 +287,9 @@ const translations = {
     roleCustomer: "Customer",
     roleIndependentStylist: "Independent stylist",
     statSalonOwners: "Salon owners",
-    statStylists: "Stylists",
+    statStylists: "Salon stylists",
+    statIndependentStylists: "Independent stylists",
+    userFilterNone: "No user in this group",
     statCustomers: "Customers",
     userRoleLocked: "Salon owner and stylist roles come from the salon itself and can't be changed here.",
     userErrSelfRole: "You can't change your own role.",
@@ -1329,7 +1331,7 @@ const translations = {
 
     // Admin users page
     statTotalUsers: "کل کاربران",
-    statAdmins: "مدیران",
+    statAdmins: "مدیران پلتفرم",
     statRegularUsers: "کاربران عادی",
     statNewThisMonth: "عضو جدید این ماه",
     statActive: "فعال",
@@ -1358,7 +1360,9 @@ const translations = {
     roleCustomer: "مشتری",
     roleIndependentStylist: "آرایشگر مستقل",
     statSalonOwners: "مدیران سالن",
-    statStylists: "آرایشگران",
+    statStylists: "آرایشگران سالن",
+    statIndependentStylists: "آرایشگران مستقل",
+    userFilterNone: "کاربری در این گروه نیست",
     statCustomers: "مشتریان",
     userRoleLocked: "نقش مدیر سالن و آرایشگر از خود سالن می‌آید و اینجا قابل تغییر نیست.",
     userErrSelfRole: "نمی‌توانید نقش خودتان را تغییر دهید.",
