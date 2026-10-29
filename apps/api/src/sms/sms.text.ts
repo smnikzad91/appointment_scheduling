@@ -201,6 +201,23 @@ export const customerBookingText = (kind: CustomerBookingKind, p: BookingParams,
   }
 };
 
+type NamedBooking = { day: string; time: string; customer: string };
+
+/**
+ * One segment that still says who the booking is for: when the full text doesn't fit, the weekday goes
+ * first («چهارشنبه ۶ آبان» → «۶ آبان»; date + time still identify the booking), then the last name,
+ * and only then is the name cut with «…» — not «نوبت خ…، چهارشنبه ۶ آبان …».
+ */
+export function fitNamedBooking<T extends NamedBooking>(p: T, build: (q: T) => string): string {
+  const day = p.day.replace(/^\S+\s+/, ""); // the weekday is the first word
+  const first = p.customer.trim().split(/\s+/)[0] ?? p.customer;
+  for (const q of [p, { ...p, day }, { ...p, day, customer: first }]) {
+    const text = build(q);
+    if (text.length <= SMS_SEGMENT) return text;
+  }
+  return fitSms({ ...p, day, customer: first }, ["customer"], build);
+}
+
 /** The stylist's 1-hour reminder: who, no services — «یادآوری نوبتت: ساعت ۰۹:۰۰ نوبت نگار رضایی». */
 export const stylistReminderText = (p: { time: string; customer: string }) =>
   fitSms(p, ["customer"], (q) => `یادآوری نوبتت: ساعت ${q.time} نوبت ${q.customer}`);
@@ -214,21 +231,21 @@ export const stylistNewBookingText = (p: { day: string; time: string; customer: 
   // the customer already pre-paid part of it from their wallet: say so, so the stylist checks it promptly
   if (prepaid) {
     return homeVisit
-      ? fitSms(rest, ["customer"], (q) => `منزل ${q.customer} پیش‌پرداخت‌شده، ${q.day} ${q.time}؛ تایید کنید`)
-      : fitSms(rest, ["customer"], (q) => `نوبت پیش‌پرداخت‌شده ${q.customer}، ${q.day} ${q.time}؛ تایید کنید`);
+      ? fitNamedBooking(rest, (q) => `منزل ${q.customer} پیش‌پرداخت‌شده، ${q.day} ${q.time}؛ تایید کنید`)
+      : fitNamedBooking(rest, (q) => `نوبت پیش‌پرداخت‌شده ${q.customer}، ${q.day} ${q.time}؛ تایید کنید`);
   }
   // A home visit has its own, shorter wording so it always fits one segment (the name is cut first).
-  if (homeVisit) return fitSms(rest, ["customer"], (q) => `نوبت در منزل ${q.customer}، ${q.day} ${q.time}؛ در پنل تایید کنید`);
-  return fitSms(rest, ["customer"], (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتت تایید کنید`);
+  if (homeVisit) return fitNamedBooking(rest, (q) => `نوبت در منزل ${q.customer}، ${q.day} ${q.time}؛ در پنل تایید کنید`);
+  return fitNamedBooking(rest, (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتت تایید کنید`);
 };
 
-/** Once, 24 h after a booking ended while it's still open: «نوبت نگار رضایی، سه‌شنبه ۱۴ مهر ۰۸:۰۰ هنوز باز است؛ وضعیتش را در پنل مشخص کنید». */
-export const stylistStateNudgeText = (p: { day: string; time: string; customer: string }) =>
-  fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز باز است؛ وضعیتش را در پنل مشخص کنید`);
+/** Once, 24 h after a booking ended while it's still open: «نوبت نگار رضایی، سه‌شنبه ۱۴ مهر ۰۸:۰۰ باز مانده؛ وضعیتش را در پنل مشخص کنید». */
+export const stylistStateNudgeText = (p: NamedBooking) =>
+  fitNamedBooking(p, (q) => `نوبت ${q.customer}، ${q.day} ${q.time} باز مانده؛ وضعیتش را در پنل مشخص کنید`);
 
 /** Once, when an online booking is still unconfirmed a couple of hours later. */
-export const stylistConfirmNudgeText = (p: { day: string; time: string; customer: string }) =>
-  fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل نوبتت تایید کنید`);
+export const stylistConfirmNudgeText = (p: NamedBooking) =>
+  fitNamedBooking(p, (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل تایید کنید`);
 
 /**
  * "Time to book again" to the customer: one segment (≤70 chars), no link — Iranian operators'

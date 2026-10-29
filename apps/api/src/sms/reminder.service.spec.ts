@@ -257,7 +257,7 @@ describe('ReminderService: booking still open 24 h after its end', () => {
     expect(await service.tick(at('12:00'))).toBe(1);
     const msg = sms.send.mock.calls[0][0];
     expect(msg).toMatchObject({ kind: 'state-nudge-stylist', to: '09120000002', params: { customer: 'نگار رضایی' } });
-    expect(msg.text).toContain('هنوز باز است');
+    expect(msg.text).toContain('باز مانده');
     expect(msg.text.length).toBeLessThanOrEqual(70);
     const where = prisma.appointment.findMany.mock.calls.at(-1)![0].where;
     const endAt = where.endAt as { lt: Date; gt: Date };
