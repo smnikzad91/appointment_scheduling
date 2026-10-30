@@ -19,7 +19,7 @@ import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { onlineBookingOpen } from "../subscriptions/subscription.util.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { balanceRequestText, clock, customerBookingText, faMoney, independentBookingText, jalaliDay, smsParts } from "../sms/sms.text.js";
+import { balanceRequestText, clock, customerBookingText, faMoney, independentBookingText, jalaliDay, prepaidOutcomeText, smsParts } from "../sms/sms.text.js";
 import { applyPrepayment, prepaymentFor, refundExcessPrepayment, takePrepayment } from "../wallet/prepayment.js";
 import { balanceOnCompletion, payBalance, undoBalance } from "../wallet/balance.js";
 
@@ -524,7 +524,7 @@ export class AppointmentsService {
           prepaymentStatus: true,
           salon: { select: { name: true, timezone: true, kind: true } },
           stylist: { select: { userId: true, displayName: true, user: { select: { firstName: true } } } },
-          customer: { select: { phone: true } },
+          customer: { select: { phone: true, walletBalance: true } },
         },
       });
       if (!a?.customer.phone) return;
@@ -538,8 +538,19 @@ export class AppointmentsService {
       const firstName = a.stylist.user.firstName.trim() || a.stylist.displayName;
       const prepaid = a.prepaidToman > 0;
       const refunded = a.prepaymentStatus === PrepaymentStatus.REFUNDED;
-      const text =
-        a.salon.kind === SalonKind.INDEPENDENT
+      const independent = a.salon.kind === SalonKind.INDEPENDENT;
+      // A prepaid booking confirmed / cancelled by staff: also what happened to the pre-payment and
+      // the wallet balance now (read after the refund's transaction committed).
+      const outcome = prepaid && kind === "confirmed-customer" ? "confirmed" : prepaid && kind === "cancelled-customer" && refunded ? "cancelled" : null;
+      const text = outcome
+        ? prepaidOutcomeText(outcome, {
+            day: params.day,
+            time: params.time,
+            place: independent ? `با ${firstName}` : `در ${a.salon.name}`,
+            amount: faMoney(a.prepaidToman),
+            balance: faMoney(a.customer.walletBalance),
+          })
+        : independent
           ? independentBookingText(kind, { day: params.day, time: params.time, name: firstName }, { refunded })
           : customerBookingText(kind, params, { refunded });
       // A prepaid booking's confirmation / cancellation always reaches the customer (they paid):

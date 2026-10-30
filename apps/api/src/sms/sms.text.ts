@@ -285,3 +285,26 @@ export function smsParts(text: string): number {
   // UCS-2 counts UTF-16 code units (an emoji is two).
   return text.length <= SMS_SEGMENT ? 1 : Math.ceil(text.length / 67);
 }
+
+/**
+ * A prepaid booking confirmed or cancelled by the salon/stylist: what happened to the pre-payment and
+ * the customer's wallet balance now (owner's request, 2026-10-30). Up to two segments — it can't fit
+ * one with the date, the amount and the balance — and the salon's (or independent stylist's) name is
+ * cut first:
+ * «نوبتت چهارشنبه ۱۴ آبان ساعت ۰۸:۰۰ در سالن رز تایید شد.\nپیش‌پرداخت ۲۵۰٬۰۰۰ تومان از کیف پول کسر شد؛ موجودی: ۱٬۲۵۰٬۰۰۰ تومان»
+ * «… لغو شد.\nپیش‌پرداخت ۲۵۰٬۰۰۰ تومان به کیف پول برگشت؛ موجودی: …».
+ * `place` is «در {salon}» or, for an independent stylist, «با {first name}».
+ */
+export const prepaidOutcomeText = (
+  outcome: "confirmed" | "cancelled",
+  p: { day: string; time: string; place: string; amount: string; balance: string },
+) =>
+  fitSms(
+    p,
+    ["place"],
+    (q) =>
+      outcome === "confirmed"
+        ? `نوبتت ${q.day} ساعت ${q.time} ${q.place} تایید شد.\nپیش‌پرداخت ${q.amount} تومان از کیف پول کسر شد؛ موجودی: ${q.balance} تومان`
+        : `نوبتت ${q.day} ساعت ${q.time} ${q.place} لغو شد.\nپیش‌پرداخت ${q.amount} تومان به کیف پول برگشت؛ موجودی: ${q.balance} تومان`,
+    SMS_TWO_SEGMENTS,
+  );

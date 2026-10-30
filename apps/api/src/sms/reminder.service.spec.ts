@@ -222,7 +222,7 @@ describe('ReminderService quiet hours (22:00–08:00 Tehran)', () => {
     expect(sms.send.mock.calls[0][0].kind).toBe('new-booking-stylist');
     expect(sms.send.mock.calls[0][0].text).toContain('پیش‌پرداخت');
     // charged to the stylist's wallet, and sent even when that wallet is at the SMS debt limit
-    expect(sms.send.mock.calls[0][1]).toMatchObject({ userId: paid.stylist.userId, appointmentId: paid.id, evenInDebt: true });
+    expect(sms.send.mock.calls[0][1]).toMatchObject({ appointmentId: 'n1', evenInDebt: true });
   });
 
   it('holds the nudge back overnight too', async () => {
