@@ -29,6 +29,9 @@
    story-highlights/      Instagram Story Highlight slides per panel (generated PNGs, committed) —
                            `node scripts/story-highlights/build.mjs` rebuilds them from the Help Center
                            guides + screenshots; see story-highlights/README.md
+   instagram-ads/         Instagram ad videos (story 9:16 + feed post 4:5 MP4s, committed) —
+                           `node scripts/instagram-ads/build.mjs` renders them from the Help Center
+                           screenshots; see instagram-ads/README.md
    archive/
      mqttcloud-legacy/    dead code stripped from apps/web (MQTT broker feature, unrelated
                            to this product) — kept for reference, not wired up
