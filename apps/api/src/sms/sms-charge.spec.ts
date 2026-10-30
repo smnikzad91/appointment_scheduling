@@ -81,4 +81,12 @@ describe('SMS cost charged to the booking stylist', () => {
     expect(await again.service.send(msg, charge)).toBe(false);
     expect(again.sent).toEqual([]);
   });
+
+  it('evenInDebt (a prepaid booking to its stylist): sent and charged below the limit, stylist asked to top up', async () => {
+    const { service, moves, logs, sent } = setup({ cost: 200 }, { balance: SMS_DEBT_LIMIT_TOMAN - 5_000 });
+    expect(await service.send({ ...msg, kind: 'new-booking-stylist' } as never, { ...charge, evenInDebt: true })).toBe(true);
+    expect(moves).toEqual([{ userId: 'sty', amount: -200, note: charge.note }]);
+    expect(logs).toEqual([{ kind: 'new-booking-stylist', status: 'SENT', costToman: 200 }]);
+    expect(sent).toEqual([expect.objectContaining({ kind: 'low-balance-stylist' })]);
+  });
 });

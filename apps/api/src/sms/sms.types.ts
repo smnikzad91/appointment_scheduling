@@ -115,4 +115,7 @@ export interface SmsCharge {
   appointmentId?: string;
   /** shown in the wallet history, e.g. «یادآوری به مشتری» */
   note: string;
+  /** Sent even when the wallet is at the debt limit (still charged): a prepaid booking's text to its
+   * stylist — the customer has paid and is waiting for them (owner's rule, 2026-10-30). */
+  evenInDebt?: boolean;
 }

@@ -72,12 +72,13 @@ export class SmsService {
    * Sends, and — for a booking SMS (`charge`) — takes what the gateway says it cost from the
    * booking's stylist's wallet («هزینه پیامک»). The wallet may go into debt down to
    * SMS_DEBT_LIMIT_TOMAN (paid off by later income, a top-up, or with the next plan purchase); at
-   * or below it the SMS isn't sent (false) and the stylist is asked to top up. The cost is known only
+   * or below it the SMS isn't sent (false) and the stylist is asked to top up — unless the charge
+   * says `evenInDebt` (a prepaid booking's text to its stylist), which is sent and charged anyway. The cost is known only
    * after sending, so the last SMS can take the wallet a little past the limit. Every booking SMS
    * is recorded in SmsLog. A failed charge is logged and never fails the send.
    */
   async send(message: SmsMessage, charge?: SmsCharge): Promise<boolean> {
-    if (charge) {
+    if (charge && !charge.evenInDebt) {
       const payer = await this.prisma.user.findUnique({ where: { id: charge.userId }, select: { walletBalance: true } });
       if (payer && payer.walletBalance <= SMS_DEBT_LIMIT_TOMAN) {
         await this.log(message, charge, SmsLogStatus.SKIPPED_LOW_BALANCE, 0);
