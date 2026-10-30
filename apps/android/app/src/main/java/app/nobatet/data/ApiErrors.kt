@@ -27,6 +27,7 @@ private val PERSIAN = mapOf(
     "Enter the address for the home visit" to "نشانی محل خدمت در منزل را وارد کنید",
     "Customers may only cancel their own appointment" to "فقط نوبت‌های خودتان را می‌توانید لغو کنید",
     "This appointment can no longer be cancelled" to "این نوبت دیگر قابل لغو نیست",
+    "This booking is confirmed; cancelling it now keeps the pre-payment" to "این نوبت تایید شده؛ با لغو آن پیش‌پرداخت برگشت داده نمی‌شود",
     "Database unavailable" to "سرویس موقتاً در دسترس نیست؛ چند دقیقه دیگر تلاش کنید",
     "A review needs a rating or a comment" to "امتیاز بدهید یا چند کلمه بنویسید",
     "Choose a day within the next two months" to "روزی در دو ماه آینده انتخاب کنید",

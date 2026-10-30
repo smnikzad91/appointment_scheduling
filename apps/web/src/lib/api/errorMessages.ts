@@ -101,6 +101,7 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Period is too long": "بازه انتخاب‌شده خیلی طولانی است؛ بازه کوتاه‌تری انتخاب کنید",
   "Customers may only cancel their own appointment": "فقط نوبت‌های خودتان را می‌توانید لغو کنید",
   "This appointment can no longer be cancelled": "این نوبت دیگر قابل لغو نیست",
+  "This booking is confirmed; cancelling it now keeps the pre-payment": "این نوبت تایید شده؛ با لغو آن پیش‌پرداخت برگشت داده نمی‌شود",
   "Not your salon": "این مورد مربوط به سالن شما نیست",
   "Not allowed to update this appointment": "اجازه تغییر این نوبت را ندارید",
   "Phone number already registered": "با این شماره موبایل قبلاً حساب ساخته شده است؛ وارد شوید",

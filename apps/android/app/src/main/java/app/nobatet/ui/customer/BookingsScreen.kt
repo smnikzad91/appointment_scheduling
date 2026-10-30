@@ -107,11 +107,30 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onReb
     paying?.let { b -> PayBalanceSheet(container, b, onDismiss = { paying = null }) { paying = null; vm.load() } }
 
     confirm?.let { b ->
+        // the salon confirmed this prepaid booking: cancelling now keeps the pre-payment (apps/api wallet/prepayment.ts)
+        val keepsPrepayment = b.status == AppointmentStatus.CONFIRMED && b.prepaidToman > 0 && b.prepaymentStatus == "HELD"
+        val refundsPrepayment = !keepsPrepayment && b.prepaidToman > 0 && b.prepaymentStatus == "HELD"
         AppDialog(
             onDismissRequest = { confirm = null },
             title = { Text("لغو نوبت") },
-            text = { Text("نوبت ${b.salon.name} لغو شود؟") },
-            confirmButton = { AppTextButton(onClick = { confirm = null; vm.cancel(b.id) }) { Text("لغو نوبت", color = c.danger) } },
+            text = {
+                Column {
+                    Text("نوبت ${b.salon.name} لغو شود؟")
+                    if (keepsPrepayment) {
+                        Text(
+                            "این نوبت را سالن تایید کرده است؛ با لغو آن، پیش‌پرداخت ${formatToman(b.prepaidToman)} به کیف پول شما برنمی‌گردد.",
+                            color = c.danger, modifier = Modifier.padding(top = 8.dp),
+                        )
+                    } else if (refundsPrepayment) {
+                        Text("پیش‌پرداخت ${formatToman(b.prepaidToman)} به کیف پول شما برمی‌گردد.", color = c.muted, modifier = Modifier.padding(top = 8.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                AppTextButton(onClick = { confirm = null; vm.cancel(b.id, acceptPrepaymentLoss = keepsPrepayment) }) {
+                    Text(if (keepsPrepayment) "لغو، بدون برگشت پیش‌پرداخت" else "لغو نوبت", color = c.danger)
+                }
+            },
             dismissButton = { AppTextButton(onClick = { confirm = null }) { Text("انصراف") } },
         )
     }

@@ -263,7 +263,7 @@ private fun SummaryStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState)
         SummaryLine("کیف پول", formatToman(wallet.balanceToman))
         Muted(
             (if (b.stylistId == null && !salon.independent) "مبلغ نهایی با آرایشگری که تعیین می‌شود قطعی می‌شود. " else "") +
-                "اگر نوبت لغو شود، پیش‌پرداخت کامل به کیف پول شما برمی‌گردد.",
+                "اگر سالن نوبت را لغو کند یا شما پیش از تایید سالن لغو کنید، پیش‌پرداخت کامل به کیف پول شما برمی‌گردد؛ بعد از تایید سالن، لغو از طرف شما پیش‌پرداخت را برنمی‌گرداند.",
         )
     }
     val short = vm.walletShort()

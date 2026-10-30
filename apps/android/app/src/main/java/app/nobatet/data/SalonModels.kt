@@ -203,6 +203,8 @@ data class StatusUpdate(
     val status: AppointmentStatus,
     /** COMPLETED only: ON_SITE (received directly) or WALLET (requested from the customer's wallet) */
     val balanceMethod: String? = null,
+    /** A customer cancelling a confirmed prepaid booking agreed the pre-payment isn't refunded (the API answers 409 without it). */
+    val acceptPrepaymentLoss: Boolean? = null,
 )
 
 /** How a place reads to customers (apps/web lib/independent.ts placeLabel). */

@@ -292,11 +292,12 @@ export function smsParts(text: string): number {
  * one with the date, the amount and the balance — and the salon's (or independent stylist's) name is
  * cut first:
  * «نوبتت چهارشنبه ۱۴ آبان ساعت ۰۸:۰۰ در سالن رز تایید شد.\nپیش‌پرداخت ۲۵۰٬۰۰۰ تومان از کیف پول کسر شد؛ موجودی: ۱٬۲۵۰٬۰۰۰ تومان»
- * «… لغو شد.\nپیش‌پرداخت ۲۵۰٬۰۰۰ تومان به کیف پول برگشت؛ موجودی: …».
+ * «… لغو شد.\nپیش‌پرداخت ۲۵۰٬۰۰۰ تومان به کیف پول برگشت؛ موجودی: …»; `forfeited` — the customer cancelled
+ * after it was confirmed — «… لغو شد.\nپیش‌پرداخت … تومان برنمی‌گردد؛ موجودی: …» (they were warned before cancelling).
  * `place` is «در {salon}» or, for an independent stylist, «با {first name}».
  */
 export const prepaidOutcomeText = (
-  outcome: "confirmed" | "cancelled",
+  outcome: "confirmed" | "cancelled" | "forfeited",
   p: { day: string; time: string; place: string; amount: string; balance: string },
 ) =>
   fitSms(
@@ -305,6 +306,28 @@ export const prepaidOutcomeText = (
     (q) =>
       outcome === "confirmed"
         ? `نوبتت ${q.day} ساعت ${q.time} ${q.place} تایید شد.\nپیش‌پرداخت ${q.amount} تومان از کیف پول کسر شد؛ موجودی: ${q.balance} تومان`
-        : `نوبتت ${q.day} ساعت ${q.time} ${q.place} لغو شد.\nپیش‌پرداخت ${q.amount} تومان به کیف پول برگشت؛ موجودی: ${q.balance} تومان`,
+        : outcome === "cancelled"
+          ? `نوبتت ${q.day} ساعت ${q.time} ${q.place} لغو شد.\nپیش‌پرداخت ${q.amount} تومان به کیف پول برگشت؛ موجودی: ${q.balance} تومان`
+          : `نوبتت ${q.day} ساعت ${q.time} ${q.place} لغو شد.\nپیش‌پرداخت ${q.amount} تومان برنمی‌گردد؛ موجودی: ${q.balance} تومان`,
     SMS_TWO_SEGMENTS,
   );
+
+/**
+ * To the stylist about one of their prepaid bookings (one segment, the customer's name kept as far as
+ * possible — fitNamedBooking): confirmed / cancelled by the salon owner, or cancelled by the customer
+ * — refunded while still pending, kept (to the owner's wallet: «به سالن رسید», «به شما رسید» when the
+ * stylist is the owner) once confirmed. Not sent when the stylist did it themselves.
+ */
+export type PrepaidStylistEvent = "confirmed" | "cancelled" | "customer-cancelled" | "customer-cancelled-kept";
+export const prepaidStylistText = (event: PrepaidStylistEvent, p: NamedBooking, opts: { ownWallet?: boolean } = {}) => {
+  switch (event) {
+    case "confirmed":
+      return fitNamedBooking(p, (q) => `نوبت پیش‌پرداخت‌شده ${q.customer}، ${q.day} ${q.time} تایید شد`);
+    case "cancelled":
+      return fitNamedBooking(p, (q) => `نوبت ${q.customer}، ${q.day} ${q.time} لغو شد؛ پیش‌پرداخت به مشتری برگشت`);
+    case "customer-cancelled":
+      return fitNamedBooking(p, (q) => `${q.customer} نوبت ${q.day} ${q.time} را لغو کرد؛ پیش‌پرداخت به او برگشت`);
+    case "customer-cancelled-kept":
+      return fitNamedBooking(p, (q) => `${q.customer} نوبت ${q.day} ${q.time} را لغو کرد؛ پیش‌پرداخت به ${opts.ownWallet ? "شما" : "سالن"} رسید`);
+  }
+};

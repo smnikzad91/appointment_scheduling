@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CalendarPlus, CalendarX2, RotateCcw, Star, Trash2 } from "lucide-react";
 import {
   cancelBooking,
+  cancelKeepsPrepayment,
   deleteReview,
   getMyBookings,
   leaveReview,
@@ -117,11 +118,11 @@ export default function CustomerBookings({
     if (!token || !cancelTarget) return;
     setCancelling(true);
     try {
-      await cancelBooking(token, cancelTarget.id);
+      await cancelBooking(token, cancelTarget.id, cancelKeepsPrepayment(cancelTarget));
       setCancelTarget(null);
       reload();
-    } catch {
-      toastError("لغو نوبت انجام نشد، دوباره تلاش کنید");
+    } catch (err) {
+      toastError(persianApiError(err, "لغو نوبت انجام نشد، دوباره تلاش کنید"));
     } finally {
       setCancelling(false);
     }
@@ -348,12 +349,21 @@ export default function CustomerBookings({
               نوبت {relativeDayLabel(toSalonWallTime(cancelTarget.startAt).dateKey)} ساعت{" "}
               {formatMinutesAsClock(toSalonWallTime(cancelTarget.startAt).minuteOfDay)} در {cancelTarget.salon.name} لغو شود؟
             </p>
+            {cancelKeepsPrepayment(cancelTarget) ? (
+              <p className="mb-5 rounded-2xl bg-app-danger/10 px-4 py-3 text-sm leading-7 text-app-danger">
+                این نوبت را سالن تایید کرده است؛ با لغو آن، پیش‌پرداخت {formatToman(cancelTarget.prepaidToman ?? 0)} به کیف پول شما برنمی‌گردد.
+              </p>
+            ) : cancelTarget.prepaidToman && cancelTarget.prepaymentStatus === "HELD" ? (
+              <p className="mb-5 text-sm leading-7 text-app-muted">
+                پیش‌پرداخت {formatToman(cancelTarget.prepaidToman)} به کیف پول شما برمی‌گردد.
+              </p>
+            ) : null}
             <div className="grid grid-cols-2 gap-2.5">
               <Button variant="secondary" onClick={() => setCancelTarget(null)}>
                 منصرف شدم
               </Button>
               <Button variant="danger" busy={cancelling} onClick={confirmCancel}>
-                بله، لغو شود
+                {cancelKeepsPrepayment(cancelTarget) ? "لغو شود، بدون برگشت پیش‌پرداخت" : "بله، لغو شود"}
               </Button>
             </div>
           </>

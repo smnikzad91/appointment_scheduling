@@ -1,5 +1,5 @@
 import { bookingCustomerFullName, withBookingCustomerName } from "./booking-customer-name.util.js";
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { AppointmentStatus, NotificationType, PrepaymentStatus, Role, SalonKind, ServiceLocation } from "@appointment-scheduling/database";
@@ -19,8 +19,8 @@ import { WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { onlineBookingOpen } from "../subscriptions/subscription.util.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
-import { balanceRequestText, clock, customerBookingText, faMoney, independentBookingText, jalaliDay, prepaidOutcomeText, smsParts } from "../sms/sms.text.js";
-import { applyPrepayment, prepaymentFor, refundExcessPrepayment, takePrepayment } from "../wallet/prepayment.js";
+import { balanceRequestText, clock, customerBookingText, faMoney, independentBookingText, jalaliDay, prepaidOutcomeText, prepaidStylistText, smsParts, type PrepaidStylistEvent } from "../sms/sms.text.js";
+import { applyPrepayment, forfeitsPrepayment, prepaymentFor, refundExcessPrepayment, takePrepayment } from "../wallet/prepayment.js";
 import { balanceOnCompletion, payBalance, undoBalance } from "../wallet/balance.js";
 
 type CustomerSmsKind = "booked-customer" | "rescheduled-customer" | "cancelled-customer" | "confirmed-customer";
@@ -325,7 +325,7 @@ export class AppointmentsService {
     return rows.map(withBookingCustomerName);
   }
 
-  async updateStatus(user: JwtPayload, appointmentId: string, status: UpdatableAppointmentStatus, balanceMethod?: "ON_SITE" | "WALLET") {
+  async updateStatus(user: JwtPayload, appointmentId: string, status: UpdatableAppointmentStatus, balanceMethod?: "ON_SITE" | "WALLET", acceptPrepaymentLoss = false) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: { services: { select: { serviceId: true, priceToman: true } } },
@@ -346,12 +346,23 @@ export class AppointmentsService {
     // wallet on completion / no-show — wallet/prepayment.ts), and a paid balance given back when
     // the booking leaves COMPLETED.
     const moneyMoves = appointment.prepaymentStatus || (leavingCompleted && appointment.balanceMethod);
+    // the customer cancelling a booking the salon already confirmed: the pre-payment isn't refunded
+    const forfeit = forfeitsPrepayment(user.role === Role.CUSTOMER, appointment.status, status);
+    if (forfeit && appointment.prepaidToman > 0 && appointment.prepaymentStatus === PrepaymentStatus.HELD && !acceptPrepaymentLoss) {
+      // the app shows the warning and sends acceptPrepaymentLoss: true once the customer agrees
+      throw new ConflictException({
+        statusCode: 409,
+        message: "This booking is confirmed; cancelling it now keeps the pre-payment",
+        code: "PREPAYMENT_NOT_REFUNDED",
+        prepaidToman: appointment.prepaidToman,
+      });
+    }
     const updated = moneyMoves
       ? await this.prisma.$transaction(async (tx) => {
           const { ownerId } = await tx.salon.findUniqueOrThrow({ where: { id: appointment.salonId }, select: { ownerId: true } });
           const { userId: stylistUserId } = await tx.stylist.findUniqueOrThrow({ where: { id: appointment.stylistId }, select: { userId: true } });
           if (leavingCompleted) await undoBalance(tx, appointment, ownerId, stylistUserId);
-          await applyPrepayment(tx, { ...appointment, ownerId, stylistUserId }, status, data.stylistCommissionPercent ?? 0);
+          await applyPrepayment(tx, { ...appointment, ownerId, stylistUserId }, status, data.stylistCommissionPercent ?? 0, { forfeit });
           return tx.appointment.update({ where: { id: appointmentId }, data });
         })
       : await this.prisma.appointment.update({ where: { id: appointmentId }, data });
@@ -365,11 +376,21 @@ export class AppointmentsService {
       const upcoming = ACTIVE_STATUSES.includes(appointment.status) && appointment.startAt > new Date();
       // The customer who cancelled knows; otherwise text them.
       if (upcoming && cancelledBy !== "CUSTOMER") void this.smsCustomer(appointmentId, "cancelled-customer");
+      // A prepaid booking: every cancellation is texted to both sides — the customer (what happened to
+      // the pre-payment, their balance) and the stylist, unless they cancelled it themselves.
+      if (upcoming && appointment.prepaidToman > 0) {
+        if (cancelledBy === "CUSTOMER") void this.smsCustomer(appointmentId, "cancelled-customer", { forfeited: forfeit });
+        const event: PrepaidStylistEvent = cancelledBy !== "CUSTOMER" ? "cancelled" : forfeit ? "customer-cancelled-kept" : "customer-cancelled";
+        void this.smsStylistPrepaid(appointmentId, event, user.sub);
+      }
       // Only an upcoming booking frees a slot someone could still take.
       if (upcoming) await this.waitlist.notifyOpening(appointment);
     } else if (status === AppointmentStatus.CONFIRMED && appointment.status === AppointmentStatus.PENDING) {
       await this.notifyBooking(appointmentId, NotificationType.BOOKING_CONFIRMED, {}, user.sub, "customer");
-      if (appointment.startAt > new Date()) void this.smsCustomer(appointmentId, "confirmed-customer");
+      if (appointment.startAt > new Date()) {
+        void this.smsCustomer(appointmentId, "confirmed-customer");
+        if (appointment.prepaidToman > 0) void this.smsStylistPrepaid(appointmentId, "confirmed", user.sub);
+      }
     }
     return updated;
   }
@@ -513,7 +534,7 @@ export class AppointmentsService {
    * monthly SMS allowance like the reminders; best effort and not awaited by callers (a gateway
    * can take seconds) — the booking change already happened.
    */
-  private async smsCustomer(appointmentId: string, kind: CustomerSmsKind) {
+  private async smsCustomer(appointmentId: string, kind: CustomerSmsKind, { forfeited = false }: { forfeited?: boolean } = {}) {
     try {
       const a = await this.prisma.appointment.findUnique({
         where: { id: appointmentId },
@@ -541,7 +562,14 @@ export class AppointmentsService {
       const independent = a.salon.kind === SalonKind.INDEPENDENT;
       // A prepaid booking confirmed / cancelled by staff: also what happened to the pre-payment and
       // the wallet balance now (read after the refund's transaction committed).
-      const outcome = prepaid && kind === "confirmed-customer" ? "confirmed" : prepaid && kind === "cancelled-customer" && refunded ? "cancelled" : null;
+      const outcome =
+        prepaid && kind === "confirmed-customer"
+          ? "confirmed"
+          : prepaid && kind === "cancelled-customer" && forfeited
+            ? "forfeited"
+            : prepaid && kind === "cancelled-customer" && refunded
+              ? "cancelled"
+              : null;
       const text = outcome
         ? prepaidOutcomeText(outcome, {
             day: params.day,
@@ -562,9 +590,46 @@ export class AppointmentsService {
         "cancelled-customer": "اطلاع لغو نوبت به مشتری",
         "confirmed-customer": "اطلاع تایید نوبت به مشتری",
       };
-      await this.sms.send({ kind, to: a.customer.phone, params, text }, { userId: a.stylist.userId, appointmentId, note: NOTE[kind] });
+      // a prepaid booking's money news reaches the customer even when the stylist's wallet is at the SMS debt limit
+      await this.sms.send({ kind, to: a.customer.phone, params, text }, { userId: a.stylist.userId, appointmentId, note: NOTE[kind], evenInDebt: !!outcome });
     } catch (err) {
       this.logger.warn(`${kind} SMS for ${appointmentId} failed: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Tells the stylist what happened to one of their prepaid bookings (prepaidStylistText) — not when
+   * they did it themselves (`actorId`). Always sent, like the other prepaid texts: counted against the
+   * salon's allowance when there is some, charged to the stylist's wallet even at the debt limit.
+   */
+  private async smsStylistPrepaid(appointmentId: string, event: PrepaidStylistEvent, actorId: string) {
+    try {
+      const a = await this.prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        select: {
+          salonId: true,
+          startAt: true,
+          customerFirstName: true,
+          customerLastName: true,
+          customer: { select: { firstName: true, lastName: true } },
+          salon: { select: { timezone: true, ownerId: true } },
+          stylist: { select: { userId: true, user: { select: { phone: true } } } },
+        },
+      });
+      if (!a?.stylist.user.phone || a.stylist.userId === actorId) return;
+      const params = {
+        day: jalaliDay(a.startAt, a.salon.timezone),
+        time: clock(instantToSalonWallTime(a.startAt, a.salon.timezone).minuteOfDay),
+        customer: bookingCustomerFullName(a),
+      };
+      const text = prepaidStylistText(event, params, { ownWallet: a.stylist.userId === a.salon.ownerId });
+      await this.subscriptions.takeReminderSms(a.salonId, new Date(), smsParts(text));
+      await this.sms.send(
+        { kind: "prepaid-event-stylist", to: a.stylist.user.phone, params, text },
+        { userId: a.stylist.userId, appointmentId, note: "اطلاع وضعیت نوبت پیش‌پرداخت‌شده به آرایشگر", evenInDebt: true },
+      );
+    } catch (err) {
+      this.logger.warn(`prepaid-event-stylist SMS for ${appointmentId} failed: ${(err as Error).message}`);
     }
   }
 
