@@ -19,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -267,7 +269,7 @@ private val QUICK = listOf(100_000, 200_000, 500_000, 1_000_000)
 
 /**
  * Automatic top-up (apps/web WalletTopUp): an amount → the card and the exact rial amount (both must
- * be copied before «واریز کردم»), polled every 8 s until nodepass.ir confirms it. Also embedded in
+ * be copied and the exact-amount box ticked before «واریز کردم»), polled every 8 s until nodepass.ir confirms it. Also embedded in
  * the booking summary and the pay-balance sheet with [suggestedToman].
  */
 @Composable
@@ -283,6 +285,7 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
     var copiedCard by remember { mutableStateOf(false) }
     var copiedAmount by remember { mutableStateOf(false) }
     var paidClicked by remember { mutableStateOf(false) }
+    var exactConfirmed by remember { mutableStateOf(false) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
@@ -326,15 +329,32 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
         val left = ((instant(t.expiresAt)?.toEpochMilli() ?: now) - now).coerceAtLeast(0) / 1000
         AppCard {
             SectionTitle("واریز کارت به کارت")
-            Muted("دقیقاً همین مبلغ را به همین کارت واریز کنید. چند ریال آخر مبلغ، پرداخت شما را شناسایی می‌کند؛ با مبلغ دیگری، موجودی خودکار اضافه نمی‌شود.")
             CopyRow("شماره کارت — ${card.bankName}، ${card.ownerName}", formatCardNumber(card.cardNumber).toPersianDigits(), null, copiedCard) {
                 copy(card.cardNumber); copiedCard = true
             }
-            CopyRow("مبلغ دقیق (ریال)", fa(t.payableRial.toLongOrNull() ?: 0), "حدود ${fa((t.payableRial.toLongOrNull() ?: 0) / 10)} تومان", copiedAmount) {
+            CopyRow("مبلغ دقیق (ریال)", fa(t.payableRial.toLongOrNull() ?: 0), "حدود ${fa((t.payableRial.toLongOrNull() ?: 0) / 10)} تومان", copiedAmount, copyLabel = "کپی مبلغ دقیق") {
                 copy(t.payableRial); copiedAmount = true
             }
+            Row(
+                Modifier.fillMaxWidth().background(c.pending.copy(alpha = 0.12f), RoundedCornerShape(16.dp)).padding(12.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Icon(Icons.Outlined.WarningAmber, null, tint = c.pending, modifier = Modifier.padding(top = 2.dp, end = 8.dp))
+                Text(
+                    "توجه بسیار مهم: لطفاً دقیقاً همین مبلغ نمایش‌داده‌شده را بدون کم یا زیاد کردن واریز نمایید. هرگونه مغایرت در مبلغ، فرآیند تأیید خودکار را با خطا مواجه می‌کند. چند ریال آخر مبلغ، پرداخت شما را شناسایی می‌کند.",
+                    color = c.ink, fontSize = 14.sp, lineHeight = 24.sp,
+                )
+            }
             if (!paidClicked) {
-                PrimaryButton(if (copiedCard && copiedAmount) "واریز کردم" else "اول شماره کارت و مبلغ را کپی کنید", Modifier.fillMaxWidth(), enabled = copiedCard && copiedAmount) { paidClicked = true }
+                Row(Modifier.fillMaxWidth().clickable { exactConfirmed = !exactConfirmed }, verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = exactConfirmed, onCheckedChange = { exactConfirmed = it })
+                    Text("تأیید می‌کنم که مبلغ پرداختی دقیقاً با مبلغ فاکتور یکسان است", color = c.ink, fontSize = 14.sp)
+                }
+                val ready = copiedCard && copiedAmount
+                PrimaryButton(
+                    if (!ready) "اول شماره کارت و مبلغ را کپی کنید" else if (exactConfirmed) "واریز کردم" else "اول یکسان بودن مبلغ را تأیید کنید",
+                    Modifier.fillMaxWidth(), enabled = ready && exactConfirmed,
+                ) { paidClicked = true }
             } else {
                 Text(
                     "در انتظار پیامک بانک… معمولاً کمتر از یک دقیقه طول می‌کشد؛ بعد از تایید، موجودی خودکار اضافه می‌شود.",
@@ -374,7 +394,7 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
             busy = true
             scope.launch {
                 runCatching { container.web.createTopUp(NewTopUp(amount.toInt(), returnPath = "/wallet-return")) }
-                    .onSuccess { topUp = it; copiedCard = false; copiedAmount = false; paidClicked = false; now = System.currentTimeMillis() }
+                    .onSuccess { topUp = it; copiedCard = false; copiedAmount = false; paidClicked = false; exactConfirmed = false; now = System.currentTimeMillis() }
                     .onFailure { Toasts.error(persianError(it, "ساخت درخواست انجام نشد", container.json)) }
                 busy = false
             }
@@ -383,7 +403,7 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
 }
 
 @Composable
-private fun CopyRow(label: String, value: String, hint: String?, done: Boolean, onCopy: () -> Unit) {
+private fun CopyRow(label: String, value: String, hint: String?, done: Boolean, copyLabel: String = "کپی", onCopy: () -> Unit) {
     val c = LocalAppColors.current
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Muted(label)
@@ -393,7 +413,7 @@ private fun CopyRow(label: String, value: String, hint: String?, done: Boolean, 
         ) {
             Text(value, color = c.ink, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), style = androidx.compose.ui.text.TextStyle(textDirection = TextDirection.Ltr))
             Icon(if (done) Icons.Outlined.Check else Icons.Outlined.ContentCopy, null, tint = if (done) c.done else c.accent)
-            Text(if (done) " کپی شد" else " کپی", color = if (done) c.done else c.accent, fontWeight = FontWeight.Bold)
+            Text(if (done) " کپی شد" else " $copyLabel", color = if (done) c.done else c.accent, fontWeight = FontWeight.Bold)
         }
         hint?.let { Muted(it) }
     }
