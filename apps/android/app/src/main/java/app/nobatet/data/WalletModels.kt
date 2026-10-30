@@ -24,6 +24,8 @@ data class TopUp(
     val card: TopUpCard? = null,
     /** nodepass.ir's receipt code («کد پیگیری»), for support if the payment isn't confirmed */
     val trackingCode: String? = null,
+    /** nodepass.ir's page for this payment (its «بازگشت» comes back to /wallet-return) */
+    val statusUrl: String? = null,
 )
 
 @Serializable

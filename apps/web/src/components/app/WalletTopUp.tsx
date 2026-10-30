@@ -25,6 +25,8 @@ interface TopUp {
   card: { cardNumber: string; ownerName: string; bankName: string } | null;
   /** nodepass.ir's receipt code */
   trackingCode?: string | null;
+  /** nodepass's status page for this payment */
+  statusUrl?: string | null;
 }
 
 const QUICK = [100_000, 200_000, 500_000, 1_000_000];
@@ -152,6 +154,14 @@ export default function WalletTopUp({ accessToken, suggestedToman, onPaid }: { a
         {topUp.trackingCode && (
           <p className="text-sm text-app-muted">
             کد پیگیری: <span dir="ltr" className="font-bold text-app-ink">{topUp.trackingCode}</span>
+            {topUp.statusUrl && (
+              <>
+                {" · "}
+                <a href={topUp.statusUrl} target="_blank" rel="noopener noreferrer" className="text-app-accent underline">
+                  صفحه پرداخت در nodepass
+                </a>
+              </>
+            )}
           </p>
         )}
         <div className="flex items-center justify-between text-sm text-app-muted">

@@ -61,6 +61,7 @@ import app.nobatet.ui.components.AppCard
 import app.nobatet.ui.components.AppChip
 import app.nobatet.ui.components.AppDialog
 import app.nobatet.ui.components.AppTextButton
+import app.nobatet.util.openInBrowser
 import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.LoadError
 import app.nobatet.ui.components.Loading
@@ -366,6 +367,9 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Muted("کد پیگیری: ")
                     Text(code, color = c.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, style = androidx.compose.ui.text.TextStyle(textDirection = TextDirection.Ltr))
+                    t.statusUrl?.takeIf { it.startsWith("https://") }?.let { url ->
+                        AppTextButton(onClick = { context.openInBrowser(url) }) { Text("صفحه پرداخت در nodepass", color = c.accent, fontSize = 14.sp) }
+                    }
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {

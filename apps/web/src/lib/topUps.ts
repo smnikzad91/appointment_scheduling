@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { cancelPayment, createPayment, getPayment, nodepassConfigured, NodepassError, type NodepassPayment } from "@/lib/nodepass";
+import { cancelPayment, createPayment, getPayment, nodepassConfigured, NodepassError, statusPageUrl, type NodepassPayment } from "@/lib/nodepass";
 
 // Wallet top-ups by card-to-card through nodepass.ir (lib/nodepass.ts). nodepass picks the card and an
 // extra 1–1000 rial that makes the amount unique, watches the bank's deposit SMS and calls our webhook
@@ -152,5 +152,6 @@ export function topUpJson(t: {
     createdAt: t.createdAt,
     card: t.cardNumber ? { cardNumber: t.cardNumber, ownerName: t.cardOwnerName ?? "", bankName: t.cardBankName ?? "" } : null,
     trackingCode: t.trackingCode,
+    statusUrl: t.trackingCode ? statusPageUrl(t.trackingCode) : null,
   };
 }
