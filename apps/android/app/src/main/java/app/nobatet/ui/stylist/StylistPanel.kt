@@ -9,6 +9,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +38,11 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
     var page by remember { mutableStateOf<StylistPage?>(null) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showNotifications by remember { mutableStateOf(false) }
+    // «بازگشت» on nodepass's page after a top-up (DeepLink.Wallet)
+    val link by container.links.link.collectAsState()
+    LaunchedEffect(link) {
+        if (link == app.nobatet.data.DeepLink.Wallet) { container.links.link.value = null; showNotifications = false; page = StylistPage.WALLET }
+    }
 
     fun loadStylist() = scope.launch {
         runCatching { container.api.myStylist() }.onSuccess { stylist = it; error = null }

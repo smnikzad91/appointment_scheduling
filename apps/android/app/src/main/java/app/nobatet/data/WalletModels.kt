@@ -30,7 +30,11 @@ data class TopUp(
 data class TopUpList(val available: Boolean = false, val items: List<TopUp> = emptyList())
 
 @Serializable
-data class NewTopUp(val amountToman: Int)
+data class NewTopUp(
+    val amountToman: Int,
+    /** where nodepass's status page «بازگشت» goes: apps/web /wallet-return, which this app opens (DeepLinks.kt) */
+    val returnPath: String,
+)
 
 @Serializable
 data class WalletTx(

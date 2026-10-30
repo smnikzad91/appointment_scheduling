@@ -373,7 +373,7 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
         PrimaryButton("ادامه", Modifier.fillMaxWidth(), enabled = amount.isNotEmpty() && !busy) {
             busy = true
             scope.launch {
-                runCatching { container.web.createTopUp(NewTopUp(amount.toInt())) }
+                runCatching { container.web.createTopUp(NewTopUp(amount.toInt(), returnPath = "/wallet-return")) }
                     .onSuccess { topUp = it; copiedCard = false; copiedAmount = false; paidClicked = false; now = System.currentTimeMillis() }
                     .onFailure { Toasts.error(persianError(it, "ساخت درخواست انجام نشد", container.json)) }
                 busy = false

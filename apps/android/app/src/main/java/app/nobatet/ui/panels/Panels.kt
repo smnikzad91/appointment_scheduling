@@ -60,6 +60,8 @@ private const val TAB_BOOKINGS = 2
 
 private const val TAB_DISCOVER = 1
 
+private const val TAB_WALLET = 3
+
 private const val TAB_PROFILE = 4
 
 /** What's shown over the customer panel: a salon page (maybe with a prefilled booking), notifications, support. */
@@ -79,6 +81,7 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
     LaunchedEffect(link) {
         val l = link ?: return@LaunchedEffect
         container.links.link.value = null
+        if (l is DeepLink.Wallet) { overlay = null; tab = TAB_WALLET; return@LaunchedEffect }
         runCatching { resolveLink(container, l) }
             .onSuccess { overlay = it }
             .onFailure { Toasts.error("این لینک معتبر نیست یا سالن دیگر فعال نیست") }
@@ -138,6 +141,7 @@ private suspend fun resolveLink(container: AppContainer, link: DeepLink): Custom
     is DeepLink.Salon -> CustomerOverlay.Salon(link.slug, if (link.book) BookingPrefill(link.serviceIds, link.stylistId, link.date) else null)
     is DeepLink.Handle -> container.api.resolveHandle(link.handle).let { CustomerOverlay.Salon(it.slug, BookingPrefill(emptyList(), it.stylistId)) }
     is DeepLink.Rebook -> CustomerOverlay.Salon(container.api.rebookLink(link.code).salon.slug, BookingPrefill(emptyList()))
+    DeepLink.Wallet -> error("handled by the caller")
 }
 
 /** «راهنمای استفاده»: the web's Help Center for this role. */

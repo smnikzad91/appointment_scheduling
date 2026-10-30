@@ -5,7 +5,7 @@ import { createTopUp, expireStale, syncTopUp, topUpJson, topUpsAvailable, TopUpE
 
 // Wallet top-ups (card-to-card through nodepass.ir, lib/topUps.ts). GET: recent ones + whether it's
 // available; POST {amountToman, returnPath?}: a new one with the card and the exact rial amount to pay
-// (returnPath: the wallet page it was started from, for the «بازگشت» link on nodepass's status page).
+// (returnPath: the wallet page it was started from, for the «بازگشت» link on nodepass's status page; the app sends /wallet-return).
 
 export async function GET() {
   const session = await requestSession();

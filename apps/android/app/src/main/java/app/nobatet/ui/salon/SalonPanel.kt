@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +44,11 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var self by remember { mutableStateOf<SelfStylist?>(null) }
     var showNotifications by remember { mutableStateOf(false) }
+    // «بازگشت» on nodepass's page after a top-up (DeepLink.Wallet)
+    val link by container.links.link.collectAsState()
+    LaunchedEffect(link) {
+        if (link == app.nobatet.data.DeepLink.Wallet) { container.links.link.value = null; showNotifications = false; page = SalonPage.WALLET }
+    }
     fun loadSelf() = scope.launch { runCatching { container.api.myStylist() }.onSuccess { self = it } }
     LaunchedEffect(Unit) { data.loadAll(); if (independent) loadSelf() }
 

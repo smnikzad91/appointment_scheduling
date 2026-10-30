@@ -29,8 +29,9 @@ export function expireStale(now = new Date()) {
 
 export class TopUpError extends Error {}
 
-/** Wallet pages a top-up can start from; nodepass's status page links back to it. */
-const WALLET_PATHS = ["/dashboard/finance", "/salon/wallet", "/stylist/wallet"];
+/** Wallet pages a top-up can start from; nodepass's status page links back to it. /wallet-return is the
+ *  Android app's: it opens the app's wallet, or (in a browser) redirects to the account's wallet page. */
+const WALLET_PATHS = ["/dashboard/finance", "/salon/wallet", "/stylist/wallet", "/wallet-return"];
 export const walletPath = (path: unknown) => (typeof path === "string" && WALLET_PATHS.includes(path) ? path : WALLET_PATHS[0]);
 
 /** A new top-up for this user: nodepass's card + exact rial amount to pay. Any earlier pending one is cancelled. */

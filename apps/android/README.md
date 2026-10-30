@@ -29,7 +29,8 @@ instead of «آرایشگرها»). The admin panel stays on the website (the ap
 ## Website links
 `nobatet.app/s/{slug}` (with `?book=1&services=&stylist=&date=`), `/book/@{handle}` and `/r/{code}` open in
 the app (`data/DeepLinks.kt`): the customer panel shows that salon and starts the booking; other roles get a
-note. They skip the "open with" chooser once apps/web serves `/.well-known/assetlinks.json` with the
+note. `/wallet-return` (the «بازگشت» link on nodepass.ir's payment page — the app's top-ups send it as
+`returnPath`) opens the wallet in any panel; in a browser apps/web redirects it to the account's wallet page. They skip the "open with" chooser once apps/web serves `/.well-known/assetlinks.json` with the
 signing key: set `ANDROID_CERT_SHA256` in `apps/web/.env.production` (comma-separated SHA-256
 fingerprints; add Play's app-signing key too if Google re-signs) and redeploy. The app's own «open the
 website» buttons go through `openInBrowser` so they don't loop back into the app.
