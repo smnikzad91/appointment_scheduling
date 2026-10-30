@@ -63,6 +63,11 @@ export class SmsService {
     void this.send({ kind: "admin-new-account", to, params, text: adminNewAccountText(params) }).catch(() => {});
   }
 
+  /** ADMIN_ALERT_PHONE, for the admin's other alerts (a new withdrawal request); undefined = none. */
+  get adminAlertPhone(): string | undefined {
+    return this.adminPhone;
+  }
+
   /** True when the driver is a real provider (the log driver doesn't deliver anything). */
   get delivers(): boolean {
     return this.driver.name !== "log";

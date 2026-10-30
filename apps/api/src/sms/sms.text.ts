@@ -122,6 +122,10 @@ export const adminNewAccountText = (p: { who: "salon" | "independent" | "stylist
       : `${p.who === "salon" ? "سالن تازه ثبت‌نام کرد" : "آرایشگر مستقل تازه"}: ${q.name}، ${q.place}؛ منتظر تایید`,
   );
 
+/** To the platform admin: «درخواست برداشت ۵۰۰٬۰۰۰ تومان از مریم احمدی؛ در پنل مدیریت بررسی کنید» (the name is cut first). */
+export const adminWithdrawalText = (p: { amount: string; name: string }) =>
+  fitSms(p, ["name"], (q) => `درخواست برداشت ${q.amount} تومان از ${q.name}؛ در پنل مدیریت بررسی کنید`);
+
 /** «باقی‌مانده نوبتت در سالن رز: ۱۹۰٬۰۰۰ تومان؛ در پنل از کیف پول پرداخت کنید» (the salon name is cut first). */
 export const balanceRequestText = (p: { amount: string; salon: string }) =>
   fitSms(p, ["salon"], (q) => `باقی‌مانده نوبتت در ${q.salon}: ${q.amount} تومان؛ در پنل از کیف پول پرداخت کنید`);

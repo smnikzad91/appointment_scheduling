@@ -55,6 +55,13 @@ export type SmsMessage =
       text: string;
     }
   | {
+      /** The platform admin (ADMIN_ALERT_PHONE): someone asked to withdraw from their wallet — wallet/withdrawal-sms. */
+      kind: "admin-withdrawal-request";
+      to: string;
+      params: { amount: string; name: string };
+      text: string;
+    }
+  | {
       /** The platform admin (ADMIN_ALERT_PHONE): a new salon / independent stylist / stylist signed up. */
       kind: "admin-new-account";
       to: string;

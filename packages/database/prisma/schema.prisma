@@ -499,6 +499,10 @@ model WithdrawalRequest {
   /// claimed/sent, or given up after decidedSmsAttempts failures
   decidedSmsAt       DateTime?
   decidedSmsAttempts Int                 @default(0)
+  /// "new withdrawal request" SMS to the platform admin (ADMIN_ALERT_PHONE, same service): set when
+  /// claimed/sent, or given up after requestedSmsAttempts failures
+  requestedSmsAt       DateTime?
+  requestedSmsAttempts Int               @default(0)
   transactions       WalletTransaction[]
 
   @@index([status, createdAt])
