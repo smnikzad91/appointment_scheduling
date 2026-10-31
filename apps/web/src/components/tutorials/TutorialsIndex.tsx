@@ -130,7 +130,7 @@ function TutorialCard({ t }: { t: Tutorial }) {
     >
       {cover && SHOTS[cover] && (
         <span className="relative w-[96px] shrink-0 overflow-hidden border-l border-g-line bg-g-bg-2">
-          <Image src={`/tutorials/${cover}.webp`} alt="" width={SHOTS[cover].w} height={SHOTS[cover].h} sizes="96px" className="h-full w-full object-cover object-top opacity-80 transition group-hover:opacity-100" />
+          <Image src={`/tutorials/${cover}.webp`} alt="" width={SHOTS[cover].w} height={SHOTS[cover].h} sizes="96px" unoptimized className="h-full w-full object-cover object-top opacity-80 transition group-hover:opacity-100" />
         </span>
       )}
       <span className="flex min-w-0 flex-1 flex-col p-4">
