@@ -40,6 +40,8 @@ export default function Screenshot({ id, alt, callouts }: { id: string; alt: str
   const [open, setOpen] = useState(false);
   const shot = SHOTS[id];
   if (!shot) return null;
+  // Served as is (already ≤ 60 KB WebP): through the image optimizer a re-captured shot under the
+  // same name kept showing the old picture from its cache.
   const src = `/tutorials/${id}.webp`;
 
   return (
@@ -51,7 +53,7 @@ export default function Screenshot({ id, alt, callouts }: { id: string; alt: str
         aria-label={`بزرگ‌نمایی تصویر: ${alt}`}
       >
         <span className="relative block overflow-hidden rounded-[22px]">
-          <Image src={src} alt={alt} width={shot.w} height={shot.h} sizes="300px" className="block h-auto w-full" />
+          <Image src={src} alt={alt} width={shot.w} height={shot.h} sizes="300px" unoptimized className="block h-auto w-full" />
           <Highlights boxes={shot.boxes} labels={callouts} />
         </span>
         <span className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white opacity-80 backdrop-blur transition group-hover:opacity-100">
@@ -157,7 +159,7 @@ function Lightbox({
           className="relative h-full w-full transition-transform duration-300 ease-out"
           style={zoom ? { transform: "scale(2)", transformOrigin: `${zoom.x}% ${zoom.y}%` } : undefined}
         >
-          <Image src={src} alt={alt} fill sizes="(max-width: 640px) 92vw, 420px" className="object-contain" priority />
+          <Image src={src} alt={alt} fill sizes="(max-width: 640px) 92vw, 420px" unoptimized className="object-contain" priority />
           <Highlights boxes={shot.boxes} labels={callouts} />
         </div>
       </div>
