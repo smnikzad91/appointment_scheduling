@@ -1,6 +1,8 @@
-# Instagram ad videos
+# 01 — Platform introduction
 
-Short silent ad videos (Persian, RTL) built from the Help Center screenshots and the landing-page copy.
+Short silent ad videos (Persian, RTL) that introduce نوبتت to each audience, built from the Help Center
+screenshots and the landing-page copy, on the brand palette (`branding/brand.md`: Obsidian Charcoal,
+copper, navy) with the new logo.
 H.264 + AAC (silent track), 30 fps, ~2.5 MB each. Each `.mp4` has a `.jpg` cover frame next to it.
 Add music in Instagram's own editor (or Ads Manager) — the videos are cut to work with any track.
 
@@ -21,9 +23,9 @@ Every video ends on the logo, a button (شروع رایگان / رزرو نوب�
 After the screenshots (`scripts/tutorials/capture.mjs`) or the copy in the script change:
 
 ```
-node scripts/instagram-ads/build.mjs                     # all six (~8 min)
-node scripts/instagram-ads/build.mjs story-02            # only ids containing "story-02"
-node scripts/instagram-ads/build.mjs post --stills       # one frame per second → instagram-ads/_preview/
+node scripts/ad-videos/build.mjs                     # all six (~8 min)
+node scripts/ad-videos/build.mjs story-02            # only ids containing "story-02"
+node scripts/ad-videos/build.mjs post --stills       # one frame per second → _preview/ here
 ```
 
 The copy, scenes and timings live in `VIDEOS` in the script. Needs Playwright's Chromium (`CHROMIUM_PATH`

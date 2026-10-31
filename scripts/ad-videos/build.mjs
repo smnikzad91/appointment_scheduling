@@ -1,14 +1,14 @@
 // Instagram ad videos: stories (1080×1920, 9:16) and feed posts (1080×1350, 4:5), built from the
 // Help Center screenshots (apps/web/public/tutorials/*.webp) and the landing-page copy.
 //
-//   node scripts/instagram-ads/build.mjs              # every video
-//   node scripts/instagram-ads/build.mjs story-02     # only videos whose id contains "story-02"
-//   node scripts/instagram-ads/build.mjs post --stills # a frame per second → instagram-ads/_preview/
+//   node scripts/ad-videos/build.mjs              # every video
+//   node scripts/ad-videos/build.mjs story-02     # only videos whose id contains "story-02"
+//   node scripts/ad-videos/build.mjs post --stills # a frame per second → ad-videos/01-platform-intro/_preview/
 //
 // Each video is one HTML page whose motion is all CSS animations. The animations are paused and
 // stepped frame by frame (Animation.currentTime), each frame is screenshotted by Chromium and piped
 // into ffmpeg — so the result is deterministic and never drops frames. Writes
-// instagram-ads/<story|post>/<id>.mp4 (H.264 + silent AAC, 30 fps) and <id>.jpg (a cover frame).
+// ad-videos/01-platform-intro/<story|post>/<id>.mp4 (H.264 + silent AAC, 30 fps) and <id>.jpg (a cover frame).
 // Text stays inside the area Instagram's own UI doesn't cover. Needs Playwright's Chromium
 // (CHROMIUM_PATH to override) and ffmpeg.
 
@@ -21,14 +21,14 @@ import path from "node:path";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const WEB = path.join(ROOT, "apps/web");
-const OUT = path.join(ROOT, "instagram-ads");
+const OUT = path.join(ROOT, "ad-videos/01-platform-intro");
 const ONLY = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "";
-// --stills: instead of the videos, one frame per second of each into instagram-ads/_preview/
+// --stills: instead of the videos, one frame per second of each into ad-videos/01-platform-intro/_preview/
 const STILLS = process.argv.includes("--stills");
 const FPS = 30;
 
 const FONT = readFileSync(path.join(WEB, "public/fonts/Vazirmatn-Variable.woff2")).toString("base64");
-const ICON = readFileSync(path.join(WEB, "public/icons/icon-192x192.png")).toString("base64");
+const ICON = readFileSync(path.join(WEB, "public/images/logo/nobatet-symbol-v2.png")).toString("base64");
 const shotCache = new Map();
 const shot = (id) => {
   if (!shotCache.has(id)) {
@@ -160,65 +160,65 @@ const style = (W, H) => `
 @font-face { font-family: Vazirmatn; src: url(data:font/woff2;base64,${FONT}) format("woff2"); font-weight: 100 900; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: ${W}px; height: ${H}px; }
-body { font-family: Vazirmatn, sans-serif; direction: rtl; color: #2a1d26; overflow: hidden; position: relative; background: #f6efe6; }
+body { font-family: Vazirmatn, sans-serif; direction: rtl; color: #f5ede8; overflow: hidden; position: relative; background: #121319; }
 .bg { position: absolute; inset: 0; overflow: hidden; }
 .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .75; }
 .scene { position: absolute; inset: 0; }
-.brand { position: absolute; top: var(--top); right: 70px; display: flex; align-items: center; gap: 16px; font-weight: 900; font-size: 40px; color: #86391f; z-index: 5; }
-.brand img { width: 64px; height: 64px; border-radius: 18px; display: block; box-shadow: 0 8px 20px -8px rgb(134 57 31 / .5); }
+.brand { position: absolute; top: var(--top); right: 70px; display: flex; align-items: center; gap: 16px; font-weight: 900; font-size: 40px; color: #efbda0; z-index: 5; }
+.brand img { width: 72px; height: 72px; display: block; filter: drop-shadow(0 8px 18px rgb(198 138 114 / .45)); }
 .w { display: inline-block; }
-.grad { background: linear-gradient(90deg, #ff7a45, #c2410c 60%, #a34a30); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .08em; }
+.grad { background: linear-gradient(90deg, #efbda0, #c68a72 55%, #9c5e4b); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .08em; }
 
 /* centred statement */
 .hero { position: absolute; left: 70px; right: 70px; top: var(--top); bottom: var(--bottom); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 36px; }
 .hero h1 { font-size: var(--h1); line-height: 1.4; font-weight: 900; }
-.hero p { font-size: var(--p); line-height: 1.7; font-weight: 600; color: #6b5a61; max-width: 880px; }
-.kicker { display: inline-block; font-size: calc(var(--p) * .85); font-weight: 800; color: #a34a30; background: #fde7d9; padding: 10px 30px; border-radius: 999px; }
+.hero p { font-size: var(--p); line-height: 1.7; font-weight: 600; color: #d8ccc6; max-width: 880px; }
+.kicker { display: inline-block; font-size: calc(var(--p) * .85); font-weight: 800; color: #efbda0; background: #35292a; padding: 10px 30px; border-radius: 999px; }
 
 /* text beside a phone */
 .side { position: absolute; left: 50px; width: var(--sideW); top: var(--top); bottom: var(--bottom); display: flex; flex-direction: column; justify-content: center; gap: 30px; }
 .side h2 { font-size: calc(var(--h2) * .88); line-height: 1.45; font-weight: 900; }
-.side p { font-size: calc(var(--p) * .92); line-height: 1.75; font-weight: 600; color: #6b5a61; }
+.side p { font-size: calc(var(--p) * .92); line-height: 1.75; font-weight: 600; color: #d8ccc6; }
 .top { position: absolute; left: 70px; right: 70px; top: var(--top); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .top h2 { font-size: var(--h2); line-height: 1.45; font-weight: 900; }
-.top p { font-size: var(--p); font-weight: 700; color: #6b5a61; }
-.stepNum { display: inline-flex; align-items: center; justify-content: center; width: 84px; height: 84px; border-radius: 50%; background: linear-gradient(135deg, #ff7a45, #a34a30); color: #fff; font-weight: 900; font-size: 44px; box-shadow: 0 12px 26px -10px rgb(194 65 12 / .6); }
+.top p { font-size: var(--p); font-weight: 700; color: #d8ccc6; }
+.stepNum { display: inline-flex; align-items: center; justify-content: center; width: 84px; height: 84px; border-radius: 50%; background: linear-gradient(135deg, #efbda0, #c68a72 50%, #9c5e4b); color: #121319; font-weight: 900; font-size: 44px; box-shadow: 0 12px 26px -10px rgb(198 138 114 / .6); }
 .swap { position: relative; }
 .swap > * { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 24px; }
 
 .feats { list-style: none; display: flex; flex-direction: column; gap: 22px; }
-.feats li { display: flex; align-items: center; gap: 20px; font-size: var(--li); font-weight: 800; background: #fffbf6; border: 2px solid #f0e2d4; border-radius: 26px; padding: 18px 22px; box-shadow: 0 12px 26px -16px rgb(42 29 38 / .35); }
-.feats .ic { flex: none; width: 66px; height: 66px; border-radius: 18px; background: linear-gradient(135deg, #ff7a45, #a34a30); color: #fff; display: flex; align-items: center; justify-content: center; }
+.feats li { display: flex; align-items: center; gap: 20px; font-size: var(--li); font-weight: 800; background: #1e2229; border: 2px solid #2f3540; border-radius: 26px; padding: 18px 22px; box-shadow: 0 14px 30px -16px rgb(0 0 0 / .7); }
+.feats .ic { flex: none; width: 66px; height: 66px; border-radius: 18px; background: linear-gradient(135deg, #efbda0, #c68a72 50%, #9c5e4b); color: #121319; display: flex; align-items: center; justify-content: center; }
 .feats .ic svg { width: 36px; height: 36px; }
 
 .phoneWrap { position: absolute; z-index: 3; }
 .float { width: 100%; height: 100%; }
-.phone { width: 100%; height: 100%; padding: 14px; border-radius: 60px; background: #1f151c; box-shadow: 0 50px 80px -30px rgb(42 29 38 / .6), inset 0 0 0 2px #3a2b35; }
+.phone { width: 100%; height: 100%; padding: 14px; border-radius: 60px; background: #2b344d; box-shadow: 0 50px 80px -30px rgb(0 0 0 / .75), inset 0 0 0 2px rgb(198 138 114 / .35); }
 .screen { position: relative; width: 100%; height: 100%; border-radius: 46px; overflow: hidden; background: #111; }
 .layer { position: absolute; inset: 0; }
 .layer img { width: 100%; display: block; }
-.tap { position: absolute; width: 90px; height: 90px; margin: -45px 0 0 -45px; border-radius: 50%; background: rgb(255 255 255 / .55); border: 5px solid rgb(255 122 69 / .95); }
+.tap { position: absolute; width: 90px; height: 90px; margin: -45px 0 0 -45px; border-radius: 50%; background: rgb(255 255 255 / .55); border: 5px solid rgb(224 149 111 / .95); }
 
-.chip { display: inline-flex; align-items: center; gap: 14px; font-size: calc(var(--p) * .9); font-weight: 800; background: #2a1d26; color: #fffaf5; padding: 16px 30px; border-radius: 999px; direction: rtl; }
-.chip svg { width: 34px; height: 34px; color: #ff9b6e; }
+.chip { display: inline-flex; align-items: center; gap: 14px; font-size: calc(var(--p) * .9); font-weight: 800; background: #1e2229; color: #f5ede8; border: 2px solid rgb(198 138 114 / .45); padding: 16px 30px; border-radius: 999px; direction: rtl; }
+.chip svg { width: 34px; height: 34px; color: #efbda0; }
 
 /* hook: ringing phone */
 .ring { position: relative; width: 300px; height: 300px; }
-.ring .disc { position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(135deg, #ff7a45, #a34a30); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 30px 60px -20px rgb(194 65 12 / .6); }
+.ring .disc { position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(135deg, #efbda0, #c68a72 50%, #9c5e4b); color: #121319; display: flex; align-items: center; justify-content: center; box-shadow: 0 30px 60px -20px rgb(198 138 114 / .55); }
 .ring .disc svg { width: 140px; height: 140px; }
-.ring .wave { position: absolute; inset: 0; border-radius: 50%; border: 6px solid #ff7a45; }
+.ring .wave { position: absolute; inset: 0; border-radius: 50%; border: 6px solid #e0956f; }
 .ring .ban { position: absolute; inset: -20px; color: #c81e1e; }
 .ring .ban svg { width: 100%; height: 100%; stroke-width: 2.2; }
 .missed { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
 .missed span { font-size: calc(var(--p) * .85); font-weight: 800; color: #b42318; background: #fee4e2; padding: 10px 26px; border-radius: 999px; }
 
 .cta { position: absolute; left: 70px; right: 70px; top: var(--top); bottom: var(--bottom); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 26px; }
-.ctaLogo img { width: 210px; height: 210px; border-radius: 56px; display: block; box-shadow: 0 30px 60px -20px rgb(134 57 31 / .6); }
-.ctaName { font-size: 92px; font-weight: 900; color: #86391f; line-height: 1.2; }
-.ctaLine { font-size: calc(var(--p) * 1.05); font-weight: 700; line-height: 1.7; color: #4b3a42; max-width: 860px; }
-.btn { display: inline-flex; align-items: center; gap: 18px; margin-top: 20px; font-size: 52px; font-weight: 900; color: #fff; padding: 26px 64px; border-radius: 999px; background: linear-gradient(135deg, #ff7a45, #a34a30); box-shadow: 0 24px 50px -16px rgb(194 65 12 / .7); }
+.ctaLogo img { width: 210px; height: 210px; display: block; filter: drop-shadow(0 30px 50px rgb(198 138 114 / .45)); }
+.ctaName { font-size: 92px; font-weight: 900; color: #efbda0; line-height: 1.2; }
+.ctaLine { font-size: calc(var(--p) * 1.05); font-weight: 700; line-height: 1.7; color: #d8ccc6; max-width: 860px; }
+.btn { display: inline-flex; align-items: center; gap: 18px; margin-top: 20px; font-size: 52px; font-weight: 900; color: #121319; padding: 26px 64px; border-radius: 999px; background: linear-gradient(135deg, #efbda0, #c68a72 50%, #9c5e4b); box-shadow: 0 24px 50px -16px rgb(198 138 114 / .7); }
 .btn .arrow svg { width: 50px; height: 50px; display: block; }
-.url { font-size: 40px; font-weight: 800; color: #86391f; direction: ltr; letter-spacing: 1px; }
+.url { font-size: 40px; font-weight: 800; color: #c68a72; direction: ltr; letter-spacing: 1px; }
 
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 @keyframes fadeOut { from { opacity: 1 } to { opacity: 0 } }
@@ -241,9 +241,9 @@ body { font-family: Vazirmatn, sans-serif; direction: rtl; color: #2a1d26; overf
 `;
 
 const background = (W, H) => `<div class="bg">
-  <div class="blob" style="width:${W * 0.9}px;height:${W * 0.9}px;right:-${W * 0.3}px;top:-${W * 0.25}px;background:#f7d3bd;${anims(an("drift1", 0, 14, { ease: "ease-in-out", iter: "infinite" }))}"></div>
-  <div class="blob" style="width:${W * 0.8}px;height:${W * 0.8}px;left:-${W * 0.3}px;bottom:-${W * 0.2}px;background:#efdcc6;${anims(an("drift2", 0, 16, { ease: "ease-in-out", iter: "infinite" }))}"></div>
-  <div class="blob" style="width:${W * 0.5}px;height:${W * 0.5}px;left:${W * 0.15}px;top:${H * 0.35}px;background:#fbe3d3;opacity:.6;${anims(an("drift3", 0, 12, { ease: "ease-in-out", iter: "infinite" }))}"></div>
+  <div class="blob" style="width:${W * 0.9}px;height:${W * 0.9}px;right:-${W * 0.3}px;top:-${W * 0.25}px;background:rgb(198 138 114 / .32);${anims(an("drift1", 0, 14, { ease: "ease-in-out", iter: "infinite" }))}"></div>
+  <div class="blob" style="width:${W * 0.8}px;height:${W * 0.8}px;left:-${W * 0.3}px;bottom:-${W * 0.2}px;background:rgb(43 52 77 / .9);${anims(an("drift2", 0, 16, { ease: "ease-in-out", iter: "infinite" }))}"></div>
+  <div class="blob" style="width:${W * 0.5}px;height:${W * 0.5}px;left:${W * 0.15}px;top:${H * 0.35}px;background:rgb(156 94 75 / .3);opacity:.6;${anims(an("drift3", 0, 12, { ease: "ease-in-out", iter: "infinite" }))}"></div>
 </div>`;
 
 /** Format sizes: `top`/`bottom` keep text clear of Instagram's own UI. */
@@ -287,7 +287,7 @@ const VIDEOS = [
         8,
         `<div class="top"><span class="kicker" style="${anims(an("popIn", 3.7, 0.5))}">۲۴ ساعته، بدون تماس</span>
           <h2>${words("با *نوبتت* مشتری‌ها خودشان آنلاین نوبت می‌گیرند", 3.85, 0.08)}</h2></div>
-        ${phone({ height: 1020, y: 610, enter: 4.2, exit: 8, screens: [{ id: "customer-book-4", at: 4.2, tap: [88, 61] }, { id: "customer-book-8", at: 6.4 }] })}`,
+        ${phone({ height: 1020, y: 610, enter: 4.2, exit: 8, screens: [{ id: "customer-book-4", at: 4.2, tap: [88, 61] }, { id: "customer-book-9", at: 6.4 }] })}`,
       ),
       scene(
         8,
@@ -318,9 +318,9 @@ const VIDEOS = [
       const steps = [
         { id: "customer-search-1", text: "سالن نزدیک خودتان را پیدا کنید", tap: [55, 62] },
         { id: "customer-book-2", text: "خدمت را انتخاب کنید", tap: [50, 95] },
-        { id: "customer-book-3", text: "آرایشگر دلخواه را بزنید", tap: [68, 85] },
+        { id: "customer-book-3", text: "آرایشگر دلخواه را بزنید", tap: [50, 78] },
         { id: "customer-book-4", text: "روز و ساعت خالی را بزنید", tap: [88, 61] },
-        { id: "customer-book-8", text: "تمام! نوبتتان ثبت شد" },
+        { id: "customer-book-9", text: "تمام! نوبتتان ثبت شد" },
       ];
       const t0 = 3.2, step = 2.1, end = t0 + steps.length * step + 0.4;
       return [
@@ -473,9 +473,9 @@ const VIDEOS = [
       const steps = [
         { id: "customer-search-1", text: "سالن نزدیک خودتان را پیدا کنید", tap: [55, 62] },
         { id: "customer-book-2", text: "خدمت را انتخاب کنید", tap: [50, 95] },
-        { id: "customer-book-3", text: "آرایشگر دلخواه را بزنید", tap: [68, 85] },
+        { id: "customer-book-3", text: "آرایشگر دلخواه را بزنید", tap: [50, 78] },
         { id: "customer-book-4", text: "روز و ساعت خالی را بزنید", tap: [88, 61] },
-        { id: "customer-book-8", text: "تمام! نوبتتان ثبت شد" },
+        { id: "customer-book-9", text: "تمام! نوبتتان ثبت شد" },
       ];
       const t0 = 2.8, step = 2.1, end = t0 + steps.length * step + 0.4;
       return [
@@ -505,9 +505,9 @@ const VIDEOS = [
 
 const EXTRA_STYLE = `
 .dots { display: flex; gap: 12px; margin-top: 10px; }
-.dots i { display: block; height: 12px; width: 12px; border-radius: 999px; background: #e4d3c4; }
-@keyframes dotOn { from { width: 12px; background: #e4d3c4 } to { width: 44px; background: #c2410c } }
-@keyframes dotOff { from { width: 44px; background: #c2410c } to { width: 12px; background: #e4d3c4 } }
+.dots i { display: block; height: 12px; width: 12px; border-radius: 999px; background: #2f3540; }
+@keyframes dotOn { from { width: 12px; background: #2f3540 } to { width: 44px; background: #c68a72 } }
+@keyframes dotOff { from { width: 44px; background: #c68a72 } to { width: 12px; background: #2f3540 } }
 `;
 
 function html(video) {
