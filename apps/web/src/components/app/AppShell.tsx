@@ -65,7 +65,7 @@ export default function AppShell({
   const { theme, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-  const panelTour = usePanelTour(tour?.id ?? null);
+  const panelTour = usePanelTour(tour && session?.user?.id ? `${tour.id}:${session.user.id}` : null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);

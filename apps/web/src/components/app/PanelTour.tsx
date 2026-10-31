@@ -16,9 +16,10 @@ export interface TourStep {
 const doneKey = (id: string) => `tour-done:${id}`;
 
 /**
- * First-run guided tour of a panel: opens by itself the first time this browser shows the panel
- * (remembered per panel in localStorage — a convenience, so a blocked storage just means no
- * auto-start), and again whenever `start()` is called (the account sheet's «تور آشنایی»).
+ * First-run guided tour of a panel: opens by itself the first time this browser shows the panel to
+ * an account (remembered per panel and account in localStorage — a convenience, so a blocked storage
+ * just means no auto-start), and again whenever `start()` is called (the account sheet's «تور آشنایی»).
+ * `id` is null until both the panel and the account are known.
  */
 export function usePanelTour(id: string | null) {
   const [open, setOpen] = useState(false);
