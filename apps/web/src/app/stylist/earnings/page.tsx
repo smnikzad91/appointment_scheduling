@@ -55,7 +55,7 @@ export default function StylistEarningsPage() {
         !error && <ListSkeleton rows={3} />
       ) : (
         <div className={cx("transition-opacity", loading && "opacity-60")}>
-          <section className="rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
+          <section className="rounded-[32px] bg-[#2b344d] p-5 text-[#f5ede8] shadow-app dark:bg-[#2b344d] dark:ring-1 dark:ring-app-line">
             <p className="text-xs text-white/60">سهم شما در {period.label}</p>
             <p className="mt-1 text-[30px] font-black leading-tight">{formatToman(data.totals.shareToman)}</p>
             <p className="text-[11px] text-white/55">درآمد ناخالص، پیش از کسر هزینه‌های شما</p>

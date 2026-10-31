@@ -70,7 +70,7 @@ export default function TutorialsIndex({ initialRole }: { initialRole?: Tutorial
                 aria-selected={on}
                 onClick={() => setFilter(r.id)}
                 className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-bold transition ${
-                  on ? "border-transparent bg-[image:var(--g-gradient)] text-[#1a0f14]" : "border-g-line bg-g-glass-soft text-g-muted hover:border-g-line-strong hover:text-g-ink"
+                  on ? "border-transparent bg-[image:var(--g-gradient)] text-[#121319]" : "border-g-line bg-g-glass-soft text-g-muted hover:border-g-line-strong hover:text-g-ink"
                 }`}
               >
                 <Icon className="h-4 w-4" aria-hidden />

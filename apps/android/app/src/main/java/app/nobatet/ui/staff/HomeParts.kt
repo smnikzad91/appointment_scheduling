@@ -56,8 +56,8 @@ import java.time.Instant
 // The salon and stylist home screens' pieces (apps/web app/salon/page.tsx, app/stylist/page.tsx,
 // components/app/ui.tsx StatTile/LinkCard/SectionTitle, appointments.tsx TodayTimeline).
 
-/** The hero's colours: always dark plum, a little lighter in dark mode (the web's #2a1d26 / #33232f). */
-val HeroInk = Color(0xFFF8F1E9)
+/** The hero's colours: brand Midnight Navy in both modes (the web's #2b344d). */
+val HeroInk = Color(0xFFF5EDE8)
 
 /** The web's dark hero card with the salon-mirror arch motif in the corner. */
 @Composable
@@ -66,7 +66,7 @@ fun HeroCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() 
     val dark = LocalThemeControl.current.dark
     val shape = RoundedCornerShape(32.dp)
     Column(
-        modifier.fillMaxWidth().clip(shape).background(if (dark) Color(0xFF33232F) else Color(0xFF2A1D26))
+        modifier.fillMaxWidth().clip(shape).background(Color(0xFF2B344D))
             .then(if (dark) Modifier.border(1.dp, c.line, shape) else Modifier)
             .drawBehind {
                 // two arches at the bottom-left, as on the web (left stays left in RTL there too)

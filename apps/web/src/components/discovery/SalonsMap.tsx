@@ -11,7 +11,7 @@ import { formatDistance } from "./SalonResultCard";
 
 const salonIcon = L.divIcon({
   className: "",
-  html: `<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#a34a30;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
+  html: `<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#9c5e4b;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
   iconSize: [24, 24],
   iconAnchor: [12, 24],
   popupAnchor: [0, -22],
@@ -57,7 +57,7 @@ export default function SalonsMap({ salons, me }: { salons: SalonCard[]; me: { l
                 {s.rating !== null && ` — ★ ${toPersianDigits(s.rating.toFixed(1))}`}
                 {s.distanceKm !== null && ` — ${formatDistance(s.distanceKm)}`}
               </div>
-              <Link href={`/s/${s.slug}`} style={{ color: "#a34a30", fontWeight: 700 }}>
+              <Link href={`/s/${s.slug}`} style={{ color: "#9c5e4b", fontWeight: 700 }}>
                 مشاهده و رزرو
               </Link>
             </div>

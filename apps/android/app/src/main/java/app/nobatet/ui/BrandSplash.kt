@@ -38,8 +38,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val SplashBg = Color(0xFF121319)
-private val SplashInk = Color(0xFFF6EFE6)
-private val Glow = Color(0xFFF2876A)
+private val SplashInk = Color(0xFFF5EDE8)
+private val Glow = Color(0xFFC68A72)
 private val Rise = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
 
 /**

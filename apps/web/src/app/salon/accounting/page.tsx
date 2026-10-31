@@ -125,7 +125,7 @@ export default function SalonAccountingPage() {
       {data && (
         <div className={cx("transition-opacity", loading && "opacity-60")}>
           {/* Profit & loss for the month */}
-          <section className="rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
+          <section className="rounded-[32px] bg-[#2b344d] p-5 text-[#f5ede8] shadow-app dark:bg-[#2b344d] dark:ring-1 dark:ring-app-line">
             {/* No minus sign: next to Persian digits in RTL it drifts to the wrong side and is easy to miss. */}
             <p className="text-xs text-white/60">
               {data.totals.netProfitToman < 0 ? "زیان خالص" : "سود خالص"}

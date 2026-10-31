@@ -46,7 +46,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
             border: 0,
             borderRadius: 999,
             padding: "10px 24px",
-            background: "#a34a30",
+            background: "#9c5e4b",
             color: "white",
             fontSize: 14,
             fontFamily: "inherit",

@@ -35,10 +35,10 @@ export interface PosterData {
 }
 
 const FONT = 'Vazirmatn, Tahoma, "Segoe UI", sans-serif';
-const BG = "#19121a"; // the panels' dark background (warm plum), not the navy brand dark
-const INK = "#f8f1e9";
-const MUTED = "rgba(248, 241, 233, 0.66)";
-const ACCENT = "#f2876a";
+const BG = "#121319"; // brand Obsidian Charcoal (branding/brand.md)
+const INK = "#f5ede8";
+const MUTED = "rgba(245, 237, 232, 0.66)";
+const ACCENT = "#c68a72";
 const CTA = "برای رزرو آنلاین نوبت، کد را با دوربین گوشی اسکن کنید";
 
 const imageCache = new Map<string, Promise<HTMLImageElement | null>>();

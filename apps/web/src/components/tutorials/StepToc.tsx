@@ -32,7 +32,7 @@ export default function StepToc({ steps, variant }: { steps: { title: string }[]
             href={`#step-${i + 1}`}
             aria-current={active === i ? "step" : undefined}
             className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] font-bold transition ${
-              active === i ? "border-transparent bg-[image:var(--g-gradient)] text-[#1a0f14]" : "border-g-line bg-g-glass-soft text-g-muted"
+              active === i ? "border-transparent bg-[image:var(--g-gradient)] text-[#121319]" : "border-g-line bg-g-glass-soft text-g-muted"
             }`}
           >
             {toPersianDigits(i + 1)}
@@ -57,7 +57,7 @@ export default function StepToc({ steps, variant }: { steps: { title: string }[]
             >
               <span
                 className={`relative z-10 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[11px] font-black transition ${
-                  active === i ? "bg-[image:var(--g-gradient)] text-[#1a0f14] shadow-[0_0_14px_-2px_rgb(242_135_106/0.8)]" : "border border-g-line-strong bg-g-bg-2 text-g-faint"
+                  active === i ? "bg-[image:var(--g-gradient)] text-[#121319] shadow-[0_0_14px_-2px_rgb(242_135_106/0.8)]" : "border border-g-line-strong bg-g-bg-2 text-g-faint"
                 }`}
               >
                 {toPersianDigits(i + 1)}

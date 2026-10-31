@@ -24,10 +24,10 @@ export default function PhoneMockup() {
       <div aria-hidden className="absolute inset-8 rounded-full bg-[radial-gradient(circle,rgb(242_135_106/0.45),transparent_70%)]" />
 
       <div className="g-glass g-glow-border relative rounded-[2.6rem] p-2.5">
-        <div className="rounded-[2.1rem] bg-[#130e16]/90 p-4">
+        <div className="rounded-[2.1rem] bg-[#121319]/90 p-4">
           <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-white/10" />
           <div className="flex items-center gap-3 border-b border-g-line pb-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[image:var(--g-gradient)] font-black text-[#1a0f14]">س</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[image:var(--g-gradient)] font-black text-[#121319]">س</span>
             <div>
               <p className="font-bold text-g-ink">سالن زیبایی رزا</p>
               <p className="text-xs text-g-faint">تهران، سعادت‌آباد</p>
@@ -42,7 +42,7 @@ export default function PhoneMockup() {
                 key={d.label}
                 className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] ${
                   d.selected
-                    ? "bg-[image:var(--g-gradient)] font-bold text-[#1a0f14] shadow-[0_6px_18px_-6px_rgb(242_135_106/0.9)]"
+                    ? "bg-[image:var(--g-gradient)] font-bold text-[#121319] shadow-[0_6px_18px_-6px_rgb(242_135_106/0.9)]"
                     : d.muted
                     ? "bg-white/[0.03] text-g-faint/60"
                     : "bg-white/5 text-g-muted"
@@ -72,7 +72,7 @@ export default function PhoneMockup() {
             ))}
           </div>
 
-          <div className="mt-4 rounded-2xl bg-[image:var(--g-gradient)] py-3 text-center text-sm font-black text-[#1a0f14]">
+          <div className="mt-4 rounded-2xl bg-[image:var(--g-gradient)] py-3 text-center text-sm font-black text-[#121319]">
             تأیید نوبت — یکشنبه ۵ مهر، ۱۱:۳۰
           </div>
         </div>

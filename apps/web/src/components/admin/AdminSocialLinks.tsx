@@ -39,13 +39,13 @@ type GridCtx = {
 
 // ── Themes ─────────────────────────────────────────────────────────────────────
 const agLight = themeQuartz.withParams({
-  accentColor: "#465fff", backgroundColor: "#ffffff", foregroundColor: "#111827",
+  accentColor: "#9c5e4b", backgroundColor: "#ffffff", foregroundColor: "#111827",
   borderColor: "#e5e7eb", chromeBackgroundColor: "#f9fafb", headerTextColor: "#6b7280",
   rowHoverColor: "#f9fafb", columnBorder: false, rowBorder: { color: "#f3f4f6" },
   fontSize: 14, fontFamily: "inherit", rowVerticalPaddingScale: 1.3, headerFontSize: 12,
 });
 const agDark = themeQuartz.withParams({
-  accentColor: "#465fff", backgroundColor: "#111827", foregroundColor: "#f9fafb",
+  accentColor: "#9c5e4b", backgroundColor: "#111827", foregroundColor: "#f9fafb",
   borderColor: "#374151", chromeBackgroundColor: "#111827", headerTextColor: "#9ca3af",
   rowHoverColor: "rgba(255,255,255,0.02)", columnBorder: false, rowBorder: { color: "#1f2937" },
   fontSize: 14, fontFamily: "inherit", rowVerticalPaddingScale: 1.3, headerFontSize: 12,
