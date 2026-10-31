@@ -7,7 +7,7 @@ export default function GuestLogo({ className = "" }: { className?: string }) {
   return (
     <Link href="/" className={`group inline-flex items-center gap-2.5 text-lg font-black text-g-ink ${className}`}>
       <Image
-        src="/images/logo/logo_symbol_transparent.png"
+        src="/images/logo/nobatet-symbol-v2.png"
         alt=""
         width={40}
         height={40}

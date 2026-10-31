@@ -25,7 +25,7 @@ export default function SplashScreen() {
       }}
     >
       <Image
-        src="/images/logo/logo_symbol_transparent.png"
+        src="/images/logo/nobatet-symbol-v2.png"
         alt=""
         width={128}
         height={128}

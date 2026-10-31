@@ -13,7 +13,7 @@ export default function Hero() {
         <div className="text-center md:text-start">
           {/* Full brand logo (emblem + «نوبتت» in champagne, transparent — for the dark guest pages), branding/logo_vertical_with_text.png */}
           <Image
-            src="/images/logo/logo_vertical_with_text.png"
+            src="/images/logo/nobatet-vertical-v2.png"
             alt="نوبتت — نرم‌افزار نوبت‌دهی آنلاین آرایشگاه و سالن زیبایی"
             width={800}
             height={976}

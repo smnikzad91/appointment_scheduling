@@ -143,7 +143,7 @@ function background(ctx: CanvasRenderingContext2D, W: number, H: number, brand: 
 }
 
 async function header(ctx: CanvasRenderingContext2D, W: number, y: number, u: number, siteName: string) {
-  const logo = await loadImage("/images/logo/logo_symbol_transparent.png");
+  const logo = await loadImage("/images/logo/nobatet-symbol-v2.png");
   const size = u * 7;
   const right = W - u * 6;
   if (logo) ctx.drawImage(logo, right - size, y, size, size);
@@ -195,7 +195,7 @@ async function qrCard(ctx: CanvasRenderingContext2D, qr: HTMLCanvasElement, x: n
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(qr, x + pad, y + pad, size - pad * 2, size - pad * 2);
   ctx.imageSmoothingEnabled = true;
-  const logo = await loadImage("/images/logo/logo_symbol_transparent.png");
+  const logo = await loadImage("/images/logo/nobatet-symbol-v2.png");
   if (logo) {
     const l = size * 0.18;
     ctx.fillStyle = "#fff";

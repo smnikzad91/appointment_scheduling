@@ -84,7 +84,7 @@ export default function AppShell({
       >
         <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
           <div className="flex items-center gap-2.5">
-            <Image src="/images/logo/logo_symbol_transparent.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
+            <Image src="/images/logo/nobatet-symbol-v2.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
             <div className="leading-tight">
               <p className="text-[15px] font-black text-app-ink">{SITE_NAME}</p>
               <p className="text-[11px] font-medium text-app-muted">{panelName}</p>

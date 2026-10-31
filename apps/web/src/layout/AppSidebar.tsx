@@ -230,7 +230,7 @@ const AppSidebar: React.FC = () => {
     >
       {/* Logo */}
       <div className={`flex h-16 shrink-0 items-center border-b border-gray-100 px-4 dark:border-gray-800 ${expanded ? "justify-start gap-2.5" : "justify-center"}`}>
-        <Image src="/images/logo/logo_symbol_transparent.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
+        <Image src="/images/logo/nobatet-symbol-v2.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
         {expanded && (
           <Link href="/admin" className="text-base font-bold tracking-tight text-gray-900 dark:text-white">
             نوبتت
