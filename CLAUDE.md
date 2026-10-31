@@ -35,7 +35,7 @@ story-highlights/      Instagram Story Highlight slides per panel (generated PNG
                            guides + screenshots; see story-highlights/README.md
    ad-videos/             ad videos (MP4s, committed), one folder per series: 01-platform-intro/ (story 9:16 +
                            feed post 4:5 per audience + feature tours, `node scripts/ad-videos/build.mjs`),
-                           02-for-customers/, 03-guide-series/ (planned); rendered from the Help Center screenshots — see ad-videos/README.md
+                           02-for-customers/, 03-guide-series/ (one per Help Center guide, `build.mjs guide-`); rendered from the Help Center screenshots — see ad-videos/README.md
    archive/
      mqttcloud-legacy/    dead code stripped from apps/web (MQTT broker feature, unrelated
                            to this product) — kept for reference, not wired up

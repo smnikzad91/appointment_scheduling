@@ -597,6 +597,122 @@ function generalVideos() {
   ];
 }
 
+
+// ── 03-guide-series: one video per Help Center guide (2026-10-31) ──
+// Built from apps/web/src/content/tutorials.ts and the frames in tutorialShots.json, like the
+// /tutorials pages and the story highlights: cover → one scene per step (title, the screen with its
+// numbered frames, caption cards joined by leader lines) → the guide's link.
+
+const { TUTORIALS } = await import(path.join(WEB, "src/content/tutorials.ts"));
+const SHOT_BOXES = JSON.parse(readFileSync(path.join(WEB, "src/content/tutorialShots.json"), "utf8"));
+const GUIDE_PANELS = [
+  { role: "owner", dir: "01-salon-panel", label: "پنل سالن", button: "شروع رایگان" },
+  { role: "stylist", dir: "02-stylist-panel", label: "پنل آرایشگر", button: "ورود به پنل" },
+  { role: "independent", dir: "03-independent-stylist-panel", label: "آرایشگر مستقل", button: "ثبت‌نام رایگان" },
+  { role: "customer", dir: "04-customer-panel", label: "پنل مشتری", button: "رزرو نوبت" },
+];
+
+/** A step: title on top, the phone on the right with its frames, captions on the left with leader lines. */
+function guideStep(t, i, a, d) {
+  const st = t.steps[i];
+  const boxes = (SHOT_BOXES[st.shot]?.boxes ?? []).slice(0, 4);
+  const labels = (st.callouts ?? []).slice(0, boxes.length);
+  const PH = 1040, PT = 560, PR = 60;
+  const PW = Math.round((PH - 28) * (780 / 1688) + 28);
+  const SW = PW - 28, SH = PH - 28;
+  const px = 1080 - PR - PW + 14; // screen's left edge
+  const py = PT + 14;
+  // caption cards level with their frames, pushed apart (top-down) and kept on screen
+  const NH = 108, GAP = 22, NX = 50, NW = 1080 - PR - PW - NX - 46;
+  const tops = boxes.map((b) => py + ((b.y + b.h / 2) / 100) * SH - NH / 2);
+  let floor = PT;
+  for (let k = 0; k < tops.length; k++) {
+    tops[k] = Math.max(tops[k], floor);
+    floor = tops[k] + NH + GAP;
+  }
+  let ceil = PT + PH;
+  for (let k = tops.length - 1; k >= 0; k--) {
+    tops[k] = Math.min(tops[k], ceil - NH);
+    ceil = tops[k] - GAP;
+  }
+  const at = (k) => a + 0.9 + k * 0.55;
+  const frames = boxes
+    .map(
+      (b, k) => `<div class="gBox" style="left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%;${anims(an("popIn", at(k), 0.45))}">
+        <span class="gNum">${fa(k + 1)}</span></div>`,
+    )
+    .join("");
+  const notes = labels
+    .map(
+      (c, k) => `<div class="gNote" style="left:${NX}px;top:${tops[k]}px;width:${NW}px;height:${NH}px;${anims(an("popIn", at(k) + 0.15, 0.45))}">
+        <span class="gNum static">${fa(k + 1)}</span><span>${esc(c)}</span></div>`,
+    )
+    .join("");
+  const lines = labels
+    .map((_, k) => {
+      const b = boxes[k];
+      const x1 = NX + NW, y1 = tops[k] + NH / 2;
+      const x2 = px + (b.x / 100) * SW, y2 = py + ((b.y + b.h / 2) / 100) * SH;
+      const mid = (x1 + x2) / 2;
+      const dd = `M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}`;
+      return `<g style="${anims(an("fadeIn", at(k) + 0.1, 0.4))}"><path d="${dd}" fill="none" stroke="#121319" stroke-opacity=".7" stroke-width="10" stroke-linecap="round"/>
+        <path d="${dd}" fill="none" stroke="#e0956f" stroke-width="4" stroke-linecap="round"/><circle cx="${x2}" cy="${y2}" r="7" fill="#efbda0"/></g>`;
+    })
+    .join("");
+  return scene(
+    a,
+    a + d,
+    `<div class="top" style="gap:22px">
+      <span class="kicker" style="${anims(an("popIn", a + 0.05, 0.45))}">مرحله ${fa(i + 1)} از ${fa(t.steps.length)}</span>
+      <h2 style="font-size:62px">${words(st.title, a + 0.2, 0.07)}</h2></div>
+    <div class="phoneWrap" style="top:${PT}px;right:${PR}px;width:${PW}px;height:${PH}px;${anims(an("phoneIn", a, 0.7))}">
+      <div class="phone"><div class="screen"><div class="layer"><img src="${shot(st.shot)}">${frames}</div></div></div></div>
+    ${notes}
+    <svg class="gLines" width="1080" height="1920" viewBox="0 0 1080 1920">${lines}</svg>`,
+  );
+}
+
+function guideVideos() {
+  return GUIDE_PANELS.flatMap((panel) =>
+    TUTORIALS.filter((t) => t.role === panel.role).map((t, n) => {
+      const steps = t.steps.map((st, i) => ({ i, d: Math.max(3.4, 2.4 + 0.55 * Math.min(4, (SHOT_BOXES[st.shot]?.boxes ?? []).length)) })).filter(({ i }) => t.steps[i].shot && SHOT_BOXES[t.steps[i].shot]);
+      const coverEnd = 2.2 + 0.28 * t.steps.length;
+      let clock = coverEnd;
+      const stepScenes = steps.map(({ i, d }) => {
+        const html = guideStep(t, i, clock, d);
+        clock += d;
+        return html;
+      });
+      const end = clock;
+      const file = `${String(n + 1).padStart(2, "0")}-${t.slug}`;
+      return {
+        id: `guide-${panel.role}-${file}`,
+        file,
+        dir: `03-guide-series/${panel.dir}`,
+        flat: true,
+        format: "story",
+        dur: +(end + 3.6).toFixed(1),
+        cover: 1.6,
+        body: () => [
+          scene(
+            0,
+            coverEnd,
+            `<div class="hero" style="gap:26px;justify-content:center">
+              <span class="kicker" style="${anims(an("popIn", 0.1, 0.5))}">راهنمای ${esc(panel.label)}</span>
+              <h1 style="font-size:78px">${words(t.title, 0.3, 0.07)}</h1>
+              <ol class="gList">${t.steps
+                .map((st, i) => `<li style="${anims(an("popIn", 0.8 + i * 0.12, 0.4))}"><span>${fa(i + 1)}</span>${esc(st.title)}</li>`)
+                .join("")}</ol>
+              <p style="font-size:32px;${anims(an("fadeIn", 1.2, 0.5))}">${fa(t.steps.length)} مرحله · حدود ${fa(t.minutes)} دقیقه</p></div>`,
+          ),
+          ...stepScenes,
+          scene(end, null, cta(end, { line: t.summary, button: panel.button, sub: `nobatet.app/tutorials/${t.slug}` })),
+        ],
+      };
+    }),
+  );
+}
+
 const VIDEOS = [
   // ── Stories (9:16) ──
   {
@@ -830,9 +946,20 @@ const VIDEOS = [
 
   // ── 02-for-customers: people trying their first online booking (2026-10-31) ──
   ...customerVideos(),
+
+  // ── 03-guide-series: every Help Center guide ──
+  ...guideVideos(),
 ];
 
 const EXTRA_STYLE = `
+.gBox { position: absolute; border: 5px solid #e0956f; border-radius: 16px; box-shadow: 0 0 0 5px rgb(239 189 160 / .45), 0 6px 18px rgb(156 94 75 / .45); }
+.gNum { position: absolute; right: -20px; top: -20px; width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(115deg, #efbda0, #c68a72 55%, #9c5e4b); color: #121319; font-weight: 900; font-size: 24px; display: flex; align-items: center; justify-content: center; border: 3px solid #f5ede8; }
+.gNum.static { position: static; flex: none; width: 52px; height: 52px; font-size: 26px; border: none; }
+.gNote { position: absolute; z-index: 4; display: flex; align-items: center; gap: 16px; background: #1e2229; border: 3px solid #c68a72; border-radius: 26px; padding: 10px 18px; font-size: 28px; font-weight: 800; line-height: 1.4; box-shadow: 0 14px 30px -12px rgb(0 0 0 / .7); }
+.gLines { position: absolute; inset: 0; z-index: 3; overflow: visible; pointer-events: none; }
+.gList { list-style: none; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 860px; text-align: right; }
+.gList li { display: flex; align-items: center; gap: 18px; font-size: 32px; font-weight: 800; background: #1e2229; border: 2px solid #2f3540; border-radius: 22px; padding: 12px 20px; }
+.gList li span { flex: none; width: 46px; height: 46px; border-radius: 50%; background: #35292a; color: #efbda0; font-weight: 900; display: flex; align-items: center; justify-content: center; font-size: 24px; }
 .contact { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 6px; }
 .contact span { display: inline-flex; align-items: center; gap: 14px; font-size: calc(var(--p) * .95); font-weight: 800; background: #1e2229; border: 2px solid rgb(198 138 114 / .5); padding: 14px 28px; border-radius: 999px; }
 .contact svg { width: 38px; height: 38px; color: #efbda0; }
@@ -856,7 +983,7 @@ const browser = await chromium.launch({ executablePath: chromiumPath() });
 try {
   for (const video of VIDEOS.filter((v) => v.id.includes(ONLY))) {
     const { W, H } = FORMATS[video.format];
-    const dir = path.join(OUT, video.dir ?? SERIES, video.format);
+    const dir = path.join(OUT, video.dir ?? SERIES, video.flat ? "" : video.format);
     mkdirSync(dir, { recursive: true });
     const page = await browser.newPage({ viewport: { width: W, height: H } });
     await page.setContent(html(video), { waitUntil: "load" });
@@ -883,7 +1010,7 @@ try {
       continue;
     }
 
-    const file = path.join(dir, `${video.id}.mp4`);
+    const file = path.join(dir, `${video.file ?? video.id}.mp4`);
     const ff = spawn(
       "ffmpeg",
       ["-loglevel", "error", "-y", "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "-",
@@ -905,7 +1032,7 @@ try {
     await done;
 
     await seek(video.cover);
-    await page.screenshot({ path: path.join(dir, `${video.id}.jpg`), type: "jpeg", quality: 92 });
+    await page.screenshot({ path: path.join(dir, `${video.file ?? video.id}.jpg`), type: "jpeg", quality: 92 });
     await page.close();
     console.log(`${path.relative(ROOT, file)}  (${video.dur} s, ${W}×${H})`);
   }
