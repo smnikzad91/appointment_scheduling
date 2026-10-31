@@ -23,6 +23,7 @@ import { STYLIST_UPDATED_EVENT, getMyStylistProfile } from "@/lib/api/stylistSel
 import { isIndependent } from "@/lib/independent";
 import AppShell, { type ShellIdentity } from "./AppShell";
 import NotificationBell from "./NotificationBell";
+import { customerTour, independentTour, salonTour, stylistTour } from "./panelTours";
 
 // One wrapper per panel so server layouts can render the shell without passing icon components
 // (functions) across the server/client boundary.
@@ -83,6 +84,8 @@ export function SalonShell({ children }: { children: React.ReactNode }) {
       panelName={independent ? "پنل آرایشگر مستقل" : "پنل سالن"}
       identity={identity}
       actions={<NotificationBell token={token} scope="salon" />}
+      // Wait for the salon: an independent stylist gets their own tour (no stylists tab).
+      tour={identity ? (independent ? { id: "independent", steps: independentTour } : { id: "salon", steps: salonTour }) : undefined}
       tabs={[
         { href: "/salon", label: "خانه", icon: Home, exact: true },
         { href: "/salon/appointments", label: "نوبت‌ها", icon: CalendarClock },
@@ -113,6 +116,7 @@ export function StylistShell({ children }: { children: React.ReactNode }) {
       panelName="پنل آرایشگر"
       identity={identity}
       actions={<NotificationBell token={token} scope="stylist" />}
+      tour={{ id: "stylist", steps: stylistTour }}
       tabs={[
         { href: "/stylist", label: "امروز", icon: Home, exact: true },
         { href: "/stylist/appointments", label: "نوبت‌ها", icon: CalendarClock },
@@ -136,6 +140,7 @@ export function CustomerShell({ children }: { children: React.ReactNode }) {
     <AppShell
       panelName="حساب مشتری"
       actions={<NotificationBell token={token} scope="customer" />}
+      tour={{ id: "customer", steps: customerTour }}
       tabs={[
         { href: "/dashboard", label: "خانه", icon: Home, exact: true },
         { href: "/dashboard/discover", label: "کشف سالن", icon: Search },
