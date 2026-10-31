@@ -49,18 +49,17 @@ data class AppColors(
     val danger: Color,
 )
 
-// Brand palette (branding/brand.md, 2026-10-31), same values as apps/web globals.css .app-root.
 val LightAppColors = AppColors(
-    bg = Color(0xFFF7F5F3), card = Color(0xFFFFFFFF), card2 = Color(0xFFF0EBE7), ink = Color(0xFF1C2233),
-    muted = Color(0xFF6F6670), line = Color(0xFFE6E0DC), accent = Color(0xFF9C5E4B), accentStrong = Color(0xFF7F4A3A),
-    accentSoft = Color(0xFFF6E6DD), accentInk = Color(0xFFFFFFFF), pending = Color(0xFFB7791F), confirmed = Color(0xFF2F6F68),
+    bg = Color(0xFFF6EFE6), card = Color(0xFFFFFBF6), card2 = Color(0xFFF0E6DA), ink = Color(0xFF2A1D26),
+    muted = Color(0xFF7B6B71), line = Color(0xFFE8DCCF), accent = Color(0xFFA34A30), accentStrong = Color(0xFF86391F),
+    accentSoft = Color(0xFFF4E1D4), accentInk = Color(0xFFFFFAF5), pending = Color(0xFFB7791F), confirmed = Color(0xFF2F6F68),
     done = Color(0xFF4D7A3A), danger = Color(0xFFB3434C),
 )
 
 val DarkAppColors = AppColors(
-    bg = Color(0xFF121319), card = Color(0xFF1E2229), card2 = Color(0xFF272C35), ink = Color(0xFFF5EDE8),
-    muted = Color(0xFFA39690), line = Color(0xFF2F3540), accent = Color(0xFFC68A72), accentStrong = Color(0xFFEFBDA0),
-    accentSoft = Color(0xFF35292A), accentInk = Color(0xFF121319), pending = Color(0xFFE0A94A), confirmed = Color(0xFF5FB3A8),
+    bg = Color(0xFF19121A), card = Color(0xFF231A24), card2 = Color(0xFF2D222E), ink = Color(0xFFF4EBE2),
+    muted = Color(0xFFB1A1A6), line = Color(0xFF3A2C38), accent = Color(0xFFE07F58), accentStrong = Color(0xFFEE936D),
+    accentSoft = Color(0xFF3C2522), accentInk = Color(0xFF1B1219), pending = Color(0xFFE0A94A), confirmed = Color(0xFF5FB3A8),
     done = Color(0xFF8CBF73), danger = Color(0xFFE27880),
 )
 
@@ -94,13 +93,13 @@ data class ThemeControl(val dark: Boolean, val toggle: () -> Unit)
 val LocalThemeControl = staticCompositionLocalOf { ThemeControl(dark = false, toggle = {}) }
 
 /**
- * The web's sign-in pages (`.app-root.guest-root`): brand charcoal with the copper accent. The web's cards
+ * The web's sign-in pages (`.app-root.guest-root`): near-black with a coral accent. The web's cards
  * are translucent over the backdrop; these are the same colours flattened onto it.
  */
 val GuestAppColors = DarkAppColors.copy(
-    bg = Color(0xFF121319), card = Color(0xFF1E2229), card2 = Color(0xFF22262E), ink = Color(0xFFF5EDE8),
-    muted = Color(0xFFA39690), line = Color(0xFF2C313B), accent = Color(0xFFC68A72), accentStrong = Color(0xFFEFBDA0),
-    accentSoft = Color(0xFF30272A),
+    bg = Color(0xFF0C090E), card = Color(0xFF1A131C), card2 = Color(0xFF1B171C), ink = Color(0xFFF7F0EA),
+    muted = Color(0xFF9E9896), line = Color(0xFF2A262C), accent = Color(0xFFF2876A), accentStrong = Color(0xFFF6A07F),
+    accentSoft = Color(0xFF2C1B1B),
 )
 
 /** The web's rounded-2xl fields, rounded-3xl cards and sheets (Material picks these by size). */

@@ -242,8 +242,8 @@ private fun PrimaryButton(text: String, enabled: Boolean, onClick: () -> Unit) {
     Spacer(Modifier.height(4.dp))
     Box(
         Modifier.fillMaxWidth().height(56.dp).alpha(if (enabled) 1f else 0.55f).clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xFFEFBDA0), Color(0xFFC68A72), Color(0xFF9C5E4B))))
+            .background(Brush.linearGradient(listOf(Color(0xFFF6B46B), Color(0xFFF2876A), Color(0xFFE0507A))))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Text(text, color = Color(0xFF121319), fontSize = 15.sp, fontWeight = FontWeight.Bold) }
+    ) { Text(text, color = Color(0xFF1A0F14), fontSize = 15.sp, fontWeight = FontWeight.Bold) }
 }

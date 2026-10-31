@@ -12,7 +12,7 @@
         <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
         <item name="postSplashScreenTheme">@style/Theme.Nobatet</item>
     </style>
-    <color name="app_bg">#F7F5F3</color>
-    <color name="brand">#9C5E4B</color>
+    <color name="app_bg">#F6EFE6</color>
+    <color name="brand">#A34A30</color>
     <color name="splash_bg">#121319</color>
 </resources>
