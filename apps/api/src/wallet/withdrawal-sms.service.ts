@@ -9,7 +9,8 @@ const MAX_ATTEMPTS = 3;
 const FRESH_MS = 24 * 60 * 60_000;
 
 /**
- * Texts the account when the platform admin paid («… به حسابتان واریز شد» + tracking code) or rejected
+ * Texts the account when the platform admin paid («… به حسابتان واریز شد» + tracking code — the amount
+ * after the withdrawal fee, WithdrawalRequest.feeToman) or rejected
  * («… رد شد؛ مبلغ به کیف پول برگشت») their withdrawal (apps/web lib/withdrawals.ts closes it). A
  * cancellation by the user themselves isn't texted. Same claim / 3 tries as the top-up SMS
  * (WithdrawalRequest.decidedSmsAt); api instance 0, every 30 s.
@@ -55,14 +56,15 @@ export class WithdrawalSmsService implements OnApplicationBootstrap, OnModuleDes
       where: { requestedSmsAt: null, createdAt: { gte: new Date(now.getTime() - FRESH_MS) } },
       orderBy: { createdAt: "asc" },
       take: 20,
-      select: { id: true, amountToman: true, requestedSmsAttempts: true, user: { select: { firstName: true, lastName: true, phone: true } } },
+      select: { id: true, amountToman: true, feeToman: true, requestedSmsAttempts: true, user: { select: { firstName: true, lastName: true, phone: true } } },
     });
     let sent = 0;
     for (const w of due) {
       const claimed = await this.prisma.withdrawalRequest.updateMany({ where: { id: w.id, requestedSmsAt: null }, data: { requestedSmsAt: now } });
       if (claimed.count !== 1) continue;
       const name = `${w.user.firstName} ${w.user.lastName}`.trim() || w.user.phone || "کاربر";
-      const params = { amount: faMoney(w.amountToman), name };
+      // what the admin transfers: the amount minus the withdrawal fee
+      const params = { amount: faMoney(w.amountToman - (w.feeToman ?? 0)), name };
       if (await this.sms.send({ kind: "admin-withdrawal-request", to, params, text: adminWithdrawalText(params) })) {
         sent++;
         continue;
@@ -81,14 +83,16 @@ export class WithdrawalSmsService implements OnApplicationBootstrap, OnModuleDes
       where: { status: { in: ["PAID", "REJECTED"] }, decidedSmsAt: null, decidedAt: { gte: new Date(now.getTime() - FRESH_MS) } },
       orderBy: { decidedAt: "asc" },
       take: 20,
-      select: { id: true, status: true, amountToman: true, trackingCode: true, decidedSmsAttempts: true, user: { select: { phone: true } } },
+      select: { id: true, status: true, amountToman: true, feeToman: true, trackingCode: true, decidedSmsAttempts: true, user: { select: { phone: true } } },
     });
     let sent = 0;
     for (const w of due) {
       const claimed = await this.prisma.withdrawalRequest.updateMany({ where: { id: w.id, decidedSmsAt: null }, data: { decidedSmsAt: now } });
       if (claimed.count !== 1 || !w.user.phone) continue;
       const kind = w.status === "PAID" ? "withdrawal-paid" : "withdrawal-rejected";
-      const params = { amount: faMoney(w.amountToman), trackingCode: w.trackingCode ?? "" };
+      // paid: what reached their account (amount − fee); rejected: the whole amount went back to the wallet
+      const amount = w.status === "PAID" ? w.amountToman - (w.feeToman ?? 0) : w.amountToman;
+      const params = { amount: faMoney(amount), trackingCode: w.trackingCode ?? "" };
       if (await this.sms.send({ kind, to: w.user.phone, params, text: withdrawalText(kind, params) })) {
         sent++;
         continue;

@@ -16,6 +16,9 @@ type Status = "pending" | "paid" | "rejected" | "cancelled";
 interface Row {
   id: string;
   amountToman: number;
+  feeToman: number;
+  /** amount − fee: what to transfer */
+  payoutToman: number;
   sheba: string;
   accountHolder: string;
   status: Status;
@@ -164,6 +167,11 @@ export default function AdminWithdrawals() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-900 dark:text-white">
                       {money(r.amountToman)} <span className="text-xs font-normal text-gray-500">{toman}</span>
+                      {r.feeToman > 0 && (
+                        <p className="text-xs font-normal text-gray-500">
+                          {t("withdrawalTransfer")} <b className="text-gray-900 dark:text-white">{money(r.payoutToman)}</b> · {t("withdrawalFeeLabel")} {money(r.feeToman)}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <button type="button" onClick={() => copy(r.sheba)} title={t("copyCardNumber")} dir="ltr" className="font-mono text-xs text-gray-800 hover:text-brand-500 dark:text-gray-200">
@@ -190,7 +198,14 @@ export default function AdminWithdrawals() {
                   </div>
                   {badge(r.status)}
                 </div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{money(r.amountToman)} <span className="text-xs font-normal text-gray-500">{toman}</span></p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {money(r.amountToman)} <span className="text-xs font-normal text-gray-500">{toman}</span>
+                  {r.feeToman > 0 && (
+                    <span className="ms-2 text-xs font-normal text-gray-500">
+                      {t("withdrawalTransfer")} <b className="text-gray-900 dark:text-white">{money(r.payoutToman)}</b> · {t("withdrawalFeeLabel")} {money(r.feeToman)}
+                    </span>
+                  )}
+                </p>
                 <div>
                   <button type="button" onClick={() => copy(r.sheba)} dir="ltr" className="font-mono text-xs text-gray-800 dark:text-gray-200">{sheba(r.sheba)}</button>
                   <p className="text-xs text-gray-500">{r.accountHolder} · {when(r.createdAt)}</p>
@@ -210,6 +225,11 @@ export default function AdminWithdrawals() {
             </h2>
             <div className="rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">
               <p className="font-medium text-gray-900 dark:text-white">{money(action.row.amountToman)} {toman} · {action.row.user.name}</p>
+              {action.row.feeToman > 0 && (
+                <p className="mt-1 text-sm text-gray-700 dark:text-gray-200">
+                  {t("withdrawalTransfer")}: <b>{money(action.row.payoutToman)} {toman}</b> ({t("withdrawalFeeLabel")} {money(action.row.feeToman)})
+                </p>
+              )}
               <p dir="ltr" className="mt-1 text-start font-mono text-xs text-gray-600 dark:text-gray-300">{sheba(action.row.sheba)}</p>
               <p className="text-xs text-gray-500">{action.row.accountHolder}</p>
             </div>

@@ -33,7 +33,8 @@ export const topUpPaidText = (p: { amount: string; balance: string }) => `کیف
 export const lowBalanceText = (p: { limit: string }) => `کیف پول نوبتت منفی ${p.limit} تومان شد؛ برای ادامه پیامک نوبت‌ها شارژ کنید`;
 
 /**
- * «برداشت ۵۰۰٬۰۰۰ تومان به حسابتان واریز شد\nپیگیری: 1402…» — the tracking line is left out when it
+ * «برداشت ۴۹۵٬۰۰۰ تومان به حسابتان واریز شد\nپیگیری: 1402…» (paid: the amount after the withdrawal fee,
+ * i.e. what reached the account) — the tracking line is left out when it
  * would push the text past one segment; «درخواست برداشت … تومان رد شد؛ مبلغ به کیف پول برگشت».
  */
 export const withdrawalText = (kind: "withdrawal-paid" | "withdrawal-rejected", p: { amount: string; trackingCode: string }) => {
@@ -122,9 +123,12 @@ export const adminNewAccountText = (p: { who: "salon" | "independent" | "stylist
       : `${p.who === "salon" ? "سالن تازه ثبت‌نام کرد" : "آرایشگر مستقل تازه"}: ${q.name}، ${q.place}؛ منتظر تایید`,
   );
 
-/** To the platform admin: «درخواست برداشت ۵۰۰٬۰۰۰ تومان از مریم احمدی؛ در پنل مدیریت بررسی کنید» (the name is cut first). */
+/**
+ * To the platform admin: «برداشت مریم احمدی: واریز ۴۹۵٬۰۰۰ تومان؛ در پنل مدیریت بررسی کنید» —
+ * `amount` is what to transfer (after the fee). The name is cut first.
+ */
 export const adminWithdrawalText = (p: { amount: string; name: string }) =>
-  fitSms(p, ["name"], (q) => `درخواست برداشت ${q.amount} تومان از ${q.name}؛ در پنل مدیریت بررسی کنید`);
+  fitSms(p, ["name"], (q) => `برداشت ${q.name}: واریز ${q.amount} تومان؛ در پنل مدیریت بررسی کنید`);
 
 /** «باقی‌مانده نوبتت در سالن رز: ۱۹۰٬۰۰۰ تومان؛ در پنل از کیف پول پرداخت کنید» (the salon name is cut first). */
 export const balanceRequestText = (p: { amount: string; salon: string }) =>

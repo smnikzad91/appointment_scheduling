@@ -58,6 +58,7 @@ import app.nobatet.data.Withdrawal
 import app.nobatet.data.formatCardNumber
 import app.nobatet.data.persianError
 import app.nobatet.data.walletTxLabel
+import app.nobatet.data.withdrawalFee
 import app.nobatet.data.withdrawalStatusLabel
 import app.nobatet.ui.components.AppCard
 import app.nobatet.ui.components.AppChip
@@ -432,10 +433,13 @@ private fun WalletWithdraw(container: AppContainer, balance: Int, onChange: () -
     val scope = rememberCoroutineScope()
     var items by remember { mutableStateOf<List<Withdrawal>?>(null) }
     var min by remember { mutableIntStateOf(50_000) }
+    var feeRule by remember { mutableStateOf(1 to 20_000) }
     var reload by remember { mutableIntStateOf(0) }
     var open by remember { mutableStateOf(false) }
     LaunchedEffect(reload) {
-        runCatching { container.web.withdrawals() }.onSuccess { items = it.items; min = it.minToman }.onFailure { items = emptyList() }
+        runCatching { container.web.withdrawals() }
+            .onSuccess { items = it.items; min = it.minToman; feeRule = it.feePercent to it.feeMaxToman }
+            .onFailure { items = emptyList() }
     }
     val list = items ?: return
     val pending = list.firstOrNull { it.status == "pending" }
@@ -443,6 +447,7 @@ private fun WalletWithdraw(container: AppContainer, balance: Int, onChange: () -
     if (pending != null) {
         AppCard {
             Text("برداشت ${fa(pending.amountToman)} تومان: ${withdrawalStatusLabel("pending")}", color = c.ink, fontWeight = FontWeight.Bold)
+            if (pending.feeToman > 0) Muted("واریزی به حساب: ${fa(pending.payoutToman)} تومان (کارمزد ${fa(pending.feeToman)} تومان)")
             Muted(pending.sheba)
             Muted("معمولاً تا یک روز کاری به حساب شما واریز می‌شود.")
             AppTextButton(onClick = {
@@ -460,19 +465,22 @@ private fun WalletWithdraw(container: AppContainer, balance: Int, onChange: () -
     if (last != null) {
         val date = instant(last.createdAt)?.toSalonDateTime(null)?.toLocalDate()?.persianLabel() ?: ""
         Muted(buildString {
-            append("آخرین برداشت: ${fa(last.amountToman)} تومان، $date — ${withdrawalStatusLabel(last.status)}")
+            append("آخرین برداشت: ${fa(last.amountToman)} تومان")
+            if (last.feeToman > 0) append(" (واریزی ${fa(last.payoutToman)} تومان)")
+            append("، $date — ${withdrawalStatusLabel(last.status)}")
             last.trackingCode?.let { append("، کد پیگیری $it") }
             if (last.adminNote.isNotBlank()) append("، ${last.adminNote}")
         })
     }
-    if (open) WithdrawSheet(container, balance, list.firstOrNull(), onDismiss = { open = false }) {
+    if (open) WithdrawSheet(container, balance, list.firstOrNull(), feeRule, onDismiss = { open = false }) { payout ->
         open = false; reload++; onChange()
-        Toasts.success("درخواست برداشت ثبت شد")
+        Toasts.success("درخواست برداشت ثبت شد؛ ${fa(payout)} تومان به حساب شما واریز می‌شود")
     }
 }
 
 @Composable
-private fun WithdrawSheet(container: AppContainer, balance: Int, previous: Withdrawal?, onDismiss: () -> Unit, onDone: () -> Unit) {
+private fun WithdrawSheet(container: AppContainer, balance: Int, previous: Withdrawal?, feeRule: Pair<Int, Int>, onDismiss: () -> Unit, onDone: (payout: Int) -> Unit) {
+    val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
     // the Sheba and holder of the last request, so a regular withdrawal is just the amount
     var amount by remember { mutableStateOf(balance.coerceAtLeast(0).toString()) }
@@ -489,6 +497,20 @@ private fun WithdrawSheet(container: AppContainer, balance: Int, previous: Withd
                     label = { Text("مبلغ (تومان)") }, supportingText = { Text("موجودی: ${fa(balance)} تومان") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
                 )
+                // the fee (1%, at most 20,000 toman) and what reaches the account
+                val typed = amount.toIntOrNull() ?: 0
+                val fee = withdrawalFee(typed, feeRule.first, feeRule.second)
+                Column(
+                    Modifier.fillMaxWidth().background(c.card2, RoundedCornerShape(16.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Row { Muted("کارمزد برداشت (${fa(feeRule.first)}٪، حداکثر ${fa(feeRule.second)} تومان)", Modifier.weight(1f)); Muted("${fa(fee)} تومان") }
+                    Row {
+                        Text("واریزی به حساب شما", color = c.ink, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text("${fa((typed - fee).coerceAtLeast(0))} تومان", color = c.ink, fontWeight = FontWeight.Bold)
+                    }
+                    Muted("کل مبلغ از کیف پول کم می‌شود و پس از کسر کارمزد به حساب شما واریز می‌شود.")
+                }
                 AppTextField(
                     sheba.toPersianDigits(), { sheba = it.normalizeDigits().filter(Char::isDigit).take(24) },
                     label = { Text("شماره شبا") }, prefix = { Text("IR") }, supportingText = { Text("۲۴ رقم بعد از IR") }, singleLine = true,
@@ -502,7 +524,7 @@ private fun WithdrawSheet(container: AppContainer, balance: Int, previous: Withd
                 busy = true
                 scope.launch {
                     runCatching { container.web.createWithdrawal(NewWithdrawal(amount.toIntOrNull() ?: 0, "IR$sheba", holder.trim())) }
-                        .onSuccess { onDone() }
+                        .onSuccess { onDone(it.payoutToman) }
                         .onFailure { Toasts.error(persianError(it, "ثبت درخواست انجام نشد", container.json)) }
                     busy = false
                 }

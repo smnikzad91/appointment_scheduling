@@ -5,11 +5,17 @@ import { normalizeSheba } from "@/lib/sheba";
 
 export { normalizeSheba };
 
-// Withdrawals: the amount leaves the balance when requested; the platform admin transfers it to the
-// Sheba (Paya/Satna) and marks it paid with the bank's tracking code, or rejects it — rejecting or
-// the user cancelling a pending one puts the money back. One pending request per account.
+// Withdrawals: the amount leaves the balance when requested; the platform admin transfers it minus the
+// fee to the Sheba (Paya/Satna) and marks it paid with the bank's tracking code, or rejects it —
+// rejecting or the user cancelling a pending one puts the whole amount back. One pending request per account.
 
 export const MIN_WITHDRAWAL_TOMAN = 50_000;
+
+/** Withdrawal fee: 1% of the amount, at most 20,000 toman (owner's rule, 2026-10-31); stored on each request. */
+export const WITHDRAWAL_FEE_PERCENT = 1;
+export const WITHDRAWAL_FEE_MAX_TOMAN = 20_000;
+export const withdrawalFee = (amountToman: number) =>
+  Math.min(WITHDRAWAL_FEE_MAX_TOMAN, Math.round((amountToman * WITHDRAWAL_FEE_PERCENT) / 100));
 
 export class WithdrawalError extends Error {}
 
@@ -24,7 +30,7 @@ export async function requestWithdrawal(userId: string, input: { amountToman: un
   if (accountHolder.length < 3) throw new WithdrawalError("نام صاحب حساب را وارد کنید");
   try {
     return await prisma.$transaction(async (tx) => {
-      const request = await tx.withdrawalRequest.create({ data: { userId, amountToman, sheba, accountHolder } });
+      const request = await tx.withdrawalRequest.create({ data: { userId, amountToman, feeToman: withdrawalFee(amountToman), sheba, accountHolder } });
       if ((await moveWallet(tx, userId, -amountToman, "WITHDRAWAL", { withdrawalId: request.id })) === null) {
         throw new WithdrawalError("موجودی کیف پول کافی نیست");
       }
@@ -58,6 +64,7 @@ export async function closeWithdrawal(
   });
 }
 
-export function withdrawalJson(w: { id: string; amountToman: number; sheba: string; accountHolder: string; status: string; adminNote: string; trackingCode: string | null; createdAt: Date; decidedAt: Date | null }) {
-  return { ...w, status: w.status.toLowerCase() };
+export function withdrawalJson(w: { id: string; amountToman: number; feeToman: number; sheba: string; accountHolder: string; status: string; adminNote: string; trackingCode: string | null; createdAt: Date; decidedAt: Date | null }) {
+  /** payoutToman: what reaches the bank account (amount − fee). */
+  return { ...w, payoutToman: w.amountToman - w.feeToman, status: w.status.toLowerCase() };
 }

@@ -87,6 +87,10 @@ val WALLET_SORTS = listOf("newest" to "جدیدترین", "oldest" to "قدیم�
 data class Withdrawal(
     val id: String,
     val amountToman: Int,
+    /** the withdrawal fee fixed at request time (1%, at most 20,000 toman); 0 on older requests */
+    val feeToman: Int = 0,
+    /** amount − fee: what reaches the bank account */
+    val payoutToman: Int = amountToman,
     val sheba: String,
     val accountHolder: String,
     /** pending | paid | rejected | cancelled */
@@ -97,7 +101,16 @@ data class Withdrawal(
 )
 
 @Serializable
-data class WithdrawalList(val minToman: Int = 50_000, val items: List<Withdrawal> = emptyList())
+data class WithdrawalList(
+    val minToman: Int = 50_000,
+    /** the fee rule (apps/web lib/withdrawals.ts), for the «واریزی به حساب شما» line while typing */
+    val feePercent: Int = 1,
+    val feeMaxToman: Int = 20_000,
+    val items: List<Withdrawal> = emptyList(),
+)
+
+/** The withdrawal fee for an amount: [percent]% of it, at most [max] toman. */
+fun withdrawalFee(amountToman: Int, percent: Int = 1, max: Int = 20_000) = minOf(max, Math.round(amountToman * percent / 100.0).toInt())
 
 @Serializable
 data class NewWithdrawal(val amountToman: Int, val sheba: String, val accountHolder: String)
