@@ -24,7 +24,7 @@ function Highlights({ boxes, labels }: { boxes: Box[]; labels?: string[] }) {
           style={{ left: `${b.x}%`, top: `${b.y}%`, width: `${b.w}%`, height: `${b.h}%`, animationDelay: `${i * 0.3}s` }}
           aria-hidden
         >
-          <span className="absolute -right-2.5 -top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-[image:var(--g-gradient)] text-xs font-black text-[#121319] shadow-md">
+          <span className="absolute -right-2.5 -top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-[image:var(--g-gradient)] text-xs font-black text-[#1a0f14] shadow-md">
             {toPersianDigits(i + 1)}
           </span>
           {labels?.[i] && <span className="sr-only">{labels[i]}</span>}

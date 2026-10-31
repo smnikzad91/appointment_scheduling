@@ -23,7 +23,7 @@ export default function BackButton({ className = "" }: { className?: string }) {
       className={`flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur active:scale-95 ${className}`}
     >
       {/* RTL: «back» points right */}
-      <ArrowRight className="h-5 w-5 text-[#2b344d]" aria-hidden />
+      <ArrowRight className="h-5 w-5 text-[#2a1d26]" aria-hidden />
     </button>
   );
 }

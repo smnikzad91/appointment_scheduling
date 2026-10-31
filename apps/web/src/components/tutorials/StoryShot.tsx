@@ -9,12 +9,12 @@ import { Lightbox, type Box } from "./Lightbox";
 const SHOTS = shots as Record<string, { w: number; h: number; boxes: Box[] }>;
 export const hasShot = (id?: string) => !!id && !!SHOTS[id];
 
-const GRADIENT = "bg-[linear-gradient(115deg,#efbda0,#c68a72_55%,#9c5e4b)]";
+const GRADIENT = "bg-[linear-gradient(115deg,#f6b46b,#f2876a_55%,#e0507a)]";
 
 /** The number badge used on frames, caption cards and step lists (the story slides' look). */
 export function Num({ n, className = "" }: { n: number; className?: string }) {
   return (
-    <span className={`flex shrink-0 items-center justify-center rounded-full ${GRADIENT} font-black text-[#121319] ${className}`}>
+    <span className={`flex shrink-0 items-center justify-center rounded-full ${GRADIENT} font-black text-[#1a0f14] ${className}`}>
       {toPersianDigits(n)}
     </span>
   );
@@ -45,7 +45,7 @@ export function PhoneShot({
   if (!shot) return null;
   const src = `/tutorials/${id}.webp`;
   const screen = (
-    <span className="relative block overflow-hidden rounded-[26px] bg-[#1e2229]">
+    <span className="relative block overflow-hidden rounded-[26px] bg-[#1d1520]">
       {/* eslint-disable-next-line @next/next/no-img-element -- plain img: see above */}
       <img src={src} alt={alt} width={shot.w} height={shot.h} loading="lazy" decoding="async" className="block h-auto w-full" />
       {shot.boxes.map((b, i) => (
@@ -58,7 +58,7 @@ export function PhoneShot({
           style={{ left: `${b.x}%`, top: `${b.y}%`, width: `${b.w}%`, height: `${b.h}%`, animationDelay: `${i * 0.3}s` }}
           aria-hidden
         >
-          <Num n={i + 1} className="absolute -right-2.5 -top-2.5 h-6 w-6 border-2 border-[#f5ede8] text-[11px] shadow-md" />
+          <Num n={i + 1} className="absolute -right-2.5 -top-2.5 h-6 w-6 border-2 border-[#f7f0ea] text-[11px] shadow-md" />
           {callouts?.[i] && <span className="sr-only">{callouts[i]}</span>}
         </span>
       ))}
@@ -67,7 +67,7 @@ export function PhoneShot({
 
   return (
     <div className={`relative ${className}`}>
-      <div className="rounded-[34px] bg-[#2b344d] p-2 shadow-[0_0_0_1.5px_rgb(198_138_114/0.35),0_34px_70px_-26px_rgb(0_0_0/0.85)]">
+      <div className="rounded-[34px] bg-[#2a1d26] p-2 shadow-[0_0_0_1.5px_rgb(198_138_114/0.35),0_34px_70px_-26px_rgb(0_0_0/0.85)]">
         {zoomable ? (
           <button type="button" onClick={() => setOpen(true)} className="group relative block w-full text-start" aria-label={`بزرگ‌نمایی تصویر: ${alt}`}>
             {screen}
@@ -153,7 +153,7 @@ export function ShotWithNotes({ id, alt, callouts }: { id: string; alt: string; 
               ref={(el) => {
                 noteRefs.current[i] = el;
               }}
-              className="flex items-center gap-3 rounded-2xl border-2 border-[#c68a72]/80 bg-[#1e2229] p-3 shadow-[0_14px_30px_-14px_rgb(0_0_0/0.8)] md:absolute md:inset-x-0"
+              className="flex items-center gap-3 rounded-2xl border-2 border-[#f2876a]/80 bg-[#1d1520] p-3 shadow-[0_14px_30px_-14px_rgb(0_0_0/0.8)] md:absolute md:inset-x-0"
               style={layout ? { top: layout.tops[i] } : undefined}
             >
               <Num n={i + 1} className="h-7 w-7 text-[13px]" />
@@ -169,9 +169,9 @@ export function ShotWithNotes({ id, alt, callouts }: { id: string; alt: string; 
             const d = `M${l.x1},${l.y1} C${mid},${l.y1} ${mid},${l.y2} ${l.x2},${l.y2}`;
             return (
               <g key={i}>
-                <path d={d} fill="none" stroke="#121319" strokeOpacity=".7" strokeWidth="6" strokeLinecap="round" />
+                <path d={d} fill="none" stroke="#0c090e" strokeOpacity=".7" strokeWidth="6" strokeLinecap="round" />
                 <path d={d} fill="none" stroke="#e0956f" strokeWidth="2.5" strokeLinecap="round" />
-                <circle cx={l.x2} cy={l.y2} r="4" fill="#efbda0" />
+                <circle cx={l.x2} cy={l.y2} r="4" fill="#f6b46b" />
               </g>
             );
           })}

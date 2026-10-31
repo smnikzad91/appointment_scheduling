@@ -103,9 +103,9 @@ export default async function TutorialPage({ params }: Props) {
             <li key={i}>
               <a
                 href={`#step-${i + 1}`}
-                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1e2229]/90 px-3.5 py-3 text-[14px] font-bold text-g-ink transition hover:border-[#c68a72]/60"
+                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1d1520]/90 px-3.5 py-3 text-[14px] font-bold text-g-ink transition hover:border-[#f2876a]/60"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#35292a] text-[13px] font-black text-[#efbda0]">{toPersianDigits(i + 1)}</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#35292a] text-[13px] font-black text-[#f6b46b]">{toPersianDigits(i + 1)}</span>
                 {s.title}
               </a>
             </li>
@@ -121,9 +121,9 @@ export default async function TutorialPage({ params }: Props) {
       {/* one "slide" per step: badge and title, the phone with its captions, then the text */}
       <ol className="mx-auto mt-10 flex max-w-4xl flex-col gap-8">
         {t.steps.map((s, i) => (
-          <li key={i} id={`step-${i + 1}`} className="g-reveal scroll-mt-36 overflow-hidden rounded-[32px] border border-white/10 bg-[#121319] bg-[radial-gradient(520px_380px_at_100%_0%,rgb(198_138_114/0.16),transparent_70%),radial-gradient(520px_380px_at_0%_100%,rgb(43_52_77/0.6),transparent_70%)] p-5 sm:p-8 lg:scroll-mt-24">
+          <li key={i} id={`step-${i + 1}`} className="g-reveal scroll-mt-36 overflow-hidden rounded-[32px] border border-white/10 bg-[#0c090e] bg-[radial-gradient(520px_380px_at_100%_0%,rgb(198_138_114/0.16),transparent_70%),radial-gradient(520px_380px_at_0%_100%,rgb(43_52_77/0.6),transparent_70%)] p-5 sm:p-8 lg:scroll-mt-24">
             <div className="flex flex-wrap items-center gap-2 text-[13px] font-bold text-g-faint">
-              <span className="rounded-full bg-[linear-gradient(115deg,#efbda0,#c68a72_55%,#9c5e4b)] px-3.5 py-1 text-[#121319]">
+              <span className="rounded-full bg-[linear-gradient(115deg,#f6b46b,#f2876a_55%,#e0507a)] px-3.5 py-1 text-[#1a0f14]">
                 مرحله {toPersianDigits(i + 1)} از {toPersianDigits(t.steps.length)}
               </span>
               <span className="truncate">{t.title}</span>
@@ -136,7 +136,7 @@ export default async function TutorialPage({ params }: Props) {
             )}
             <p className="mx-auto mt-7 max-w-[640px] text-[16px] leading-9 text-g-ink/90">{s.body}</p>
             {s.tip && (
-              <p className="mx-auto mt-4 flex max-w-[640px] gap-2.5 rounded-2xl border border-[#efbda0]/25 bg-[#efbda0]/[0.07] p-4 text-[14px] font-bold leading-7 text-[#efbda0]">
+              <p className="mx-auto mt-4 flex max-w-[640px] gap-2.5 rounded-2xl border border-[#f6b46b]/25 bg-[#f6b46b]/[0.07] p-4 text-[14px] font-bold leading-7 text-[#f6b46b]">
                 <Lightbulb className="mt-1 h-4 w-4 shrink-0" aria-hidden />
                 {s.tip}
               </p>

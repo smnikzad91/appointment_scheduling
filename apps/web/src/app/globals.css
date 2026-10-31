@@ -407,27 +407,25 @@
 .dark .ticket-scroll::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 
 /* ───────────────────────── Mobile app shell (/salon, /stylist, /dashboard) ─────────────────────────
-   Brand palette (branding/brand.md, 2026-10-31): Brushed Copper accent (Deep Bronze where it carries
-   white text in light mode), Deep Navy ink on near-white; Obsidian Charcoal / Slate Charcoal surfaces,
-   Warm Ivory ink and Muted Rose Grey in dark mode.
+   "Atelier appointment book": warm paper, terracotta accent, plum ink — the landing page's palette.
    Semantic tokens live on .app-root (and flip under .dark) and are exposed to Tailwind as
    bg-app-*, text-app-*, border-app-* via @theme inline below. */
 .app-root {
-  --app-bg: #f7f5f3;
-  --app-card: #ffffff;
-  --app-card-2: #f0ebe7;
-  --app-ink: #1c2233;
-  --app-muted: #6f6670;
-  --app-line: #e6e0dc;
-  --app-accent: #9c5e4b;
-  --app-accent-strong: #7f4a3a;
-  --app-accent-soft: #f6e6dd;
-  --app-accent-ink: #ffffff;
+  --app-bg: #f6efe6;
+  --app-card: #fffbf6;
+  --app-card-2: #f0e6da;
+  --app-ink: #2a1d26;
+  --app-muted: #7b6b71;
+  --app-line: #e8dccf;
+  --app-accent: #a34a30;
+  --app-accent-strong: #86391f;
+  --app-accent-soft: #f4e1d4;
+  --app-accent-ink: #fffaf5;
   --app-pending: #b7791f;
   --app-confirmed: #2f6f68;
   --app-done: #4d7a3a;
   --app-danger: #b3434c;
-  --app-shadow: 0 1px 0 rgb(28 34 51 / 0.04), 0 8px 24px -12px rgb(28 34 51 / 0.18);
+  --app-shadow: 0 1px 0 rgb(42 29 38 / 0.04), 0 8px 24px -12px rgb(42 29 38 / 0.18);
 
   font-family: Vazirmatn, Tahoma, sans-serif;
   background: var(--app-bg);
@@ -437,46 +435,46 @@
   overscroll-behavior-y: none;
 }
 /* Legacy template screens rendered inside the app shell (customer wallet, support, profile…) use
-   brand-* and gray-* utilities; remap both scales here so they pick up the copper and navy-grey
-   brand neutrals without being rewritten. */
+   brand-* and gray-* utilities; remap both scales here so they pick up terracotta and warm
+   neutrals without being rewritten. */
 .app-root {
   --color-brand-25: #fdf8f5;
-  --color-brand-50: #fbefe8;
-  --color-brand-100: #f6e0d3;
-  --color-brand-200: #efbda0;
-  --color-brand-300: #dca386;
-  --color-brand-400: #c68a72;
-  --color-brand-500: #9c5e4b;
-  --color-brand-600: #874f3e;
-  --color-brand-700: #6f4033;
-  --color-brand-800: #583329;
-  --color-brand-900: #43271f;
-  --color-brand-950: #2a1813;
-  --color-gray-25: #fbfbfa;
-  --color-gray-50: #f7f5f3;
-  --color-gray-100: #efebe8;
-  --color-gray-200: #e2dcd8;
-  --color-gray-300: #c9c1bc;
-  --color-gray-400: #a39690;
-  --color-gray-500: #7f7576;
-  --color-gray-600: #5d5a64;
-  --color-gray-700: #434654;
-  --color-gray-800: #2b344d;
-  --color-gray-900: #1e2229;
-  --color-gray-950: #121319;
+  --color-brand-50: #fbeee8;
+  --color-brand-100: #f6dccf;
+  --color-brand-200: #edbba5;
+  --color-brand-300: #e0967a;
+  --color-brand-400: #cf7152;
+  --color-brand-500: #a34a30;
+  --color-brand-600: #8e3f28;
+  --color-brand-700: #743321;
+  --color-brand-800: #5c291c;
+  --color-brand-900: #472018;
+  --color-brand-950: #2a120d;
+  --color-gray-25: #fdfbf8;
+  --color-gray-50: #f8f3ed;
+  --color-gray-100: #f0e8df;
+  --color-gray-200: #e6dbcf;
+  --color-gray-300: #d3c4b6;
+  --color-gray-400: #a8978c;
+  --color-gray-500: #85756d;
+  --color-gray-600: #685a55;
+  --color-gray-700: #4f4340;
+  --color-gray-800: #3a2c38;
+  --color-gray-900: #231a24;
+  --color-gray-950: #19121a;
 }
 
 .dark .app-root {
-  --app-bg: #121319;
-  --app-card: #1e2229;
-  --app-card-2: #272c35;
-  --app-ink: #f5ede8;
-  --app-muted: #a39690;
-  --app-line: #2f3540;
-  --app-accent: #c68a72;
-  --app-accent-strong: #efbda0;
-  --app-accent-soft: #35292a;
-  --app-accent-ink: #121319;
+  --app-bg: #19121a;
+  --app-card: #231a24;
+  --app-card-2: #2d222e;
+  --app-ink: #f4ebe2;
+  --app-muted: #b1a1a6;
+  --app-line: #3a2c38;
+  --app-accent: #e07f58;
+  --app-accent-strong: #ee936d;
+  --app-accent-soft: #3c2522;
+  --app-accent-ink: #1b1219;
   --app-pending: #e0a94a;
   --app-confirmed: #5fb3a8;
   --app-done: #8cbf73;
@@ -635,7 +633,7 @@
 }
 
 /* ───────────────────────── Guest pages (landing, sign-in, sign-up, password) ─────────────────────────
-   Always dark, whatever the panel theme: brand Obsidian Charcoal, champagne→copper→bronze glow. Used as
+   Always dark, whatever the panel theme: deep plum night, terracotta→rose glow. Used as
    `app-root guest-root` so app components that appear here (install sheet…) pick up dark app
    tokens too. Pieces live in components/guest/*; tokens are exposed as bg-g-*, text-g-*,
    border-g-* via @theme inline below. Only transform/opacity animate, and the ambient orbs are
@@ -658,20 +656,20 @@
 }
 
 .guest-root {
-  --g-bg: #121319;
-  --g-bg-2: #1e2229;
-  --g-ink: #f5ede8;
-  --g-muted: rgb(245 237 232 / 0.66);
-  --g-faint: rgb(245 237 232 / 0.42);
+  --g-bg: #0c090e;
+  --g-bg-2: #140f17;
+  --g-ink: #f7f0ea;
+  --g-muted: rgb(247 240 234 / 0.64);
+  --g-faint: rgb(247 240 234 / 0.4);
   --g-line: rgb(255 255 255 / 0.09);
   --g-line-strong: rgb(255 255 255 / 0.16);
-  --g-glass: rgb(30 34 41 / 0.58);
+  --g-glass: rgb(30 22 32 / 0.55);
   --g-glass-soft: rgb(255 255 255 / 0.035);
   --g-field: rgb(255 255 255 / 0.045);
-  --g-accent: #c68a72;
-  --g-accent-2: #9c5e4b;
-  --g-accent-3: #efbda0;
-  --g-ring: rgb(198 138 114 / 0.38);
+  --g-accent: #f2876a;
+  --g-accent-2: #e0507a;
+  --g-accent-3: #f6b46b;
+  --g-ring: rgb(242 135 106 / 0.35);
   --g-danger: #ff8f99;
   --g-success: #7fd8ac;
   --g-gradient: linear-gradient(115deg, var(--g-accent-3) -10%, var(--g-accent) 40%, var(--g-accent-2) 110%);
@@ -686,16 +684,16 @@
    with translucent cards so the ambient backdrop shows through. Out-ranks `.dark .app-root`. */
 .app-root.guest-root,
 .dark .app-root.guest-root {
-  --app-bg: #121319;
-  --app-card: rgb(30 34 41 / 0.62);
+  --app-bg: #19121a;
+  --app-card: rgb(34 25 36 / 0.62);
   --app-card-2: rgb(255 255 255 / 0.06);
-  --app-ink: #f5ede8;
-  --app-muted: rgb(245 237 232 / 0.64);
+  --app-ink: #f7f0ea;
+  --app-muted: rgb(247 240 234 / 0.62);
   --app-line: rgb(255 255 255 / 0.1);
-  --app-accent: #c68a72;
-  --app-accent-strong: #efbda0;
-  --app-accent-soft: rgb(198 138 114 / 0.16);
-  --app-accent-ink: #121319;
+  --app-accent: #f2876a;
+  --app-accent-strong: #f6a07f;
+  --app-accent-soft: rgb(242 135 106 / 0.14);
+  --app-accent-ink: #1b1219;
   --app-pending: #e0a94a;
   --app-confirmed: #5fb3a8;
   --app-done: #8cbf73;
@@ -703,7 +701,7 @@
   --app-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 20px 50px -24px rgb(0 0 0 / 0.8);
   background: var(--g-bg);
 }
-.guest-root ::selection { background: rgb(198 138 114 / 0.35); }
+.guest-root ::selection { background: rgb(242 135 106 / 0.35); }
 
 @layer components {
 
@@ -713,9 +711,9 @@
 .g-mesh {
   position: absolute; inset: -20%;
   background:
-    radial-gradient(40% 35% at 15% 10%, rgb(198 138 114 / 0.16), transparent 70%),
-    radial-gradient(35% 30% at 90% 20%, rgb(156 94 75 / 0.14), transparent 70%),
-    radial-gradient(45% 40% at 60% 100%, rgb(43 52 77 / 0.14), transparent 70%);
+    radial-gradient(40% 35% at 15% 10%, rgb(242 135 106 / 0.16), transparent 70%),
+    radial-gradient(35% 30% at 90% 20%, rgb(224 80 122 / 0.14), transparent 70%),
+    radial-gradient(45% 40% at 60% 100%, rgb(118 80 190 / 0.14), transparent 70%);
   animation: g-mesh 26s ease-in-out infinite alternate;
 }
 .g-orb {
@@ -760,7 +758,7 @@
 }
 .g-glow-border::before {
   content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
-  background: linear-gradient(140deg, rgb(255 255 255 / 0.28), rgb(255 255 255 / 0.02) 35%, rgb(198 138 114 / 0.05) 65%, rgb(198 138 114 / 0.45));
+  background: linear-gradient(140deg, rgb(255 255 255 / 0.28), rgb(255 255 255 / 0.02) 35%, rgb(242 135 106 / 0.05) 65%, rgb(242 135 106 / 0.45));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
@@ -779,13 +777,13 @@
 }
 .g-kicker::before {
   content: ""; width: 6px; height: 6px; border-radius: 9999px; background: var(--g-accent);
-  box-shadow: 0 0 10px 2px rgb(198 138 114 / 0.6);
+  box-shadow: 0 0 10px 2px rgb(242 135 106 / 0.6);
 }
 
 /* shared app components on guest pages (salon search is also used in the light customer panel,
    so it stays token-based and the glass is added here) */
 .guest-root .bg-app-card { -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%); }
-.guest-root option { background: #1e2229; color: var(--g-ink); }
+.guest-root option { background: #1d1520; color: var(--g-ink); }
 
 /* ── floating-label fields (components/guest/fields.tsx) ── */
 .g-field { position: relative; }
@@ -800,15 +798,15 @@ textarea.g-input { height: auto; min-height: 5.5rem; padding-top: 1.75rem; resiz
 .g-input.g-has-trailing { padding-left: 3rem; }
 .g-input:hover { border-color: rgb(255 255 255 / 0.24); }
 .g-input:focus {
-  border-color: rgb(198 138 114 / 0.8); background: rgb(255 255 255 / 0.06);
-  box-shadow: 0 0 0 4px var(--g-ring), 0 0 28px -4px rgb(198 138 114 / 0.45);
+  border-color: rgb(242 135 106 / 0.8); background: rgb(255 255 255 / 0.06);
+  box-shadow: 0 0 0 4px var(--g-ring), 0 0 28px -4px rgb(242 135 106 / 0.45);
 }
 .g-input[aria-invalid="true"] { border-color: rgb(255 143 153 / 0.7); }
 .g-input::placeholder { color: transparent; }
 .g-input:focus::placeholder { color: var(--g-faint); }
 .g-input:-webkit-autofill {
   -webkit-text-fill-color: var(--g-ink);
-  -webkit-box-shadow: 0 0 0 100px #1e2229 inset;
+  -webkit-box-shadow: 0 0 0 100px #231a24 inset;
   caret-color: var(--g-ink);
 }
 .g-label {
@@ -839,10 +837,10 @@ textarea.g-input { height: auto; min-height: 5.5rem; padding-top: 1.75rem; resiz
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f7f0ea' stroke-opacity='.5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: left 0.9rem center; background-size: 1rem;
 }
-.g-select:focus { border-color: rgb(198 138 114 / 0.8); box-shadow: 0 0 0 4px var(--g-ring); }
+.g-select:focus { border-color: rgb(242 135 106 / 0.8); box-shadow: 0 0 0 4px var(--g-ring); }
 .g-select:disabled { opacity: 0.45; }
 button.g-select { background-image: none; padding: 0 1rem; } /* ProvinceCitySelect draws its own icons */
-.g-select option { background: #1e2229; color: var(--g-ink); }
+.g-select option { background: #1d1520; color: var(--g-ink); }
 
 /* ── buttons ── */
 .g-btn {
@@ -852,8 +850,8 @@ button.g-select { background-image: none; padding: 0 1rem; } /* ProvinceCitySele
 }
 .g-btn:focus-visible { outline: 2px solid var(--g-accent-3); outline-offset: 3px; }
 .g-btn-primary {
-  background: var(--g-gradient); color: #121319;
-  box-shadow: 0 10px 30px -10px rgb(198 138 114 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.35);
+  background: var(--g-gradient); color: #1a0f14;
+  box-shadow: 0 10px 30px -10px rgb(242 135 106 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.35);
 }
 .g-btn-primary::after {
   content: ""; position: absolute; inset: 0; z-index: -1;
@@ -862,7 +860,7 @@ button.g-select { background-image: none; padding: 0 1rem; } /* ProvinceCitySele
 }
 .g-btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 18px 44px -12px rgb(198 138 114 / 0.85), 0 0 0 1px rgb(255 255 255 / 0.15), inset 0 1px 0 rgb(255 255 255 / 0.35);
+  box-shadow: 0 18px 44px -12px rgb(242 135 106 / 0.85), 0 0 0 1px rgb(255 255 255 / 0.15), inset 0 1px 0 rgb(255 255 255 / 0.35);
 }
 .g-btn-primary:hover:not(:disabled)::after { transform: translateX(-120%); }
 .g-btn-primary:active:not(:disabled) { transform: translateY(0); }
@@ -882,8 +880,8 @@ button.g-select { background-image: none; padding: 0 1rem; } /* ProvinceCitySele
 
 /* Help Center screenshot callouts (components/tutorials/Screenshot.tsx) */
 @keyframes tut-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgb(239 189 160 / 0.25), 0 0 18px 2px rgb(198 138 114 / 0.55); }
-  50% { box-shadow: 0 0 0 6px rgb(239 189 160 / 0.12), 0 0 26px 6px rgb(198 138 114 / 0.35); }
+  0%, 100% { box-shadow: 0 0 0 3px rgb(246 180 107 / 0.25), 0 0 18px 2px rgb(242 135 106 / 0.55); }
+  50% { box-shadow: 0 0 0 6px rgb(246 180 107 / 0.12), 0 0 26px 6px rgb(242 135 106 / 0.35); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -923,14 +921,14 @@ html.splash-seen .app-splash {
     splash-glow 1.6s ease-in-out 0.3s both;
 }
 .app-splash__title {
-  color: #f5ede8;
+  color: #f6efe6;
   font-size: 1.75rem;
   font-weight: 900;
   line-height: 1.4;
   animation: splash-text 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.6s both;
 }
 .app-splash__tagline {
-  color: rgb(163 150 144);
+  color: rgb(246 239 230 / 0.6);
   font-size: 0.9rem;
   font-weight: 500;
   animation: splash-text 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.75s both;
@@ -940,9 +938,9 @@ html.splash-seen .app-splash {
   to { opacity: 1; transform: scale(1); }
 }
 @keyframes splash-glow {
-  0% { filter: drop-shadow(0 0 0 rgb(198 138 114 / 0)); }
-  50% { filter: drop-shadow(0 0 28px rgb(198 138 114 / 0.45)); }
-  100% { filter: drop-shadow(0 0 14px rgb(198 138 114 / 0.25)); }
+  0% { filter: drop-shadow(0 0 0 rgb(242 135 106 / 0)); }
+  50% { filter: drop-shadow(0 0 28px rgb(242 135 106 / 0.45)); }
+  100% { filter: drop-shadow(0 0 14px rgb(242 135 106 / 0.25)); }
 }
 @keyframes splash-text {
   from { opacity: 0; transform: translateY(14px); }

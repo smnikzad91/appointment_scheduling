@@ -51,8 +51,8 @@ export default function TutorialsIndex({ initialRole }: { initialRole?: Tutorial
           const slides = guides.reduce((n, t) => n + t.steps.length + 1, 0);
           return (
             <button key={r.id} type="button" onClick={() => playPanel(r.id)} className="group flex w-[78px] shrink-0 flex-col items-center gap-2 text-center sm:w-[104px]" aria-label={`استوری راهنمای ${r.label}`}>
-              <span className="rounded-full bg-[conic-gradient(from_200deg,#efbda0,#c68a72,#9c5e4b,#2b344d,#efbda0)] p-[3px] transition group-hover:scale-105">
-                <span className="flex h-[66px] w-[66px] items-center justify-center rounded-full border-[3px] border-[#121319] bg-[#1e2229] text-[#efbda0] sm:h-[92px] sm:w-[92px]">
+              <span className="rounded-full bg-[conic-gradient(from_200deg,#f6b46b,#f2876a,#e0507a,#2a1d26,#f6b46b)] p-[3px] transition group-hover:scale-105">
+                <span className="flex h-[66px] w-[66px] items-center justify-center rounded-full border-[3px] border-[#0c090e] bg-[#1d1520] text-[#f6b46b] sm:h-[92px] sm:w-[92px]">
                   <Icon className="h-7 w-7 sm:h-9 sm:w-9" aria-hidden />
                 </span>
               </span>
@@ -102,7 +102,7 @@ export default function TutorialsIndex({ initialRole }: { initialRole?: Tutorial
                 aria-selected={on}
                 onClick={() => setFilter(r.id)}
                 className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-bold transition ${
-                  on ? "border-transparent bg-[image:var(--g-gradient)] text-[#121319]" : "border-g-line bg-g-glass-soft text-g-muted hover:border-g-line-strong hover:text-g-ink"
+                  on ? "border-transparent bg-[image:var(--g-gradient)] text-[#1a0f14]" : "border-g-line bg-g-glass-soft text-g-muted hover:border-g-line-strong hover:text-g-ink"
                 }`}
               >
                 <Icon className="h-4 w-4" aria-hidden />
@@ -160,7 +160,7 @@ export default function TutorialsIndex({ initialRole }: { initialRole?: Tutorial
                         <button
                           type="button"
                           onClick={() => playGuide(t)}
-                          className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[linear-gradient(115deg,#efbda0,#c68a72_55%,#9c5e4b)] px-3.5 text-[12px] font-black text-[#121319]"
+                          className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[linear-gradient(115deg,#f6b46b,#f2876a_55%,#e0507a)] px-3.5 text-[12px] font-black text-[#1a0f14]"
                         >
                           <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
                           استوری
@@ -201,7 +201,7 @@ function focusOffset(id: string) {
 function StepCard({ t, i, onPlay }: { t: Tutorial; i: number; onPlay: () => void }) {
   const s = t.steps[i];
   return (
-    <div className="group relative overflow-hidden rounded-[24px] border border-white/10 bg-[#121319] bg-[radial-gradient(240px_200px_at_100%_0%,rgb(198_138_114/0.18),transparent_70%)] transition duration-300 hover:-translate-y-1 hover:border-[#c68a72]/50">
+    <div className="group relative overflow-hidden rounded-[24px] border border-white/10 bg-[#0c090e] bg-[radial-gradient(240px_200px_at_100%_0%,rgb(198_138_114/0.18),transparent_70%)] transition duration-300 hover:-translate-y-1 hover:border-[#f2876a]/50">
       <Link href={`/tutorials/${t.slug}#step-${i + 1}`} className="flex h-full flex-col">
         <span className="relative block h-[var(--h)] overflow-hidden px-4 pt-3 [--h:170px] sm:px-6 sm:[--h:210px]">
           {s.shot && SHOTS[s.shot] ? (
@@ -213,10 +213,10 @@ function StepCard({ t, i, onPlay }: { t: Tutorial; i: number; onPlay: () => void
               <ListOrdered className="h-8 w-8" aria-hidden />
             </span>
           )}
-          <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#121319] to-transparent" />
+          <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#0c090e] to-transparent" />
         </span>
         <span className="flex flex-1 flex-col gap-1.5 p-3 pt-2 sm:p-4 sm:pt-2">
-          <span className="self-start rounded-full bg-[linear-gradient(115deg,#efbda0,#c68a72_55%,#9c5e4b)] px-2.5 py-0.5 text-[11px] font-black text-[#121319]">
+          <span className="self-start rounded-full bg-[linear-gradient(115deg,#f6b46b,#f2876a_55%,#e0507a)] px-2.5 py-0.5 text-[11px] font-black text-[#1a0f14]">
             مرحله {toPersianDigits(i + 1)} از {toPersianDigits(t.steps.length)}
           </span>
           <span className="line-clamp-2 text-[13.5px] font-bold leading-6 text-g-ink sm:text-[14.5px]">{s.title}</span>
@@ -226,7 +226,7 @@ function StepCard({ t, i, onPlay }: { t: Tutorial; i: number; onPlay: () => void
         type="button"
         onClick={onPlay}
         aria-label={`پخش استوری از این مرحله: ${s.title}`}
-        className="absolute left-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur transition hover:bg-[#c68a72] hover:text-[#121319]"
+        className="absolute left-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur transition hover:bg-[#f2876a] hover:text-[#1a0f14]"
       >
         <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
       </button>

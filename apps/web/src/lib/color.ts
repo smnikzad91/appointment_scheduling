@@ -31,7 +31,7 @@ function luminance([r, g, b]: [number, number, number]): number {
 
 /**
  * The brand colour, mixed toward white until it reads as text on the dark guest pages
- * (relative luminance ≥ 0.3, roughly 6:1 against the guest background #121319). Light brand colours come back unchanged.
+ * (relative luminance ≥ 0.3, roughly 6:1 against #0c090e). Light brand colours come back unchanged.
  */
 export function readableOnDark(hex: string): string {
   let [r, g, b] = hexToRgb(hex);

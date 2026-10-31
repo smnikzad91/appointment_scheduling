@@ -79,7 +79,7 @@ export default function StylistOverviewPage() {
   return (
     <>
       {/* Hero: who's next */}
-      <section data-tour="home-hero" className="relative overflow-hidden rounded-[32px] bg-[#2b344d] p-5 text-[#f5ede8] shadow-app dark:bg-[#2b344d] dark:ring-1 dark:ring-app-line">
+      <section data-tour="home-hero" className="relative overflow-hidden rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
         <span className="pointer-events-none absolute -bottom-16 -left-10 h-48 w-36 rounded-t-full border-[10px] border-app-accent/35" aria-hidden />
         <div className="relative flex items-center gap-3">
           <Avatar name={profile.displayName} src={profile.avatarUrl} size={48} className="bg-white/15 text-white ring-2 ring-white/20" />

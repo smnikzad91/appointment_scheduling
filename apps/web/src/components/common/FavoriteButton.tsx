@@ -33,7 +33,7 @@ export default function FavoriteButton({ salonId, salonName, variant = "plain", 
         variant === "overlay" ? "bg-white/90 shadow-md backdrop-blur" : "bg-app-card-2"
       } ${className}`}
     >
-      <Heart className={`h-5 w-5 ${saved ? "fill-[#d6455d] text-[#d6455d]" : variant === "overlay" ? "text-[#2b344d]" : "text-app-muted"}`} aria-hidden />
+      <Heart className={`h-5 w-5 ${saved ? "fill-[#d6455d] text-[#d6455d]" : variant === "overlay" ? "text-[#2a1d26]" : "text-app-muted"}`} aria-hidden />
     </button>
   );
 }

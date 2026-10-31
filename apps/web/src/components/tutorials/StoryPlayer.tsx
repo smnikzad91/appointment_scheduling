@@ -60,7 +60,7 @@ export default function StoryPlayer({ slides, start = 0, onClose }: { slides: Sl
       dir="rtl"
     >
       <div
-        className="relative flex h-[100dvh] w-full max-w-[480px] flex-col overflow-hidden bg-[#121319] bg-[radial-gradient(520px_420px_at_100%_0%,rgb(198_138_114/0.22),transparent_70%),radial-gradient(480px_380px_at_0%_100%,rgb(43_52_77/0.75),transparent_70%)] sm:my-4 sm:h-[calc(100dvh-2rem)] sm:rounded-[32px] sm:border sm:border-white/10"
+        className="relative flex h-[100dvh] w-full max-w-[480px] flex-col overflow-hidden bg-[#0c090e] bg-[radial-gradient(520px_420px_at_100%_0%,rgb(198_138_114/0.22),transparent_70%),radial-gradient(480px_380px_at_0%_100%,rgb(43_52_77/0.75),transparent_70%)] sm:my-4 sm:h-[calc(100dvh-2rem)] sm:rounded-[32px] sm:border sm:border-white/10"
         onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
         onTouchEnd={(e) => {
           if (touch.current === null) return;
@@ -75,7 +75,7 @@ export default function StoryPlayer({ slides, start = 0, onClose }: { slides: Sl
           <div className="flex gap-1" aria-hidden>
             {Array.from({ length: count }, (_, i) => (
               <span key={i} className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/15">
-                <span className={`block h-full rounded-full bg-[#efbda0] transition-all duration-300 ${i <= pos ? "w-full" : "w-0"}`} />
+                <span className={`block h-full rounded-full bg-[#f6b46b] transition-all duration-300 ${i <= pos ? "w-full" : "w-0"}`} />
               </span>
             ))}
           </div>
@@ -84,7 +84,7 @@ export default function StoryPlayer({ slides, start = 0, onClose }: { slides: Sl
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/images/logo/nobatet-symbol-v2.png" alt="" className="h-8 w-8 shrink-0" />
               <span className="min-w-0">
-                <span className="block text-[13px] font-black text-[#efbda0]">نوبتت · {role.label}</span>
+                <span className="block text-[13px] font-black text-[#f6b46b]">نوبتت · {role.label}</span>
                 <span className="block truncate text-[11px] text-g-faint">
                   راهنمای {toPersianDigits(guideNo)} از {toPersianDigits(guides.length)}
                 </span>
@@ -117,9 +117,9 @@ export default function StoryPlayer({ slides, start = 0, onClose }: { slides: Sl
             قبلی
           </button>
           <Link href={`/tutorials/${t.slug}${step === null ? "" : `#step-${step + 1}`}`} onClick={onClose} className="truncate text-[12px] text-g-faint hover:text-g-ink" dir="ltr">
-            <b className="text-[#c68a72]">nobatet.app</b>/tutorials/{t.slug}
+            <b className="text-[#f2876a]">nobatet.app</b>/tutorials/{t.slug}
           </Link>
-          <button type="button" onClick={next} className="flex h-10 items-center gap-1 rounded-full bg-[linear-gradient(115deg,#efbda0,#c68a72_55%,#9c5e4b)] px-4 text-sm font-black text-[#121319]">
+          <button type="button" onClick={next} className="flex h-10 items-center gap-1 rounded-full bg-[linear-gradient(115deg,#f6b46b,#f2876a_55%,#e0507a)] px-4 text-sm font-black text-[#1a0f14]">
             {at === slides.length - 1 ? "پایان" : "بعدی"}
             <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
@@ -133,13 +133,13 @@ export default function StoryPlayer({ slides, start = 0, onClose }: { slides: Sl
 function Cover({ t, roleLabel }: { t: Tutorial; roleLabel: string }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col justify-center gap-5 overflow-y-auto">
-      <span className="self-start rounded-full bg-[linear-gradient(115deg,#efbda0,#c68a72_55%,#9c5e4b)] px-4 py-1.5 text-[13px] font-black text-[#121319]">{roleLabel}</span>
+      <span className="self-start rounded-full bg-[linear-gradient(115deg,#f6b46b,#f2876a_55%,#e0507a)] px-4 py-1.5 text-[13px] font-black text-[#1a0f14]">{roleLabel}</span>
       <h2 className="text-[30px] font-black leading-[1.35] text-g-ink">{t.title}</h2>
       <p className="text-[15px] leading-8 text-[#d8ccc6]">{t.summary}</p>
       <ol className="flex flex-col gap-2">
         {t.steps.map((s, i) => (
-          <li key={i} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1e2229] px-3 py-2.5 text-[14px] font-bold text-g-ink">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#35292a] text-[12px] font-black text-[#efbda0]">{toPersianDigits(i + 1)}</span>
+          <li key={i} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1d1520] px-3 py-2.5 text-[14px] font-bold text-g-ink">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#35292a] text-[12px] font-black text-[#f6b46b]">{toPersianDigits(i + 1)}</span>
             {s.title}
           </li>
         ))}
@@ -158,7 +158,7 @@ function StepSlide({ t, i }: { t: Tutorial; i: number }) {
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div>
         <p className="flex min-w-0 items-center gap-2 text-[12px] font-bold text-g-faint">
-          <span className="shrink-0 rounded-full bg-[linear-gradient(115deg,#efbda0,#c68a72_55%,#9c5e4b)] px-3 py-0.5 text-[#121319]">
+          <span className="shrink-0 rounded-full bg-[linear-gradient(115deg,#f6b46b,#f2876a_55%,#e0507a)] px-3 py-0.5 text-[#1a0f14]">
             مرحله {toPersianDigits(i + 1)} از {toPersianDigits(t.steps.length)}
           </span>
           <span className="truncate">{t.title}</span>
@@ -174,7 +174,7 @@ function StepSlide({ t, i }: { t: Tutorial; i: number }) {
           {s.callouts && s.callouts.length > 0 && (
             <ol className="flex min-w-0 flex-1 flex-col gap-2 self-center">
               {s.callouts.map((c, k) => (
-                <li key={k} className="flex items-center gap-2 rounded-xl border-2 border-[#c68a72]/80 bg-[#1e2229] p-2 text-[12px] font-bold leading-5 text-g-ink">
+                <li key={k} className="flex items-center gap-2 rounded-xl border-2 border-[#f2876a]/80 bg-[#1d1520] p-2 text-[12px] font-bold leading-5 text-g-ink">
                   <Num n={k + 1} className="h-6 w-6 text-[11px]" />
                   {c}
                 </li>
@@ -186,7 +186,7 @@ function StepSlide({ t, i }: { t: Tutorial; i: number }) {
       <div className="max-h-[30%] shrink-0 overflow-y-auto">
         <p className="text-[14px] leading-7 text-g-ink/90">{s.body}</p>
         {s.tip && (
-          <p className="mt-2 flex gap-2 text-[12.5px] font-bold leading-6 text-[#efbda0]">
+          <p className="mt-2 flex gap-2 text-[12.5px] font-bold leading-6 text-[#f6b46b]">
             <Lightbulb className="mt-1 h-4 w-4 shrink-0" aria-hidden />
             {s.tip}
           </p>

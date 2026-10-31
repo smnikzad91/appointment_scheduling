@@ -19,7 +19,7 @@ const organizationJsonLd = {
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     // Same guest theme as the landing page. `dark` switches the public components' dark:
-    // variants on (mapped to guest tokens); app-root remaps brand-*/gray-* to the copper / navy-grey brand ramps.
+    // variants on (mapped to guest tokens); app-root remaps brand-*/gray-* to terracotta/warm.
     <div dir="rtl" className="app-root guest-root dark min-h-screen overflow-x-clip">
       <GuestBackdrop />
       <PublicHtmlLang />

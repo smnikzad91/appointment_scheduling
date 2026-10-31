@@ -1,7 +1,7 @@
 // Minimal service worker for the installed app: shows a Persian offline screen instead of the
 // browser's error page when a navigation fails. Deliberately caches nothing else, so users never
 // see stale appointment data.
-const CACHE = "nobata-offline-v2";
+const CACHE = "nobata-offline-v3";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {

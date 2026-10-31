@@ -11,7 +11,7 @@ const TEHRAN: GeoLocation = { lat: 35.6892, lng: 51.389 };
 
 const pinIcon = L.divIcon({
   className: "",
-  html: `<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#9c5e4b;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
+  html: `<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#a34a30;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
   iconSize: [26, 26],
   iconAnchor: [13, 26],
 });
@@ -71,10 +71,10 @@ function LocateButton({ onChange }: { onChange: (location: GeoLocation) => void 
             { enableHighAccuracy: true, timeout: 10_000 },
           );
         }}
-        className="leaflet-control m-2.5 flex h-10 items-center gap-1.5 rounded-full bg-white px-3.5 text-[13px] font-bold text-[#2b344d] shadow-md"
+        className="leaflet-control m-2.5 flex h-10 items-center gap-1.5 rounded-full bg-white px-3.5 text-[13px] font-bold text-[#2a1d26] shadow-md"
         style={{ fontFamily: "Vazirmatn, Tahoma, sans-serif" }}
       >
-        {busy ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden /> : <LocateFixed className="h-4 w-4 text-[#9c5e4b]" aria-hidden />}
+        {busy ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden /> : <LocateFixed className="h-4 w-4 text-[#a34a30]" aria-hidden />}
         {failed ? "موقعیت پیدا نشد" : "موقعیت من"}
       </button>
     </div>

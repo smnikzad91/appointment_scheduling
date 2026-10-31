@@ -50,7 +50,7 @@ export default async function Pricing() {
                 }`}
               >
                 {plan.recommended && (
-                  <span className="absolute -top-3 right-8 rounded-full bg-[image:var(--g-gradient)] px-3 py-1 text-xs font-black text-[#121319]">
+                  <span className="absolute -top-3 right-8 rounded-full bg-[image:var(--g-gradient)] px-3 py-1 text-xs font-black text-[#1a0f14]">
                     پیشنهاد ما
                   </span>
                 )}

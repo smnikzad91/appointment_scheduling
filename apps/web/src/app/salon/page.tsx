@@ -93,7 +93,7 @@ export default function SalonOverviewPage() {
   return (
     <>
       {/* Hero */}
-      <section data-tour="home-hero" className="relative overflow-hidden rounded-[32px] bg-[#2b344d] p-5 text-[#f5ede8] shadow-app dark:bg-[#2b344d] dark:ring-1 dark:ring-app-line">
+      <section data-tour="home-hero" className="relative overflow-hidden rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
         {/* Arch motif — a salon mirror, echoing the landing page. */}
         <span className="pointer-events-none absolute -bottom-16 -left-10 h-48 w-36 rounded-t-full border-[10px] border-app-accent/35" aria-hidden />
         <span className="pointer-events-none absolute -bottom-20 left-16 h-40 w-28 rounded-t-full bg-app-accent/25" aria-hidden />

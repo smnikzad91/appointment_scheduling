@@ -29,7 +29,7 @@ export default function HowItWorks() {
           <span aria-hidden className="absolute inset-x-[16%] top-8 hidden h-px bg-gradient-to-l from-transparent via-g-accent/50 to-transparent sm:block" />
           {STEPS.map((step) => (
             <li key={step.number} className="g-glass-soft g-reveal relative rounded-3xl p-6 transition hover:-translate-y-1 hover:border-g-line-strong">
-              <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-[image:var(--g-gradient)] text-lg font-black text-[#121319] shadow-[0_10px_30px_-8px_rgb(198_138_114/0.8)]">
+              <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-[image:var(--g-gradient)] text-lg font-black text-[#1a0f14] shadow-[0_10px_30px_-8px_rgb(198_138_114/0.8)]">
                 {step.number}
               </span>
               <h3 className="mt-5 text-lg font-bold text-g-ink">{step.title}</h3>

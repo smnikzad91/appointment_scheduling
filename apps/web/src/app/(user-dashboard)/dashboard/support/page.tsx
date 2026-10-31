@@ -27,7 +27,7 @@ type GridCtx = { isRTL: boolean; navigate: (id: string) => void; viewLabel: stri
 
 // ── Themes ────────────────────────────────────────────────────────────────────
 const agLight = themeQuartz.withParams({
-  accentColor:                    "#9c5e4b",
+  accentColor:                    "#465fff",
   backgroundColor:                "#ffffff",
   foregroundColor:                "#111827",   // gray-900
   borderColor:                    "#e5e7eb",   // gray-200
@@ -43,7 +43,7 @@ const agLight = themeQuartz.withParams({
 });
 
 const agDark = themeQuartz.withParams({
-  accentColor:                    "#9c5e4b",
+  accentColor:                    "#465fff",
   backgroundColor:                "#111827",   // gray-900
   foregroundColor:                "#f9fafb",   // gray-50
   borderColor:                    "#374151",   // gray-700

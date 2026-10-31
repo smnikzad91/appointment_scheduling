@@ -144,15 +144,15 @@ function SalonCard({ salon, featured }: { salon: ShowcaseSalon; featured?: boole
       href={`/s/${salon.slug}`}
       className="group block w-[78%] shrink-0 snap-start g-glass-soft overflow-hidden rounded-3xl transition duration-300 hover:-translate-y-1 hover:border-g-accent/30 sm:w-auto"
     >
-      <span className="relative block h-36 bg-gradient-to-br from-[#2b344d] to-[#1e2229]">
+      <span className="relative block h-36 bg-gradient-to-br from-[#3a2330] to-[#1d1420]">
         {salon.coverImageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={salon.coverImageUrl} alt="" className="h-full w-full object-cover transition group-hover:scale-[1.02]" />
         )}
-        {featured && <span className="absolute right-3 top-3 rounded-full bg-[image:var(--g-gradient)] px-2.5 py-0.5 text-[11px] font-black text-[#121319]">ویژه</span>}
+        {featured && <span className="absolute right-3 top-3 rounded-full bg-[image:var(--g-gradient)] px-2.5 py-0.5 text-[11px] font-black text-[#1a0f14]">ویژه</span>}
       </span>
       <span className="flex items-start gap-3 p-4">
-        <span className="relative z-10 -mt-10 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#272c35] text-lg font-black text-g-ink shadow-sm ring-4 ring-g-bg">
+        <span className="relative z-10 -mt-10 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#2a1d2a] text-lg font-black text-g-ink shadow-sm ring-4 ring-g-bg">
           {salon.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={salon.logoUrl} alt="" className="h-full w-full object-cover" />
@@ -229,7 +229,7 @@ function RankRow({
       <Link href={href} className="flex items-center gap-3 g-glass-soft rounded-2xl p-3 transition hover:border-g-line-strong hover:bg-white/[0.05]">
         <span
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black ${
-            rank <= 3 ? "bg-[image:var(--g-gradient)] text-[#121319]" : "bg-g-accent/10 text-g-accent"
+            rank <= 3 ? "bg-[image:var(--g-gradient)] text-[#1a0f14]" : "bg-g-accent/10 text-g-accent"
           }`}
         >
           {toPersianDigits(rank)}
