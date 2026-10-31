@@ -3,17 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { Maximize2, X, ZoomIn, ZoomOut } from "lucide-react";
-import shots from "@/content/tutorialShots.json";
+import { X, ZoomIn, ZoomOut } from "lucide-react";
 import { toPersianDigits } from "@/lib/persian";
 
-interface Box {
+export interface Box {
   x: number;
   y: number;
   w: number;
   h: number;
 }
-const SHOTS = shots as Record<string, { w: number; h: number; boxes: Box[] }>;
 
 /** Numbered glowing frames over the key buttons/fields; positions are % of the image. */
 function Highlights({ boxes, labels }: { boxes: Box[]; labels?: string[] }) {
@@ -36,51 +34,8 @@ function Highlights({ boxes, labels }: { boxes: Box[]; labels?: string[] }) {
   );
 }
 
-export default function Screenshot({ id, alt, callouts }: { id: string; alt: string; callouts?: string[] }) {
-  const [open, setOpen] = useState(false);
-  const shot = SHOTS[id];
-  if (!shot) return null;
-  // Served as is (already ≤ 60 KB WebP): through the image optimizer a re-captured shot under the
-  // same name kept showing the old picture from its cache.
-  const src = `/tutorials/${id}.webp`;
-
-  return (
-    <figure className="w-full max-w-[300px]">
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="group relative block w-full overflow-hidden rounded-[28px] border border-g-line-strong bg-g-bg-2 p-1.5 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.9)] transition hover:border-g-accent/40"
-        aria-label={`بزرگ‌نمایی تصویر: ${alt}`}
-      >
-        <span className="relative block overflow-hidden rounded-[22px]">
-          <Image src={src} alt={alt} width={shot.w} height={shot.h} sizes="300px" unoptimized className="block h-auto w-full" />
-          <Highlights boxes={shot.boxes} labels={callouts} />
-        </span>
-        <span className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-bold text-white opacity-80 backdrop-blur transition group-hover:opacity-100">
-          <Maximize2 className="h-3 w-3" aria-hidden />
-          بزرگ‌نمایی
-        </span>
-      </button>
-      {callouts && callouts.length > 0 && (
-        <figcaption>
-          <ol className="mt-3 flex flex-col gap-1.5 text-[13px] text-g-muted">
-            {callouts.map((c, i) => (
-              <li key={c} className="flex items-center gap-2">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-g-accent/15 text-[11px] font-black text-g-accent">
-                  {toPersianDigits(i + 1)}
-                </span>
-                {c}
-              </li>
-            ))}
-          </ol>
-        </figcaption>
-      )}
-      {open && <Lightbox src={src} alt={alt} shot={shot} callouts={callouts} onClose={() => setOpen(false)} />}
-    </figure>
-  );
-}
-
-function Lightbox({
+/** Full-screen, zoomable view of a step's screenshot with its frames (opened from StoryShot's PhoneShot). */
+export function Lightbox({
   src,
   alt,
   shot,
