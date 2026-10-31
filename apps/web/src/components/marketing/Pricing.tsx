@@ -46,7 +46,7 @@ export default async function Pricing() {
               <div
                 key={plan.id}
                 className={`g-reveal relative flex flex-col rounded-3xl p-8 transition duration-300 hover:-translate-y-1 ${
-                  plan.recommended ? "g-glass g-glow-border shadow-[0_30px_80px_-30px_rgb(242_135_106/0.55)]" : "g-glass-soft hover:border-g-line-strong"
+                  plan.recommended ? "g-glass g-glow-border shadow-[0_30px_80px_-30px_rgb(198_138_114/0.55)]" : "g-glass-soft hover:border-g-line-strong"
                 }`}
               >
                 {plan.recommended && (

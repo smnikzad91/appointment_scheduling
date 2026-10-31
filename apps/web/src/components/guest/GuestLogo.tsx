@@ -12,7 +12,7 @@ export default function GuestLogo({ className = "" }: { className?: string }) {
         width={40}
         height={40}
         priority
-        className="h-10 w-10 shrink-0 drop-shadow-[0_6px_18px_rgb(242_135_106/0.35)] transition group-hover:scale-105"
+        className="h-10 w-10 shrink-0 drop-shadow-[0_6px_18px_rgb(198_138_114/0.35)] transition group-hover:scale-105"
       />
       {SITE_NAME}
     </Link>

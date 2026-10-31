@@ -37,7 +37,7 @@ export default function GuestTabBar() {
               >
                 <span
                   className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors duration-300 ${
-                    active ? "bg-g-accent/15 text-g-accent shadow-[0_0_18px_-6px_rgb(242_135_106/0.8)]" : "text-g-faint"
+                    active ? "bg-g-accent/15 text-g-accent shadow-[0_0_18px_-6px_rgb(198_138_114/0.8)]" : "text-g-faint"
                   }`}
                 >
                   <t.icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.3 : 1.8} aria-hidden />

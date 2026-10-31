@@ -1,4 +1,4 @@
-// Demo data: 5 salons with stylists, services, bookings, approved reviews, gallery and the home-page
+// Demo data: 5 salons with stylists, services, bookings, approved reviews, gallery, wallets, page visits and the home-page
 // showcase, plus one independent stylist (demo-roya, 09900009000: works in «سالن زیبایی رز» under
 // her own name and visits homes) — so every panel has something to show. Everything is tagged so it
 // can be removed: slug "demo-…", phones "0990000…", names end in «(نمونه)».
@@ -91,6 +91,7 @@ async function remove() {
     db.stylist.deleteMany({ where: { id: { in: stylistIds } } }),
     db.service.deleteMany({ where: { salonId: { in: salonIds } } }),
     db.serviceCategory.deleteMany({ where: { salonId: { in: salonIds } } }),
+    db.pageVisit.deleteMany({ where: { salonSlug: { startsWith: "demo-" } } }),
     db.salon.deleteMany({ where: { id: { in: salonIds } } }),
     db.user.deleteMany({ where: { id: { in: userIds } } }),
   ]);
@@ -119,6 +120,7 @@ async function create() {
         province: info.province, city: info.city, address: info.address, phone: `021${String(22000000 + s * 1111).slice(0, 8)}`,
         instagram: info.slug.replace("demo-", "demo.salon."), logoUrl: IMG(`salon${s}-logo.jpg`), coverImageUrl: IMG(`salon${s}-cover.jpg`),
         latitude: +(clat + (rnd() - 0.5) * 0.03).toFixed(6), longitude: +(clng + (rnd() - 0.5) * 0.03).toFixed(6), status: "ACTIVE",
+        brandColor: "#9c5e4b", // the brand bronze (branding/brand.md), not the old terracotta default
       },
     });
     createdSalons.push(salon);
@@ -207,6 +209,7 @@ async function create() {
   }
 
   await createIndependent(passwordHash, customers, createdSalons[0], now);
+  await createWalletsAndVisits(customers, createdSalons, allStylists, now);
 
   // A couple of favourites for the first customer, so /dashboard shows them.
   await db.favoriteSalon.createMany({ data: createdSalons.slice(0, 2).map((s) => ({ userId: customers[0].id, salonId: s.id })) });
@@ -254,7 +257,7 @@ async function createIndependent(passwordHash, customers, hostSalon, now) {
       province: hostSalon.province, city: hostSalon.city, address: hostSalon.address, phone: PHONE(9000),
       instagram: "demo.roya.makeup", logoUrl: IMG("salon2-stylist0-avatar.jpg"), coverImageUrl: IMG("salon2-cover.jpg"),
       latitude: hostSalon.latitude, longitude: hostSalon.longitude, status: "ACTIVE",
-      serviceLocations: ["IN_SALON", "CLIENT_HOME"], hostSalonName: "سالن زیبایی رز", serviceArea: "شمال و مرکز تهران",
+      serviceLocations: ["IN_SALON", "CLIENT_HOME"], hostSalonName: "سالن زیبایی رز", serviceArea: "شمال و مرکز تهران", brandColor: "#9c5e4b",
     },
   });
   const stylist = await db.stylist.create({
@@ -323,6 +326,114 @@ async function createIndependent(passwordHash, customers, hostSalon, now) {
     await db.salonExpense.create({ data: { salonId: salon.id, category, amountToman, spentAt: new Date(now.getFullYear(), now.getMonth(), now.getDate() - d, 12), note } });
   }
   console.log(`independent stylist: ${user.phone} (demo-roya)`);
+}
+
+/**
+ * What the newer screens need (Help Center 2026-10-31): wallets with a history for the first salon's
+ * owner, its first stylist, the independent stylist and the first customer; two online bookings in
+ * «سالن زیبایی رز» paid 25% in advance and waiting for confirmation; a free month running on every
+ * demo business; and 30 days of page visits on /s/demo-rose for «آمار بازدید».
+ */
+async function createWalletsAndVisits(customers, salons, stylists, now) {
+  const daysAgo = (d, h = 12) => {
+    const t = new Date(now);
+    t.setDate(t.getDate() - d);
+    t.setHours(h, 0, 0, 0);
+    return t;
+  };
+  const ledger = async (userId, rows) => {
+    let balance = 0;
+    for (const [kind, amountToman, d, note, appointmentId] of rows) {
+      balance += amountToman;
+      await db.walletTransaction.create({ data: { userId, kind, amountToman, balanceAfter: balance, note, appointmentId, createdAt: daysAgo(d) } });
+    }
+    await db.user.update({ where: { id: userId }, data: { walletBalance: balance } });
+  };
+
+  // Free month: ends 18 days from now, at the end of that day.
+  const trialEnd = new Date(now);
+  trialEnd.setDate(trialEnd.getDate() + 18);
+  trialEnd.setHours(23, 59, 59, 0);
+  // A trial runs on a plan (apps/api subscriptions: planId + planExpiresAt = trialEndsAt): «سالن رشد»
+  // for the salons, «آرایشگر مستقل» for the independent stylist — when those plans exist.
+  const planFor = async (id) => (await db.pricingPlan.findUnique({ where: { id } }))?.id ?? null;
+  const [growth, solo] = [await planFor("plan_growth"), await planFor("plan_solo")];
+  await db.salon.updateMany({ where: { slug: { startsWith: "demo-" }, kind: "SALON" }, data: { trialEndsAt: trialEnd, planExpiresAt: trialEnd, planId: growth } });
+  await db.salon.updateMany({ where: { slug: { startsWith: "demo-" }, kind: "INDEPENDENT" }, data: { trialEndsAt: trialEnd, planExpiresAt: trialEnd, planId: solo } });
+
+  const rose = salons[0];
+  // «نظرات مشتریان» needs one waiting for approval (the random visits may have cancelled its own).
+  if (!(await db.review.count({ where: { salonId: rose.id, status: "PENDING" } }))) {
+    const latest = await db.review.findFirst({ where: { salonId: rose.id, target: "SALON", comment: { not: null } }, orderBy: { createdAt: "desc" } });
+    if (latest) await db.review.updateMany({ where: { appointmentId: latest.appointmentId }, data: { status: "PENDING", moderatedAt: null } });
+  }
+
+  // Two online bookings in the first salon, pre-paid 25% from the customers' wallets, waiting for the salon.
+  const roseStylist = await db.stylist.findFirst({ where: { salonId: rose.id }, orderBy: { createdAt: "asc" }, include: { services: { include: { service: true } } } });
+  const prepaid = [];
+  for (const [c, days, hour] of [[0, 2, 14], [1, 3, 11]]) {
+    const svc = roseStylist.services[c % roseStylist.services.length].service;
+    const startAt = new Date(now);
+    startAt.setDate(startAt.getDate() + days);
+    if (startAt.getDay() === 5) startAt.setDate(startAt.getDate() + 1);
+    startAt.setHours(hour, 0, 0, 0);
+    const prepaidToman = Math.round(svc.priceToman / 4);
+    prepaid.push(await db.appointment.create({
+      data: {
+        salonId: rose.id, stylistId: roseStylist.id, customerId: customers[c].id, startAt, endAt: new Date(+startAt + svc.durationMinutes * 6e4),
+        priceToman: svc.priceToman, status: "PENDING", bookedOnline: true, prepaidToman, prepaymentStatus: "HELD",
+        services: { create: { serviceId: svc.id, priceToman: svc.priceToman, durationMinutes: svc.durationMinutes } },
+      },
+    }));
+  }
+
+  await ledger(customers[0].id, [
+    ["TOP_UP", 1_000_000, 9, null],
+    ["PREPAYMENT", -prepaid[0].prepaidToman, 1, "پیش‌پرداخت نوبت", prepaid[0].id],
+  ]);
+  await ledger(customers[1].id, [
+    ["TOP_UP", 600_000, 4, null],
+    ["PREPAYMENT", -prepaid[1].prepaidToman, 1, "پیش‌پرداخت نوبت", prepaid[1].id],
+  ]);
+  await ledger(rose.ownerId, [
+    ["TOP_UP", 1_000_000, 20, null],
+    ["PREPAYMENT_INCOME", 187_500, 12, "پیش‌پرداخت نوبت انجام‌شده"],
+    ["SMS_COST", -230, 12, "یادآوری به مشتری"],
+    ["BALANCE_INCOME", 560_000, 8, "باقی‌مانده نوبت از کیف پول مشتری"],
+    ["SMS_COST", -230, 6, "پیامک نوبت تازه"],
+    ["PREPAYMENT_INCOME", 95_000, 4, "پیش‌پرداخت نوبت انجام‌شده"],
+    ["PAYOUT_SENT", -350_000, 2, "سهم آرایشگر"],
+    ["SMS_COST", -230, 1, "یادآوری به مشتری"],
+  ]);
+  const firstStylistUser = stylists[0].userId;
+  await ledger(firstStylistUser, [
+    ["PAYOUT_RECEIVED", 350_000, 2, "سهم از سالن"],
+    ["SMS_COST", -230, 1, "یادآوری به مشتری"],
+  ]);
+  const roya = await db.user.findUnique({ where: { phone: PHONE(9000) } });
+  await ledger(roya.id, [
+    ["TOP_UP", 200_000, 15, null],
+    ["PREPAYMENT_INCOME", 300_000, 7, "پیش‌پرداخت نوبت انجام‌شده"],
+    ["SMS_COST", -230, 3, "یادآوری به مشتری"],
+  ]);
+
+  // /s/demo-rose views over 30 days (more on weekends), some opening the booking sheet and booking.
+  const REFS = [["search", "google"], ["search", "google"], ["social", "instagram"], ["social", "instagram"], ["direct", null], ["internal", null], ["external", "t.me"]];
+  const rows = [];
+  for (let d = 0; d < 30; d++) {
+    const views = 9 + Math.floor(rnd() * 14) + (new Date(+now - d * 864e5).getDay() >= 4 ? 6 : 0);
+    for (let v = 0; v < views; v++) {
+      const [referrerType, referrerSource] = pick(REFS);
+      const visitorHash = `demo-${d}-${Math.floor(v * 0.8)}`;
+      const createdAt = daysAgo(d, 9 + Math.floor(rnd() * 13));
+      const base = { path: "/s/demo-rose", salonSlug: "demo-rose", visitorHash, referrerType, referrerSource, browser: pick(["Chrome", "Chrome", "Safari", "Samsung"]),
+        os: pick(["Android", "Android", "iOS"]), device: "mobile", country: "IR", city: pick(["Tehran", "Tehran", "Karaj"]), createdAt };
+      rows.push({ ...base, kind: "VIEW" });
+      if (rnd() < 0.18) rows.push({ ...base, kind: "BOOKING_OPEN" });
+      if (rnd() < 0.05) rows.push({ ...base, kind: "BOOKING_DONE" });
+    }
+  }
+  await db.pageVisit.createMany({ data: rows });
 }
 
 try {

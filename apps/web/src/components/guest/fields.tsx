@@ -91,7 +91,7 @@ export function GlassCheckbox({ checked, onChange, children }: { checked: boolea
       <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span
         aria-hidden
-        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-g-line-strong bg-white/5 transition peer-checked:border-transparent peer-checked:bg-[image:var(--g-gradient)] peer-checked:shadow-[0_0_14px_-2px_rgb(242_135_106/0.8)] peer-focus-visible:ring-2 peer-focus-visible:ring-g-accent"
+        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-g-line-strong bg-white/5 transition peer-checked:border-transparent peer-checked:bg-[image:var(--g-gradient)] peer-checked:shadow-[0_0_14px_-2px_rgb(198_138_114/0.8)] peer-focus-visible:ring-2 peer-focus-visible:ring-g-accent"
       >
         <svg viewBox="0 0 16 16" className={`h-3 w-3 text-[#121319] transition ${checked ? "scale-100 opacity-100" : "scale-50 opacity-0"}`} fill="none" stroke="currentColor" strokeWidth="2.6">
           <path d="M3.5 8.5l3 3 6-7" strokeLinecap="round" strokeLinejoin="round" />

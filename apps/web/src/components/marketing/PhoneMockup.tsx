@@ -21,7 +21,7 @@ export default function PhoneMockup() {
   return (
     <div className="relative mx-auto w-full max-w-[340px]">
       {/* glow behind the phone */}
-      <div aria-hidden className="absolute inset-8 rounded-full bg-[radial-gradient(circle,rgb(242_135_106/0.45),transparent_70%)]" />
+      <div aria-hidden className="absolute inset-8 rounded-full bg-[radial-gradient(circle,rgb(198_138_114/0.45),transparent_70%)]" />
 
       <div className="g-glass g-glow-border relative rounded-[2.6rem] p-2.5">
         <div className="rounded-[2.1rem] bg-[#121319]/90 p-4">
@@ -42,7 +42,7 @@ export default function PhoneMockup() {
                 key={d.label}
                 className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] ${
                   d.selected
-                    ? "bg-[image:var(--g-gradient)] font-bold text-[#121319] shadow-[0_6px_18px_-6px_rgb(242_135_106/0.9)]"
+                    ? "bg-[image:var(--g-gradient)] font-bold text-[#121319] shadow-[0_6px_18px_-6px_rgb(198_138_114/0.9)]"
                     : d.muted
                     ? "bg-white/[0.03] text-g-faint/60"
                     : "bg-white/5 text-g-muted"

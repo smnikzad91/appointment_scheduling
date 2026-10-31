@@ -105,7 +105,7 @@ export default async function TutorialPage({ params }: Props) {
               <div className="flex flex-col gap-6 md:flex-row md:items-start">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[image:var(--g-gradient)] text-base font-black text-[#121319] shadow-[0_10px_26px_-10px_rgb(242_135_106/0.9)]">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[image:var(--g-gradient)] text-base font-black text-[#121319] shadow-[0_10px_26px_-10px_rgb(198_138_114/0.9)]">
                       {toPersianDigits(i + 1)}
                     </span>
                     <h2 className="text-lg font-black leading-8 text-g-ink sm:text-xl">{s.title}</h2>

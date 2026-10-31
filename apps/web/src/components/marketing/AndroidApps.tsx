@@ -13,7 +13,7 @@ export default function AndroidApps() {
     <section id="apps" className="scroll-mt-20 py-10 sm:py-16">
       <div className="mx-auto max-w-6xl px-5">
         <div className="g-glass g-glow-border g-reveal relative overflow-hidden rounded-[2rem] px-6 py-14 text-center sm:px-14">
-          <div aria-hidden className="absolute -top-40 left-1/2 h-80 w-[36rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(224_80_122/0.35),transparent_70%)]" />
+          <div aria-hidden className="absolute -top-40 left-1/2 h-80 w-[36rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgb(156_94_75/0.35),transparent_70%)]" />
           <span className="g-kicker relative">اپلیکیشن اندروید</span>
           <h2 className="relative mt-4 text-3xl font-black text-g-ink sm:text-[40px]">
             یک اپ، <span className="g-gradient-text">برای همه</span>

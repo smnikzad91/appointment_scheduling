@@ -22,7 +22,7 @@ function Highlights({ boxes, labels }: { boxes: Box[]; labels?: string[] }) {
       {boxes.map((b, i) => (
         <span
           key={i}
-          className="pointer-events-none absolute rounded-[10px] border-2 border-g-accent-3 shadow-[0_0_0_3px_rgb(246_180_107/0.25),0_0_18px_2px_rgb(242_135_106/0.55)] motion-safe:animate-[tut-pulse_2.4s_ease-in-out_infinite]"
+          className="pointer-events-none absolute rounded-[10px] border-2 border-g-accent-3 shadow-[0_0_0_3px_rgb(239_189_160/0.25),0_0_18px_2px_rgb(198_138_114/0.55)] motion-safe:animate-[tut-pulse_2.4s_ease-in-out_infinite]"
           style={{ left: `${b.x}%`, top: `${b.y}%`, width: `${b.w}%`, height: `${b.h}%`, animationDelay: `${i * 0.3}s` }}
           aria-hidden
         >

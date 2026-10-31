@@ -26,7 +26,7 @@ const ONLY = process.argv[2] ?? "";
 const { TUTORIALS, TUTORIAL_ROLES } = await import(path.join(WEB, "src/content/tutorials.ts"));
 const SHOTS = JSON.parse(readFileSync(path.join(WEB, "src/content/tutorialShots.json"), "utf8"));
 const FONT = readFileSync(path.join(WEB, "public/fonts/Vazirmatn-Variable.woff2")).toString("base64");
-const ICON = readFileSync(path.join(WEB, "public/icons/icon-192x192.png")).toString("base64");
+const ICON = readFileSync(path.join(WEB, "public/images/logo/nobatet-symbol-v2.png")).toString("base64");
 
 /** Panel folders, in the order the highlights are meant to appear. */
 const PANELS = [
@@ -55,7 +55,7 @@ const STEP_SLUGS = {
   "owner-stylists-3": "send_activation_link",
   "owner-services-1": "add_service",
   "owner-services-2": "service_price_and_duration",
-  "owner-services-3": "create_category",
+  "owner-services-3": "manage_categories",
   "owner-booking-1": "new_booking",
   "owner-booking-2": "customer_and_stylist",
   "owner-booking-3": "service_and_day",
@@ -104,8 +104,9 @@ const STEP_SLUGS = {
   "customer-book-4": "day_and_time",
   "customer-book-5": "contact_details",
   "customer-book-6": "verification_code",
-  "customer-book-7": "confirm_booking",
-  "customer-book-8": "booking_done",
+  "customer-book-7": "prepayment_from_wallet",
+  "customer-book-8": "pay_and_book",
+  "customer-book-9": "booking_done",
   "customer-bookings-1": "upcoming_bookings",
   "customer-bookings-2": "past_bookings",
   "customer-signup-1": "account_details",
@@ -116,7 +117,30 @@ const STEP_SLUGS = {
   "customer-saved-1": "save_favorite_salon",
   "customer-saved-2": "favorites_on_home",
   "customer-waitlist-1": "waitlist_for_full_days",
-  "customer-wallet-1": "wallet_card_and_top_up",
+  "customer-wallet-1": "top_up_wallet",
+  "customer-wallet-2": "exact_amount_card_transfer",
+  "customer-cancel-1": "cancel_and_prepayment",
+  "stylist-wallet-1": "stylist_wallet",
+  "stylist-share-1": "your_link_and_poster",
+  "owner-prepaid-1": "new_online_booking",
+  "owner-prepaid-2": "confirm_prepaid_booking",
+  "owner-wallet-1": "top_up_wallet",
+  "owner-wallet-2": "exact_amount_card_transfer",
+  "owner-wallet-3": "confirm_transfer",
+  "owner-wallet-4": "balance_and_withdraw",
+  "owner-wallet-5": "withdrawal_request",
+  "owner-plan-1": "free_month_and_plan",
+  "owner-plan-2": "choose_plan_and_months",
+  "owner-insights-1": "visits_trend",
+  "owner-insights-2": "booking_funnel",
+  "owner-insights-3": "visit_sources",
+  "owner-insights-4": "customer_behaviour",
+  "owner-insights-5": "busy_week_and_top_services",
+  "owner-share-1": "link_and_qr_code",
+  "owner-share-2": "promo_poster",
+  "indie-wallet-1": "wallet",
+  "indie-plan-1": "free_month_and_plan",
+  "indie-share-1": "link_and_poster",
   "customer-support-1": "support_ticket",
   "customer-support-2": "write_request",
   "customer-profile-1": "profile_and_password",
@@ -159,55 +183,56 @@ const STYLE = `
 * { box-sizing: border-box; margin: 0; }
 html, body { width: 1080px; height: 1920px; }
 body {
-  font-family: Vazirmatn, sans-serif; direction: rtl; color: #2a1d26; overflow: hidden; position: relative;
-  background: radial-gradient(900px 700px at 100% 0%, #f4e1d4 0%, transparent 70%),
-              radial-gradient(800px 600px at 0% 100%, #efe0cf 0%, transparent 70%), #f6efe6;
+  font-family: Vazirmatn, sans-serif; direction: rtl; color: #f5ede8; overflow: hidden; position: relative;
+  /* brand palette (branding/brand.md): Obsidian Charcoal with a copper and navy glow */
+  background: radial-gradient(900px 700px at 100% 0%, rgb(198 138 114 / .22) 0%, transparent 70%),
+              radial-gradient(800px 600px at 0% 100%, rgb(43 52 77 / .75) 0%, transparent 70%), #121319;
 }
 .top { position: absolute; top: 90px; left: 60px; right: 60px; display: flex; justify-content: space-between; align-items: center; }
-.brand { display: flex; align-items: center; gap: 14px; font-weight: 900; font-size: 38px; color: #86391f; }
-.brand img { width: 60px; height: 60px; border-radius: 16px; display: block; }
-.chip { font-size: 26px; font-weight: 700; padding: 10px 24px; border-radius: 999px; background: #fffbf6; border: 2px solid #e8dccf; color: #7b6b71; }
-.foot { position: absolute; bottom: 70px; left: 0; right: 0; text-align: center; font-size: 26px; color: #7b6b71; direction: ltr; letter-spacing: .5px; }
-.foot b { color: #86391f; }
+.brand { display: flex; align-items: center; gap: 14px; font-weight: 900; font-size: 38px; color: #efbda0; }
+.brand img { width: 68px; height: 68px; display: block; }
+.chip { font-size: 26px; font-weight: 700; padding: 10px 24px; border-radius: 999px; background: #1e2229; border: 2px solid #2f3540; color: #a39690; }
+.foot { position: absolute; bottom: 70px; left: 0; right: 0; text-align: center; font-size: 26px; color: #a39690; direction: ltr; letter-spacing: .5px; }
+.foot b { color: #c68a72; }
 
 /* step slide */
 .head { position: absolute; top: 250px; left: 60px; right: 60px; height: 190px; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; }
-.meta { display: flex; gap: 14px; align-items: center; font-size: 26px; font-weight: 700; color: #7b6b71; }
-.meta .n { background: #a34a30; color: #fffaf5; padding: 6px 20px; border-radius: 999px; }
+.meta { display: flex; gap: 14px; align-items: center; font-size: 26px; font-weight: 700; color: #a39690; }
+.meta .n { background: linear-gradient(115deg, #efbda0, #c68a72 55%, #9c5e4b); color: #121319; padding: 6px 20px; border-radius: 999px; }
 .meta .g { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 h1 { font-size: 50px; line-height: 1.35; font-weight: 900; }
 .stage { position: absolute; top: 460px; left: 0; right: 0; height: 1010px; }
 /* height set by the layout script (the step text below takes what it needs); width follows */
-.phone { position: absolute; top: 0; height: 100%; aspect-ratio: 486 / 1010; right: 48px; padding: 12px; border-radius: 52px; background: #2a1d26;
-  box-shadow: 0 30px 60px -20px rgb(42 29 38 / .45); }
+.phone { position: absolute; top: 0; height: 100%; aspect-ratio: 486 / 1010; right: 48px; padding: 12px; border-radius: 52px; background: #2b344d;
+  box-shadow: 0 0 0 2px rgb(198 138 114 / .35), 0 30px 70px -20px rgb(0 0 0 / .8); }
 .phone.solo { right: auto; left: 50%; transform: translateX(-50%); }
 .screen { position: relative; width: 100%; height: 100%; border-radius: 40px; overflow: hidden; }
 /* the screenshot at its own aspect ratio, cropped at the bottom by .screen; frames in % of it */
 .shot { position: relative; width: 100%; }
 .shot img { width: 100%; display: block; }
-.box { position: absolute; border: 5px solid #ff7a45; border-radius: 16px; box-shadow: 0 0 0 5px rgb(255 122 69 / .3), 0 6px 18px rgb(255 122 69 / .35); }
-.num { position: absolute; transform: translate(-50%, -50%); width: 50px; height: 50px; border-radius: 50%; background: #ff7a45; color: #fff; font-weight: 900; font-size: 28px;
-  display: flex; align-items: center; justify-content: center; border: 4px solid #fffaf5; box-shadow: 0 4px 10px rgb(0 0 0 / .25); }
+.box { position: absolute; border: 5px solid #e0956f; border-radius: 16px; box-shadow: 0 0 0 5px rgb(239 189 160 / .45), 0 6px 18px rgb(156 94 75 / .45); }
+.num { position: absolute; transform: translate(-50%, -50%); width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(115deg, #efbda0, #c68a72 55%, #9c5e4b); color: #121319; font-weight: 900; font-size: 28px;
+  display: flex; align-items: center; justify-content: center; border: 4px solid #f5ede8; box-shadow: 0 4px 10px rgb(0 0 0 / .35); }
 .notes { position: absolute; top: 0; left: 50px; width: 450px; height: 100%; }
-.note { position: absolute; left: 0; width: 450px; background: #fffbf6; border: 3px solid #ff7a45; border-radius: 26px; padding: 18px 22px;
-  display: flex; gap: 16px; align-items: center; box-shadow: 0 10px 24px -12px rgb(42 29 38 / .35); }
+.note { position: absolute; left: 0; width: 450px; background: #1e2229; border: 3px solid #c68a72; border-radius: 26px; padding: 18px 22px;
+  display: flex; gap: 16px; align-items: center; box-shadow: 0 14px 30px -12px rgb(0 0 0 / .7); }
 .note .num { position: static; transform: none; flex: none; width: 48px; height: 48px; font-size: 26px; border: none; box-shadow: none; }
 .note p { font-size: 31px; line-height: 1.5; font-weight: 800; }
 svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; z-index: 1; pointer-events: none; }
 .shot .num { z-index: 2; } /* numbers above the leader lines */
 .body { position: absolute; bottom: 230px; left: 60px; right: 60px; display: flex; flex-direction: column; gap: 10px; }
 .body p { font-size: 31px; line-height: 1.7; font-weight: 500; }
-.body .tip { font-size: 26px; color: #2f6f68; font-weight: 700; }
+.body .tip { font-size: 26px; color: #efbda0; font-weight: 700; }
 
 /* cover slide */
 .cover { position: absolute; top: 300px; left: 70px; right: 70px; bottom: 300px; display: flex; flex-direction: column; justify-content: center; gap: 34px; }
-.cover .role { align-self: flex-start; font-size: 30px; font-weight: 800; color: #fffaf5; background: #a34a30; padding: 10px 30px; border-radius: 999px; }
+.cover .role { align-self: flex-start; font-size: 30px; font-weight: 800; color: #121319; background: linear-gradient(115deg, #efbda0, #c68a72 55%, #9c5e4b); padding: 10px 30px; border-radius: 999px; }
 .cover h1 { font-size: 76px; line-height: 1.3; }
-.cover .sum { font-size: 36px; line-height: 1.75; color: #5b4a52; }
+.cover .sum { font-size: 36px; line-height: 1.75; color: #d8ccc6; }
 .cover ol { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 18px; margin-top: 10px; }
-.cover li { display: flex; gap: 20px; align-items: center; font-size: 33px; font-weight: 700; background: #fffbf6; border: 2px solid #e8dccf; border-radius: 24px; padding: 16px 24px; }
-.cover li span { flex: none; width: 52px; height: 52px; border-radius: 50%; background: #f4e1d4; color: #86391f; font-weight: 900; display: flex; align-items: center; justify-content: center; }
-.cover .min { font-size: 28px; color: #7b6b71; font-weight: 700; }
+.cover li { display: flex; gap: 20px; align-items: center; font-size: 33px; font-weight: 700; background: #1e2229; border: 2px solid #2f3540; border-radius: 24px; padding: 16px 24px; }
+.cover li span { flex: none; width: 52px; height: 52px; border-radius: 50%; background: #35292a; color: #efbda0; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.cover .min { font-size: 28px; color: #a39690; font-weight: 700; }
 `;
 
 // Runs in the page: places the captions beside their frames without overlapping, draws the
@@ -255,8 +280,8 @@ const LAYOUT = `
     const d = 'M' + x1 + ' ' + y1 + ' H' + mid + ' L' + (mid + 24) + ' ' + y2 + ' H' + x2;
     // a light halo keeps the line visible where it crosses a dark screenshot
     svg.insertAdjacentHTML("beforeend",
-      '<path d="' + d + '" fill="none" stroke="#fffaf5" stroke-opacity=".85" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="' + d + '" fill="none" stroke="#ff7a45" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>');
+      '<path d="' + d + '" fill="none" stroke="#121319" stroke-opacity=".7" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="' + d + '" fill="none" stroke="#e0956f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>');
   });
 })();
 `;

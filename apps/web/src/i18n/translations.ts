@@ -77,7 +77,7 @@ const translations = {
     seoSettingsTitle: "SEO Settings",
     seoSettingsSubtitle: "The title, description and keywords search engines see for each public page. An empty field uses the default shown in grey.",
     seoFieldTitle: "Page Title *",
-    seoFieldTitlePlaceholder: "e.g. Nobata — online booking for beauty salons",
+    seoFieldTitlePlaceholder: "e.g. Nobatet — online booking for beauty salons",
     seoFieldDescription: "Meta Description *",
     seoFieldDescriptionPlaceholder: "A concise summary shown in search results…",
     seoFieldKeywords: "Keywords",

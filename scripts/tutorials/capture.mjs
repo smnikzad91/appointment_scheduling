@@ -1,9 +1,13 @@
 // Captures the Help Center screenshots from the running app (demo data) and records where the
 // highlighted buttons/fields are, so the callout frames on /tutorials line up with the real UI.
 //
-//   node scripts/demo/seed.mjs            # demo salons, stylists, customers (password demo1234)
+//   node scripts/demo/seed.mjs            # demo salons, stylists, customers, wallets, visits (password demo1234)
 //   python3 scripts/demo/make-images.py   # demo photos (optional, but screenshots look broken without)
-//   (apps/api on :3001, apps/web on :3000 — or TUTORIAL_API_URL / TUTORIAL_BASE_URL)
+//   node scripts/tutorials/fake-nodepass.mjs   # stand-in payment API on :3199 for the top-up screens
+//   (apps/api on :3001, apps/web on :3000 — or TUTORIAL_API_URL / TUTORIAL_BASE_URL. Run both against a
+//   separate demo database, never production: SMS_DRIVER=log on the api; on the web NODEPASS_URL=
+//   http://127.0.0.1:3199 NODEPASS_API_KEY=demo, and NEXT_PUBLIC_SITE_URL=https://nobatet.app at build
+//   so the share links read nobatet.app. A production build (next build + start) is ~5× faster than dev.)
 //   node scripts/tutorials/capture.mjs [shot-id-prefix]
 //
 // Writes apps/web/public/tutorials/<id>.webp and apps/web/src/content/tutorialShots.json
@@ -47,7 +51,7 @@ async function pageFor(as) {
       deviceScaleFactor: SCALE,
       locale: "fa-IR",
       geolocation: { latitude: 35.757, longitude: 51.41 },
-      permissions: ["geolocation"],
+      permissions: ["geolocation", "clipboard-read", "clipboard-write"],
       colorScheme: "light",
     });
     // no install banner / dev overlay noise in screenshots
@@ -179,9 +183,9 @@ await shot("owner-stylists-3", "owner", async (p) => {
   });
 }, (p) => [inSheet(p).getByRole("button", { name: /ارسال|کپی/ }).first(), inSheet(p).locator("svg:has(title)").first()]);
 
-await shot("owner-services-1", "owner", go("/salon/services"), (p) => [p.getByRole("button", { name: "افزودن خدمت" }), p.getByRole("button", { name: "مدیریت دسته‌بندی‌ها" })]);
+await shot("owner-services-1", "owner", go("/salon/services"), (p) => [p.getByRole("button", { name: "افزودن خدمت" }).first(), p.getByRole("button", { name: "دسته‌بندی‌ها", exact: true })]);
 await shot("owner-services-2", "owner", async (p) => {
-  await p.getByRole("button", { name: "افزودن خدمت" }).click();
+  await p.getByRole("button", { name: "افزودن خدمت" }).first().click();
   await settle(p);
   const s = inSheet(p);
   await s.getByLabel("نام خدمت").fill("کراتینه مو");
@@ -189,8 +193,9 @@ await shot("owner-services-2", "owner", async (p) => {
 await shot("owner-services-3", "owner", async (p) => {
   await p.keyboard.press("Escape");
   await settle(p);
-  await p.getByRole("button", { name: "مدیریت دسته‌بندی‌ها" }).click();
-}, (p) => [inSheet(p).getByRole("button", { name: "افزودن دسته" })]);
+  await p.getByRole("button", { name: "دسته‌بندی‌ها", exact: true }).click();
+  await settle(p);
+}, (p) => [inSheet(p).getByPlaceholder(/نام دسته جدید/), inSheet(p).getByRole("button", { name: /^ویرایش / }).first(), inSheet(p).getByRole("button", { name: /^بردن .* به (بالا|پایین)$/ }).first()]);
 
 await shot("owner-booking-1", "owner", async (p) => {
   await go("/salon/appointments")(p);
@@ -389,26 +394,55 @@ await shot("customer-book-4", "guest", async (p) => {
   await settle(p, 400);
 }, (p) => [day(p), inSheet(p).locator("button[aria-pressed=true]").filter({ hasText: /^[۰-۹]{2}:[۰-۹]{2}$/ }).first()]);
 const nameInput = (p) => inSheet(p).locator('input[type="text"]').first();
+const lastNameInput = (p) => inSheet(p).locator('input[type="text"]').nth(1);
 const phoneInput = (p) => inSheet(p).locator('input[type="tel"]').first();
 await shot("customer-book-5", "guest", async (p) => {
   await inSheet(p).getByRole("button", { name: "ادامه" }).click();
   await settle(p, 1000);
-  await nameInput(p).fill("نگار رضایی");
-  await phoneInput(p).fill("09900000001");
-}, (p) => [nameInput(p), phoneInput(p), inSheet(p).getByRole("button", { name: "ارسال کد تایید" })]);
+  await nameInput(p).fill("نگار");
+  await lastNameInput(p).fill("رضایی");
+  await phoneInput(p).fill("09900000099"); // a new demo number (removed by the seed): an empty wallet
+}, (p) => [nameInput(p).locator("../.."), phoneInput(p), inSheet(p).getByRole("button", { name: "ارسال کد تایید" })]);
 await shot("customer-book-6", "guest", async (p) => {
-  const res = p.waitForResponse((r) => r.url().includes("/otp/request"));
+  // The demo API answers with the code (devCode), which the sheet would fill and submit at once;
+  // keep it out of the page so the code screen stays, and type it in the next shot.
+  await p.route("**/auth/otp/request", async (route) => {
+    const res = await route.fetch();
+    const body = await res.json().catch(() => ({}));
+    shared.devCode = body.devCode;
+    delete body.devCode;
+    await route.fulfill({ response: res, json: body });
+  });
   await inSheet(p).getByRole("button", { name: "ارسال کد تایید" }).click();
-  shared.devCode = (await (await res).json().catch(() => ({}))).devCode;
-  await settle(p, 1000);
+  await settle(p, 1500);
+  await p.unroute("**/auth/otp/request");
 }, (p) => [inSheet(p).getByLabel("رقم 1 کد تایید").locator("..")]);
+// A new guest's wallet is empty: the summary shows the 25% pre-payment and the top-up box.
 await shot("customer-book-7", "guest", async (p) => {
   if (shared.devCode) await inSheet(p).getByLabel("رقم 1 کد تایید").pressSequentially(shared.devCode, { delay: 80 });
   await settle(p, 2500);
-  await scrollTo(inSheet(p).getByRole("button", { name: "تایید نهایی رزرو" }));
-}, (p) => [inSheet(p).getByRole("button", { name: "تایید نهایی رزرو" })]);
-await shot("customer-book-8", "guest", async (p) => {
-  await inSheet(p).getByRole("button", { name: "تایید نهایی رزرو" }).click();
+  await scrollTo(inSheet(p).getByText(/^پیش‌پرداخت از کیف پول/));
+}, (p) => [inSheet(p).getByText(/^پیش‌پرداخت از کیف پول/).locator(".."), inSheet(p).getByText(/موجودی کیف پول برای پیش‌پرداخت کافی نیست/).locator("..")]);
+// The signed-in demo customer has money in the wallet: same booking, paid from it.
+await shot("customer-book-8", "customer", async (p) => {
+  await go("/s/demo-rose")(p);
+  await p.getByRole("button", { name: /رزرو نوبت/ }).last().click();
+  await settle(p, 1200);
+  await inSheet(p).locator("button").filter({ hasText: "کوتاهی مو" }).first().click();
+  await inSheet(p).getByRole("button", { name: "ادامه" }).click();
+  await settle(p, 1200);
+  await inSheet(p).locator("button").filter({ hasText: "فرقی نمی‌کند" }).first().click();
+  await settle(p, 1500);
+  await inSheet(p).getByRole("listbox", { name: "انتخاب روز" }).locator("button").nth(2).click();
+  await settle(p, 1800);
+  await slot(p).click();
+  await settle(p, 400);
+  await inSheet(p).getByRole("button", { name: "ادامه" }).click();
+  await settle(p, 2500);
+  await scrollTo(inSheet(p).getByRole("button", { name: /از کیف پول و ثبت رزرو/ }));
+}, (p) => [inSheet(p).getByRole("button", { name: /از کیف پول و ثبت رزرو/ })]);
+await shot("customer-book-9", "customer", async (p) => {
+  await inSheet(p).getByRole("button", { name: /از کیف پول و ثبت رزرو/ }).click();
   await settle(p, 2500);
 });
 
@@ -462,7 +496,7 @@ await shot("customer-saved-1", "customer", go("/s/demo-rose"), (p) => [p.getByRo
 await shot("customer-saved-2", "customer", go("/dashboard"), (p) => [p.locator("main a").filter({ hasText: "(نمونه)" }).filter({ hasNotText: "نوبت بعدی" }).first()]);
 
 // Wallet, support, profile.
-await shot("customer-wallet-1", "customer", go("/dashboard/finance"), (p) => [p.getByRole("button", { name: "افزودن کارت" }).or(p.getByRole("link", { name: "افزودن کارت" })).first(), p.getByRole("button", { name: "واریز جدید" }).or(p.getByRole("link", { name: "واریز جدید" })).first()]);
+await shot("customer-wallet-1", "customer", go("/dashboard/finance"), (p) => [p.getByPlaceholder("۲۰۰٬۰۰۰"), p.getByRole("button", { name: "ادامه", exact: true }), p.getByText("موجودی", { exact: true }).first().locator("..")]);
 await shot("customer-support-1", "customer", go("/dashboard/support"), (p) => [p.getByRole("button", { name: "تیکت جدید" }).or(p.getByRole("link", { name: "تیکت جدید" })).first()]);
 await shot("customer-support-2", "customer", async (p) => {
   await p.getByRole("button", { name: "تیکت جدید" }).or(p.getByRole("link", { name: "تیکت جدید" })).first().click();
@@ -587,5 +621,139 @@ await shot("indie-search-1", "guest", async (p) => {
   await settle(p, 1500);
 }, (p) => [p.getByRole("radio", { name: "آرایشگران مستقل" }), p.locator("main a").filter({ hasText: "رویا میکاپ" }).first()]);
 await shot("indie-reviews-1", "independent", go("/salon/reviews"), (p) => [p.getByRole("button", { name: "تایید و نمایش" }).first()]);
+
+// ───────────── Wallet, plans, insights, share kit, pre-paid bookings (2026-10-31) ─────────────
+// The demo web runs with NODEPASS_URL pointing at scripts/tutorials/fake-nodepass.mjs, so «ادامه»
+// on a top-up opens the real card-to-card screen without reaching nodepass.
+
+const panel = (p, title) => p.locator("section").filter({ has: p.getByRole("heading", { name: title, exact: true }) }).first();
+/** Scrolls `loc` to just under the sticky panel header. */
+const scrollTop = async (loc) => {
+  await loc.first().evaluate((el) => window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 70 }));
+  await settle(loc.page(), 500);
+};
+
+/** Starts a top-up of `amount` toman on the wallet page and opens the card-to-card screen. */
+async function startTopUp(p, amount) {
+  const cancel = p.getByRole("button", { name: "لغو", exact: true });
+  if (await cancel.count()) {
+    await cancel.first().click(); // a pending one from an earlier run
+    await settle(p, 1200);
+  }
+  await p.getByPlaceholder("۲۰۰٬۰۰۰").fill(String(amount));
+  await p.getByRole("button", { name: "ادامه", exact: true }).click();
+  await settle(p, 1800);
+}
+const exactBox = (p) => p.locator('label:has(input[type="checkbox"])').filter({ hasText: "تأیید می‌کنم" });
+
+await shot("owner-wallet-1", "owner", go("/salon/wallet"), (p) => [p.getByPlaceholder("۲۰۰٬۰۰۰"), p.locator("button").filter({ hasText: /^۵۰۰٬۰۰۰$/ }).first(), p.getByRole("button", { name: "ادامه", exact: true })]);
+await shot("owner-wallet-2", "owner", async (p) => {
+  await startTopUp(p, 500000);
+  await p.getByRole("button", { name: "کپی", exact: true }).first().click();
+  await p.getByRole("button", { name: "کپی مبلغ دقیق" }).click();
+  await settle(p, 300);
+}, (p) => [p.getByText("مبلغ دقیق (ریال)").locator(".."), p.getByRole("alert").filter({ hasText: "توجه بسیار مهم" }), exactBox(p)]);
+await shot("owner-wallet-3", "owner", async (p) => {
+  await exactBox(p).click();
+  await settle(p, 300);
+  await scrollTo(p.getByRole("button", { name: "واریز کردم" }));
+}, (p) => [exactBox(p), p.getByRole("button", { name: "واریز کردم" })]);
+await shot("owner-wallet-4", "owner", async (p) => {
+  await p.getByRole("button", { name: "لغو", exact: true }).first().click();
+  await settle(p, 1200);
+  await scrollTo(p.getByRole("button", { name: /برداشت از کیف پول/ }));
+}, (p) => [p.getByRole("button", { name: /برداشت از کیف پول/ }), p.getByText("موجودی", { exact: true }).first().locator("..")]);
+await shot("owner-wallet-5", "owner", async (p) => {
+  await p.getByRole("button", { name: /برداشت از کیف پول/ }).click();
+  await settle(p, 1000);
+}, (p) => [inSheet(p).getByLabel("مبلغ (تومان)"), inSheet(p).getByLabel("شماره شبا"), inSheet(p).getByRole("button", { name: "ثبت درخواست برداشت" })]);
+
+await shot("owner-plan-1", "owner", async (p) => {
+  await p.keyboard.press("Escape");
+  await go("/salon/settings")(p);
+  await scrollTop(p.locator("#subscription"));
+}, (p) => [p.locator("#subscription"), p.getByRole("button", { name: /پلن از کیف پول/ })]);
+await shot("owner-plan-2", "owner", async (p) => {
+  await p.getByRole("button", { name: /پلن از کیف پول/ }).click();
+  await settle(p, 1200);
+  await inSheet(p).locator("button").filter({ hasText: "سالن رشد" }).first().click();
+  await settle(p, 400);
+}, (p) => [inSheet(p).locator("button").filter({ hasText: "سالن رشد" }).first(), inSheet(p).getByRole("button", { name: /^[۰-۹]+ ماه$/ }).first().locator(".."), inSheet(p).getByRole("button", { name: /از کیف پول$/ })]);
+
+await shot("owner-insights-1", "owner", async (p) => {
+  await p.keyboard.press("Escape");
+  await go("/salon/insights/visits")(p);
+}, (p) => [panel(p, "روند بازدیدکننده‌ها (روزانه)"), p.getByRole("radiogroup").or(p.getByRole("tablist")).first()]);
+await shot("owner-insights-2", "owner", async (p) => {
+  await scrollTop(panel(p, "مسیر رزرو"));
+}, (p) => [panel(p, "مسیر رزرو")]);
+await shot("owner-insights-3", "owner", async (p) => {
+  await scrollTop(panel(p, "از کجا آمدند"));
+}, (p) => [panel(p, "از کجا آمدند")]);
+await shot("owner-insights-4", "owner", go("/salon/insights/customers"), (p) => [panel(p, "نکته‌های کلیدی")]);
+await shot("owner-insights-5", "owner", async (p) => {
+  await scrollTop(panel(p, "شلوغی هفته"));
+}, (p) => [panel(p, "شلوغی هفته")]);
+
+await shot("owner-share-1", "owner", go("/salon/share"), (p) => [p.getByRole("button", { name: "کپی", exact: true }).first().locator(".."), p.locator("main svg").filter({ has: p.locator("title") }).first()]);
+await shot("owner-share-2", "owner", async (p) => {
+  await p.getByRole("radio", { name: "پست مربع" }).click(); // square: the whole preview fits on screen
+  await settle(p, 800);
+  await scrollTop(p.getByRole("radiogroup", { name: "اندازه پوستر" }));
+}, (p) => [p.getByRole("radiogroup", { name: "اندازه پوستر" }), p.getByLabel("پیش‌نمایش پوستر")]);
+
+// Pre-paid online bookings: the seed's in «سالن زیبایی رز» (customer نیلوفر قاسمی), waiting for the
+// salon. The list cards don't show the pre-payment, so open the candidates until one does.
+const pendingCards = (p) => p.locator("main button").filter({ hasText: "در انتظار تایید" }).filter({ hasText: "نیلوفر قاسمی" });
+await shot("owner-prepaid-1", "owner", async (p) => {
+  await go("/salon/appointments")(p);
+  await p.getByRole("tab", { name: /منتظر تایید/ }).click();
+  await settle(p, 1200);
+  const n = await pendingCards(p).count();
+  for (let i = 0; i < n; i++) {
+    await pendingCards(p).nth(i).click();
+    await settle(p, 900);
+    const prepaid = await inSheet(p).getByText("پیش‌پرداخت (کیف پول)").count();
+    await p.keyboard.press("Escape");
+    await settle(p, 600);
+    if (prepaid) {
+      shared.prepaidCard = i;
+      break;
+    }
+  }
+  if (shared.prepaidCard === undefined) throw new Error("no pre-paid booking in the list");
+  await scrollTo(pendingCards(p).nth(shared.prepaidCard));
+}, (p) => [pendingCards(p).nth(shared.prepaidCard ?? 0)]);
+await shot("owner-prepaid-2", "owner", async (p) => {
+  await pendingCards(p).nth(shared.prepaidCard ?? 0).click();
+  await settle(p, 1000);
+  await scrollTo(inSheet(p).getByRole("button", { name: /تایید/ }).first());
+}, (p) => [inSheet(p).getByText("پیش‌پرداخت (کیف پول)").locator(".."), inSheet(p).getByRole("button", { name: /تایید/ }).first()]);
+
+await shot("stylist-wallet-1", "stylist", go("/stylist/wallet"), (p) => [p.getByText("موجودی", { exact: true }).first().locator(".."), p.getByRole("button", { name: /برداشت از کیف پول/ })]);
+await shot("stylist-share-1", "stylist", go("/stylist/share"), (p) => [p.getByRole("button", { name: /کپی/ }).first().locator(".."), p.getByLabel("پیش‌نمایش پوستر")]);
+
+await shot("indie-wallet-1", "independent", go("/salon/wallet"), (p) => [p.getByPlaceholder("۲۰۰٬۰۰۰"), p.getByText("موجودی", { exact: true }).first().locator("..")]);
+await shot("indie-plan-1", "independent", async (p) => {
+  await go("/salon/settings")(p);
+  await scrollTop(p.locator("#subscription"));
+}, (p) => [p.locator("#subscription"), p.getByRole("button", { name: /پلن از کیف پول/ })]);
+await shot("indie-share-1", "independent", go("/salon/share"), (p) => [p.getByRole("button", { name: /کپی/ }).first().locator(".."), p.getByLabel("پیش‌نمایش پوستر")]);
+
+await shot("customer-wallet-2", "customer", async (p) => {
+  await go("/dashboard/finance")(p);
+  await startTopUp(p, 200000);
+}, (p) => [p.getByRole("button", { name: "کپی", exact: true }).first().locator("../.."), p.getByRole("button", { name: "کپی مبلغ دقیق" }), p.getByRole("alert").filter({ hasText: "توجه بسیار مهم" })]);
+if ("customer-wallet-2".startsWith(ONLY)) {
+  const p = await pageFor("customer");
+  await p.getByRole("button", { name: "لغو", exact: true }).first().click().catch(() => {});
+  await settle(p, 800);
+}
+await shot("customer-cancel-1", "customer", async (p) => {
+  await go("/dashboard/bookings")(p);
+  const card = p.locator("main").locator("article, li, div").filter({ hasText: "پیش‌پرداخت" }).filter({ has: p.getByRole("button", { name: "لغو نوبت" }) }).last();
+  await card.getByRole("button", { name: "لغو نوبت" }).first().click();
+  await settle(p, 1000);
+}, (p) => [inSheet(p).getByText(/پیش‌پرداخت/).first(), inSheet(p).getByRole("button", { name: /لغو/ }).last()]);
 
 await browser.close();
