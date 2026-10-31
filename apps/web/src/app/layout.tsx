@@ -66,16 +66,17 @@ export default function RootLayout({
     <html lang="en" dir="ltr" className="dark" suppressHydrationWarning>
       <head>
         <Script id="theme-lang-init" strategy="beforeInteractive" src="/theme-init.js" />
-        {/* Brand icons (branding/): app/favicon.ico is served at /favicon.ico (16/32/48). */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+        {/* Brand icons (branding/): app/favicon.ico is served at /favicon.ico (16/32/48). ?v= = the brand
+            package's date, so browsers and Cloudflare drop the old icons; bump it with the next one. */}
+        <link rel="icon" href="/favicon.ico?v=20261031" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png?v=20261031" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png?v=20261031" />
         <link rel="preload" href="/fonts/Vazirmatn-Variable.woff2" as="font" type="font/woff2" crossOrigin="" />
         {/* Installability tags go here, not in `metadata`: Next streams metadata into <body> for
             regular browsers, and Chrome/Safari only read these from <head> — without them the
             app isn't installable and `beforeinstallprompt` never fires. */}
         <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=20261031" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content={SITE_NAME} />

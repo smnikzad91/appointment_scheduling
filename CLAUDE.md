@@ -26,7 +26,11 @@
      iran-locations/      Iran's 31 provinces → counties (TS, type-strippable like database); salon
                            province/city are validated against it (api) and drive the cascading
                            selects (web). Add a missing county there — nothing else changes.
-   story-highlights/      Instagram Story Highlight slides per panel (generated PNGs, committed) —
+   branding/              brand package (2026-10-31): brand.md (palette, which logo on light/dark, min sizes), SVG/PNG
+                       masters, social (Instagram profile, highlight cover), android-store (Play icon, feature
+                       graphic, notification SVG). Served copies live in apps/web/branding → public/icons,
+                       public/images/logo, src/app/{favicon.ico,og-image.png}, and the Android res/mipmap-*.
+story-highlights/      Instagram Story Highlight slides per panel (generated PNGs, committed) —
                            `node scripts/story-highlights/build.mjs` rebuilds them from the Help Center
                            guides + screenshots; see story-highlights/README.md
    instagram-ads/         Instagram ad videos (story 9:16 + feed post 4:5 MP4s, committed) —

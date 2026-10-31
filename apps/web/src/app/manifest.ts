@@ -20,13 +20,13 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#121319",
     categories: ["business", "lifestyle"],
     icons: [
-      { src: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-maskable-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/icons/icon-192x192.png?v=20261031", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512x512.png?v=20261031", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-maskable-512x512.png?v=20261031", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "نوبت‌های سالن", url: "/salon/appointments", icons: [{ src: "/icons/icon-192x192.png", sizes: "192x192" }] },
-      { name: "نوبت‌های من (آرایشگر)", url: "/stylist/appointments", icons: [{ src: "/icons/icon-192x192.png", sizes: "192x192" }] },
+      { name: "نوبت‌های سالن", url: "/salon/appointments", icons: [{ src: "/icons/icon-192x192.png?v=20261031", sizes: "192x192" }] },
+      { name: "نوبت‌های من (آرایشگر)", url: "/stylist/appointments", icons: [{ src: "/icons/icon-192x192.png?v=20261031", sizes: "192x192" }] },
     ],
   };
 }
