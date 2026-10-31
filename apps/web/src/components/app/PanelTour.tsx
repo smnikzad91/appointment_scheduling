@@ -186,11 +186,15 @@ export default function PanelTour({ steps, onClose }: { steps: TourStep[]; onClo
       {spot ? (
         <div
           aria-hidden
-          className="pointer-events-none absolute rounded-2xl ring-2 ring-app-accent transition-all duration-300 ease-out"
-          style={{ ...spot, boxShadow: "0 0 0 9999px rgb(8 10 16 / 0.68)" }}
-        />
+          className="tour-spot pointer-events-none absolute rounded-2xl transition-[top,left,width,height] duration-300 ease-out"
+          style={spot}
+        >
+          <span className="tour-wave" />
+          <span className="tour-wave" />
+          <span className="tour-wave" />
+        </div>
       ) : (
-        <div aria-hidden className="absolute inset-0 bg-[rgb(8_10_16/0.68)]" />
+        <div aria-hidden className="absolute inset-0 bg-[rgb(8_10_16/0.72)]" />
       )}
 
       {box && (

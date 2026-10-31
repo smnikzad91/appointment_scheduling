@@ -532,6 +532,36 @@
   .app-rise, .app-sheet-in, .app-fade-in { animation: none; }
 }
 
+/* Panel tour spotlight (components/app/PanelTour.tsx): a glowing coral border that breathes, with
+   waves rippling outward from it — coral (the guest accent) stands out on the dimmed page in both themes. */
+.tour-spot {
+  border: 3px solid #f2876a;
+  animation: tour-glow 1.6s ease-in-out infinite;
+}
+.tour-wave {
+  position: absolute;
+  inset: -3px;
+  border: 3px solid #f2876a;
+  border-radius: inherit;
+  box-shadow: 0 0 14px 1px rgb(242 135 106 / 0.75), inset 0 0 10px rgb(242 135 106 / 0.45);
+  opacity: 0;
+  animation: tour-wave 2.1s cubic-bezier(0.15, 0.55, 0.3, 1) infinite;
+}
+.tour-wave:nth-child(2) { animation-delay: 0.7s; }
+.tour-wave:nth-child(3) { animation-delay: 1.4s; }
+@keyframes tour-wave {
+  0% { inset: -3px; opacity: 1; }
+  100% { inset: -38px; opacity: 0; border-radius: calc(1rem + 34px); }
+}
+@keyframes tour-glow {
+  0%, 100% { box-shadow: 0 0 0 9999px rgb(8 10 16 / 0.72), 0 0 18px 4px rgb(242 135 106 / 0.7); }
+  50% { box-shadow: 0 0 0 9999px rgb(8 10 16 / 0.72), 0 0 38px 12px rgb(242 135 106 / 0.95); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot { animation: none; box-shadow: 0 0 0 9999px rgb(8 10 16 / 0.72), 0 0 28px 8px rgb(242 135 106 / 0.85); }
+  .tour-wave { display: none; }
+}
+
 /* Accounting report (components/app/AccountingReport.tsx): only the report prints. */
 #print-report {
   display: none;
