@@ -14,5 +14,7 @@ Roadmap (2026-10-31): 0 refresh the existing ads on the new brand (done) · 1 pl
 60 s cuts per audience · 2 guide series · 3 captions, music, optional voice-over · 4 publish (Instagram,
 Aparat, YouTube, Telegram; UTM links per channel) · 5 measure sign-ups per video and re-cut.
 
+Captions with hashtags for every video: `instagram-captions.txt`.
+
 Re-render after the screenshots change (`scripts/tutorials/capture.mjs`). Story text stays out of the top
 250 px and bottom 330 px that Instagram's UI covers.
