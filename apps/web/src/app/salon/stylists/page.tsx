@@ -341,7 +341,7 @@ export default function SalonStylistsPage() {
       />
 
       {!self && (
-        <div className="app-rise mb-4 rounded-3xl border border-app-line bg-app-card p-4 shadow-app">
+        <div data-tour="add-self" className="app-rise mb-4 rounded-3xl border border-app-line bg-app-card p-4 shadow-app">
           <p className="flex items-center gap-2 text-[15px] font-bold text-app-ink">
             <Scissors className="h-4 w-4 text-app-accent" aria-hidden />
             خودتان هم آرایشگری می‌کنید؟

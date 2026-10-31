@@ -93,7 +93,7 @@ export default function SalonOverviewPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-[32px] bg-[#2b344d] p-5 text-[#f5ede8] shadow-app dark:bg-[#2b344d] dark:ring-1 dark:ring-app-line">
+      <section data-tour="home-hero" className="relative overflow-hidden rounded-[32px] bg-[#2b344d] p-5 text-[#f5ede8] shadow-app dark:bg-[#2b344d] dark:ring-1 dark:ring-app-line">
         {/* Arch motif — a salon mirror, echoing the landing page. */}
         <span className="pointer-events-none absolute -bottom-16 -left-10 h-48 w-36 rounded-t-full border-[10px] border-app-accent/35" aria-hidden />
         <span className="pointer-events-none absolute -bottom-20 left-16 h-40 w-28 rounded-t-full bg-app-accent/25" aria-hidden />
@@ -152,7 +152,7 @@ export default function SalonOverviewPage() {
       <ReviewsLinkCard token={token} scope="salon" onlyWhenPending className="mt-3" />
       <WalletBalanceCard href="/salon/wallet" className="mt-3" />
 
-      <div className="mt-3 grid grid-cols-3 gap-2.5">
+      <div data-tour="home-stats" className="mt-3 grid grid-cols-3 gap-2.5">
         <StatTile icon={CalendarCheck2} label="نوبت امروز" value={today.length} tone="accent" />
         <StatTile icon={Hourglass} label="منتظر تایید" value={needsConfirmation.length} tone={needsConfirmation.length ? "pending" : "ink"} />
         <StatTile icon={CalendarClock} label="نوبت‌های آینده" value={upcoming.length} />

@@ -211,14 +211,16 @@ export default function CustomerBookings({
   return (
     <>
       <PageHeader title="نوبت‌های من" action={headerAction} />
-      <ChipTabs<Tab>
-        value={tab}
-        onChange={setTab}
-        options={[
-          { value: "upcoming", label: "پیش‌رو", count: upcoming.length },
-          { value: "past", label: "گذشته" },
-        ]}
-      />
+      <div data-tour="bookings-tabs">
+        <ChipTabs<Tab>
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "upcoming", label: "پیش‌رو", count: upcoming.length },
+            { value: "past", label: "گذشته" },
+          ]}
+        />
+      </div>
 
       {error && <ErrorBanner onRetry={reload}>{error}</ErrorBanner>}
 

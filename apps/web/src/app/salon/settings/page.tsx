@@ -261,7 +261,7 @@ export default function SalonSettingsPage() {
       </Card>
 
       <SectionTitle>رنگ برند</SectionTitle>
-      <Card className="p-4">
+      <Card data-tour="brand-color" className="p-4">
         <div className="flex flex-wrap gap-3">
           {BRAND_SWATCHES.map((color) => (
             <button

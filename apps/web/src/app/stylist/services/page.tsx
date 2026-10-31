@@ -113,7 +113,7 @@ export default function StylistServicesPage() {
             const setDraft = (patch: Partial<Draft>) => setDrafts((d) => ({ ...d, [entry.serviceId]: { ...draft, ...patch } }));
             const rebookOn = draft.rebook ?? entry.service.rebookReminderEnabled;
             return (
-              <Card key={entry.serviceId} className="app-rise p-4" style={riseStyle(i)}>
+              <Card key={entry.serviceId} data-tour={i === 0 ? "service-card" : undefined} className="app-rise p-4" style={riseStyle(i)}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-bold text-app-ink">{entry.service.name}</p>

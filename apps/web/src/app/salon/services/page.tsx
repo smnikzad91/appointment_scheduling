@@ -331,6 +331,7 @@ export default function SalonServicesPage() {
         </div>
         <button
           type="button"
+          data-tour="service-categories"
           onClick={() => setCategoriesOpen(true)}
           className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-app-accent-soft px-3.5 text-sm font-bold text-app-accent active:scale-95"
         >

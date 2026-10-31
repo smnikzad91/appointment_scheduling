@@ -12,7 +12,9 @@ export default function WalletScreen({ subtitle }: { subtitle: string }) {
   return (
     <div className="space-y-4">
       <PageHeader title="کیف پول" subtitle={subtitle} />
-      <WalletTopUp onPaid={() => setReloadKey((k) => k + 1)} />
+      <div data-tour="wallet-topup">
+        <WalletTopUp onPaid={() => setReloadKey((k) => k + 1)} />
+      </div>
       <WalletHistory reloadKey={reloadKey} title="موجودی" />
     </div>
   );

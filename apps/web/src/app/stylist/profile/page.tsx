@@ -119,7 +119,11 @@ export default function StylistProfilePage() {
       <p className="-mt-1 mb-3 px-1 text-xs leading-6 text-app-muted">
         عکس کارهایتان در صفحه سالن کنار نام شما نمایش داده می‌شود و به مشتری‌ها کمک می‌کند شما را انتخاب کنند.
       </p>
-      {token && <GalleryManager token={token} scope="stylist" />}
+      {token && (
+        <div data-tour="gallery">
+          <GalleryManager token={token} scope="stylist" />
+        </div>
+      )}
     </>
   );
 }

@@ -168,6 +168,7 @@ export default function StylistSchedulePage() {
 
       {loadError && <ErrorBanner onRetry={reload}>{loadError}</ErrorBanner>}
 
+      <div data-tour="working-hours">
       <ListGroup>
         {WEEK_ORDER_SATURDAY_FIRST.map((dayOfWeek) => {
           const row = days[dayOfWeek];
@@ -208,6 +209,7 @@ export default function StylistSchedulePage() {
           );
         })}
       </ListGroup>
+      </div>
       <p className="mt-2 px-1 text-xs leading-6 text-app-muted">
         با دکمه <Copy className="inline h-3.5 w-3.5" aria-hidden /> ساعت همان روز روی همه روزهای کاری اعمال می‌شود.
       </p>

@@ -171,6 +171,7 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
       <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         <button
           type="button"
+          data-tour="near-me"
           onClick={() => (near ? (setNear(null), setRadiusKm(0)) : findMe())}
           aria-pressed={!!near}
           className={cx(chip(!!near), near ? "" : "border-app-accent/40 text-app-accent")}

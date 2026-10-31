@@ -95,7 +95,7 @@ export default function ProfilePhotos({
 
   return (
     <>
-      <Card className="overflow-hidden p-0">
+      <Card data-tour="profile-photos" className="overflow-hidden p-0">
         <button type="button" onClick={() => show("cover")} className="relative block h-36 w-full bg-app-card-2 active:opacity-90" aria-label="عکس کاور">
           {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
