@@ -21,7 +21,9 @@ import path from "node:path";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const WEB = path.join(ROOT, "apps/web");
-const OUT = path.join(ROOT, "ad-videos/01-platform-intro");
+const OUT = path.join(ROOT, "ad-videos");
+/** Default series folder; a video can name its own (`dir`). */
+const SERIES = "01-platform-intro";
 const ONLY = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "";
 // --stills: instead of the videos, one frame per second of each into ad-videos/01-platform-intro/_preview/
 const STILLS = process.argv.includes("--stills");
@@ -99,6 +101,12 @@ const ICONS = {
   x: '<path d="M18 6L6 18M6 6l12 12"/>',
   star: '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>',
   arrow: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+  instagram: '<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/>',
+  heart: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>',
+  pin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>',
+  repeat: '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
   wallet: '<path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>',
 };
 const icon = (name) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
@@ -145,13 +153,23 @@ const featureList = (items, start, step = 0.45) =>
     .join("")}</ul>`;
 
 /** Closing call to action: logo, line, pulsing button, address. */
-const cta = (start, { line, button, sub = "nobatet.app" }) => `
+/** Where people reach us — shown on the videos that end with `contact: true`. */
+const CONTACT = { instagram: "@nobatet.app", phone: "09024158946" };
+
+const cta = (start, { line, button, sub = "nobatet.app", contact = false }) => `
   <div class="cta">
     <div class="ctaLogo" style="${anims(an("logoPop", start + 0.1, 0.8))}"><img src="data:image/png;base64,${ICON}"></div>
     <div class="ctaName" style="${anims(an("wordIn", start + 0.45, 0.6))}">نوبتت</div>
     <p class="ctaLine">${words(line, start + 0.7, 0.07)}</p>
     <div style="${anims(an("popIn", start + 1.3, 0.6))}"><div class="btn" style="${anims(an("pulse", start + 1.9, 1.2, { ease: "ease-in-out", iter: "infinite", fill: "none" }))}">${esc(button)}<span class="arrow">${icon("arrow")}</span></div></div>
     <div class="url" style="${anims(an("fadeIn", start + 1.8, 0.6))}">${esc(sub)}</div>
+    ${
+      contact
+        ? `<div class="contact" style="${anims(an("popIn", start + 2.1, 0.6))}">
+            <span>${icon("instagram")}<b dir="ltr">${esc(CONTACT.instagram)}</b></span>
+            <span>${icon("phone")}<b dir="ltr">${fa(CONTACT.phone)}</b></span></div>`
+        : ""
+    }
   </div>`;
 
 // ── styles ────────────────────────────────────────────────────────────────────────────────────
@@ -272,6 +290,312 @@ const ringHook = (end, { title, sub }) =>
       ${sub ? `<p style="${anims(an("fadeIn", end - 1.1, 0.5))}">${esc(sub)}</p>` : ""}
     </div>`,
   );
+
+
+// ── customer series helpers ──
+
+/** Hero hook: kicker, headline (*word* = gradient), a line under it. */
+const hook = (end, { kicker, title, sub, ic }) =>
+  scene(
+    0,
+    end,
+    `<div class="hero">${ic ? `<div class="ring" style="width:220px;height:220px;${anims(an("logoPop", 0.1, 0.8))}"><div class="disc">${icon(ic)}</div></div>` : ""}
+      ${kicker ? `<span class="kicker" style="${anims(an("popIn", 0.15, 0.5))}">${esc(kicker)}</span>` : ""}
+      <h1>${words(title, 0.4)}</h1>
+      ${sub ? `<p style="${anims(an("fadeIn", 1.4, 0.6))}">${esc(sub)}</p>` : ""}</div>`,
+  );
+
+/** Story: numbered captions over a phone that walks through `steps` (each with an optional tap). */
+function storySteps(t0, step, steps) {
+  const end = t0 + steps.length * step + 0.4;
+  return {
+    end,
+    html: scene(
+      t0,
+      end,
+      `<div class="top" style="height:260px">${steps
+        .map((s, i) => {
+          const a = t0 + i * step;
+          const out = i < steps.length - 1 ? an("fadeOut", a + step - 0.25, 0.25, { fill: "forwards" }) : null;
+          return `<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;gap:18px;${anims(an("popIn", a + 0.05, 0.5), out)}">
+            <span class="stepNum">${s.ic ? icon(s.ic) : fa(i + 1)}</span><h2>${esc(s.text)}</h2></div>`;
+        })
+        .join("")}</div>
+      ${phone({ height: 1030, y: 560, enter: t0, exit: end, screens: steps.map((s, i) => ({ id: s.id, at: t0 + i * step, tap: s.tap })) })}`,
+    ),
+  };
+}
+
+/** Feed post: one point at a time beside the phone (icon, title, text), with progress dots. */
+function postPoints(t0, step, points) {
+  const end = t0 + points.length * step + 0.3;
+  return {
+    end,
+    html: scene(
+      t0,
+      end,
+      `${brand(t0)}<div class="side" style="top:200px"><div class="swap" style="height:520px">${points
+        .map((f, i) => {
+          const a = t0 + i * step;
+          const out = i < points.length - 1 ? an("fadeOut", a + step - 0.3, 0.3, { fill: "forwards" }) : null;
+          const badge = f.ic
+            ? `<span class="feats"><span class="ic" style="width:96px;height:96px;border-radius:26px;${anims(an("popIn", a + 0.05, 0.5))}">${icon(f.ic)}</span></span>`
+            : `<span class="stepNum" style="width:110px;height:110px;font-size:60px;${anims(an("logoPop", a + 0.05, 0.6))}">${fa(i + 1)}</span>`;
+          return `<div style="${anims(an("fadeIn", a, 0.01), out)}">${badge}
+            <h2>${words(f.title, a + 0.15, 0.08)}</h2>
+            <p style="${anims(an("fadeIn", a + 0.5, 0.5))}">${esc(f.text)}</p></div>`;
+        })
+        .join("")}</div>
+        <div class="dots">${points.map((_, i) => `<i style="${anims(an("dotOn", t0 + i * step, 0.3, { fill: "both" }), i < points.length - 1 && an("dotOff", t0 + (i + 1) * step, 0.3, { fill: "forwards" }))}"></i>`).join("")}</div></div>
+      ${phone({ height: 1000, y: 190, x: "50px", anchor: "right", enter: t0, exit: end, screens: points.map((f, i) => ({ id: f.id, at: t0 + i * step, tap: f.tap })) })}`,
+    ),
+  };
+}
+
+/**
+ * The customer series (ad-videos/02-for-customers): people who've never booked a salon online —
+ * find one nearby, book in a minute, why the pre-payment is safe, and never forgetting a booking.
+ * Every one ends on «رزرو نوبت» + nobatet.app.
+ */
+function customerVideos() {
+  const dir = "02-for-customers";
+  const ctaLine = "آرایشگاه و سالن زیبایی نزدیک خودتان را پیدا کنید و آنلاین نوبت بگیرید";
+  return [
+    {
+      id: "story-c01-find-salon",
+      dir,
+      format: "story",
+      dur: 16,
+      cover: 6,
+      body: () => {
+        const s = storySteps(3.2, 2.6, [
+          { id: "customer-search-1", text: "سالن‌ها را با شهر و خدمت پیدا کنید", ic: "search" },
+          { id: "customer-search-2", text: "نزدیک‌ترین سالن‌ها به شما", ic: "pin", tap: [80, 50] },
+          { id: "customer-search-3", text: "روی نقشه ببینید", ic: "pin" },
+          { id: "customer-book-1", text: "امتیاز، نمونه کار و قیمت‌ها", ic: "star", tap: [50, 89] },
+        ]);
+        return [
+          hook(3.2, { kicker: "آرایشگاه خوب کجاست؟", title: "سالن *نزدیک خودتان* را پیدا کنید", sub: "با امتیاز و نظر مشتری‌های واقعی", ic: "pin" }),
+          s.html,
+          scene(s.end, null, cta(s.end, { line: ctaLine, button: "پیدا کردن سالن" })),
+        ];
+      },
+    },
+    {
+      id: "story-c02-book-in-a-minute",
+      dir,
+      format: "story",
+      dur: 19,
+      cover: 6,
+      body: () => {
+        const s = storySteps(3, 2.1, [
+          { id: "customer-book-2", text: "خدمت را انتخاب کنید", tap: [50, 96] },
+          { id: "customer-book-3", text: "آرایشگر دلخواه، یا «فرقی نمی‌کند»", tap: [50, 78] },
+          { id: "customer-book-4", text: "روز و ساعت خالی را بزنید", tap: [85, 61] },
+          { id: "customer-book-6", text: "کد پیامکی را وارد کنید" },
+          { id: "customer-book-8", text: "پیش‌پرداخت از کیف پول", tap: [50, 96] },
+          { id: "customer-book-9", text: "نوبتتان ثبت شد!", ic: "check" },
+        ]);
+        return [
+          hook(3, { kicker: "بدون تماس، بدون انتظار", title: "نوبت آرایشگاه در *کمتر از یک دقیقه*", sub: "هر ساعت از شبانه‌روز، حتی وقتی سالن بسته است", ic: "clock" }),
+          s.html,
+          scene(s.end, null, cta(s.end, { line: ctaLine, button: "رزرو نوبت" })),
+        ];
+      },
+    },
+    {
+      id: "story-c03-safe-prepayment",
+      dir,
+      format: "story",
+      dur: 17.5,
+      cover: 6,
+      body: () => {
+        const s = storySteps(3.4, 2.7, [
+          { id: "customer-wallet-1", text: "کیف پول را یک بار شارژ کنید", ic: "wallet", tap: [50, 44] },
+          { id: "customer-book-7", text: "فقط ۲۵٪ پیش‌پرداخت؛ باقی در سالن", ic: "card" },
+          { id: "customer-cancel-1", text: "سالن تایید نکرد؟ پول کامل برمی‌گردد", ic: "shield" },
+          { id: "customer-bookings-1", text: "همه نوبت‌ها و وضعیتشان یک‌جا", ic: "calendar" },
+        ]);
+        return [
+          hook(3.4, { kicker: "پرداخت امن", title: "پیش‌پرداخت *مطمئن*، بدون کارت به کارت با سالن", sub: "پول شما تا انجام نوبت نزد نوبتت امانت می‌ماند", ic: "shield" }),
+          s.html,
+          scene(s.end, null, cta(s.end, { line: "با خیال راحت آنلاین نوبت بگیرید", button: "رزرو نوبت" })),
+        ];
+      },
+    },
+    {
+      id: "story-c04-never-forget",
+      dir,
+      format: "story",
+      dur: 17,
+      cover: 6,
+      body: () => {
+        const s = storySteps(3.2, 2.5, [
+          { id: "customer-bookings-1", text: "پیامک یادآوری قبل از نوبت", ic: "bell" },
+          { id: "customer-bookings-2", text: "رزرو دوباره با یک لمس", ic: "repeat", tap: [50, 53] },
+          { id: "customer-waitlist-1", text: "روز پر است؟ در لیست انتظار بمانید", ic: "clock", tap: [50, 87] },
+          { id: "customer-saved-2", text: "سالن‌های محبوب همیشه دم دست", ic: "heart" },
+        ]);
+        return [
+          hook(3.2, { kicker: "نوبت‌های من", title: "دیگر هیچ نوبتی *یادتان نمی‌رود*", sub: "یادآوری، رزرو دوباره و لیست انتظار؛ همه در یک اپ", ic: "bell" }),
+          s.html,
+          scene(s.end, null, cta(s.end, { line: ctaLine, button: "رزرو نوبت" })),
+        ];
+      },
+    },
+    {
+      id: "post-c01-why-nobatet",
+      dir,
+      format: "post",
+      dur: 22,
+      cover: 5,
+      body: () => {
+        const s = postPoints(2.8, 2.6, [
+          { id: "customer-search-2", ic: "pin", title: "سالن نزدیک شما", text: "سالن‌ها و آرایشگرهای مستقل اطرافتان را با امتیاز و قیمت ببینید." },
+          { id: "customer-book-4", ic: "clock", title: "ساعت‌های واقعاً خالی", text: "فقط وقت‌هایی را می‌بینید که آزادند؛ بدون تماس و بدون معطلی." },
+          { id: "customer-book-7", ic: "shield", title: "پیش‌پرداخت امن", text: "۲۵٪ از کیف پول؛ اگر سالن لغو کند یا تایید نکند، کامل برمی‌گردد." },
+          { id: "customer-bookings-1", ic: "bell", title: "یادآوری پیامکی", text: "قبل از هر نوبت پیامک می‌گیرید؛ نوبت‌ها همیشه در «نوبت‌های من» است." },
+          { id: "customer-review-2", ic: "star", title: "نظر مشتری‌های واقعی", text: "فقط کسانی که نوبت گرفته‌اند نظر می‌دهند؛ شما هم امتیاز بدهید." },
+          { id: "customer-bookings-2", ic: "repeat", title: "رزرو دوباره", text: "همان خدمت، همان آرایشگر؛ با یک لمس." },
+        ]);
+        return [
+          hook(2.8, { kicker: "چرا نوبتت؟", title: "نوبت آرایشگاه، *ساده و مطمئن*" }),
+          s.html,
+          scene(s.end, null, cta(s.end, { line: ctaLine, button: "رزرو نوبت" })),
+        ];
+      },
+    },
+    {
+      id: "post-c02-first-booking",
+      dir,
+      format: "post",
+      dur: 17,
+      cover: 4.5,
+      body: () => {
+        const s = postPoints(2.6, 2.4, [
+          { id: "customer-book-1", title: "سالن را باز کنید", text: "از جستجو یا لینکی که سالن در اینستاگرام گذاشته.", tap: [50, 89] },
+          { id: "customer-book-2", title: "خدمت را بزنید", text: "مدت و قیمت هر خدمت از اول معلوم است.", tap: [50, 96] },
+          { id: "customer-book-4", title: "ساعت خالی را بزنید", text: "آرایشگر دلخواه، یا «فرقی نمی‌کند».", tap: [85, 61] },
+          { id: "customer-book-6", title: "با کد پیامکی وارد شوید", text: "بدون رمز؛ حساب شما همان‌جا ساخته می‌شود." },
+          { id: "customer-book-9", title: "تمام!", text: "پیامک تایید و یادآوری برایتان می‌آید." },
+        ]);
+        return [
+          hook(2.6, { kicker: "اولین نوبت آنلاین", title: "*پنج لمس* تا نوبت آرایشگاه" }),
+          s.html,
+          scene(s.end, null, cta(s.end, { line: ctaLine, button: "رزرو نوبت" })),
+        ];
+      },
+    },
+  ];
+}
+
+
+// ── 01-platform-intro: general features; some end with Instagram + the admin's number (2026-10-31) ──
+
+function generalVideos() {
+  return [
+    {
+      id: "story-04-platform-tour",
+      format: "story",
+      dur: 25,
+      cover: 7,
+      body: () => {
+        const who = storySteps(3.2, 2.4, [
+          { id: "owner-home-1", text: "سالن‌ها: نوبت، آرایشگرها و حسابداری", ic: "users" },
+          { id: "stylist-home-1", text: "آرایشگرها: برنامه و درآمد خودشان", ic: "scissors" },
+          { id: "indie-page-1", text: "آرایشگرهای مستقل: صفحه رزرو با نام خودشان", ic: "link" },
+          { id: "customer-book-4", text: "مشتری‌ها: رزرو در چند لمس", ic: "calendar", tap: [85, 61] },
+        ]);
+        const t1 = who.end;
+        const feats = scene(
+          t1,
+          t1 + 5.2,
+          `<div class="side"><h2>${words("هرچه برای نوبت‌دهی *لازم دارید*", t1 + 0.1, 0.08)}</h2>
+            ${featureList(
+              [
+                ["link", "لینک رزرو و کد QR"],
+                ["sms", "پیامک یادآوری خودکار"],
+                ["wallet", "پیش‌پرداخت با کیف پول"],
+                ["chart", "حسابداری و آمار بازدید"],
+                ["calendar", "تقویم شمسی و نمای هفته"],
+              ],
+              t1 + 0.6,
+              0.4,
+            )}</div>
+          ${phone({ height: 920, y: 470, x: "45px", anchor: "right", enter: t1 + 0.2, exit: t1 + 5.2, screens: [{ id: "owner-share-1", at: t1 + 0.2 }, { id: "owner-insights-1", at: t1 + 2.7 }] })}`,
+        );
+        const end = t1 + 5.2;
+        return [
+          hook(3.2, { kicker: "نوبتت", title: "*یک اپ* برای سالن، آرایشگر و مشتری", sub: "نوبت‌دهی آنلاین آرایشگاه و سالن زیبایی؛ فارسی و با تقویم شمسی" }),
+          who.html,
+          feats,
+          scene(end, null, cta(end, { line: "سؤالی دارید؟ در اینستاگرام پیام بدهید یا تماس بگیرید", button: "شروع رایگان", contact: true })),
+        ];
+      },
+    },
+    {
+      id: "story-05-free-month",
+      format: "story",
+      dur: 18,
+      cover: 6,
+      body: () => {
+        const s = storySteps(3.4, 2.7, [
+          { id: "owner-register-1", text: "در چند دقیقه ثبت‌نام کنید" },
+          { id: "owner-services-2", text: "خدمات و آرایشگرها را اضافه کنید" },
+          { id: "owner-share-1", text: "لینک رزرو را در اینستاگرام بگذارید" },
+          { id: "owner-plan-1", text: "یک ماه کامل رایگان، با همه امکانات", ic: "star" },
+        ]);
+        return [
+          hook(3.4, { kicker: "ویژه سالن‌ها و آرایشگرها", title: "*یک ماه رایگان* نوبت‌دهی آنلاین", sub: "بدون کارت بانکی؛ هر وقت خواستید پلن بخرید", ic: "calendar" }),
+          s.html,
+          scene(s.end, null, cta(s.end, { line: "همین امروز سالن‌تان را آنلاین کنید", button: "شروع رایگان", contact: true })),
+        ];
+      },
+    },
+    {
+      id: "post-04-all-features",
+      format: "post",
+      dur: 27,
+      cover: 5,
+      body: () => {
+        const s = postPoints(2.8, 2.6, [
+          { id: "owner-share-1", ic: "link", title: "صفحه رزرو، لینک و QR", text: "لینک اختصاصی برای بیو اینستاگرام و پوستر آماده استوری و چاپ." },
+          { id: "customer-book-4", ic: "calendar", title: "رزرو آنلاین ۲۴ ساعته", text: "مشتری فقط ساعت‌های خالی هر آرایشگر را می‌بیند؛ بدون تداخل." },
+          { id: "owner-prepaid-2", ic: "wallet", title: "پیش‌پرداخت ۲۵٪", text: "از کیف پول مشتری؛ نوبت‌های بی‌خبر کم می‌شوند." },
+          { id: "customer-bookings-1", ic: "sms", title: "پیامک یادآوری خودکار", text: "تایید و یادآوری نوبت برای مشتری و آرایشگر." },
+          { id: "stylist-home-1", ic: "users", title: "پنل هر آرایشگر", text: "برنامه، ساعت کاری، مرخصی و درآمد هر نفر در اپ خودش." },
+          { id: "owner-accounting-1", ic: "chart", title: "حسابداری سالن", text: "درآمد، سهم آرایشگرها، هزینه‌ها و سود خالص ماه شمسی." },
+          { id: "owner-insights-1", ic: "search", title: "آمار بازدید", text: "چند نفر صفحه شما را دیدند، از کجا آمدند و چند نفر نوبت گرفتند." },
+          { id: "owner-wallet-1", ic: "card", title: "کیف پول و برداشت", text: "شارژ خودکار، پرداخت به آرایشگرها و برداشت به شبا." },
+        ]);
+        return [
+          hook(2.8, { kicker: "امکانات نوبتت", title: "*هشت ابزار* برای مدیریت نوبت سالن" }),
+          s.html,
+          scene(s.end, null, cta(s.end, { line: "یک ماه رایگان امتحان کنید", button: "شروع رایگان", contact: true })),
+        ];
+      },
+    },
+    {
+      id: "post-05-whats-new",
+      format: "post",
+      dur: 17,
+      cover: 5,
+      body: () => {
+        const s = postPoints(2.6, 2.8, [
+          { id: "owner-prepaid-1", ic: "wallet", title: "پیش‌پرداخت آنلاین", text: "رزروهای آنلاین با ۲۵٪ پیش‌پرداخت از کیف پول مشتری." },
+          { id: "owner-insights-3", ic: "chart", title: "آمار بازدید و رفتار مشتری", text: "منبع بازدید، مسیر رزرو، شلوغی هفته و خدمات پرطرفدار." },
+          { id: "owner-share-2", ic: "link", title: "پوستر و کد QR آماده", text: "پوستر استوری، پست و چاپی با رنگ برند سالن شما." },
+          { id: "owner-plan-2", ic: "star", title: "پلن مناسب هر سالن", text: "از آرایشگر مستقل تا سالن بزرگ؛ خرید از کیف پول." },
+        ]);
+        return [
+          hook(2.6, { kicker: "تازه‌های نوبتت", title: "امکانات *تازه* نوبتت" }),
+          s.html,
+          scene(s.end, null, cta(s.end, { line: "نرم‌افزار نوبت‌دهی آنلاین آرایشگاه و سالن زیبایی", button: "شروع رایگان" })),
+        ];
+      },
+    },
+  ];
+}
 
 const VIDEOS = [
   // ── Stories (9:16) ──
@@ -501,9 +825,19 @@ const VIDEOS = [
       ];
     },
   },
+
+  ...generalVideos(),
+
+  // ── 02-for-customers: people trying their first online booking (2026-10-31) ──
+  ...customerVideos(),
 ];
 
 const EXTRA_STYLE = `
+.contact { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 6px; }
+.contact span { display: inline-flex; align-items: center; gap: 14px; font-size: calc(var(--p) * .95); font-weight: 800; background: #1e2229; border: 2px solid rgb(198 138 114 / .5); padding: 14px 28px; border-radius: 999px; }
+.contact svg { width: 38px; height: 38px; color: #efbda0; }
+.contact b { font-weight: 900; letter-spacing: .5px; }
+.stepNum svg { width: 46px; height: 46px; }
 .dots { display: flex; gap: 12px; margin-top: 10px; }
 .dots i { display: block; height: 12px; width: 12px; border-radius: 999px; background: #2f3540; }
 @keyframes dotOn { from { width: 12px; background: #2f3540 } to { width: 44px; background: #c68a72 } }
@@ -522,7 +856,7 @@ const browser = await chromium.launch({ executablePath: chromiumPath() });
 try {
   for (const video of VIDEOS.filter((v) => v.id.includes(ONLY))) {
     const { W, H } = FORMATS[video.format];
-    const dir = path.join(OUT, video.format);
+    const dir = path.join(OUT, video.dir ?? SERIES, video.format);
     mkdirSync(dir, { recursive: true });
     const page = await browser.newPage({ viewport: { width: W, height: H } });
     await page.setContent(html(video), { waitUntil: "load" });
@@ -539,7 +873,7 @@ try {
       }, t * 1000);
 
     if (STILLS) {
-      const pdir = path.join(OUT, "_preview");
+      const pdir = path.join(OUT, video.dir ?? SERIES, "_preview");
       mkdirSync(pdir, { recursive: true });
       for (let t = 0.5; t < video.dur; t += 1) {
         await seek(t);
