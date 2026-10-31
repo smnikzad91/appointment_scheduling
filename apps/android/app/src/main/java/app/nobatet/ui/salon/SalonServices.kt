@@ -1,5 +1,6 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.panels.tourTarget
 import app.nobatet.ui.components.AppChip
 import app.nobatet.ui.components.AppSwitch
 import app.nobatet.ui.components.AppTextButton
@@ -73,8 +74,8 @@ fun SalonServicesScreen(container: AppContainer, data: SalonData) {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PrimaryButton("افزودن خدمت", Modifier.weight(1f)) { adding = true }
-                    AppTextButton(onClick = { managing = true }) { Text("دسته‌بندی‌ها") }
+                    PrimaryButton("افزودن خدمت", Modifier.weight(1f).tourTarget("add-service")) { adding = true }
+                    AppTextButton(onClick = { managing = true }, modifier = Modifier.tourTarget("service-categories")) { Text("دسته‌بندی‌ها") }
                 }
             }
             if (data.services.isEmpty()) item { Empty("هنوز خدمتی تعریف نکرده‌اید", "خدمات و قیمت‌ها را اضافه کنید تا مشتری‌ها نوبت بگیرند.") }

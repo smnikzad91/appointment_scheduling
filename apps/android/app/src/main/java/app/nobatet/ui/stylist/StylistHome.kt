@@ -1,5 +1,8 @@
 package app.nobatet.ui.stylist
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import app.nobatet.ui.panels.TourScrollable
+import app.nobatet.ui.panels.tourTarget
 import java.time.Instant
 import app.nobatet.util.toSalonDateTime
 import app.nobatet.util.formatClock
@@ -111,9 +114,11 @@ fun StylistHomeScreen(stylist: SelfStylist, appointments: List<StaffAppointment>
     val next = upcoming.firstOrNull()
     val todayShare = todays.filter { it.status != AppointmentStatus.NO_SHOW }.sumOf { estimatedShare(it, stylist) }
 
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val listState = rememberLazyListState()
+    TourScrollable(listState)
+    LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item(key = "hero") {
-            HeroCard {
+            HeroCard(Modifier.tourTarget("home-hero")) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Avatar(stylist.displayName, stylist.avatarUrl, size = 48.dp)
                     Column(Modifier.padding(start = 12.dp)) {
@@ -162,7 +167,7 @@ fun StylistHomeScreen(stylist: SelfStylist, appointments: List<StaffAppointment>
             LinkCard(Icons.Outlined.RateReview, "نظرهای تازه مشتری‌ها", "${pendingReviews.toString().toPersianDigits()} نظر منتظر تایید شما", badge = pendingReviews) { onOpenPage(StylistPage.REVIEWS) }
         }
         item(key = "wallet") { app.nobatet.ui.wallet.WalletBalanceCard(actions.container) { onOpenPage(StylistPage.WALLET) } }
-        item(key = "share") { LinkCard(Icons.Outlined.QrCode2, "کیت معرفی من", "لینک رزرو مستقیم با شما، کد QR و پوستر") { onOpenPage(StylistPage.SHARE) } }
+        item(key = "share") { LinkCard(Icons.Outlined.QrCode2, "کیت معرفی من", "لینک رزرو مستقیم با شما، کد QR و پوستر", Modifier.tourTarget("share-kit")) { onOpenPage(StylistPage.SHARE) } }
         item(key = "stats") {
             if (appointments == null) app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(110.dp))
             else Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -171,8 +176,8 @@ fun StylistHomeScreen(stylist: SelfStylist, appointments: List<StaffAppointment>
                 StatTile("نوبت‌های آینده", upcoming.size, Icons.Outlined.Schedule)
             }
         }
-        item(key = "earnings") { LinkCard(Icons.Outlined.AccountBalanceWallet, "درآمد من", "سهم شما از نوبت‌ها، پرداخت‌های سالن و مانده حساب") { onOpenPage(StylistPage.EARNINGS) } }
-        item(key = "expenses") { LinkCard(Icons.Outlined.ReceiptLong, "هزینه‌های من", "مواد مصرفی، ابزار و خریدهای کاری") { onOpenPage(StylistPage.EXPENSES) } }
+        item(key = "earnings") { LinkCard(Icons.Outlined.AccountBalanceWallet, "درآمد من", "سهم شما از نوبت‌ها، پرداخت‌های سالن و مانده حساب", Modifier.tourTarget("earnings")) { onOpenPage(StylistPage.EARNINGS) } }
+        item(key = "expenses") { LinkCard(Icons.Outlined.ReceiptLong, "هزینه‌های من", "مواد مصرفی، ابزار و خریدهای کاری", Modifier.tourTarget("expenses")) { onOpenPage(StylistPage.EXPENSES) } }
         if (pending.isNotEmpty()) {
             item(key = "pendingTitle") {
                 HomeSectionTitle("منتظر تایید شما") { if (pending.size > 3) AppTextButton(onClick = { onGoToTab(1) }) { Text("همه") } }

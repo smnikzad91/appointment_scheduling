@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -36,6 +37,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -94,6 +96,8 @@ fun PanelScaffold(
     onSelectTab: ((Int) -> Unit)? = null,
     /** App-bar buttons before the avatar (e.g. the notifications bell). */
     actions: @Composable RowScope.() -> Unit = {},
+    /** First-run guided tour; targets are [tourTarget] keys (`tab:<index>`, `account`, `actions`, …). */
+    tour: PanelTourSpec? = null,
 ) {
     val colors = LocalAppColors.current
     var ownSelected by rememberSaveable { mutableIntStateOf(0) }
@@ -101,37 +105,44 @@ fun PanelScaffold(
     // the panel may drive the tab itself (e.g. «مشاهده نوبت‌های من» after booking)
     val selected = selectedTab ?: ownSelected
     val select: (Int) -> Unit = onSelectTab ?: { ownSelected = it }
-    Scaffold(
-        containerColor = colors.bg,
-        topBar = {
-            Row(
-                Modifier.fillMaxWidth().background(colors.bg).statusBarsPadding().height(56.dp).padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Image(painterResource(R.drawable.logo_symbol), contentDescription = null, modifier = Modifier.size(36.dp))
-                Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                    Text("نوبتت", color = colors.ink, fontSize = 15.sp, fontWeight = FontWeight.Bold, lineHeight = 20.sp)
-                    Text(panelName, color = colors.muted, fontSize = 11.sp, lineHeight = 14.sp)
+    val tourState = remember { TourState() }
+    val panelTour = rememberPanelTour(tour?.id)
+    Box(Modifier.fillMaxSize()) {
+        CompositionLocalProvider(LocalTour provides tourState) {
+            Scaffold(
+                containerColor = colors.bg,
+                topBar = {
+                    Row(
+                        Modifier.fillMaxWidth().background(colors.bg).statusBarsPadding().height(56.dp).padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Image(painterResource(R.drawable.logo_symbol), contentDescription = null, modifier = Modifier.size(36.dp))
+                        Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                            Text("نوبتت", color = colors.ink, fontSize = 15.sp, fontWeight = FontWeight.Bold, lineHeight = 20.sp)
+                            Text(panelName, color = colors.muted, fontSize = 11.sp, lineHeight = 14.sp)
+                        }
+                        Row(Modifier.tourTarget("actions"), verticalAlignment = Alignment.CenterVertically) { actions() }
+                        Spacer(Modifier.width(6.dp))
+                        Avatar(
+                            identity.name, identity.image, size = 38.dp, square = identity.square,
+                            modifier = Modifier.tourTarget("account").border(2.dp, colors.card, if (identity.square) RoundedCornerShape(10.dp) else CircleShape)
+                                .clip(if (identity.square) RoundedCornerShape(10.dp) else CircleShape)
+                                .clickable(onClickLabel = "حساب کاربری") { accountOpen = true },
+                        )
+                    }
+                },
+                bottomBar = { TabBar(tabs, selected, select) },
+            ) { padding ->
+                Column(Modifier.fillMaxSize().padding(padding).background(colors.bg)) {
+                    val tab = tabs[selected]
+                    tab.title?.let { PageHeader(it, tab.subtitle) }
+                    Box(Modifier.weight(1f)) { tab.content() }
                 }
-                actions()
-                Spacer(Modifier.width(6.dp))
-                Avatar(
-                    identity.name, identity.image, size = 38.dp, square = identity.square,
-                    modifier = Modifier.border(2.dp, colors.card, if (identity.square) RoundedCornerShape(10.dp) else CircleShape)
-                        .clip(if (identity.square) RoundedCornerShape(10.dp) else CircleShape)
-                        .clickable(onClickLabel = "حساب کاربری") { accountOpen = true },
-                )
             }
-        },
-        bottomBar = { TabBar(tabs, selected, select) },
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).background(colors.bg)) {
-            val tab = tabs[selected]
-            tab.title?.let { PageHeader(it, tab.subtitle) }
-            Box(Modifier.weight(1f)) { tab.content() }
         }
+        if (tour != null && panelTour.open) PanelTourOverlay(tourState, tour, panelTour, select)
     }
-    if (accountOpen) AccountSheet(panelName, identity, accountName, accountLinks, onSignOut) { accountOpen = false }
+    if (accountOpen) AccountSheet(panelName, identity, accountName, accountLinks, onSignOut, onStartTour = tour?.let { { panelTour.start() } }) { accountOpen = false }
 }
 
 /** The web's tab bar: the active icon on an accent pill, its label bold in ink. */
@@ -145,7 +156,7 @@ private fun TabBar(tabs: List<PanelTab>, selected: Int, select: (Int) -> Unit) {
                 val active = i == selected
                 val pill by animateColorAsState(if (active) c.accentSoft else Color.Transparent, tween(300), label = "tab")
                 Column(
-                    Modifier.weight(1f).height(62.dp)
+                    Modifier.weight(1f).height(62.dp).tourTarget("tab:$i")
                         .selectable(selected = active, interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Tab) { select(i) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
@@ -172,6 +183,7 @@ private fun AccountSheet(
     accountName: String?,
     links: List<AccountLink>,
     onSignOut: () -> Unit,
+    onStartTour: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
     val c = LocalAppColors.current
@@ -189,6 +201,10 @@ private fun AccountSheet(
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.card).border(1.dp, c.line, RoundedCornerShape(24.dp))) {
                 links.forEach { link ->
                     AccountRow(link.label, link.icon) { onDismiss(); link.onClick() }
+                    HorizontalDivider(color = c.line)
+                }
+                if (onStartTour != null) {
+                    AccountRow("تور آشنایی با پنل", Icons.Outlined.Explore) { onDismiss(); onStartTour() }
                     HorizontalDivider(color = c.line)
                 }
                 AccountRow(if (theme.dark) "حالت روشن" else "حالت تیره", if (theme.dark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, onClick = theme.toggle)

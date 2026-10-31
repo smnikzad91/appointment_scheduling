@@ -19,6 +19,12 @@ instead of «آرایشگرها»). The admin panel stays on the website (the ap
   splash — keep it in step with apps/web `components/common/SplashScreen.tsx` / `.app-splash`.
 - Shell: the web's AppShell — logo + «نوبتت» + panel name, bell, avatar → «حساب کاربری» sheet
   (panel links, light/dark, sign out), and its tab bar.
+- First-run tour (`ui/panels/PanelTour.kt`, steps in `PanelTours.kt`): the web's PanelTour, same steps and
+  wording as apps/web `panelTours.ts` — keep the two in step. A step opens its `tab` and spotlights an element
+  tagged `Modifier.tourTarget("<key>")` (the web's `data-tour`; the shell tags `actions`, `account`, `tab:<i>`),
+  waiting up to 6 s and paging through lazy lists registered with `TourScrollable(listState)` to find it;
+  `optional` steps are skipped when it never shows. Opens once per panel and account (SharedPreferences `tour`,
+  `tour-done:<salon|independent|stylist|customer>:<userId>`) and again from «تور آشنایی با پنل» in the account sheet.
 
 ## Backend
 - apps/api: `https://nobatet.app/backend/` (`BuildConfig.API_BASE_URL`), token as `Authorization: Bearer`.

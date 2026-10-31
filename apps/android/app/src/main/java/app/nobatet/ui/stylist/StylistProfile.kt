@@ -1,5 +1,6 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.panels.tourTarget
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.Toasts
@@ -93,11 +94,12 @@ fun StylistProfileScreen(container: AppContainer, stylist: SelfStylist, onChange
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box {
+            // the avatar hangs 44dp below the cover; the padding keeps it inside the tour's spotlight
+            Box(Modifier.padding(bottom = 44.dp).tourTarget("profile-photos")) {
                 RemoteImage(stylist.coverImageUrl, Modifier.fillMaxWidth().height(160.dp).clickable { pickCover.launch(image) })
                 RemoteImage(stylist.avatarUrl, Modifier.padding(start = 20.dp).offset(y = 116.dp).size(88.dp).clip(CircleShape).clickable { pickAvatar.launch(image) })
             }
-            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 44.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stylist.displayName, style = MaterialTheme.typography.titleLarge, color = c.ink)
                 Muted(stylist.salon.name)
                 Row {
@@ -115,7 +117,7 @@ fun StylistProfileScreen(container: AppContainer, stylist: SelfStylist, onChange
                         }
                     }
                 }
-                AppCard {
+                AppCard(Modifier.tourTarget("gallery")) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         SectionTitle("نمونه کارها", Modifier.weight(1f))
                         Muted("${gallery.size.toString().toPersianDigits()} از ${GALLERY_LIMIT.toString().toPersianDigits()}")

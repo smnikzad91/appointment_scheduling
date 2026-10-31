@@ -1,5 +1,8 @@
 package app.nobatet.ui.salon
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import app.nobatet.ui.panels.TourScrollable
+import app.nobatet.ui.panels.tourTarget
 import app.nobatet.util.openInBrowser
 import app.nobatet.ui.staff.TodayTimeline
 import app.nobatet.ui.staff.HomeSectionTitle
@@ -179,7 +182,7 @@ fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
     val stylistName: (StaffAppointment) -> String? = { a -> if (salon.independent) null else a.stylist?.displayName }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            AppointmentsViewSwitch(view, setView, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp))
+            AppointmentsViewSwitch(view, setView, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp).tourTarget("appointments-view"))
             if (!salon.independent && data.stylists.size > 1) {
                 Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterPill("همه آرایشگرها", stylistFilter == null) { stylistFilter = null }
@@ -203,7 +206,7 @@ fun SalonAppointmentsScreen(data: SalonData, sheets: SalonSheetsState) {
                 }
             }
         }
-        FloatingActionButton(onClick = { sheets.startCreate(data) }, containerColor = c.accent, contentColor = c.accentInk, modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)) {
+        FloatingActionButton(onClick = { sheets.startCreate(data) }, containerColor = c.accent, contentColor = c.accentInk, modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp).tourTarget("new-booking")) {
             Icon(Icons.Outlined.Add, contentDescription = "نوبت تازه")
         }
     }
@@ -238,9 +241,11 @@ fun SalonHomeScreen(container: AppContainer, data: SalonData, sheets: SalonSheet
     // the share kit's short link (book/@handle; the slug until a handle is chosen)
     val bookingUrl = BuildConfig.WEB_BASE_URL + "book/@" + (salon.handle ?: salon.slug)
 
-    LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val listState = rememberLazyListState()
+    TourScrollable(listState)
+    LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item(key = "hero") {
-            HeroCard {
+            HeroCard(Modifier.tourTarget("home-hero")) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Avatar(salon.name, salon.logoUrl, size = 52.dp)
                     Column(Modifier.padding(start = 12.dp)) {
@@ -281,7 +286,7 @@ fun SalonHomeScreen(container: AppContainer, data: SalonData, sheets: SalonSheet
         item(key = "wallet") { app.nobatet.ui.wallet.WalletBalanceCard(container) { onOpenPage(SalonPage.WALLET) } }
         item(key = "stats") {
             if (loaded == null) app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(110.dp))
-            else Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            else Row(Modifier.tourTarget("home-stats"), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile("نوبت امروز", todays.size, Icons.Outlined.EventAvailable, c.accent)
                 StatTile("منتظر تایید", needs.size, Icons.Outlined.HourglassEmpty, if (needs.isNotEmpty()) c.pending else null)
                 StatTile("نوبت‌های آینده", upcoming.size, Icons.Outlined.Schedule)
@@ -289,9 +294,9 @@ fun SalonHomeScreen(container: AppContainer, data: SalonData, sheets: SalonSheet
         }
         item(key = "insights") { InsightsHomeCards(container, onOpenVisits = { onOpenPage(SalonPage.VISITS) }, onOpenCustomers = { onOpenPage(SalonPage.CUSTOMERS) }) }
         item(key = "accounting") {
-            LinkCard(Icons.Outlined.Calculate, "حسابداری", if (independent) "درآمد، هزینه‌ها و سود خالص ماه" else "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها") { onOpenPage(SalonPage.ACCOUNTING) }
+            LinkCard(Icons.Outlined.Calculate, "حسابداری", if (independent) "درآمد، هزینه‌ها و سود خالص ماه" else "درآمد، سهم آرایشگرها، پرداخت‌ها و هزینه‌ها", Modifier.tourTarget("accounting")) { onOpenPage(SalonPage.ACCOUNTING) }
         }
-        item(key = "share") { LinkCard(Icons.Outlined.QrCode2, "کیت معرفی", "لینک مستقیم رزرو، کد QR و پوستر برای استوری و چاپ") { onOpenPage(SalonPage.SHARE) } }
+        item(key = "share") { LinkCard(Icons.Outlined.QrCode2, "کیت معرفی", "لینک مستقیم رزرو، کد QR و پوستر برای استوری و چاپ", Modifier.tourTarget("share-kit")) { onOpenPage(SalonPage.SHARE) } }
         item(key = "gallery") { LinkCard(Icons.Outlined.PhotoLibrary, "گالری نمونه کارها", "عکس کارهای انجام‌شده برای صفحه رزرو") { onOpenPage(SalonPage.GALLERY) } }
         // an independent stylist's own 0% is by design: all the money is theirs
         if (!independent) item(key = "zero") { ZeroCommissionNotice(data.stylists) { onGoToTab(3) } }

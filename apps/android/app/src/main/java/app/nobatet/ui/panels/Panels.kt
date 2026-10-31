@@ -120,6 +120,7 @@ fun CustomerPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit)
         selectedTab = tab,
         onSelectTab = { tab = it },
         actions = { NotificationBell(container) { overlay = CustomerOverlay.Notifications } },
+        tour = PanelTourSpec("customer:${user.id}", customerTour),
         tabs = listOf(
             PanelTab("خانه", Icons.Outlined.Home) {
                 HomeScreen(container, user.firstName, onDiscover = { tab = TAB_DISCOVER }, onOpenSalon = openSalon, onBookings = { tab = TAB_BOOKINGS })

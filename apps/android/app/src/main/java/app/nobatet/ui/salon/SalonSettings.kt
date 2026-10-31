@@ -1,5 +1,6 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.panels.tourTarget
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppDialog
 import app.nobatet.ui.components.AppTextField
@@ -142,17 +143,18 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box {
+            // the logo hangs 40dp below the cover; the padding keeps it inside the tour's spotlight
+            Box(Modifier.padding(bottom = 40.dp).tourTarget("profile-photos")) {
                 RemoteImage(salon.coverImageUrl, Modifier.fillMaxWidth().height(150.dp).clickable { pickCover.launch(image) })
                 RemoteImage(salon.logoUrl, Modifier.padding(start = 20.dp).offset(y = 106.dp).size(84.dp).clip(if (indie) CircleShape else RoundedCornerShape(22.dp)).clickable { pickLogo.launch(image) })
             }
-            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 44.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row {
                     AppTextButton(onClick = { pickLogo.launch(image) }, enabled = busy == null) { Text(if (busy == "logo") "در حال آپلود..." else if (indie) "تغییر عکس شما" else "تغییر لوگو") }
                     AppTextButton(onClick = { pickCover.launch(image) }, enabled = busy == null) { Text(if (busy == "cover") "در حال آپلود..." else "تغییر کاور") }
                 }
                 data.subscription?.let { sub ->
-                    AppCard {
+                    AppCard(Modifier.tourTarget("subscription")) {
                         SectionTitle("اشتراک")
                         val day = { at: String -> Instant.parse(at).toSalonDateTime(salon.timezone).toLocalDate().persianLabel() }
                         Text(
@@ -215,7 +217,7 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                         } else permission.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
                     }) { Text("موقعیت من") }
                 }
-                AppCard {
+                AppCard(Modifier.tourTarget("brand-color")) {
                     SectionTitle("رنگ برند")
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         BRAND_SWATCHES.forEach { hex ->

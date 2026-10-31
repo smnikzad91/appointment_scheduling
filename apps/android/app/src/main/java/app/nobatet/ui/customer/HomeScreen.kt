@@ -1,5 +1,7 @@
 package app.nobatet.ui.customer
 
+import androidx.compose.foundation.layout.Box
+import app.nobatet.ui.panels.tourTarget
 import app.nobatet.ui.components.AppTextButton
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.clickable
@@ -73,7 +75,7 @@ fun HomeScreen(container: AppContainer, firstName: String, onDiscover: () -> Uni
         item {
             Text("سلام $firstName", style = MaterialTheme.typography.headlineSmall, color = c.ink)
         }
-        item {
+        item { Box(Modifier.tourTarget("home-hero")) {
             val b = next
             if (!nextLoaded) app.nobatet.ui.components.SkeletonBlock(Modifier.fillMaxWidth().height(150.dp))
             else if (b == null) {
@@ -93,7 +95,7 @@ fun HomeScreen(container: AppContainer, firstName: String, onDiscover: () -> Uni
                     Muted(b.services.joinToString("، ") { it.service.name })
                 }
             }
-        }
+        } }
         if (favorites.isNotEmpty()) {
             item { SectionTitle("سالن‌های محبوب") }
             item {

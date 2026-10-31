@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.panels.tourTarget
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppDialog
 import app.nobatet.ui.components.AppTextField
@@ -73,7 +74,7 @@ fun BookingsScreen(container: AppContainer, onOpenSalon: (String) -> Unit, onReb
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             app.nobatet.ui.components.PageHeader("نوبت‌های من")
-            app.nobatet.ui.components.ChipTabs(listOf(0 to "پیش‌رو", 1 to "گذشته"), tab) { tab = it }
+            app.nobatet.ui.components.ChipTabs(listOf(0 to "پیش‌رو", 1 to "گذشته"), tab, Modifier.tourTarget("bookings-tabs")) { tab = it }
             val list = if (tab == 0) s.upcoming else s.past
             when {
                 s.loading -> Loading()

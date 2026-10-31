@@ -1,5 +1,6 @@
 package app.nobatet.ui.customer
 
+import app.nobatet.ui.panels.tourTarget
 import app.nobatet.ui.components.AppChip
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppTextField
@@ -132,7 +133,7 @@ fun DiscoverScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         AppTextField(
             value = s.query, onValueChange = vm::setQuery, singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).tourTarget("salon-search"),
             placeholder = { Text("نام سالن، آرایشگر یا خدمت") },
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             shape = RoundedCornerShape(16.dp),
@@ -142,6 +143,7 @@ fun DiscoverScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
                 selected = s.near != null,
                 label = { Text(if (s.locating) "در حال یافتن موقعیت..." else "نزدیک من") },
                 onClick = { if (s.near != null) vm.clearNear() else findMe() },
+                modifier = Modifier.tourTarget("near-me"),
             )
             listOf(null to "همه", SalonKind.SALON to "سالن‌ها", SalonKind.INDEPENDENT to "آرایشگران مستقل").forEach { (kind, label) ->
                 AppChip(selected = s.kind == kind, onClick = { vm.setKind(kind) }, label = { Text(label) })

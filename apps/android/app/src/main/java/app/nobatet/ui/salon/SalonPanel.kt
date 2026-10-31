@@ -90,6 +90,10 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
         selectedTab = tab,
         onSelectTab = { tab = it; if (it <= 1) data.loadAppointments() },
         actions = { app.nobatet.ui.customer.NotificationBell(container) { showNotifications = true } },
+        // an independent stylist gets their own tour (no stylists tab)
+        tour = remember(independent, user.id) {
+            app.nobatet.ui.panels.PanelTourSpec("${if (independent) "independent" else "salon"}:${user.id}", app.nobatet.ui.panels.businessTour(independent))
+        },
         tabs = listOf(
             PanelTab("خانه", Icons.Outlined.Home) { SalonHomeScreen(container, data, sheets, onGoToTab = { tab = it }) { page = it } },
             PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth, title = "نوبت‌ها") { SalonAppointmentsScreen(data, sheets) },

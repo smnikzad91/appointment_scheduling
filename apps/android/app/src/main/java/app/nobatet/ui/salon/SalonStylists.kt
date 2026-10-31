@@ -1,5 +1,6 @@
 package app.nobatet.ui.salon
 
+import app.nobatet.ui.panels.tourTarget
 import app.nobatet.ui.components.AppSwitch
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppDialog
@@ -75,9 +76,9 @@ fun SalonStylistsScreen(container: AppContainer, data: SalonData, ownerId: Strin
     var link by remember { mutableStateOf<Pair<String, String>?>(null) } // name, token
     Box(Modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { PrimaryButton("افزودن آرایشگر") { inviting = true } }
+            item { PrimaryButton("افزودن آرایشگر", Modifier.tourTarget("invite-stylist")) { inviting = true } }
             if (self == null) item {
-                AppCard {
+                AppCard(Modifier.tourTarget("add-self")) {
                     Text("خودتان هم آرایشگری می‌کنید؟", color = c.ink, style = MaterialTheme.typography.titleSmall)
                     Muted("خودتان را به آرایشگرها اضافه کنید تا مشتری‌ها بتوانند با شما نوبت بگیرند و شما هم برای خودتان نوبت ثبت کنید. درآمد نوبت‌های شما کامل مال سالن است.")
                     PrimaryButton(if (addingSelf) "در حال افزودن..." else "افزودن خودم به آرایشگرها", Modifier.fillMaxWidth(), enabled = !addingSelf) {

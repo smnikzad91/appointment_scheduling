@@ -91,6 +91,7 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
         selectedTab = tab,
         onSelectTab = { tab = it; if (it <= 1) loadAppointments() },
         actions = { app.nobatet.ui.customer.NotificationBell(container) { showNotifications = true } },
+        tour = app.nobatet.ui.panels.PanelTourSpec("stylist:${user.id}", app.nobatet.ui.panels.stylistTour),
         tabs = listOf(
             PanelTab("امروز", Icons.Outlined.Home) { StylistHomeScreen(s, appointments, actions, onGoToTab = { tab = it }) { page = it } },
             PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth, title = "نوبت‌های من") { StylistAppointmentsScreen(s, appointments, actions) },

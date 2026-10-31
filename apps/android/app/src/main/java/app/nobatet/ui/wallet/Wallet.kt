@@ -1,5 +1,7 @@
 package app.nobatet.ui.wallet
 
+import androidx.compose.foundation.layout.Box
+import app.nobatet.ui.panels.tourTarget
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -124,7 +126,7 @@ fun WalletScreen(container: AppContainer) {
     fun change(next: WalletFilters) { filters = next; page = 1 }
 
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        WalletTopUp(container, onPaid = { reload++ })
+        Box(Modifier.tourTarget("wallet-topup")) { WalletTopUp(container, onPaid = { reload++ }) }
         val w = wallet
         when {
             w != null -> {
