@@ -713,6 +713,168 @@ function guideVideos() {
   );
 }
 
+
+// ── 04-one-minute: ~60 s feed posts (4:5) that tell the whole story (2026-10-31) ──
+
+/** A centred title card at any point of the timeline (like `hook`, but starting at `start`). */
+const heroAt = (start, end, { kicker, title, sub, ic }) =>
+  scene(
+    start,
+    end,
+    `<div class="hero">${ic ? `<div class="ring" style="width:200px;height:200px;${anims(an("logoPop", start + 0.1, 0.7))}"><div class="disc">${icon(ic)}</div></div>` : ""}
+      ${kicker ? `<span class="kicker" style="${anims(an("popIn", start + 0.15, 0.5))}">${esc(kicker)}</span>` : ""}
+      <h1>${words(title, start + 0.35)}</h1>
+      ${sub ? `<p style="${anims(an("fadeIn", start + 1.2, 0.6))}">${esc(sub)}</p>` : ""}</div>`,
+  );
+
+/** postPoints at any start time. */
+function pointsAt(t0, step, points) {
+  return postPoints(t0, step, points);
+}
+
+/**
+ * Builds a 1-minute post from a list of parts, one after another:
+ * { hero: {...}, d } · { points: [...], step } · { ring: {...}, d } · { cta: {...} }.
+ */
+function minute(id, parts) {
+  return {
+    id,
+    dir: "04-one-minute",
+    format: "post",
+    get dur() {
+      return this._dur;
+    },
+    cover: 4,
+    _dur: 0,
+    body() {
+      let t = 0;
+      const out = [];
+      for (const p of parts) {
+        if (p.ring) {
+          out.push(ringHook(p.d, p.ring));
+          t = p.d;
+        } else if (p.hero) {
+          out.push(t === 0 ? hook(p.d, p.hero) : heroAt(t, t + p.d, p.hero));
+          t += p.d;
+        } else if (p.points) {
+          const s = pointsAt(t, p.step, p.points);
+          out.push(s.html);
+          t = s.end;
+        } else if (p.cta) {
+          out.push(scene(t, null, cta(t, p.cta)));
+          t += p.cta.contact ? 6 : 5;
+        }
+      }
+      this._dur = +t.toFixed(1);
+      return out;
+    },
+  };
+}
+
+function oneMinuteVideos() {
+  const vids = [
+    minute("post-60-salon-owners", [
+      { ring: { title: "هنوز نوبت‌ها را *تلفنی* می‌گیرید؟" }, d: 3.6 },
+      { hero: { kicker: "نوبتت", title: "سالن‌تان را *آنلاین* کنید", sub: "مشتری‌ها ۲۴ ساعته خودشان نوبت می‌گیرند؛ شما فقط تقویم را مدیریت می‌کنید" }, d: 3.6 },
+      {
+        step: 3.7,
+        points: [
+          { id: "owner-share-1", ic: "link", title: "صفحه رزرو، لینک و QR", text: "لینک اختصاصی برای بیو اینستاگرام و پوستر آماده استوری و چاپ." },
+          { id: "customer-book-4", ic: "calendar", title: "رزرو آنلاین ۲۴ ساعته", text: "مشتری فقط ساعت‌های خالی هر آرایشگر را می‌بیند؛ بدون تداخل." },
+          { id: "owner-prepaid-2", ic: "wallet", title: "پیش‌پرداخت ۲۵٪", text: "از کیف پول مشتری؛ نوبت‌های بی‌خبر کم می‌شوند." },
+          { id: "customer-bookings-1", ic: "sms", title: "پیامک یادآوری خودکار", text: "تایید و یادآوری برای مشتری و آرایشگر، بدون کار اضافه." },
+          { id: "stylist-home-1", ic: "users", title: "پنل هر آرایشگر", text: "برنامه، ساعت کاری، مرخصی و درآمد هر نفر در اپ خودش." },
+          { id: "owner-accounting-1", ic: "chart", title: "حسابداری سالن", text: "درآمد، سهم آرایشگرها، هزینه‌ها و سود خالص ماه شمسی." },
+          { id: "owner-insights-1", ic: "search", title: "آمار بازدید", text: "چند نفر صفحه شما را دیدند، از کجا آمدند و چند نفر نوبت گرفتند." },
+          { id: "owner-reviews-1", ic: "star", title: "نظرات و نمونه کار", text: "نظر مشتری‌های واقعی و گالری کارهای سالن در صفحه رزرو." },
+        ],
+      },
+      { hero: { kicker: "شروع در چند دقیقه", title: "*سه قدم* تا اولین نوبت آنلاین" }, d: 3.6 },
+      {
+        step: 3.9,
+        points: [
+          { id: "owner-register-1", title: "ثبت‌نام کنید", text: "نام سالن، شهر و محل روی نقشه؛ چند دقیقه بیشتر طول نمی‌کشد." },
+          { id: "owner-services-2", title: "خدمات و آرایشگرها", text: "قیمت و مدت هر خدمت، آرایشگرها و ساعت کاری هر نفر." },
+          { id: "owner-share-2", title: "لینک را منتشر کنید", text: "در بیو اینستاگرام بگذارید یا پوستر QR را روی میز پذیرش." },
+        ],
+      },
+      { hero: { kicker: "پیشنهاد ویژه", title: "*یک ماه رایگان* با همه امکانات", sub: "بدون کارت بانکی؛ هر وقت خواستید پلن بخرید", ic: "star" }, d: 3.6 },
+      { cta: { line: "سؤالی دارید؟ در اینستاگرام پیام بدهید یا تماس بگیرید", button: "شروع رایگان", contact: true } },
+    ]),
+    minute("post-60-independent-stylists", [
+      { hero: { title: "آرایشگر *مستقل* هستید؟", sub: "با نام خودتان کار می‌کنید؛ در سالن، استودیو یا منزل مشتری", ic: "scissors" }, d: 4.0 },
+      { hero: { kicker: "نوبتت", title: "یک *صفحه رزرو* با نام خودتان", sub: "مشتری‌ها مستقیم از تقویم شما نوبت می‌گیرند" }, d: 4.0 },
+      {
+        step: 4.5,
+        points: [
+          { id: "indie-page-1", ic: "link", title: "صفحه رزرو شما", text: "نام کاری، نمونه کارها، امتیاز و نشان «آرایشگر مستقل»." },
+          { id: "indie-page-2", ic: "pin", title: "در سالن یا در منزل", text: "محل‌های کارتان و محدوده خدمات در منزل؛ مشتری هنگام رزرو انتخاب می‌کند." },
+          { id: "indie-services-1", ic: "scissors", title: "خدمات و قیمت‌ها", text: "قیمت و مدت هر خدمت را خودتان تعیین کنید." },
+          { id: "indie-schedule-1", ic: "clock", title: "ساعت کاری و مرخصی", text: "فقط ساعت‌هایی که کار می‌کنید رزرو می‌شوند." },
+          { id: "indie-wallet-1", ic: "wallet", title: "پیش‌پرداخت به کیف پول شما", text: "۲۵٪ مبلغ هنگام رزرو؛ کمتر شدن مشتری‌هایی که نمی‌آیند." },
+          { id: "indie-accounting-1", ic: "chart", title: "درآمد و سود خالص", text: "درآمد، هزینه‌ها و سود ماه، بدون دفتر و ماشین‌حساب." },
+          { id: "indie-search-1", ic: "search", title: "پیدا شدن در جستجو", text: "مشتری‌ها با فیلتر «آرایشگران مستقل» شما را پیدا می‌کنند." },
+        ],
+      },
+      { hero: { kicker: "کیت معرفی", title: "لینک، QR و *پوستر آماده*", sub: "برای بیو، استوری و پست اینستاگرام" }, d: 4.0 },
+      { step: 4.4, points: [{ id: "indie-share-1", ic: "link", title: "پوستر با نام شما", text: "پوستر استوری و پست با خدمات و کد QR شما، با یک لمس." }] },
+      { hero: { kicker: "پیشنهاد ویژه", title: "*یک ماه رایگان* امتحان کنید", sub: "پلن «آرایشگر مستقل»؛ بدون کارت بانکی", ic: "star" }, d: 4.0 },
+      { cta: { line: "نوبت‌دهی آنلاین برای آرایشگرهای مستقل", button: "ثبت‌نام رایگان", contact: true } },
+    ]),
+    minute("post-60-customers", [
+      { hero: { kicker: "نوبت آرایشگاه", title: "دیگر *تماس نگیرید*، منتظر نمانید", sub: "خط اشغال، جواب ندادن، «فردا زنگ بزنید»…", ic: "phone" }, d: 4.2 },
+      { hero: { kicker: "نوبتت", title: "نوبت آرایشگاه، *آنلاین* و هر ساعت", sub: "سالن، خدمت، آرایشگر و ساعت دلخواه را خودتان انتخاب کنید" }, d: 4.2 },
+      {
+        step: 4.4,
+        points: [
+          { id: "customer-search-2", ic: "pin", title: "سالن نزدیک شما", text: "سالن‌ها و آرایشگرهای مستقل اطراف، با امتیاز و قیمت." },
+          { id: "customer-book-2", title: "خدمت را بزنید", text: "مدت و قیمت هر خدمت از اول معلوم است.", tap: [50, 96] },
+          { id: "customer-book-3", title: "آرایشگر دلخواه", text: "یا «فرقی نمی‌کند» تا همه ساعت‌های خالی را ببینید.", tap: [50, 78] },
+          { id: "customer-book-4", title: "ساعت خالی را بزنید", text: "فقط ساعت‌هایی که واقعاً آزادند.", tap: [85, 61] },
+          { id: "customer-book-9", ic: "check", title: "تمام!", text: "پیامک تایید و یادآوری برایتان می‌آید." },
+        ],
+      },
+      { hero: { kicker: "خیالتان راحت", title: "پیش‌پرداخت *امن*", sub: "۲۵٪ از کیف پول؛ اگر سالن لغو کند یا تایید نکند، کامل برمی‌گردد", ic: "shield" }, d: 4.2 },
+      {
+        step: 4.4,
+        points: [
+          { id: "customer-wallet-1", ic: "wallet", title: "کیف پول", text: "یک بار شارژ کنید؛ پیش‌پرداخت‌ها و برگشت پول همین‌جاست." },
+          { id: "customer-bookings-1", ic: "bell", title: "نوبت‌های من", text: "وضعیت هر نوبت، یادآوری پیامکی و لغو در صورت نیاز." },
+          { id: "customer-bookings-2", ic: "repeat", title: "رزرو دوباره", text: "همان خدمت، همان آرایشگر؛ با یک لمس." },
+          { id: "customer-review-2", ic: "star", title: "نظر بدهید", text: "به سالن و آرایشگر امتیاز بدهید؛ فقط مشتری‌های واقعی." },
+        ],
+      },
+      { cta: { line: "آرایشگاه و سالن زیبایی نزدیک خودتان را پیدا کنید و آنلاین نوبت بگیرید", button: "رزرو نوبت" } },
+    ]),
+    minute("post-60-platform-overview", [
+      { hero: { kicker: "نوبتت", title: "*یک اپ* برای همه دنیای زیبایی", sub: "سالن، آرایشگر، آرایشگر مستقل و مشتری؛ فارسی و با تقویم شمسی" }, d: 4.2 },
+      {
+        step: 5.2,
+        points: [
+          { id: "owner-home-1", ic: "users", title: "صاحب سالن", text: "نوبت‌ها، آرایشگرها، پیش‌پرداخت، حسابداری و آمار بازدید در یک پنل." },
+          { id: "stylist-home-1", ic: "scissors", title: "آرایشگر سالن", text: "برنامه امروز، ساعت کاری، مرخصی، درآمد و کیف پول خودش." },
+          { id: "indie-page-1", ic: "link", title: "آرایشگر مستقل", text: "صفحه رزرو با نام خودش؛ در سالن یا در منزل مشتری." },
+          { id: "customer-book-4", ic: "calendar", title: "مشتری", text: "پیدا کردن سالن نزدیک و رزرو آنلاین در چند لمس." },
+        ],
+      },
+      { hero: { kicker: "چرا نوبتت؟", title: "کمتر *تماس*، کمتر *غیبت*، بیشتر *نوبت*" }, d: 4.2 },
+      {
+        step: 5.0,
+        points: [
+          { id: "customer-bookings-1", ic: "sms", title: "پیامک یادآوری", text: "مشتری فراموش نمی‌کند؛ صندلی خالی نمی‌ماند." },
+          { id: "owner-prepaid-2", ic: "wallet", title: "پیش‌پرداخت آنلاین", text: "۲۵٪ از کیف پول، با قوانین روشن برگشت پول." },
+          { id: "owner-share-1", ic: "link", title: "لینک و پوستر QR", text: "از اینستاگرام مستقیم به صفحه رزرو." },
+          { id: "owner-insights-1", ic: "chart", title: "آمار و حسابداری", text: "بدانید مشتری از کجا می‌آید و سود ماه چقدر است." },
+        ],
+      },
+      { hero: { kicker: "پیشنهاد ویژه", title: "*یک ماه رایگان* برای سالن‌ها و آرایشگرها", ic: "star" }, d: 4.2 },
+      { cta: { line: "سؤالی دارید؟ در اینستاگرام پیام بدهید یا تماس بگیرید", button: "شروع رایگان", contact: true } },
+    ]),
+  ];
+  for (const v of vids) v.body(); // fixes each one's length
+  return vids;
+}
+
 const VIDEOS = [
   // ── Stories (9:16) ──
   {
@@ -949,6 +1111,9 @@ const VIDEOS = [
 
   // ── 03-guide-series: every Help Center guide ──
   ...guideVideos(),
+
+  // ── 04-one-minute: whole-story feed posts ──
+  ...oneMinuteVideos(),
 ];
 
 const EXTRA_STYLE = `
