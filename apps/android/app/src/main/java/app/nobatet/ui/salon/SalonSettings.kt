@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import app.nobatet.data.AppContainer
+import app.nobatet.data.ClientGender
 import app.nobatet.data.OwnerSalon
 import app.nobatet.data.Province
 import app.nobatet.data.SMS_BILLING_NOTE
@@ -56,6 +57,7 @@ import app.nobatet.data.ServiceLocation
 import app.nobatet.data.persianError
 import app.nobatet.data.uploadPhoto
 import app.nobatet.ui.components.AppCard
+import app.nobatet.ui.components.AppChip
 import app.nobatet.ui.components.Muted
 import app.nobatet.ui.components.PickerField
 import app.nobatet.ui.components.PrimaryButton
@@ -117,6 +119,7 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
     var address by remember(salon) { mutableStateOf(salon.address) }
     var pin by remember(salon) { mutableStateOf(if (salon.latitude != null && salon.longitude != null) salon.latitude to salon.longitude else null) }
     var brand by remember(salon) { mutableStateOf(salon.brandColor) }
+    var gender by remember(salon) { mutableStateOf(salon.clientGender) }
     var places by remember(salon) { mutableStateOf(salon.serviceLocations.toSet()) }
     var host by remember(salon) { mutableStateOf(salon.hostSalonName.orEmpty()) }
     var area by remember(salon) { mutableStateOf(salon.serviceArea.orEmpty()) }
@@ -187,6 +190,10 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                 AppCard {
                     SectionTitle(if (indie) "اطلاعات شما" else "اطلاعات سالن")
                     AppTextField(name, { name = it.take(100) }, label = { Text(if (indie) "نام کاری" else "نام سالن") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Muted(if (indie) "مشتری‌های شما (برای فیلتر جستجوی مشتری‌ها)" else "سالن ویژه (برای فیلتر جستجوی مشتری‌ها)")
+                    androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+                        ClientGender.entries.forEach { g -> AppChip(gender == g, { gender = g }, { Text(g.label) }) }
+                    }
                     AppTextField(description, { description = it.take(1000) }, label = { Text("درباره") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                     AppTextField(phone, { phone = it.take(20) }, label = { Text("تلفن تماس") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     AppTextField(instagram, { instagram = it.take(60) }, label = { Text("اینستاگرام") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -239,7 +246,7 @@ fun SalonSettingsScreen(container: AppContainer, data: SalonData) {
                                     SalonPatch(
                                         name = name.trim(), description = description.trim(), phone = phone.trim(), instagram = instagram.trim(),
                                         province = province.ifEmpty { null }, city = city.ifEmpty { null }, address = address.trim(),
-                                        latitude = pin?.first, longitude = pin?.second, brandColor = brand,
+                                        latitude = pin?.first, longitude = pin?.second, brandColor = brand, clientGender = gender,
                                         serviceLocations = if (indie) places.toList() else null,
                                         hostSalonName = if (indie) host.trim() else null, serviceArea = if (indie) area.trim() else null,
                                     ),

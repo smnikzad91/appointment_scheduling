@@ -67,6 +67,8 @@ export function apiRegisterSalonOwner(input: {
   /** «از کجا با ما آشنا شدید؟» (lib/signupSource.ts keys) + their words for OTHER */
   signupSource?: string;
   signupSourceNote?: string;
+  /** Who they serve (آقایان / بانوان). */
+  clientGender?: "MEN" | "WOMEN";
   /** An independent stylist's own business (salonName = their business/display name). */
   kind?: "SALON" | "INDEPENDENT";
   serviceLocations?: string[];

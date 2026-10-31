@@ -3,6 +3,7 @@ package app.nobatet.ui.customer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.nobatet.data.AppContainer
+import app.nobatet.data.ClientGender
 import app.nobatet.data.SalonCard
 import app.nobatet.data.SalonKind
 import app.nobatet.data.persianError
@@ -17,6 +18,8 @@ data class DiscoverState(
     val query: String = "",
     /** null = همه, SALON = سالن‌ها, INDEPENDENT = آرایشگران مستقل. */
     val kind: SalonKind? = null,
+    /** null = بانوان و آقایان; otherwise only businesses for them (plus those that haven't said yet). */
+    val gender: ClientGender? = null,
     /** «نزدیک من»: the customer's position — results nearest first, with distances. */
     val near: Pair<Double, Double>? = null,
     val locating: Boolean = false,
@@ -47,6 +50,11 @@ class DiscoverViewModel(private val container: AppContainer) : ViewModel() {
 
     fun setKind(kind: SalonKind?) {
         _state.update { it.copy(kind = kind) }
+        search(debounce = false)
+    }
+
+    fun setGender(gender: ClientGender?) {
+        _state.update { it.copy(gender = gender) }
         search(debounce = false)
     }
 
@@ -95,6 +103,7 @@ class DiscoverViewModel(private val container: AppContainer) : ViewModel() {
     private fun params(s: DiscoverState, offset: Int) = buildMap {
         if (s.query.isNotBlank()) put("q", s.query.trim())
         s.kind?.let { put("kind", it.name) }
+        s.gender?.let { put("gender", it.name) }
         val near = s.near
         if (near != null) {
             put("lat", near.first.toString())

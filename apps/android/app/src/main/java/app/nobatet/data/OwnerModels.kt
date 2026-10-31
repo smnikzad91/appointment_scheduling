@@ -26,6 +26,8 @@ data class OwnerSalon(
     val status: String = "ACTIVE",
     val timezone: String = "Asia/Tehran",
     val kind: SalonKind = SalonKind.SALON,
+    /** آقایان / بانوان; null = not set yet (the admin sets older businesses). */
+    val clientGender: ClientGender? = null,
     val serviceLocations: List<ServiceLocation> = emptyList(),
     val serviceArea: String? = null,
     val hostSalonName: String? = null,
@@ -47,6 +49,7 @@ data class SalonPatch(
     val logoUrl: String? = null,
     val coverImageUrl: String? = null,
     val brandColor: String? = null,
+    val clientGender: ClientGender? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
     val serviceLocations: List<ServiceLocation>? = null,
@@ -220,6 +223,8 @@ data class RegisterSalonRequest(
     val latitude: Double,
     val longitude: Double,
     val kind: SalonKind = SalonKind.SALON,
+    /** who they serve — required by the sign-up form */
+    val clientGender: ClientGender? = null,
     val serviceLocations: List<ServiceLocation>? = null,
     val hostSalonName: String? = null,
     val serviceArea: String? = null,

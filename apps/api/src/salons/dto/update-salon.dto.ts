@@ -1,7 +1,7 @@
 import { IsOptionalImageUrl } from "../../common/image-url.js";
-import type { ServiceLocation } from "@appointment-scheduling/database";
+import type { ClientGender, ServiceLocation } from "@appointment-scheduling/database";
 import { IsHostSalonName, IsServiceArea, IsServiceLocations } from "./service-locations.js";
-import { IsHexColor, IsLatitude, IsLongitude, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+import { IsHexColor, IsIn, IsLatitude, IsLongitude, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
 export class UpdateSalonDto {
   @IsOptional()
@@ -52,6 +52,11 @@ export class UpdateSalonDto {
   @IsOptional()
   @IsLongitude()
   longitude?: number;
+
+  /** Who they serve: MEN (آقایان) or WOMEN (بانوان). */
+  @IsOptional()
+  @IsIn(["MEN", "WOMEN"])
+  clientGender?: ClientGender;
 
   /** Independent stylists only (ignored for salons). */
   @IsServiceLocations()

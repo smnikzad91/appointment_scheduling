@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { INDEPENDENT_BADGE } from "@/lib/independent";
+import { CLIENT_GENDER_BADGE } from "@/lib/clientGender";
 import { MapPin, Navigation, Star } from "lucide-react";
 import type { SalonCard } from "@/lib/api/discovery";
 import { formatToman, toPersianDigits } from "@/lib/persian";
@@ -31,8 +32,15 @@ export default function SalonResultCard({ salon, style }: { salon: SalonCard; st
         <span className="flex items-start gap-2">
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[16px] font-black text-app-ink">{salon.name}</span>
-            {salon.kind === "INDEPENDENT" && (
-              <span className="mt-1 inline-block rounded-full bg-app-accent-soft px-2 py-0.5 text-[11px] font-bold text-app-accent">{INDEPENDENT_BADGE}</span>
+            {(salon.kind === "INDEPENDENT" || salon.clientGender) && (
+              <span className="mt-1 flex flex-wrap gap-1">
+                {salon.kind === "INDEPENDENT" && (
+                  <span className="rounded-full bg-app-accent-soft px-2 py-0.5 text-[11px] font-bold text-app-accent">{INDEPENDENT_BADGE}</span>
+                )}
+                {salon.clientGender && (
+                  <span className="rounded-full bg-app-card-2 px-2 py-0.5 text-[11px] font-bold text-app-muted">{CLIENT_GENDER_BADGE[salon.clientGender]}</span>
+                )}
+              </span>
             )}
             <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-app-muted">
               <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />

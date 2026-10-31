@@ -149,6 +149,7 @@ private fun SalonContent(salon: SalonDetail, reviews: List<app.nobatet.data.Publ
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(salon.name, style = MaterialTheme.typography.headlineSmall, color = c.ink)
                 if (salon.independent) Text("آرایشگر مستقل", color = c.accent, style = MaterialTheme.typography.labelLarge)
+                salon.clientGender?.let { Text(it.badge, color = c.muted, style = MaterialTheme.typography.labelLarge) }
                 val where = buildList {
                     if (salon.independent) salon.serviceLocations.forEach { add(it.label(salon.hostSalonName)) }
                     add(listOfNotNull(salon.province, salon.city).joinToString("، "))

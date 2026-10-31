@@ -324,3 +324,13 @@ An independent stylist usually rents a chair/room **in someone else's salon but 
 - Neshan/Balad get the browser GPS position as origin (5 s timeout); without it the origin is omitted —
   whether their sites route correctly with no origin is still unverified.
 - Android-app deep links (intents/package ids) were dropped at the user's request; web URLs only for now.
+
+## Salon audience (آقایان / بانوان)
+
+`Salon.clientGender` (MEN | WOMEN, nullable; migration 20261106000000): picked at sign-up (web `SignUpSalonForm`,
+Android `SignUpSalon.kt` — both require it; the API keeps it optional for older app versions), editable in salon
+settings, and set by the platform admin on /admin/salons for businesses registered before it existed
+(PATCH /admin/salons/:id/client-gender). Customers filter `/salons` and the app's search by it (`gender=MEN|WOMEN`,
+URL `?gender=women|men`); businesses without a value match both filters. Badges «ویژه بانوان / ویژه آقایان» on
+result cards and the salon page. Labels in `src/lib/clientGender.ts`.
+

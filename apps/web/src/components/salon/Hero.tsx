@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Star, Phone, CalendarCheck, UserRound } from "lucide-react";
 import { INDEPENDENT_BADGE } from "@/lib/independent";
+import { CLIENT_GENDER_BADGE } from "@/lib/clientGender";
 import type { Salon } from "@/types/salon";
 import { toPersianDigits } from "@/lib/persian";
 import { SocialIcon } from "@/components/common/SocialIcon";
@@ -67,6 +68,14 @@ export default function Hero({ salon }: { salon: Salon }) {
               >
                 <UserRound className="h-3.5 w-3.5" aria-hidden />
                 {INDEPENDENT_BADGE}
+              </span>
+            )}
+            {salon.clientGender && (
+              <span
+                className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold"
+                style={{ color: "var(--salon-brand-ink)", backgroundColor: "color-mix(in srgb, var(--salon-brand) 18%, transparent)" }}
+              >
+                {CLIENT_GENDER_BADGE[salon.clientGender]}
               </span>
             )}
             <OpenStatusBadge workingHours={salon.workingHours} timeZone={salon.timezone} />

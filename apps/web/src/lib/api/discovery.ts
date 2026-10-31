@@ -1,5 +1,6 @@
 import { salonApiFetch } from "./salonApiClient";
 import type { SalonKind, ServiceLocation } from "@/lib/independent";
+import type { ClientGender } from "@/lib/clientGender";
 
 // Salon discovery (apps/api GET /salons/search), saved salons (/me/favorites) and the "tell me
 // when a time opens up" waitlist (/salons/:slug/waitlist, /me/waitlist).
@@ -14,6 +15,8 @@ export interface SalonCard {
   address: string | null;
   /** INDEPENDENT = an independent stylist; their pin may be rounded (approximateLocation). */
   kind?: SalonKind;
+  /** Who it serves; null = not set yet. */
+  clientGender?: ClientGender | null;
   serviceLocations?: ServiceLocation[];
   hostSalonName?: string | null;
   approximateLocation?: boolean;
@@ -33,6 +36,8 @@ export interface SalonCard {
 export interface SalonSearchParams {
   /** SALON = salons only, INDEPENDENT = independent stylists only; omitted = both. */
   kind?: SalonKind;
+  /** For آقایان / بانوان; businesses without a value match both. */
+  gender?: ClientGender;
   province?: string;
   city?: string;
   q?: string;

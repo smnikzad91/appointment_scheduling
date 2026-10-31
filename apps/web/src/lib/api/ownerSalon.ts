@@ -26,6 +26,8 @@ export interface OwnerSalon {
   timezone: string;
   /** INDEPENDENT = an independent stylist's own business (they're its only stylist). */
   kind: SalonKind;
+  /** Who it serves; null = not set yet (older businesses — the admin sets it). */
+  clientGender: "MEN" | "WOMEN" | null;
   /** INDEPENDENT only: where they work, and the areas home visits cover. */
   serviceLocations: ServiceLocation[];
   serviceArea: string | null;
@@ -100,6 +102,8 @@ export interface UpdateSalonInput {
   logoUrl?: string | null; // null removes the photo
   coverImageUrl?: string | null;
   brandColor?: string;
+  /** آقایان / بانوان */
+  clientGender?: "MEN" | "WOMEN";
   latitude?: number;
   longitude?: number;
   /** Independent stylists only. */

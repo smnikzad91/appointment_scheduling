@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   try {
     const {
       firstName, lastName, email, phone, password, code, salonName, province, city, address, latitude, longitude, planId,
-      kind, serviceLocations, serviceArea, hostSalonName, signupSource, signupSourceNote,
+      kind, serviceLocations, serviceArea, hostSalonName, signupSource, signupSourceNote, clientGender,
     } = await req.json();
     // kind INDEPENDENT = an independent stylist signing up their own business (apps/api validates the rest).
     const independent = kind === "INDEPENDENT";
@@ -30,6 +30,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "رمز عبور باید حداقل ۸ کاراکتر باشد" }, { status: 400 });
     }
 
+    if (clientGender !== "MEN" && clientGender !== "WOMEN") {
+      return NextResponse.json({ error: "مشخص کنید ویژه بانوان است یا آقایان" }, { status: 400 });
+    }
+
     if (typeof latitude !== "number" || typeof longitude !== "number") {
       return NextResponse.json({ error: "محل سالن را روی نقشه مشخص کنید" }, { status: 400 });
     }
@@ -37,6 +41,7 @@ export async function POST(req: NextRequest) {
     await apiRegisterSalonOwner({
       firstName, lastName, email, phone, password, code: String(code ?? ""), salonName, province, city, address, latitude, longitude,
       planId: typeof planId === "string" && planId ? planId : undefined,
+      clientGender,
       signupSource: typeof signupSource === "string" && signupSource ? signupSource : undefined,
       signupSourceNote: typeof signupSourceNote === "string" && signupSourceNote.trim() ? signupSourceNote.trim().slice(0, 200) : undefined,
       ...(independent && {

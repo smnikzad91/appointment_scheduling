@@ -24,6 +24,7 @@ const CARD_SELECT = {
   latitude: true,
   longitude: true,
   kind: true,
+  clientGender: true,
   serviceLocations: true,
   serviceArea: true,
   hostSalonName: true,
@@ -88,6 +89,7 @@ export class SalonSearchService {
     }
     if (dto.city) where.push(Prisma.sql`s."city" = ${normalizePlaceName(dto.city)}`);
     if (dto.kind) where.push(Prisma.sql`s."kind" = ${dto.kind}::"SalonKind"`);
+    if (dto.gender) where.push(Prisma.sql`(s."clientGender" = ${dto.gender}::"ClientGender" OR s."clientGender" IS NULL)`);
     const q = dto.q ? normalizePlaceName(dto.q) : "";
     if (q) {
       const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
@@ -167,6 +169,7 @@ export function toSalonCard(row: SalonCardRow, stats: RatingStats | undefined, k
     name: s.name,
     slug: s.slug,
     kind: s.kind,
+    clientGender: s.clientGender,
     serviceLocations: s.serviceLocations,
     serviceArea: s.serviceArea,
     hostSalonName: s.hostSalonName,

@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import app.nobatet.data.ClientGender
 import app.nobatet.data.AppContainer
 import app.nobatet.data.AuthResponse
 import app.nobatet.data.RegisterSalonRequest
@@ -93,6 +94,7 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
     LaunchedEffect(Unit) { offer = runCatching { container.web.signUpPlans() }.getOrDefault(SignUpPlans()) }
     var planId by rememberSaveable { mutableStateOf<String?>(null) }
     var source by rememberSaveable { mutableStateOf<String?>(null) }
+    var gender by rememberSaveable { mutableStateOf<ClientGender?>(null) }
     var sourceNote by rememberSaveable { mutableStateOf("") }
     var picking by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -110,6 +112,7 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
                 container.api.registerSalonOwner(
                     RegisterSalonRequest(
                         firstName.trim(), lastName.trim(), phone, code, password, salonName.trim(), province, city, address.trim(), p.first, p.second, kind,
+                        clientGender = gender,
                         serviceLocations = if (independent) places.toList() else null,
                         hostSalonName = if (independent && ServiceLocation.IN_SALON in places) host.trim().ifEmpty { null } else null,
                         signupSource = source,
@@ -135,6 +138,10 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
         AppTextField(password, { password = it }, label = { Text("رمز عبور (حداقل ۸ کاراکتر)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
         AppTextField(salonName, { salonName = it.take(100) }, label = { Text(if (independent) "نام کاری" else "نام سالن") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Muted(if (independent) "مشتری‌های شما" else "سالن ویژه")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ClientGender.entries.forEach { g -> AppChip(gender == g, { gender = g }, { Text(g.label) }) }
+        }
         if (independent) {
             Muted("کجا کار می‌کنید؟")
             PLACE_LABEL.forEach { (loc, label) ->
@@ -174,6 +181,7 @@ fun SignUpSalonForm(container: AppContainer, onSignedIn: (AuthResponse) -> Unit,
                 !isValidIranianMobile(phone) -> "شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد"
                 password.length < 8 -> "رمز عبور باید حداقل ۸ کاراکتر باشد"
                 salonName.isBlank() -> if (independent) "نام کاری را وارد کنید" else "نام سالن را وارد کنید"
+                gender == null -> if (independent) "مشخص کنید مشتری‌هایتان بانوان هستند یا آقایان" else "مشخص کنید سالن ویژه بانوان است یا آقایان"
                 independent && places.isEmpty() -> "محل ارائه خدمات را انتخاب کنید"
                 province.isEmpty() || city.isEmpty() -> "استان و شهر را انتخاب کنید"
                 address.isBlank() -> "آدرس را وارد کنید"

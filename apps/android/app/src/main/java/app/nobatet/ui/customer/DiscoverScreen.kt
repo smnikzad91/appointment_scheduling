@@ -58,6 +58,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.nobatet.data.AppContainer
 import app.nobatet.data.SalonCard
+import app.nobatet.data.ClientGender
 import app.nobatet.data.SalonKind
 import app.nobatet.ui.components.AppCard
 import app.nobatet.ui.components.Empty
@@ -138,6 +139,12 @@ fun DiscoverScreen(container: AppContainer, onOpenSalon: (String) -> Unit) {
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             shape = RoundedCornerShape(16.dp),
         )
+        // for بانوان / آقایان (as the web's SalonSearch)
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(null to "بانوان و آقایان", ClientGender.WOMEN to ClientGender.WOMEN.label, ClientGender.MEN to ClientGender.MEN.label).forEach { (g, label) ->
+                AppChip(selected = s.gender == g, onClick = { vm.setGender(g) }, label = { Text(label) })
+            }
+        }
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppChip(
                 selected = s.near != null,
@@ -405,6 +412,7 @@ private fun SalonCardRow(salon: SalonCard, onClick: () -> Unit) {
                 Text(salon.name, style = MaterialTheme.typography.titleMedium, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val where = buildList {
                     if (salon.kind == SalonKind.INDEPENDENT) add("آرایشگر مستقل")
+                    salon.clientGender?.let { add(it.badge) }
                     salon.hostSalonName?.takeIf { it.isNotBlank() }?.let { add("در $it") }
                     add(salon.city)
                 }.joinToString("، ")

@@ -1,6 +1,7 @@
 "use client";
 
 import type { SalonKind } from "@/lib/independent";
+import { CLIENT_GENDERS, CLIENT_GENDER_LABEL, genderToParam, type ClientGender } from "@/lib/clientGender";
 import { useEffect, useMemo, useState } from "react";
 import { List, LoaderCircle, LocateFixed, Map as MapIcon, Navigation, Search, SearchX, Star, X } from "lucide-react";
 import { searchSalons, type SalonCard, type SalonSearchParams } from "@/lib/api/discovery";
@@ -22,6 +23,7 @@ const SELECT_CLASS =
 
 export interface SalonSearchInitial {
   kind?: SalonKind;
+  gender?: ClientGender;
   province?: string;
   city?: string;
   q?: string;
@@ -33,6 +35,7 @@ type LocateState = "idle" | "locating" | "denied" | "unavailable";
 export default function SalonSearch({ initial = {} }: { initial?: SalonSearchInitial }) {
   const [place, setPlace] = useState({ province: initial.province ?? "", city: initial.city ?? "" });
   const [kind, setKind] = useState<SalonKind | "">(initial.kind ?? "");
+  const [gender, setGender] = useState<ClientGender | "">(initial.gender ?? "");
   const [qInput, setQInput] = useState(initial.q ?? "");
   const [q, setQ] = useState(initial.q ?? "");
   const [near, setNear] = useState<Near | null>(null);
@@ -54,13 +57,14 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
   const params = useMemo<SalonSearchParams>(
     () => ({
       kind: kind || undefined,
+      gender: gender || undefined,
       province: place.province || undefined,
       city: place.city || undefined,
       q: q || undefined,
       ...(near && { lat: near.lat, lng: near.lng, sort, ...(radiusKm > 0 && { radiusKm }) }),
       limit: PAGE,
     }),
-    [kind, place, q, near, sort, radiusKm],
+    [kind, gender, place, q, near, sort, radiusKm],
   );
   const key = JSON.stringify(params) + retry;
 
@@ -78,12 +82,12 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
   useEffect(() => {
     const url = new URL(window.location.href);
     const type = kind === "INDEPENDENT" ? "independent" : kind === "SALON" ? "salon" : "";
-    for (const [k, v] of [["type", type], ["province", place.province], ["city", place.city], ["q", q]] as const) {
+    for (const [k, v] of [["type", type], ["gender", genderToParam(gender)], ["province", place.province], ["city", place.city], ["q", q]] as const) {
       if (v) url.searchParams.set(k, v);
       else url.searchParams.delete(k);
     }
     window.history.replaceState(window.history.state, "", url);
-  }, [kind, place, q]);
+  }, [kind, gender, place, q]);
 
   const loading = results?.key !== key && error?.key !== key;
   const failed = error?.key === key;
@@ -141,6 +145,15 @@ export default function SalonSearch({ initial = {} }: { initial?: SalonSearchIni
           </button>
         )}
       </label>
+
+      {/* For بانوان or آقایان (who the business serves) */}
+      <div role="radiogroup" aria-label="ویژه" className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+        {([["", "بانوان و آقایان"], ...CLIENT_GENDERS.map((g) => [g, CLIENT_GENDER_LABEL[g]])] as [ClientGender | "", string][]).map(([v, label]) => (
+          <button key={v || "both"} type="button" role="radio" aria-checked={gender === v} onClick={() => setGender(v)} className={chip(gender === v)}>
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* Salons, independent stylists, or both */}
       <div role="radiogroup" aria-label="نوع" className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">

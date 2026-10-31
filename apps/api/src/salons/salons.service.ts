@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { SalonKind, SalonStatus } from "@appointment-scheduling/database";
+import { SalonKind, SalonStatus, type ClientGender } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { UpdateSalonDto } from "./dto/update-salon.dto.js";
 import { publicLocation } from "./public-location.util.js";
@@ -60,6 +60,12 @@ export class SalonsService {
   }
 
   // --- platform-admin moderation ---
+
+  async setClientGender(id: string, clientGender: ClientGender | null) {
+    const found = await this.prisma.salon.findUnique({ where: { id }, select: { id: true } });
+    if (!found) throw new NotFoundException("Salon not found");
+    return this.prisma.salon.update({ where: { id }, data: { clientGender }, select: { id: true, clientGender: true } });
+  }
 
   listForAdmin(status?: SalonStatus) {
     return this.prisma.salon.findMany({

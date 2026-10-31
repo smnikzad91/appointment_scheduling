@@ -20,6 +20,7 @@ import PhoneCodeStep from "@/components/guest/PhoneCodeStep";
 import { requestOtp } from "@/lib/api/bookings";
 import { persianApiError } from "@/lib/api/errorMessages";
 import { SIGNUP_SOURCES, SIGNUP_SOURCE_LABEL, type SignupSource } from "@/lib/signupSource";
+import { CLIENT_GENDERS, CLIENT_GENDER_LABEL, type ClientGender } from "@/lib/clientGender";
 
 export type SignUpPlan = Pick<PricingPlanData, "id" | "name" | "audience" | "monthlyPriceToman" | "maxStylists" | "smsPerMonth" | "features" | "recommended">;
 
@@ -54,6 +55,7 @@ export default function SignUpSalonForm({
   const [address, setAddress] = useState("");
   const [pin, setPin] = useState<GeoLocation | null>(null);
   const [signupSource, setSignupSource] = useState<SignupSource | null>(null);
+  const [clientGender, setClientGender] = useState<ClientGender | null>(null);
   const [signupSourceNote, setSignupSourceNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [codeSent, setCodeSent] = useState<{ devCode?: string } | null>(null);
@@ -63,8 +65,8 @@ export default function SignUpSalonForm({
   useBackgroundDraft(
     "signup-salon",
     () =>
-      place.province || pin || serviceLocations.length || signupSource || kind !== initialKind
-        ? { kind, serviceLocations, place, pin, planId, signupSource }
+      place.province || pin || serviceLocations.length || signupSource || clientGender || kind !== initialKind
+        ? { kind, serviceLocations, place, pin, planId, signupSource, clientGender }
         : null,
     (d) => {
       setKind(d.kind);
@@ -73,6 +75,7 @@ export default function SignUpSalonForm({
       setPin(d.pin);
       setPlanId(d.planId);
       setSignupSource(d.signupSource ?? null);
+      setClientGender(d.clientGender ?? null);
     },
   );
 
@@ -83,6 +86,10 @@ export default function SignUpSalonForm({
 
     if (!IRANIAN_MOBILE.test(phone)) {
       toastError("شماره موبایل باید با ۰۹ شروع شده و ۱۱ رقم باشد (مثال: ۰۹۱۱۹۱۰۰۹۹۱)");
+      return;
+    }
+    if (!clientGender) {
+      toastError(independent ? "مشخص کنید مشتری‌هایتان بانوان هستند یا آقایان" : "مشخص کنید سالن ویژه بانوان است یا آقایان");
       return;
     }
     if (independent && serviceLocations.length === 0) {
@@ -135,6 +142,7 @@ export default function SignUpSalonForm({
         latitude: pin.lat,
         longitude: pin.lng,
         planId: chosenPlanId ?? undefined,
+        clientGender: clientGender ?? undefined,
         signupSource: signupSource ?? undefined,
         signupSourceNote: (signupSource === "OTHER" && signupSourceNote.trim()) || undefined,
         ...(independent && {
@@ -255,6 +263,29 @@ export default function SignUpSalonForm({
           value={salonName}
           onChange={(e) => setSalonName(e.target.value)}
         />
+        <div className="g-rise flex flex-col gap-2" style={rise(5.65)}>
+          <p className="px-1 text-[13px] text-g-muted">
+            {independent ? "مشتری‌های شما" : "سالن ویژه"}
+            <span className="text-g-danger"> *</span>
+          </p>
+          <div role="radiogroup" aria-label={independent ? "مشتری‌های شما" : "سالن ویژه"} className="grid grid-cols-2 gap-2">
+            {CLIENT_GENDERS.map((g) => (
+              <button
+                key={g}
+                type="button"
+                role="radio"
+                aria-checked={clientGender === g}
+                onClick={() => setClientGender(g)}
+                className={`rounded-2xl border px-3.5 py-3 text-sm font-bold transition ${
+                  clientGender === g ? "border-g-accent bg-g-accent/10 text-g-ink" : "border-g-line-strong text-g-muted hover:border-g-accent/50"
+                }`}
+              >
+                {CLIENT_GENDER_LABEL[g]}
+              </button>
+            ))}
+          </div>
+          <p className="px-1 text-xs leading-5 text-g-faint">مشتری‌ها در جستجو با همین گزینه سالن‌ها را پیدا می‌کنند.</p>
+        </div>
         {independent && (
           <div className="g-rise flex flex-col gap-2" style={rise(5.75)}>
             <p className="px-1 text-[13px] text-g-muted">

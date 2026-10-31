@@ -47,6 +47,7 @@ interface RawSalon {
   kind?: SalonKind;
   serviceLocations?: ServiceLocation[];
   serviceArea?: string | null;
+  clientGender?: "MEN" | "WOMEN" | null;
   hostSalonName?: string | null;
   phone: string;
   instagram: string | null;
@@ -204,6 +205,7 @@ export const getSalonBySlug = cache(async (slug: string): Promise<Salon | null> 
     location: raw.latitude !== null && raw.longitude !== null ? { lat: raw.latitude, lng: raw.longitude } : null,
     approximateLocation: raw.approximateLocation ?? false,
     kind: raw.kind ?? "SALON",
+    clientGender: raw.clientGender ?? null,
     serviceLocations: raw.serviceLocations ?? [],
     serviceArea: raw.serviceArea ?? null,
     hostSalonName: raw.hostSalonName ?? null,

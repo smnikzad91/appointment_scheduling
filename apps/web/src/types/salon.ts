@@ -88,6 +88,8 @@ export interface Salon {
   approximateLocation: boolean;
   /** INDEPENDENT = an independent stylist's own business (they're its only stylist). */
   kind: SalonKind;
+  /** آقایان / بانوان; null = not set yet. */
+  clientGender: "MEN" | "WOMEN" | null;
   serviceLocations: ServiceLocation[];
   serviceArea: string | null;
   /** IN_SALON: the salon an independent stylist works in. */

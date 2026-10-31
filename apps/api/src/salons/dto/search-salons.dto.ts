@@ -15,6 +15,11 @@ export class SearchSalonsDto {
   @IsIn(["SALON", "INDEPENDENT"])
   kind?: "SALON" | "INDEPENDENT";
 
+  /** MEN = for آقایان, WOMEN = for بانوان; businesses that haven't set it yet match both. Omitted = all. */
+  @IsOptional()
+  @IsIn(["MEN", "WOMEN"])
+  gender?: "MEN" | "WOMEN";
+
   /** Matches the salon name, its address or one of its active services. */
   @IsOptional()
   @IsString()

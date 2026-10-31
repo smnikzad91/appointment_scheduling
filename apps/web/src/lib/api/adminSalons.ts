@@ -14,6 +14,8 @@ export interface AdminSalon {
   status: "PENDING" | "ACTIVE" | "SUSPENDED";
   /** INDEPENDENT = an independent stylist's own business. */
   kind?: "SALON" | "INDEPENDENT";
+  /** آقایان / بانوان; null = not set yet. */
+  clientGender?: "MEN" | "WOMEN" | null;
   createdAt: string;
   owner: { id: string; firstName: string; lastName: string; phone: string | null };
   plan: { id: string; name: string } | null;
@@ -34,6 +36,15 @@ export function setSalonStatus(token: string, id: string, status: AdminSalon["st
     method: "PATCH",
     headers: authHeaders(token),
     body: JSON.stringify({ status }),
+  });
+}
+
+/** Who a business serves (آقایان / بانوان); null clears it. */
+export function setSalonClientGender(token: string, id: string, clientGender: "MEN" | "WOMEN" | null) {
+  return salonApiFetch<{ id: string; clientGender: "MEN" | "WOMEN" | null }>(`/admin/salons/${id}/client-gender`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ clientGender }),
   });
 }
 

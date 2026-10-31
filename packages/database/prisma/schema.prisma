@@ -17,6 +17,13 @@ enum Role {
 }
 
 /// SALON = a beauty salon with its own stylists; INDEPENDENT = one freelance stylist's own business.
+/// Who a salon or independent stylist serves: آقایان (MEN) or بانوان (WOMEN). Picked at sign-up, editable in
+/// settings and by the platform admin; customers filter the search by it.
+enum ClientGender {
+  MEN
+  WOMEN
+}
+
 enum SalonKind {
   SALON
   INDEPENDENT
@@ -564,6 +571,8 @@ model Salon {
   longitude        Float?
   status           SalonStatus       @default(PENDING)
   kind             SalonKind         @default(SALON)
+  /// null = not set yet (businesses from before 2026-11; the admin sets them) — listed under both search filters
+  clientGender     ClientGender?
   // INDEPENDENT only: where they work, and (home visits) the areas they cover.
   serviceLocations ServiceLocation[] @default([])
   serviceArea      String?
@@ -603,6 +612,7 @@ model Salon {
 
   @@index([province, city])
   @@index([kind, status])
+  @@index([clientGender])
   // Bounding-box prefilter for "near me" (see apps/api src/salons/salon-search.service.ts).
   @@index([latitude, longitude])
   @@map("salons")

@@ -133,6 +133,7 @@ export class AuthService {
           ...(independent && {
             kind: SalonKind.INDEPENDENT,
             serviceLocations: dto.serviceLocations,
+            clientGender: dto.clientGender ?? null,
             serviceArea: dto.serviceArea ?? null,
             hostSalonName: dto.hostSalonName ?? null,
           }),

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
-import { listAdminSalons, setSalonStatus, setSalonSubscription, type AdminSalon } from "@/lib/api/adminSalons";
+import { listAdminSalons, setSalonClientGender, setSalonStatus, setSalonSubscription, type AdminSalon } from "@/lib/api/adminSalons";
 import { getAdminPricing } from "@/lib/api/adminPricing";
 import type { PricingPlanData } from "@/lib/pricing";
 import { normalizeDigits } from "@/lib/persian";
@@ -72,6 +72,19 @@ export default function AdminSalonsPage() {
     try {
       await setSalonStatus(token, id, status);
       reload();
+    } catch {
+      toastError(t("slStatusError"));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleSetGender(id: string, clientGender: "MEN" | "WOMEN") {
+    if (!token) return;
+    setBusyId(id);
+    try {
+      await setSalonClientGender(token, id, clientGender);
+      setSalons((list) => list && list.map((s) => (s.id === id ? { ...s, clientGender } : s)));
     } catch {
       toastError(t("slStatusError"));
     } finally {
@@ -189,6 +202,26 @@ export default function AdminSalonsPage() {
                       {t("slChangePlan")}
                     </button>
                   </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    {t("slClientGender")}:
+                    {(["WOMEN", "MEN"] as const).map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        disabled={busyId === salon.id}
+                        aria-pressed={salon.clientGender === g}
+                        onClick={() => handleSetGender(salon.id, g)}
+                        className={`rounded-full px-3 py-1 font-semibold disabled:opacity-60 ${
+                          salon.clientGender === g
+                            ? "bg-brand-500 text-white"
+                            : "border border-gray-200 text-gray-600 hover:border-brand-300 dark:border-gray-700 dark:text-gray-300"
+                        }`}
+                      >
+                        {t(g === "WOMEN" ? "slGenderWomen" : "slGenderMen")}
+                      </button>
+                    ))}
+                    {!salon.clientGender && <span className="font-semibold text-amber-600">{t("slClientGenderNone")}</span>}
+                  </div>
                 </div>
 
                 <div className="flex shrink-0 gap-2">

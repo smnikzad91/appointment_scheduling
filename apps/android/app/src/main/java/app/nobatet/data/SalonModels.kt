@@ -11,6 +11,13 @@ enum class SalonKind { SALON, INDEPENDENT }
 @Serializable
 enum class ServiceLocation { IN_SALON, STUDIO, HOME, CLIENT_HOME }
 
+/** Who a salon / independent stylist serves (apps/api Salon.clientGender); null = not set yet. */
+@Serializable
+enum class ClientGender(val label: String, val badge: String) {
+    WOMEN("بانوان", "ویژه بانوان"),
+    MEN("آقایان", "ویژه آقایان"),
+}
+
 @Serializable
 data class SalonCard(
     val id: String,
@@ -21,6 +28,7 @@ data class SalonCard(
     /** null = an independent stylist's private (home) address. */
     val address: String? = null,
     val kind: SalonKind = SalonKind.SALON,
+    val clientGender: ClientGender? = null,
     val serviceLocations: List<ServiceLocation> = emptyList(),
     val hostSalonName: String? = null,
     val logoUrl: String? = null,
@@ -84,6 +92,7 @@ data class SalonDetail(
     val address: String? = null,
     val approximateLocation: Boolean = false,
     val kind: SalonKind = SalonKind.SALON,
+    val clientGender: ClientGender? = null,
     val serviceLocations: List<ServiceLocation> = emptyList(),
     val serviceArea: String? = null,
     val hostSalonName: String? = null,

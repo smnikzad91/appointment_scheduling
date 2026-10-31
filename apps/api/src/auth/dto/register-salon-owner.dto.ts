@@ -1,5 +1,5 @@
 import { IsIn, IsLatitude, IsLongitude, IsOptional, IsString, Length, MaxLength, MinLength } from "class-validator";
-import type { SalonKind, ServiceLocation } from "@appointment-scheduling/database";
+import type { ClientGender, SalonKind, ServiceLocation } from "@appointment-scheduling/database";
 import { IsHostSalonName, IsServiceArea, IsServiceLocations } from "../../salons/dto/service-locations.js";
 import { SIGNUP_SOURCES, type SignupSource } from "../signup-source.js";
 
@@ -31,6 +31,11 @@ export class RegisterSalonOwnerDto {
   @IsOptional()
   @IsIn(["SALON", "INDEPENDENT"])
   kind?: SalonKind;
+
+  /** Who they serve: MEN (آقایان) or WOMEN (بانوان). The web and app forms require it; optional for older app versions. */
+  @IsOptional()
+  @IsIn(["MEN", "WOMEN"])
+  clientGender?: ClientGender;
 
   /** INDEPENDENT: where they work (required, one or more). */
   @IsServiceLocations()
