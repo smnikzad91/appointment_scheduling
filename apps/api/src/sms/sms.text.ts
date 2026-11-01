@@ -119,8 +119,14 @@ export function salonStatusChange(from: string, to: string): "approved" | "rejec
 export const adminNewAccountText = (p: { who: "salon" | "independent" | "stylist"; name: string; place: string }) =>
   fitSms({ name: p.name, place: p.place }, ["name", "place"], (q) =>
     p.who === "stylist"
-      ? `آرایشگر تازه در ${q.place}: ${q.name}`
+      ? `آرایشگر تازه در ${q.place}: ${q.name}؛ منتظر تایید`
       : `${p.who === "salon" ? "سالن تازه ثبت‌نام کرد" : "آرایشگر مستقل تازه"}: ${q.name}، ${q.place}؛ منتظر تایید`,
+  );
+
+/** To a salon's owner: the platform admin's decision on a stylist they invited (one segment, names cut first). */
+export const stylistApprovalText = (p: { approved: boolean; name: string; salon: string }) =>
+  fitSms({ name: p.name, salon: p.salon }, ["salon", "name"], (q) =>
+    p.approved ? `آرایشگر ${q.name} در ${q.salon} تایید شد و در نوبتت فعال است` : `آرایشگر ${q.name} در ${q.salon} تایید نشد؛ با پشتیبانی تماس بگیرید`,
   );
 
 /**

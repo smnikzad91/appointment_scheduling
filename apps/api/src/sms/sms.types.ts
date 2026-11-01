@@ -76,6 +76,13 @@ export type SmsMessage =
       text: string;
     }
   | {
+      /** The platform admin approved / rejected a stylist the salon invited (to its owner). */
+      kind: "stylist-approval-owner";
+      to: string;
+      params: { approved: boolean; name: string; salon: string };
+      text: string;
+    }
+  | {
       /** Sent right after the «approved» text: the sign-up's free trial of their plan runs until `until`. */
       kind: "trial-started-owner";
       to: string;

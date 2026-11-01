@@ -1,12 +1,13 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
-import { Role, SalonKind } from "@appointment-scheduling/database";
+import { Role, SalonKind, StylistApproval } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SalonsService } from "../salons/salons.service.js";
 import { assertOwnsSalon } from "../salons/salon-ownership.util.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { issueSetupToken, unusablePassword } from "../auth/password-setup.util.js";
+import { stylistApprovalText } from "../sms/sms.text.js";
 import {
   InviteStylistDto,
   UpdateStylistDto,
@@ -74,10 +75,13 @@ export class StylistsService {
             mustSetPassword: true,
           },
         }));
+      // Waits, switched off, for the platform admin's approval (setApproval) — separate from the salon's.
       const stylist = await tx.stylist.create({
         data: {
           userId: stylistUser.id,
           salonId: salon.id,
+          approval: StylistApproval.PENDING,
+          active: false,
           displayName: dto.displayName,
           bio: dto.bio,
           commissionPercent: dto.commissionPercent ?? DEFAULT_COMMISSION_PERCENT,
@@ -152,8 +156,11 @@ export class StylistsService {
         if (salon?.kind === SalonKind.INDEPENDENT) throw new ForbiddenException("Your own stylist profile can't be deactivated or given a commission");
       }
     }
-    // Re-activating a stylist takes a seat on the plan like adding one.
-    if (dto.active === true && !stylist.active) await this.subscriptions.assertCanAddStylist(stylist.salonId);
+    // Re-activating a stylist takes a seat on the plan like adding one; one the admin hasn't approved can't be switched on.
+    if (dto.active === true && !stylist.active) {
+      if (stylist.approval !== StylistApproval.APPROVED) throw new ForbiddenException("This stylist is waiting for the platform's approval");
+      await this.subscriptions.assertCanAddStylist(stylist.salonId);
+    }
     const [updated] = await this.prisma.$transaction([
       this.prisma.stylist.update({ where: { id: stylist.id }, data: dto }),
       ...this.syncAccountAvatar(stylist.userId, dto.avatarUrl),
@@ -197,6 +204,56 @@ export class StylistsService {
         })),
       }),
     ]);
+  }
+
+  // --- platform-admin approval of invited stylists ---
+
+  listForAdmin(approval?: StylistApproval) {
+    return this.prisma.stylist.findMany({
+      // only invited stylists: an owner's own profile and an independent stylist's are never pending
+      where: { ...(approval && { approval }), salon: { kind: SalonKind.SALON }, user: { ownedSalons: { none: {} } } },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        displayName: true,
+        avatarUrl: true,
+        active: true,
+        approval: true,
+        approvalDecidedAt: true,
+        createdAt: true,
+        user: { select: { firstName: true, lastName: true, phone: true, mustSetPassword: true } },
+        salon: { select: { id: true, name: true, city: true, status: true, owner: { select: { firstName: true, lastName: true, phone: true } } } },
+      },
+    });
+  }
+
+  /**
+   * The platform admin approves or rejects an invited stylist. Approval switches them on when the
+   * salon's plan has a free seat (otherwise the owner switches them on after upgrading — the reply's
+   * `active` says which); rejection keeps them off. The salon's owner is texted the decision.
+   */
+  async setApproval(id: string, approval: "APPROVED" | "REJECTED", now = new Date()) {
+    const stylist = await this.prisma.stylist.findUnique({
+      where: { id },
+      select: { id: true, salonId: true, displayName: true, approval: true, salon: { select: { name: true, owner: { select: { phone: true } } } } },
+    });
+    if (!stylist) throw new NotFoundException("Stylist not found");
+    if (stylist.approval === approval) return this.prisma.stylist.findUniqueOrThrow({ where: { id }, select: { id: true, approval: true, active: true } });
+    let active = false;
+    if (approval === StylistApproval.APPROVED) {
+      active = await this.subscriptions.assertCanAddStylist(stylist.salonId).then(() => true, () => false);
+    }
+    const updated = await this.prisma.stylist.update({
+      where: { id },
+      data: { approval, approvalDecidedAt: now, active },
+      select: { id: true, approval: true, active: true },
+    });
+    const to = stylist.salon.owner?.phone;
+    if (to) {
+      const params = { approved: approval === StylistApproval.APPROVED, name: stylist.displayName, salon: stylist.salon.name };
+      void this.sms.send({ kind: "stylist-approval-owner", to, params, text: stylistApprovalText(params) }).catch(() => {});
+    }
+    return updated;
   }
 
   private async findOwned(userId: string, stylistId: string) {

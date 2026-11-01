@@ -112,6 +112,8 @@ data class OwnerStylist(
     val bio: String? = null,
     val avatarUrl: String? = null,
     val active: Boolean = true,
+    /** The platform admin's approval of an invited stylist (PENDING / APPROVED / REJECTED); switched on only once APPROVED. */
+    val approval: String = "APPROVED",
     val commissionPercent: Double = 20.0,
     val user: OwnerStylistUser = OwnerStylistUser(),
     val services: List<OwnerStylistService> = emptyList(),

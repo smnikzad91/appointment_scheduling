@@ -8,7 +8,7 @@ describe('adminNewAccountText', () => {
   it('says who signed up and where, in one segment', () => {
     expect(adminNewAccountText({ who: 'salon', name: 'سالن رز', place: 'قائم‌شهر' })).toBe('سالن تازه ثبت‌نام کرد: سالن رز، قائم‌شهر؛ منتظر تایید');
     expect(adminNewAccountText({ who: 'independent', name: 'سارا ایلکا', place: 'تهران' })).toBe('آرایشگر مستقل تازه: سارا ایلکا، تهران؛ منتظر تایید');
-    expect(adminNewAccountText({ who: 'stylist', name: 'مریم احمدی', place: 'سالن رز' })).toBe('آرایشگر تازه در سالن رز: مریم احمدی');
+    expect(adminNewAccountText({ who: 'stylist', name: 'مریم احمدی', place: 'سالن رز' })).toBe('آرایشگر تازه در سالن رز: مریم احمدی؛ منتظر تایید');
   });
 
   it('shortens long names rather than going past one segment', () => {

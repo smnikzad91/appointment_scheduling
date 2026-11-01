@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import WalletBalanceCard from "@/components/app/WalletBalanceCard";
-import { CalendarCheck2, CalendarClock, ChevronLeft, Clock3, Coffee, Hourglass, QrCode, Receipt, Wallet } from "lucide-react";
+import { CalendarCheck2, CalendarClock, ChevronLeft, Clock3, Coffee, Hourglass, QrCode, Receipt, ShieldCheck, Wallet } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMyStylistProfile, listMyAppointments, updateMyAppointmentStatus, type SelfStylist, type StylistAppointment } from "@/lib/api/stylistSelf";
 import { formatMinutesAsClock, formatToman } from "@/lib/persian";
@@ -115,6 +115,15 @@ export default function StylistOverviewPage() {
           <ChevronLeft className="mb-1 h-4 w-4 shrink-0 text-white/50" aria-hidden />
         </Link>
       </section>
+
+      {profile.approval && profile.approval !== "APPROVED" && (
+        <p className="mt-3 flex items-center gap-3 rounded-3xl bg-app-pending/12 p-4 text-sm font-semibold leading-7 text-app-pending">
+          <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden />
+          {profile.approval === "PENDING"
+            ? "حساب آرایشگری شما منتظر تایید مدیریت نوبتت است؛ تا آن موقع مشتری‌ها شما را نمی‌بینند. ساعات کاری و خدماتتان را آماده کنید."
+            : "حساب آرایشگری شما تایید نشد؛ با سالن یا پشتیبانی نوبتت تماس بگیرید."}
+        </p>
+      )}
 
       {profile.workingHours.length === 0 && (
         <Link

@@ -150,6 +150,14 @@ fun StylistHomeScreen(stylist: SelfStylist, appointments: List<StaffAppointment>
                 }
             }
         }
+        if (stylist.approval != "APPROVED") item(key = "approval") {
+            Text(
+                if (stylist.approval == "PENDING") "حساب آرایشگری شما منتظر تایید مدیریت نوبتت است؛ تا آن موقع مشتری‌ها شما را نمی‌بینند. ساعات کاری و خدماتتان را آماده کنید."
+                else "حساب آرایشگری شما تایید نشد؛ با سالن یا پشتیبانی نوبتت تماس بگیرید.",
+                color = c.pending, fontSize = 14.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.pending.copy(alpha = 0.12f)).padding(16.dp),
+            )
+        }
         if (stylist.workingHours.isEmpty()) item(key = "hours") {
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.pending.copy(alpha = 0.12f)).clickable { onGoToTab(2) }.padding(16.dp),

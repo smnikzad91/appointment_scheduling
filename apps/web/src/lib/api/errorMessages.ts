@@ -64,6 +64,8 @@ const BY_API_MESSAGE: Record<string, string> = {
   "No account with this phone number": "حسابی با این شماره موبایل وجود ندارد",
   "Staff accounts sign in with their password": "این شماره متعلق به حساب مدیر یا آرایشگر است؛ از صفحه ورود با رمز عبور وارد شوید",
   "This salon isn't taking online bookings right now": "نوبت‌دهی آنلاین این سالن فعلاً بسته است؛ برای رزرو با خود سالن تماس بگیرید",
+  "This stylist is waiting for the platform's approval": "این آرایشگر هنوز تایید مدیریت نوبتت را نگرفته؛ بعد از تایید فعال می‌شود",
+  "Invalid approval filter": "فیلتر وضعیت نامعتبر است",
   "Your plan's stylist limit is reached": "ظرفیت آرایشگر پلن شما پر است؛ برای افزودن، یک آرایشگر را غیرفعال کنید یا پلن را ارتقا دهید",
   "Your subscription has expired": "اشتراک سالن به پایان رسیده است؛ از تنظیمات و با موجودی کیف پول تمدید کنید",
   "This plan is no longer available": "این پلن دیگر در دسترس نیست؛ پلن دیگری انتخاب کنید",

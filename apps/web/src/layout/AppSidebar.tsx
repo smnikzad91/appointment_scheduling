@@ -48,6 +48,7 @@ const AppSidebar: React.FC = () => {
     { icon: <UserCircleIcon />, name: t("navUserProfile"),  path: "/admin/profile" },
     { icon: <GroupIcon />,      name: t("navUsers"),        path: "/admin/users" },
     { icon: <ListIcon />,       name: t("navSalons"),       path: "/admin/salons" },
+    { icon: <GroupIcon />,      name: t("navStylistApproval"), path: "/admin/stylists" },
     { icon: <CalenderIcon />,   name: t("navAppointments"), path: "/admin/appointments" },
     { icon: <GridIcon />,       name: t("navAnalytics"),    path: "/admin/analytics" },
     { icon: <BoxCubeIcon />,    name: t("navAppReleases"),  path: "/admin/app-releases" },

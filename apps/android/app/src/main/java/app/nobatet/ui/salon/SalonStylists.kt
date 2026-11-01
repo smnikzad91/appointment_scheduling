@@ -106,7 +106,11 @@ fun SalonStylistsScreen(container: AppContainer, data: SalonData, ownerId: Strin
                             Muted(buildList {
                                 if (st.userId == ownerId) add("درآمد نوبت‌ها مال سالن") else add("سهم ${st.commissionPercent.toInt().toString().toPersianDigits()}٪")
                                 add("${st.services.size.toString().toPersianDigits()} خدمت")
-                                if (!st.active) add("غیرفعال")
+                                when (st.approval) {
+                                    "PENDING" -> add("منتظر تایید مدیریت")
+                                    "REJECTED" -> add("تایید نشد")
+                                    else -> if (!st.active) add("غیرفعال")
+                                }
                                 if (st.user.mustSetPassword) add("منتظر فعال‌سازی")
                             }.joinToString("، "))
                         }
@@ -222,10 +226,14 @@ private fun StylistDialog(
                         scope.launch { runCatching { container.api.newSetupLink(st.id) }.onSuccess { onLink(it.setupToken) }.onFailure { error = persianError(it, "ساخت لینک انجام نشد", container.json) } }
                     }) { Text(if (st.user.mustSetPassword) "لینک فعال‌سازی تازه" else "لینک تعیین رمز تازه") }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // switched on only after the platform admin approves them
+                if (st.approval == "APPROVED") Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("فعال", color = c.ink, modifier = Modifier.weight(1f))
                     AppSwitch(checked = active, onCheckedChange = { active = it })
-                }
+                } else Muted(
+                    if (st.approval == "REJECTED") "مدیریت نوبتت این آرایشگر را تایید نکرد؛ با پشتیبانی تماس بگیرید."
+                    else "منتظر تایید مدیریت نوبتت؛ بعد از تایید فعال می‌شود و نتیجه را پیامک می‌کنیم."
+                )
                 if (!isSelf) AppTextField(commission.toPersianDigits(), { commission = it.normalizeDigits().filter(Char::isDigit).take(3) }, label = { Text("سهم آرایشگر (٪)") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 Muted("خدماتی که انجام می‌دهد (خالی = قیمت و مدت سالن، سهم پیش‌فرض)")
@@ -297,6 +305,7 @@ private fun SetupLinkDialog(name: String, token: String, onDismiss: () -> Unit) 
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Muted("این لینک را برای آرایشگر بفرستید تا رمز بگذارد و وارد پنل شود. تا ۷ روز و فقط یک بار کار می‌کند.")
+                Muted("آرایشگر بعد از تایید مدیریت نوبتت فعال می‌شود و مشتری‌ها می‌توانند با او نوبت بگیرند.")
                 Image(qr.asImageBitmap(), contentDescription = "کد QR لینک فعال‌سازی", modifier = Modifier.size(220.dp).background(androidx.compose.ui.graphics.Color.White).padding(8.dp))
             }
         },

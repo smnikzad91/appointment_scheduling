@@ -34,6 +34,8 @@ export interface SelfStylist {
   avatarUrl: string | null;
   coverImageUrl: string | null;
   active: boolean;
+  /** The platform admin's approval when a salon invited them; not bookable until APPROVED. */
+  approval?: "PENDING" | "APPROVED" | "REJECTED";
   commissionPercent: number;
   workingHours: { dayOfWeek: number; startMinute: number; endMinute: number }[];
   services: SelfStylistService[];

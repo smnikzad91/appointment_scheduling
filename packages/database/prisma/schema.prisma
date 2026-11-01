@@ -24,6 +24,15 @@ enum ClientGender {
   WOMEN
 }
 
+/// A stylist a salon invites waits for the platform admin's approval, separate from the salon's own: PENDING
+/// stylists stay switched off (active = false), so customers never see or book them. Stylists from before
+/// this existed, an owner's own profile and an independent stylist's are APPROVED.
+enum StylistApproval {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum SalonKind {
   SALON
   INDEPENDENT
@@ -652,6 +661,10 @@ model Stylist {
   // the owner when adding the stylist; changing it only affects appointments completed afterwards.
   commissionPercent Int      @default(20)
   active            Boolean  @default(true)
+  /// The platform admin's decision on an invited stylist (see StylistApproval); the owner can't switch a
+  /// stylist on until it's APPROVED.
+  approval          StylistApproval @default(APPROVED)
+  approvalDecidedAt DateTime?
   createdAt         DateTime @default(now())
 
   services      StylistService[]
@@ -666,6 +679,7 @@ model Stylist {
   expenses      StylistExpense[]
 
   @@index([salonId])
+  @@index([approval])
   @@map("stylists")
 }
 

@@ -227,6 +227,8 @@ export interface OwnerStylist {
   avatarUrl: string | null;
   coverImageUrl: string | null;
   active: boolean;
+  /** The platform admin's approval of an invited stylist; they can't be switched on until APPROVED. */
+  approval: "PENDING" | "APPROVED" | "REJECTED";
   /** Stylist's share of the money received for their appointments, 0–100. */
   commissionPercent: number;
   /** mustSetPassword: invited but hasn't used their "set your password" link yet. */

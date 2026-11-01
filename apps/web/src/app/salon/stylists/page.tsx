@@ -293,6 +293,7 @@ export default function SalonStylistsPage() {
       } else {
         // An existing stylist account that already has a password — they just sign in.
         setInviteOpen(false);
+        toast.success("آرایشگر اضافه شد؛ بعد از تایید مدیریت نوبتت فعال می‌شود.");
       }
       reload();
     } catch (err) {
@@ -385,6 +386,14 @@ export default function SalonStylistsPage() {
                     </span>
                   ) : (
                   <span className="mt-0.5 block text-[13px] text-app-muted">
+                    {stylist.approval !== "APPROVED" && (
+                      <>
+                        <span className={cx("font-bold", stylist.approval === "REJECTED" ? "text-app-danger" : "text-app-pending")}>
+                          {stylist.approval === "REJECTED" ? "تایید نشد" : "منتظر تایید مدیریت"}
+                        </span>
+                        <Sep />
+                      </>
+                    )}
                     {stylist.user.mustSetPassword && (
                       <>
                         <span className="font-bold text-app-pending">منتظر فعال‌سازی</span>
@@ -408,7 +417,10 @@ export default function SalonStylistsPage() {
                   )}
                 </span>
               </button>
-              <Toggle checked={stylist.active} onChange={() => handleToggleActive(stylist)} label={`فعال بودن ${stylist.displayName}`} />
+              {/* switched on only after the platform admin approves them */}
+              {stylist.approval === "APPROVED" && (
+                <Toggle checked={stylist.active} onChange={() => handleToggleActive(stylist)} label={`فعال بودن ${stylist.displayName}`} />
+              )}
             </div>
           ))}
         </div>
@@ -578,6 +590,9 @@ export default function SalonStylistsPage() {
             <p className="text-sm leading-7 text-app-muted">
               این لینک را برای {created.name} بفرستید تا رمز عبور خودش را انتخاب کند و وارد پنل آرایشگر شود. اگر لینک گم شد یا
               منقضی شد، از صفحه همین آرایشگر لینک تازه بسازید.
+            </p>
+            <p className="rounded-2xl border border-app-line bg-app-card-2 px-3.5 py-2.5 text-[13px] font-bold leading-6 text-app-pending">
+              آرایشگر بعد از تایید مدیریت نوبتت فعال می‌شود و مشتری‌ها می‌توانند با او نوبت بگیرند؛ نتیجه را پیامک می‌کنیم.
             </p>
             <SetupLinkCard token={created.token} expiresAt={created.expiresAt} stylistName={created.name} />
             <Button variant="ghost" block onClick={closeInvite}>
