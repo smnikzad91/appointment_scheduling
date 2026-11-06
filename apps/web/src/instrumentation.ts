@@ -24,6 +24,20 @@ export async function register() {
     void sweep();
     void visitSweep();
   }, DAY_MS).unref();
+
+  // Live chat (lib/livechat), in one pm2 instance only: point the bot's webhook here, re-send visitor
+  // messages Telegram refused (every 5 min) and drop chats idle for half a year (daily).
+  if ((process.env.NODE_APP_INSTANCE ?? "0") === "0") {
+    const chat = await import("@/lib/livechat/chats");
+    const { ensureTelegramWebhook } = await import("@/lib/livechat/telegram");
+    const { botToken, liveChatConfigured } = await import("@/lib/livechat/config");
+    if (botToken()) void ensureTelegramWebhook();
+    const retry = () => liveChatConfigured() && chat.retryUndelivered().catch((e) => console.error("[livechat] retry:", e instanceof Error ? e.message : e));
+    const prune = () => chat.pruneLiveChats().catch((e) => console.error("[livechat] prune:", e instanceof Error ? e.message : e));
+    void prune();
+    setInterval(retry, 5 * 60_000).unref();
+    setInterval(prune, DAY_MS).unref();
+  }
 }
 
 // Records server errors Next.js catches itself — uncaught throws in Server Components, route

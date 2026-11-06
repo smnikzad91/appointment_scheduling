@@ -27,11 +27,14 @@ import {
 } from "../icons/index";
 import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
+import { useWaitingChats } from "@/components/livechat/useWaitingChats";
 
 type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
+  /** A count shown after the name (e.g. live chats waiting for a reply); 0 hides it. */
+  badge?: number;
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
@@ -42,6 +45,7 @@ const AppSidebar: React.FC = () => {
   const t = useT();
   const { lang } = useLanguage();
   const isRTL = lang === "fa";
+  const waitingChats = useWaitingChats();
 
   const navItems = useMemo<NavItem[]>(() => [
     { icon: <GridIcon />,       name: t("navDashboard"),    path: "/admin" },
@@ -49,6 +53,7 @@ const AppSidebar: React.FC = () => {
     { icon: <GroupIcon />,      name: t("navUsers"),        path: "/admin/users" },
     { icon: <ListIcon />,       name: t("navSalons"),       path: "/admin/salons" },
     { icon: <GroupIcon />,      name: t("navStylistApproval"), path: "/admin/stylists" },
+    { icon: <ChatIcon />,       name: t("navLiveChat"), path: "/admin/live-chat", badge: waitingChats },
     { icon: <CalenderIcon />,   name: t("navAppointments"), path: "/admin/appointments" },
     { icon: <GridIcon />,       name: t("navAnalytics"),    path: "/admin/analytics" },
     { icon: <BoxCubeIcon />,    name: t("navAppReleases"),  path: "/admin/app-releases" },
@@ -83,7 +88,7 @@ const AppSidebar: React.FC = () => {
         { name: t("navNewsPublic"), path: "/news" },
       ],
     },
-  ], [t]);
+  ], [t, waitingChats]);
 
   const [openSubmenu, setOpenSubmenu] = useState<{ type: "main"; index: number } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
@@ -177,6 +182,11 @@ const AppSidebar: React.FC = () => {
                     {nav.icon}
                   </span>
                   {expanded && <span className="flex-1 text-start">{nav.name}</span>}
+                  {expanded && !!nav.badge && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white">
+                      {nav.badge.toLocaleString(isRTL ? "fa-IR" : "en-US")}
+                    </span>
+                  )}
                 </Link>
               )
             )}

@@ -10,6 +10,7 @@ import Image from "next/image";
 import { SITE_NAME } from "@/lib/site";
 import Sheet from "./Sheet";
 import InstallAppBanner from "./InstallAppBanner";
+import LiveChat from "@/components/livechat/LiveChat";
 import { Avatar, ListGroup, cx } from "./ui";
 import { clearAllDrafts } from "@/lib/formDrafts";
 import PanelTour, { usePanelTour, type TourStep } from "./PanelTour";
@@ -114,6 +115,7 @@ export default function AppShell({
       </main>
 
       <InstallAppBanner />
+      <LiveChat place="panel" />
 
       {/* Tab bar */}
       <nav

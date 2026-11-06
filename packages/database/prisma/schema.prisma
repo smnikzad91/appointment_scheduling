@@ -360,6 +360,68 @@ model Feedback {
   @@map("feedback")
 }
 
+/// Site live chat («گفتگو با پشتیبانی», apps/web src/lib/livechat): who wrote a message.
+enum LiveChatSender {
+  VISITOR
+  ADMIN
+  SYSTEM
+}
+
+/// One visitor conversation from the site's chat widget. The visitor holds a random token in an httpOnly
+/// cookie (only its sha256 is stored); support answers from Telegram by replying to the bot's message
+/// (routed back through LiveChatMessage.tgMessageId) or from /admin/live-chat.
+model LiveChat {
+  id             String    @id @default(cuid())
+  tokenHash      String    @unique
+  /// Short id shown in Telegram (#K7Q2).
+  code           String    @unique
+  name           String?
+  contact        String?
+  /// The signed-in sender, if any (no relation: the chat stays if the account is deleted).
+  userId         String?
+  page           String?
+  country        String?
+  city           String?
+  closedAt       DateTime?
+  /// The visitor closed it from the widget: their cookie no longer opens it, replies can't reach them.
+  endedByVisitor Boolean   @default(false)
+  /// Read receipts: support saw everything up to here (panel open or a reply) / the visitor saw support's replies.
+  supportReadAt  DateTime?
+  visitorReadAt  DateTime?
+  /// The visitor's widget last asked for news (polls every few seconds while open): «الان در سایت».
+  visitorSeenAt  DateTime?
+  /// An admin is typing in the panel («پشتیبانی در حال نوشتن…» while recent).
+  supportTypingAt DateTime?
+  /// Closing deletes the chat's images; open widgets drop them when this is newer than they knew.
+  imagesPurgedAt DateTime?
+  lastMessageAt  DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  messages LiveChatMessage[]
+
+  @@index([lastMessageAt])
+  @@map("live_chats")
+}
+
+model LiveChatMessage {
+  id          String         @id @default(cuid())
+  chatId      String
+  chat        LiveChat       @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender      LiveChatSender
+  text        String
+  /// An attached image {file, w, h} (private-uploads/livechat/<chatId>/, served only to this chat's visitor and admins).
+  image       Json?
+  /// Support replies: who answered (Telegram first name, or the admin's name in the panel).
+  author      String?
+  /// The Telegram message in the support chat that carries / is this message (reply routing).
+  tgMessageId Int?
+  createdAt   DateTime       @default(now())
+
+  @@index([chatId, createdAt])
+  @@index([tgMessageId])
+  @@map("live_chat_messages")
+}
+
 model Ticket {
   id        String       @id @default(cuid())
   userId    String
