@@ -15,7 +15,7 @@ import { UpdateAppointmentDto } from "./dto/update-appointment.dto.js";
 import { fitsWorkingHours } from "./working-hours.util.js";
 import { effectiveCommissionPercent, splitCharge } from "../accounting/share.util.js";
 import { NotificationsService, type BookingData } from "../notifications/notifications.service.js";
-import { WaitlistService } from "../waitlist/waitlist.service.js";
+import { blockingHold, WaitlistService } from "../waitlist/waitlist.service.js";
 import { SmsService } from "../sms/sms.service.js";
 import { onlineBookingOpen } from "../subscriptions/subscription.util.js";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service.js";
@@ -232,13 +232,15 @@ export class AppointmentsService {
           if (!fitsWorkingHours(hours, startAt, endAt, timeZone)) return null;
         }
 
-        const [timeOff, conflict] = await Promise.all([
+        const [timeOff, conflict, held] = await Promise.all([
           tx.timeOff.findFirst({ where: { stylistId: candidate.id, startAt: { lt: endAt }, endAt: { gt: startAt } } }),
           tx.appointment.findFirst({
             where: { stylistId: candidate.id, status: { in: ACTIVE_STATUSES }, startAt: { lt: endAt }, endAt: { gt: startAt } },
           }),
+          // a freed time held for the first customer on the waitlist (online bookings only; staff aren't held back)
+          bySalon ? null : blockingHold(tx, candidate.id, startAt, endAt, { customerId }),
         ]);
-        if (timeOff || conflict) return null;
+        if (timeOff || conflict || held) return null;
 
         const priceToman = pricing.reduce((sum, p) => sum + p.priceToman, 0);
         // Online bookings pre-pay PREPAYMENT_PERCENT from the wallet (wallet/prepayment.ts); staff bookings don't.
@@ -273,6 +275,8 @@ export class AppointmentsService {
       });
 
       if (appointment) {
+        // The waiting customer who had this time held for them took it (or another overlapping one): the hold is used.
+        if (!bySalon) void this.waitlist.consumeHolds(customerId, appointment.stylistId, appointment.startAt, appointment.endAt).catch(() => {});
         // Everyone involved hears about it except whoever made it (the customer online; the owner
         // or the stylist themselves when booked by the salon).
         await this.notifyBooking(appointment.id, NotificationType.NEW_BOOKING, { bySalon }, actorUserId);

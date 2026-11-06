@@ -894,6 +894,9 @@ model Appointment {
   balanceMethod            BalanceMethod?
   balanceDueToman          Int               @default(0)
   balancePaidAt            DateTime?
+  /// When the WALLET request was made (marked COMPLETED); 3 days unpaid → one reminder SMS (BalanceReminderService, balanceReminderSentAt).
+  balanceRequestedAt       DateTime?
+  balanceReminderSentAt    DateTime?
   balanceStylistToman      Int               @default(0)
   balancePayoutId          String?           @unique
   createdAt                DateTime          @default(now())
@@ -1161,6 +1164,28 @@ model FavoriteSalon {
 // "Tell me if a time opens up": a customer waiting for a salon-local day (optionally one stylist)
 // that had no free slot. When an appointment on that day is cancelled, waiting customers get a
 // SLOT_OPENED notification (notifiedAt set, so each entry is notified once).
+/// A freed time held for the first customer on the waitlist (apps/api WaitlistService): for HOLD_MINUTES only
+/// they can book it online (others see it taken); then it's released and everyone else waiting is told. `code`
+/// travels in their SLOT_OPENED link (?hold=) so the booking sheet shows the held time as free to them.
+model SlotHold {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  salonId         String
+  stylistId       String
+  customerId      String
+  waitlistEntryId String?
+  startAt         DateTime
+  endAt           DateTime
+  expiresAt       DateTime
+  /// Expired (and the rest were told) or used (the holder booked it).
+  releasedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([stylistId, startAt])
+  @@index([releasedAt, expiresAt])
+  @@map("slot_holds")
+}
+
 model WaitlistEntry {
   id         String    @id @default(cuid())
   customerId String

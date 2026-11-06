@@ -104,6 +104,13 @@ export type SmsMessage =
       text: string;
     }
   | {
+      /** The request above, still unpaid 3 days later: one reminder (BalanceReminderService). */
+      kind: "balance-reminder-customer";
+      to: string;
+      params: { amount: string; salon: string };
+      text: string;
+    }
+  | {
       /** The stylist asked for the rest of a completed booking from the customer's wallet. */
       kind: "balance-request-customer";
       to: string;

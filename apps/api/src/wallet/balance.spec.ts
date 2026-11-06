@@ -41,9 +41,11 @@ describe('the rest of a booking, from the customer\'s wallet', () => {
     expect(balanceDue({ priceToman: 380_000, prepaidToman: 190_000 })).toBe(190_000);
     expect(balanceDue({ priceToman: 380_000, chargedToman: 300_000, prepaidToman: 190_000 })).toBe(110_000);
     expect(balanceDue({ priceToman: 100_000, chargedToman: 50_000, prepaidToman: 190_000 })).toBe(0);
-    expect(balanceOnCompletion({ priceToman: 380_000, prepaidToman: 190_000 }, 'WALLET' as never)).toEqual({ balanceMethod: 'WALLET', balanceDueToman: 190_000 });
-    expect(balanceOnCompletion({ priceToman: 380_000, prepaidToman: 190_000 }, undefined)).toEqual({ balanceMethod: 'ON_SITE', balanceDueToman: 0 });
-    expect(balanceOnCompletion({ priceToman: 0, prepaidToman: 0 }, 'WALLET' as never)).toEqual({ balanceMethod: null, balanceDueToman: 0 });
+    const now = new Date('2026-11-07T10:00:00Z');
+    const none = { balanceRequestedAt: null, balanceReminderSentAt: null };
+    expect(balanceOnCompletion({ priceToman: 380_000, prepaidToman: 190_000 }, 'WALLET' as never, now)).toEqual({ balanceMethod: 'WALLET', balanceDueToman: 190_000, balanceRequestedAt: now, balanceReminderSentAt: null });
+    expect(balanceOnCompletion({ priceToman: 380_000, prepaidToman: 190_000 }, undefined, now)).toEqual({ balanceMethod: 'ON_SITE', balanceDueToman: 0, ...none });
+    expect(balanceOnCompletion({ priceToman: 0, prepaidToman: 0 }, 'WALLET' as never, now)).toEqual({ balanceMethod: null, balanceDueToman: 0, ...none });
   });
 
   it('paid by the customer: stylist commission share to them as a payout, the rest to the owner, once', async () => {

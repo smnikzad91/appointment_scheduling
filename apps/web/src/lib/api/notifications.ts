@@ -56,6 +56,8 @@ export interface SlotOpenedData {
   stylistId: string | null;
   stylistName: string | null;
   serviceIds: string[];
+  /** The freed time is held for this customer alone until `until` (first on the waitlist); `code` goes in the booking link. */
+  hold?: { code: string; startAt: string; until: string; stylistId: string };
 }
 
 export type AppNotification = {

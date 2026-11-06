@@ -140,6 +140,10 @@ export const adminWithdrawalText = (p: { amount: string; name: string }) =>
 export const balanceRequestText = (p: { amount: string; salon: string }) =>
   fitSms(p, ["salon"], (q) => `باقی‌مانده نوبتت در ${q.salon}: ${q.amount} تومان؛ در پنل از کیف پول پرداخت کنید`);
 
+/** «یادآوری: باقی‌مانده نوبت سالن رز ۱۹۰٬۰۰۰ تومان؛ در پنل بپردازید» (the salon name is cut to fit one segment). */
+export const balanceReminderText = (p: { amount: string; salon: string }) =>
+  fitSms(p, ["salon"], (q) => `یادآوری: باقی‌مانده نوبت ${q.salon} ${q.amount} تومان؛ در پنل بپردازید`);
+
 /** One Unicode SMS segment; longer texts go out in parts (some phones show them as separate messages). */
 export const SMS_SEGMENT = 70;
 

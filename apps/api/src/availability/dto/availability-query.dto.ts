@@ -12,4 +12,9 @@ export class AvailabilityQueryDto {
   @IsOptional()
   @IsString()
   stylistId?: string;
+
+  /** The code of a freed time held for this visitor (their SLOT_OPENED link): that hold doesn't block them. */
+  @IsOptional()
+  @IsString()
+  hold?: string;
 }

@@ -19,6 +19,7 @@ function setup({ allowance = true, kind = 'SALON' } = {}) {
     walletTransaction: { create: vi.fn() },
     workingHour: { findMany: vi.fn().mockResolvedValue([0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, startMinute: 0, endMinute: 1440 }))) },
     timeOff: { findFirst: vi.fn().mockResolvedValue(null) },
+    slotHold: { findFirst: vi.fn().mockResolvedValue(null) },
     appointment: {
       findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'appt-1', startAt: data.startAt, salon: { ownerId: 'owner-1' } })),
@@ -57,7 +58,7 @@ function setup({ allowance = true, kind = 'SALON' } = {}) {
   const service = new AppointmentsService(
     prisma as unknown as PrismaService,
     { notify: vi.fn() } as unknown as NotificationsService,
-    { notifyOpening: vi.fn() } as unknown as WaitlistService,
+    { notifyOpening: vi.fn(), consumeHolds: vi.fn().mockResolvedValue(undefined) } as unknown as WaitlistService,
     sms as unknown as SmsService,
     subscriptions as unknown as SubscriptionsService,
   );

@@ -10,7 +10,8 @@ import {
   type AppNotification,
 } from "@/lib/api/notifications";
 import { formatToman, toPersianDigits } from "@/lib/persian";
-import { formatSalonDateTime } from "@/lib/salonTime";
+import { formatSalonDateTime, toSalonWallTime } from "@/lib/salonTime";
+import { formatMinutesAsClock } from "@/lib/persian";
 import { dateKeyToDate, formatJalaliFull } from "@/lib/jalali";
 import { PAYOUT_METHOD_LABEL } from "@/lib/api/accounting";
 import { Stars } from "@/components/common/StarRating";
@@ -129,7 +130,20 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
     }
     case "SLOT_OPENED": {
       const d = n.data;
-      const params = new URLSearchParams({ book: "1", services: d.serviceIds.join(","), date: d.dateKey, ...(d.stylistId && { stylist: d.stylistId }) });
+      const stylist = d.hold?.stylistId ?? d.stylistId;
+      const params = new URLSearchParams({ book: "1", services: d.serviceIds.join(","), date: d.dateKey, ...(stylist && { stylist }), ...(d.hold && { hold: d.hold.code }) });
+      if (d.hold) {
+        const held = new Date(d.hold.until) > new Date();
+        return {
+          icon: BellRing,
+          tone: "text-app-done",
+          title: `وقت خالی در ${d.salonName} برای شما نگه داشته شد`,
+          detail: held
+            ? `${formatSalonDateTime(d.hold.startAt)} — تا ساعت ${formatMinutesAsClock(toSalonWallTime(d.hold.until).minuteOfDay)} فقط شما می‌توانید رزروش کنید.`
+            : `${formatSalonDateTime(d.hold.startAt)} — زمان نگه‌داشتن تمام شد؛ اگر هنوز خالی است رزرو کنید.`,
+          href: `/s/${d.salonSlug}?${params}`,
+        };
+      }
       return {
         icon: BellRing,
         tone: "text-app-done",
