@@ -99,6 +99,14 @@ enum NotificationType {
   BOOKING_UPDATED
   BALANCE_REQUESTED
   BALANCE_PAID
+  /// A message in a booking's chat (customer ↔ salon), to the other side.
+  NEW_MESSAGE
+}
+
+/// Who wrote a booking chat message: the customer, or the salon side (its owner or the booking's stylist).
+enum AppointmentChatSide {
+  CUSTOMER
+  SALON
 }
 
 enum PayoutMethod {
@@ -897,6 +905,9 @@ model Appointment {
   /// When the WALLET request was made (marked COMPLETED); 3 days unpaid → one reminder SMS (BalanceReminderService, balanceReminderSentAt).
   balanceRequestedAt       DateTime?
   balanceReminderSentAt    DateTime?
+  /// Booking chat (apps/api appointment-chat): each side read the other's messages up to here.
+  chatCustomerReadAt       DateTime?
+  chatSalonReadAt          DateTime?
   balanceStylistToman      Int               @default(0)
   balancePayoutId          String?           @unique
   createdAt                DateTime          @default(now())
@@ -907,6 +918,7 @@ model Appointment {
   walletTransactions WalletTransaction[]
   prepaymentPayout   StylistPayout?
 
+  messages                 AppointmentMessage[]
   @@index([salonId, startAt])
   @@index([stylistId, startAt])
   @@map("appointments")
@@ -1184,6 +1196,23 @@ model SlotHold {
   @@index([stylistId, startAt])
   @@index([releasedAt, expiresAt])
   @@map("slot_holds")
+}
+
+/// A message in a booking's chat between the customer and the salon («دیر می‌رسم»، «آدرس کجاست؟»).
+model AppointmentMessage {
+  id            String              @id @default(cuid())
+  appointmentId String
+  appointment   Appointment         @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  side          AppointmentChatSide
+  /// The account that wrote it (no relation: the history stays if the account is deleted).
+  senderId      String
+  /// Shown above it: the customer's name, or the stylist's / salon's name on the salon side (as at sending).
+  senderName    String
+  text          String
+  createdAt     DateTime            @default(now())
+
+  @@index([appointmentId, createdAt])
+  @@map("appointment_messages")
 }
 
 model WaitlistEntry {

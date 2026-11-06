@@ -20,6 +20,7 @@ import { ShowcaseModule } from './showcase/showcase.module.js';
 import { ShareModule } from './share/share.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { WaitlistModule } from './waitlist/waitlist.module.js';
+import { AppointmentChatModule } from './appointment-chat/appointment-chat.module.js';
 import { SmsModule } from './sms/sms.module.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 import { WalletModule } from './wallet/wallet.module.js';
@@ -45,6 +46,7 @@ import { InsightsModule } from './insights/insights.module.js';
     ShareModule,
     FavoritesModule,
     WaitlistModule,
+    AppointmentChatModule,
     SmsModule,
     SubscriptionsModule,
     WalletModule,

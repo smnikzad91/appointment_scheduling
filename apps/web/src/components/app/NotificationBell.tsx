@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Bell, BellRing, CalendarCheck2, CalendarClock, CalendarPlus, CalendarX, CheckCheck, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Bell, BellRing, CalendarCheck2, CalendarClock, CalendarPlus, CalendarX, CheckCheck, MessageCircle, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -150,6 +150,16 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
         title: `وقت خالی در ${d.salonName}${d.stylistName ? ` با ${d.stylistName}` : ""}`,
         detail: `${formatJalaliFull(dateKeyToDate(d.dateKey))} — یک نوبت لغو شد؛ تا کسی دیگر نگرفته رزرو کنید.`,
         href: `/s/${d.salonSlug}?${params}`,
+      };
+    }
+    case "NEW_MESSAGE": {
+      const d = n.data;
+      return {
+        icon: MessageCircle,
+        tone: "text-app-accent",
+        title: scope === "customer" ? `پیام تازه از ${d.senderName}` : `پیام ${d.customerName} درباره نوبت ${formatSalonDateTime(d.startAt)}`,
+        detail: d.preview,
+        href: `${appointmentsHref}?chat=${d.appointmentId}`,
       };
     }
     case "REVIEW_APPROVED": {

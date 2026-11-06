@@ -3,7 +3,7 @@
 import { placeLabel } from "@/lib/independent";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, CalendarX2, RotateCcw, Star, Trash2 } from "lucide-react";
+import { CalendarPlus, CalendarX2, MessageCircle, RotateCcw, Star, Trash2 } from "lucide-react";
 import {
   cancelBooking,
   cancelKeepsPrepayment,
@@ -18,11 +18,13 @@ import {
 import { persianApiError } from "@/lib/api/errorMessages";
 import { StarRatingInput, Stars } from "@/components/common/StarRating";
 import { SalonApiError } from "@/lib/api/salonApiClient";
-import { formatMinutesAsClock, formatToman } from "@/lib/persian";
-import { toSalonWallTime } from "@/lib/salonTime";
+import { formatMinutesAsClock, formatToman, toPersianDigits } from "@/lib/persian";
 import { StatusChip, relativeDayLabel } from "./appointments";
 import Sheet from "./Sheet";
 import PayBalanceSheet from "./PayBalanceSheet";
+import AppointmentChatSheet from "./AppointmentChatSheet";
+import { getUnreadChats } from "@/lib/api/appointmentChat";
+import { formatSalonDateTime, toSalonWallTime } from "@/lib/salonTime";
 import { Button, ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader, TextArea, cx, riseStyle } from "./ui";
 import Sep from "@/components/common/Sep";
 import { toastError } from "@/lib/toastError";
@@ -88,6 +90,9 @@ export default function CustomerBookings({
   const [editDraft, setEditDraft] = useState<Draft>({ rating: 0, comment: "" });
   const [editBusy, setEditBusy] = useState<"save" | "delete" | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // The booking chat with the salon (?chat=<booking id> opens it, e.g. from the bell); unread counts per booking.
+  const [chatId, setChatId] = useState<string | null>(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("chat")));
+  const [unread, setUnread] = useState<Record<string, number>>({});
 
   const reload = useCallback(() => {
     if (!token) return;
@@ -103,6 +108,16 @@ export default function CustomerBookings({
   }, [token, onUnauthorized]);
 
   useEffect(reload, [reload]);
+
+  // unread booking chat messages, re-checked every 30 s while the page is visible
+  useEffect(() => {
+    if (!token) return;
+    const check = () => document.visibilityState === "visible" && getUnreadChats(token).then(setUnread).catch(() => {});
+    check();
+    const t = setInterval(check, 30_000);
+    return () => clearInterval(t);
+  }, [token]);
+  const chatBooking = chatId ? bookings?.find((b) => b.id === chatId) : null;
 
   const { upcoming, past } = useMemo(() => {
     const now = new Date().toISOString();
@@ -314,6 +329,20 @@ export default function CustomerBookings({
                   </div>
                 )}
 
+                {(b.status !== "CANCELLED" || unread[b.id]) && (
+                  <button
+                    type="button"
+                    onClick={() => setChatId(b.id)}
+                    className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-app-line text-[13px] font-bold text-app-ink active:bg-app-card-2"
+                  >
+                    <MessageCircle className="h-4 w-4" aria-hidden />
+                    پیام به {b.salon.kind === "INDEPENDENT" ? b.stylist.displayName : "سالن"}
+                    {!!unread[b.id] && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-app-accent px-1.5 text-[11px] font-black text-app-accent-ink">{toPersianDigits(unread[b.id])}</span>
+                    )}
+                  </button>
+                )}
+
                 {(canCancel || canReview || tab === "past") && (
                   <div className="mt-3 flex gap-2">
                     {canReview && (
@@ -487,6 +516,16 @@ export default function CustomerBookings({
           </div>
         )}
       </Sheet>
+      {chatBooking && token && (
+        <AppointmentChatSheet
+          token={token}
+          appointmentId={chatBooking.id}
+          title={`گفتگو با ${chatBooking.salon.name}`}
+          subtitle={`نوبت ${formatSalonDateTime(chatBooking.startAt)}`}
+          onClose={() => setChatId(null)}
+          onRead={() => setUnread((u) => ({ ...u, [chatBooking.id]: 0 }))}
+        />
+      )}
       {payTarget && token && <PayBalanceSheet token={token} booking={payTarget} onClose={() => setPayTarget(null)} onPaid={reload} />}
     </>
   );

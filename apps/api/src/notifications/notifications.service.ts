@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { NotificationType, Prisma } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { SlotOpenedData } from "../waitlist/waitlist.service.js";
+import type { ChatMessageData } from "../appointment-chat/appointment-chat.service.js";
 
 const LIST_LIMIT = 30;
 
@@ -42,7 +43,7 @@ export interface ReviewApprovedData {
   stylistName: string | null;
 }
 
-export type NotificationData = NewReviewData | BookingData | PayoutData | ReviewApprovedData | SlotOpenedData;
+export type NotificationData = NewReviewData | BookingData | PayoutData | ReviewApprovedData | SlotOpenedData | ChatMessageData;
 
 /** Payload of a NEW_REVIEW notification (also sent when a customer edits a review). */
 export interface NewReviewData {

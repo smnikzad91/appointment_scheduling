@@ -60,6 +60,17 @@ export interface SlotOpenedData {
   hold?: { code: string; startAt: string; until: string; stylistId: string };
 }
 
+/** Payload of NEW_MESSAGE: a message in a booking's chat, from the other side. */
+export interface ChatMessageData {
+  appointmentId: string;
+  salonName: string;
+  customerName: string;
+  startAt: string;
+  from: "CUSTOMER" | "SALON";
+  senderName: string;
+  preview: string;
+}
+
 export type AppNotification = {
   id: string;
   readAt: string | null;
@@ -75,6 +86,7 @@ export type AppNotification = {
   | { type: "BALANCE_PAID"; data: BookingData }
   | { type: "REVIEW_APPROVED"; data: ReviewApprovedData }
   | { type: "SLOT_OPENED"; data: SlotOpenedData }
+  | { type: "NEW_MESSAGE"; data: ChatMessageData }
 );
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
