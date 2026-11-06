@@ -8,7 +8,7 @@ import { logError } from "@/lib/errorLog";
 const HELP = [
   "<b>پشتیبانی آنلاین نوبتت</b>",
   "",
-  "↩️ برای جواب دادن، روی پیام مشتری <b>Reply</b> کنید و بنویسید (متن یا عکس).",
+  "↩️ برای جواب دادن، روی پیام مشتری <b>Reply</b> کنید و بنویسید (متن، عکس، یا فایل JPG / PNG).",
   "یا بدون Reply: <code>#K7Q2 متن جواب</code>",
   "",
   "📋 <b>گفتگوهای باز</b>: فهرست گفتگوهای ۳ روز اخیر (🟢 = الان در سایت)",
@@ -49,9 +49,10 @@ async function handle(msg: NonNullable<TgUpdate["message"]>) {
   const typed = (msg.text ?? msg.caption ?? "").trim();
   const raw = KEYBOARD_COMMANDS[typed] ?? typed; // fixed keyboard buttons = commands
   const cmd = msg.text && raw.startsWith("/") ? raw.split(/\s/)[0].split("@")[0].toLowerCase() : null;
-  // A photo, or a JPEG sent as a file ("without compression")
-  const jpegDoc = msg.document && msg.document.mime_type === "image/jpeg" ? msg.document.file_id : null;
-  const photoId = msg.photo?.at(-1)?.file_id ?? jpegDoc;
+  // A photo, or a JPEG / PNG sent as a file ("without compression"; screenshots are often PNG)
+  const doc = msg.document;
+  const imageDoc = doc && (/^image\/(jpeg|png)$/.test(doc.mime_type ?? "") || /\.(jpe?g|png)$/i.test(doc.file_name ?? "")) ? doc.file_id : null;
+  const photoId = msg.photo?.at(-1)?.file_id ?? imageDoc;
   const target = msg.reply_to_message ? await chatByTelegramMessage(msg.reply_to_message.message_id) : null;
 
   if (cmd === "/start" || cmd === "/help") return replyIn(here, HELP);
@@ -87,7 +88,7 @@ async function handle(msg: NonNullable<TgUpdate["message"]>) {
   if (cmd) return replyIn(here, HELP);
 
   if (!chat) return replyIn(here, "برای جواب دادن روی پیام مشتری Reply کنید، یا بنویسید <code>#کد متن</code>. /chats فهرست گفتگوهای باز را نشان می‌دهد.", msg.message_id);
-  if (!msg.text && !photoId) return replyIn(here, "فقط متن و عکس به مشتری فرستاده می‌شود (عکس را معمولی بفرستید، نه به‌صورت فایل).", msg.message_id);
+  if (!msg.text && !photoId) return replyIn(here, "فقط متن و تصویر به مشتری فرستاده می‌شود (عکس، یا فایل JPG / PNG).", msg.message_id);
   const body = cleanText(text, 2000);
   if (!body && !photoId) return;
 
@@ -97,7 +98,7 @@ async function handle(msg: NonNullable<TgUpdate["message"]>) {
   let image = null;
   if (photoId) {
     try {
-      image = (await saveChatImage(chat.id, await downloadTelegramFile(photoId, CHAT_IMAGE_MAX_BYTES))).image;
+      image = (await saveChatImage(chat.id, await downloadTelegramFile(photoId, CHAT_IMAGE_MAX_BYTES), { allowPng: true })).image;
     } catch (e) {
       return replyIn(here, `عکس فرستاده نشد: ${esc(e instanceof ChatImageError ? e.message : "دریافت فایل از تلگرام ناموفق بود")}`, msg.message_id);
     }

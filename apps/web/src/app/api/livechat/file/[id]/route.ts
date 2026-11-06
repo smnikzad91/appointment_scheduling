@@ -20,6 +20,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const bytes = await readChatImage(image.file);
   if (!bytes) return new Response(null, { status: 404 });
   return new Response(new Uint8Array(bytes), {
-    headers: { "content-type": "image/jpeg", "cache-control": "private, max-age=86400", "x-content-type-options": "nosniff" },
+    headers: { "content-type": image.file.endsWith(".png") ? "image/png" : "image/jpeg", "cache-control": "private, max-age=86400", "x-content-type-options": "nosniff" },
   });
 }

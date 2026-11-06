@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { jpegSize } from "./jpeg.ts";
+import { jpegSize, pngSize } from "./jpeg.ts";
 
 // A minimal JPEG header: SOI, an APP0 segment, then SOF0 with height 300 and width 400.
 const app0 = [0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00];
@@ -14,4 +14,14 @@ test("anything that isn't a JPEG is refused", () => {
   assert.equal(jpegSize(Buffer.from("\x89PNG\r\n\x1a\n0000000000000000")), null);
   assert.equal(jpegSize(Buffer.from([0xff, 0xd8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])), null);
   assert.equal(jpegSize(Buffer.alloc(0)), null);
+});
+
+test("PNG files (support's screenshots from Telegram): the size comes from IHDR", () => {
+  const png = Buffer.alloc(33);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]).copy(png, 0);
+  png.write("IHDR", 12, "ascii");
+  png.writeUInt32BE(1170, 16);
+  png.writeUInt32BE(2532, 20);
+  assert.deepEqual(pngSize(png), { w: 1170, h: 2532 });
+  assert.equal(pngSize(Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...Array(30).fill(0)])), null);
 });

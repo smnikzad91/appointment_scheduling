@@ -24,3 +24,12 @@ export function jpegSize(buf: Buffer): { w: number; h: number } | null {
   }
   return null;
 }
+
+/** Width and height from a PNG's IHDR chunk; null when it isn't a PNG. */
+export function pngSize(buf: Buffer): { w: number; h: number } | null {
+  const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (buf.length < 24 || sig.some((b, i) => buf[i] !== b) || buf.toString("ascii", 12, 16) !== "IHDR") return null;
+  const w = buf.readUInt32BE(16);
+  const h = buf.readUInt32BE(20);
+  return w && h ? { w, h } : null;
+}
