@@ -10,7 +10,10 @@ import { toChatJpeg } from "@/lib/uploadImage";
 import { uploadWithProgress } from "@/lib/livechat/uploadWithProgress";
 import { useChimeMuted } from "@/lib/livechat/ding";
 import { CHAT_IMAGE_ACCEPT, chatImageProblem } from "@/lib/livechat/rules";
-import { ChatImageView, UploadOverlay } from "@/components/livechat/ChatImageView";
+import { UploadOverlay } from "@/components/livechat/UploadProgress";
+import { ImageLightbox, type LightboxItem } from "@/components/livechat/ImageLightbox";
+import { ImageBadges } from "@/components/livechat/ImageBadges";
+import type { ImageReactions, Reaction } from "@/lib/livechat/reactions";
 
 type Filter = "all" | "waiting" | "open" | "closed" | "ended";
 const FILTERS: { id: Filter; label: TranslationKey }[] = [
@@ -52,7 +55,18 @@ type Transcript = {
     online: boolean;
   };
   user: { id: string; firstName: string; lastName: string; phone: string | null; role: string } | null;
-  messages: { id: string; sender: "VISITOR" | "ADMIN" | "SYSTEM"; text: string; author: string | null; at: string; delivered: boolean; image: { w: number; h: number } | null }[];
+  messages: {
+    id: string;
+    sender: "VISITOR" | "ADMIN" | "SYSTEM";
+    text: string;
+    author: string | null;
+    at: string;
+    delivered: boolean;
+    image: { w: number; h: number } | null;
+    reactions: ImageReactions | null;
+    edited: boolean;
+    replyTo: string | null;
+  }[];
 };
 
 const pill = (tone: "warn" | "good" | "none") =>
@@ -238,7 +252,7 @@ export default function AdminLiveChat() {
 
 function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => void; onChanged: () => void }) {
   const t = useT();
-  const { dateTime } = useFormat();
+  const { fa, dateTime } = useFormat();
   const [data, setData] = useState<Transcript | null>(null);
   const [missing, setMissing] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -311,7 +325,69 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
   const { chat, user, messages } = data;
   const who = chat.name || t("lcVisitor");
   const place = [chat.city, chat.country].filter(Boolean).join("، ");
-  const viewed = viewing ? messages.find((m) => m.id === viewing) : null;
+  const supportName = (m: { author: string | null }) => `${t("lcSupport")}${m.author ? ` (${m.author})` : ""}`;
+  const patchMessage = (id: string, patch: Partial<Transcript["messages"][number]>) =>
+    setData((d) => d && { ...d, messages: d.messages.map((x) => (x.id === id ? { ...x, ...patch } : x)) });
+  const lightboxItems: LightboxItem[] = messages.flatMap((m) =>
+    m.image
+      ? [
+          {
+            id: m.id,
+            src: `/api/livechat/file/${m.id}`,
+            w: m.image.w,
+            h: m.image.h,
+            caption: m.text,
+            meta: `${m.sender === "VISITOR" ? who : supportName(m)}، ${dateTime(m.at)}`,
+            reaction: m.reactions?.support ?? null,
+            otherReaction: m.reactions?.visitor ? { who, emoji: m.reactions.visitor } : undefined,
+            editable: m.sender === "ADMIN" && !chat.closedAt,
+            edited: m.edited,
+            comments: messages
+              .filter((x) => x.replyTo === m.id)
+              .map((x) => ({ id: x.id, who: x.sender === "VISITOR" ? who : supportName(x), text: x.text, time: dateTime(x.at), mine: x.sender === "ADMIN" })),
+          },
+        ]
+      : [],
+  );
+  const viewIndex = viewing ? lightboxItems.findIndex((x) => x.id === viewing) : -1;
+  const commentCount = new Map<string, number>();
+  for (const x of messages) if (x.replyTo) commentCount.set(x.replyTo, (commentCount.get(x.replyTo) ?? 0) + 1);
+  const post = (url: string, body: object) => fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+  /** Support's reaction from the viewer: shown at once, undone if the server says no. */
+  async function react(id: string, reaction: Reaction | null) {
+    const before = messages.find((x) => x.id === id)?.reactions ?? { visitor: null, support: null };
+    patchMessage(id, { reactions: { ...before, support: reaction } });
+    try {
+      const r = await post("/api/admin/livechat/react", { id, reaction });
+      if (!r.ok) throw new Error();
+      patchMessage(id, { reactions: ((await r.json()) as { reactions: ImageReactions }).reactions });
+    } catch {
+      patchMessage(id, { reactions: before });
+    }
+  }
+  async function editCaption(id: string, caption: string): Promise<string | null> {
+    try {
+      const r = await post("/api/admin/livechat/caption", { id, caption });
+      const d = (await r.json().catch(() => ({}))) as { text?: string };
+      if (!r.ok || typeof d.text !== "string") return t("lcSendError");
+      patchMessage(id, { text: d.text, edited: true });
+      return null;
+    } catch {
+      return t("lcSendError");
+    }
+  }
+  async function comment(imageId: string, text: string): Promise<string | null> {
+    try {
+      const r = await post(`/api/admin/livechat/${id}`, { text, replyTo: imageId });
+      if (!r.ok) return r.status === 409 ? t("lcEndedNote") : t("lcSendError");
+      load();
+      onChanged();
+      return null;
+    } catch {
+      return t("lcSendError");
+    }
+  }
   return (
     <div className={card}>
       {back}
@@ -395,17 +471,43 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
             ) : (
               <li key={m.id} className={`flex flex-col ${m.sender === "VISITOR" ? "items-start" : "items-end"}`}>
                 <span className="mb-1 px-1 text-[11px] font-bold text-gray-400">
-                  {m.sender === "VISITOR" ? who : `${t("lcSupport")}${m.author ? ` (${m.author})` : ""}`} — {dateTime(m.at)}
+                  {m.sender === "VISITOR" ? who : supportName(m)} — {dateTime(m.at)}
+                  {m.edited && ` (${t("lcEdited")})`}
                 </span>
                 <div
                   className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl ${m.image ? "p-1.5" : "px-3.5 py-2"} text-sm leading-6 ${
                     m.sender === "VISITOR" ? "rounded-ss-md border border-brand-200 bg-brand-50 text-gray-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-gray-100" : "rounded-se-md bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
                   }`}
                 >
+                  {m.replyTo && (
+                    <button
+                      type="button"
+                      onClick={() => messages.some((x) => x.id === m.replyTo && x.image) && setViewing(m.replyTo)}
+                      className="-mx-1.5 -mt-0.5 mb-1.5 flex items-center gap-2 rounded-lg bg-black/5 px-1.5 py-1 text-[11px] text-gray-500 dark:bg-white/5 dark:text-gray-400"
+                    >
+                      {messages.some((x) => x.id === m.replyTo && x.image) ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element -- private, admin-only image */}
+                          <img src={`/api/livechat/file/${m.replyTo}`} alt="" className="h-7 w-7 rounded-md object-cover" />
+                          {t("lcInReplyTo")}
+                        </>
+                      ) : (
+                        <>📷 {t("lcInReplyToDeleted")}</>
+                      )}
+                    </button>
+                  )}
                   {m.image && (
-                    <button type="button" onClick={() => setViewing(m.id)} className="block cursor-zoom-in" aria-label={t("lcImage")}>
+                    <button type="button" onClick={() => setViewing(m.id)} className="relative block cursor-zoom-in" aria-label={t("lcImage")}>
                       {/* eslint-disable-next-line @next/next/no-img-element -- private, admin-only image */}
                       <img src={`/api/livechat/file/${m.id}`} alt="" width={m.image.w} height={m.image.h} className="h-auto max-h-72 w-auto max-w-full rounded-xl" />
+                      <ImageBadges
+                        en={!fa}
+                        reactions={[
+                          ...(m.reactions?.visitor ? [{ who, emoji: m.reactions.visitor }] : []),
+                          ...(m.reactions?.support ? [{ who: t("lcSupport"), emoji: m.reactions.support }] : []),
+                        ]}
+                        comments={commentCount.get(m.id)}
+                      />
                     </button>
                   )}
                   {m.text && <span className={m.image ? "block px-2 pt-1.5" : undefined}>{m.text}</span>}
@@ -438,7 +540,18 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
         <Send className="h-3.5 w-3.5 shrink-0" />
         <span>{t("lcTelegramHint").replace("{code}", chat.code)}</span>
       </p>
-      {viewed?.image && <ChatImageView src={`/api/livechat/file/${viewed.id}`} caption={viewed.text} onClose={() => setViewing(null)} />}
+      {viewIndex >= 0 && (
+        <ImageLightbox
+          lang={fa ? "fa" : "en"}
+          items={lightboxItems}
+          index={viewIndex}
+          onIndex={(i) => setViewing(lightboxItems[i].id)}
+          onClose={() => setViewing(null)}
+          onReact={chat.closedAt ? undefined : (it, reaction) => void react(it.id, reaction)}
+          onCaption={(it, caption) => editCaption(it.id, caption)}
+          onComment={chat.endedByVisitor ? undefined : (it, text) => comment(it.id, text)}
+        />
+      )}
     </div>
   );
 }

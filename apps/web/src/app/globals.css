@@ -990,3 +990,37 @@ html.splash-seen .app-splash {
     animation: splash-out 0.3s ease-in 0.7s both;
   }
 }
+
+/* Live chat image viewer (components/livechat/ImageLightbox.tsx): slideshow countdown bar + a soft fade into
+   the next image; the big heart / reaction where an image was double-tapped, and the small one popping on. */
+@keyframes slideCountdown {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes slideFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes heartBurst {
+  0% { transform: scale(0); opacity: 0; }
+  15% { transform: scale(1.2); opacity: 0.95; }
+  30% { transform: scale(0.95); opacity: 0.95; }
+  45%, 70% { transform: scale(1); opacity: 0.95; }
+  100% { transform: scale(1.1) translateY(-30px); opacity: 0; }
+}
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+@keyframes heartFade {
+  0%, 60% { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+@utility animate-slide-fade { animation: slideFade 0.45s ease-out both; }
+@utility animate-heart-burst { animation: heartBurst 0.9s ease-out both; }
+@utility animate-heart-pop { animation: heartPop 0.35s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-fade, .animate-heart-pop { animation: none; }
+  .animate-heart-burst { animation: heartFade 0.9s linear both; } /* still shown, without the bounce */
+}

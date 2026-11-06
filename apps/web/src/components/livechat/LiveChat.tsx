@@ -6,12 +6,15 @@ import { toChatJpeg } from "@/lib/uploadImage";
 import { uploadWithProgress } from "@/lib/livechat/uploadWithProgress";
 import { ding, primeSound, useChimeMuted } from "@/lib/livechat/ding";
 import { CHAT_IMAGE_ACCEPT, CHAT_IMAGE_RULE_FA, chatImageProblem, MESSAGE_MAX, withoutImage, type ChatMessageOut as Msg } from "@/lib/livechat/rules";
-import { ChatImageView, UploadOverlay, uploadLabel } from "./ChatImageView";
+import { UploadOverlay, uploadLabel } from "./UploadProgress";
+import { ImageLightbox, type LightboxItem } from "./ImageLightbox";
+import { ImageBadges } from "./ImageBadges";
+import type { ImageReactions, Reaction } from "@/lib/livechat/reactions";
 
 /** A message on its way; `preview` = local object URL of an image (progress: null = shrinking, 0..1 = uploading). */
-type Pending = { cid: string; text: string; failed?: string; preview?: string; progress?: number | null };
+type Pending = { cid: string; text: string; failed?: string; preview?: string; progress?: number | null; replyTo?: string };
 type Phase = "start" | "chat";
-type PollReply = { code: string; name: string | null; closed: boolean; supportReadAt: string | null; typing: boolean; imagesPurgedAt: string | null; messages: Msg[] };
+type PollReply = { code: string; name: string | null; closed: boolean; supportReadAt: string | null; typing: boolean; imagesPurgedAt: string | null; messages: Msg[]; serverTime: string };
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tehran" });
 const field =
@@ -63,7 +66,7 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
     openRef.current = open;
   }, [msgs, open]);
 
-  /** Merges one poll reply; the first one (no `after`) replaces the list. */
+  /** Merges one poll reply by id (new messages appended, changed ones — reactions, caption edits — replaced); the first one replaces the list. */
   const applyPoll = useEffectEvent((r: PollReply, first: boolean) => {
     setPhase("chat");
     setOffline(false);
@@ -80,10 +83,12 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
       setMsgs(r.messages);
       return;
     }
+    if (!r.messages.length) return;
     const known = new Set(msgsRef.current.map((m) => m.id));
     const fresh = r.messages.filter((m) => !known.has(m.id));
+    const byId = new Map(r.messages.map((m) => [m.id, m]));
+    setMsgs((list) => [...list.map((x) => byId.get(x.id) ?? x), ...fresh.filter((m) => !list.some((x) => x.id === m.id))]);
     if (!fresh.length) return;
-    setMsgs((list) => [...list, ...fresh.filter((m) => !list.some((x) => x.id === m.id))]);
     const fromSupport = fresh.filter((m) => m.sender !== "visitor").length;
     if (fresh.some((m) => m.sender === "admin")) ding("chat");
     if (fromSupport && !openRef.current) setUnread((n) => n + fromSupport);
@@ -101,14 +106,16 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
     let stop = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let first = true;
+    let since = "";
     const tick = async () => {
       try {
-        const last = msgsRef.current.at(-1)?.at;
-        const res = await fetch(`/api/livechat/poll${!first && last ? `?after=${encodeURIComponent(last)}` : ""}`, { cache: "no-store" });
+        const res = await fetch(`/api/livechat/poll${!first && since ? `?since=${encodeURIComponent(since)}` : ""}`, { cache: "no-store" });
         if (stop) return;
         if (res.status === 404) return onGone();
         if (!res.ok) throw new Error(String(res.status));
-        applyPoll((await res.json()) as PollReply, first);
+        const reply = (await res.json()) as PollReply;
+        applyPoll(reply, first);
+        since = reply.serverTime;
         first = false;
       } catch {
         if (!stop) setOffline(true);
@@ -226,14 +233,16 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
     }
   };
 
-  const send = async (text = draft.trim(), retryCid?: string) => {
-    if (!text) return;
+  /** Sends a text message; `replyTo` = the image it comments on (from the viewer). Resolves to an error, or null when sent. */
+  const send = async (text = draft.trim(), retryCid?: string, replyTo?: string): Promise<string | null> => {
+    if (!text) return null;
     const cid = retryCid ?? `c${++cidSeq.current}`;
-    setPending((p) => (retryCid ? p.map((x) => (x.cid === cid ? { cid, text } : x)) : [...p, { cid, text }]));
-    if (!retryCid) setDraft("");
+    const about = replyTo ?? (retryCid ? pending.find((x) => x.cid === retryCid)?.replyTo : undefined);
+    setPending((p) => (retryCid ? p.map((x) => (x.cid === cid ? { cid, text, replyTo: about } : x)) : [...p, { cid, text, replyTo: about }]));
+    if (!retryCid && !replyTo) setDraft(""); // a comment from the viewer leaves the chat's draft alone
     setError(null);
     try {
-      const res = await fetch("/api/livechat/messages", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+      const res = await fetch("/api/livechat/messages", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, replyTo: about }) });
       const data = (await res.json().catch(() => ({}))) as { message?: Msg; delivered?: boolean; error?: string; closed?: boolean };
       if (!res.ok || !data.message) {
         if (data.closed) setClosed(true);
@@ -243,8 +252,11 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
       setPending((p) => p.filter((x) => x.cid !== cid));
       setMsgs((list) => (list.some((x) => x.id === msg.id) ? list : [...list, msg]));
       if (data.delivered === false) setError(DELIVERY_LATE);
+      return null;
     } catch (e) {
-      setPending((p) => p.map((x) => (x.cid === cid ? { ...x, failed: e instanceof Error ? e.message : "ارسال نشد." } : x)));
+      const error = e instanceof Error ? e.message : "ارسال نشد.";
+      setPending((p) => p.map((x) => (x.cid === cid ? { ...x, failed: error } : x)));
+      return error;
     }
   };
 
@@ -344,7 +356,69 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
   if (!enabled) return null;
   const submit = () => (phase === "start" ? start() : send());
   const lift = place === "panel" ? "bottom-[calc(76px+env(safe-area-inset-bottom))]" : "bottom-[calc(74px+env(safe-area-inset-bottom))] md:bottom-6";
-  const viewed = viewing ? msgs.find((m) => m.id === viewing && m.image) : null;
+  const lightboxItems: LightboxItem[] = msgs.flatMap((m) =>
+    m.image
+      ? [
+          {
+            id: m.id,
+            src: `/api/livechat/file/${m.id}`,
+            w: m.image.w,
+            h: m.image.h,
+            caption: m.text,
+            meta: `${m.sender === "visitor" ? myName || "شما" : "پشتیبانی"}، ${time(m.at)}`,
+            reaction: m.reactions?.visitor ?? null,
+            otherReaction: m.reactions?.support ? { who: "پشتیبانی", emoji: m.reactions.support } : undefined,
+            editable: m.sender === "visitor" && !closed,
+            edited: m.edited,
+            comments: [
+              ...msgs
+                .filter((x) => x.replyTo === m.id)
+                .map((x) => ({ id: x.id, who: x.sender === "visitor" ? myName || "شما" : "پشتیبانی", text: x.text, time: time(x.at), mine: x.sender === "visitor" })),
+              ...pending.filter((p) => p.replyTo === m.id).map((p) => ({ id: p.cid, who: myName || "شما", text: p.text, time: "", mine: true, pending: true })),
+            ],
+          },
+        ]
+      : [],
+  );
+  const viewIndex = viewing ? lightboxItems.findIndex((x) => x.id === viewing) : -1;
+
+  /** Comments per image (messages replying to it), for the 💬 badge. */
+  const commentCount = new Map<string, number>();
+  for (const x of msgs) if (x.replyTo) commentCount.set(x.replyTo, (commentCount.get(x.replyTo) ?? 0) + 1);
+  /** The «in reply to this image» strip above a comment; tapping it opens that image. */
+  const quoteFor = (id: string): BubbleQuote => {
+    const target = msgs.find((x) => x.id === id);
+    return target?.image ? { src: `/api/livechat/file/${id}`, onOpen: () => setViewing(id) } : {};
+  };
+
+  /** A new caption for one of the visitor's images (from the viewer); resolves to an error, or null when saved. */
+  const editCaption = async (id: string, caption: string): Promise<string | null> => {
+    try {
+      const res = await fetch("/api/livechat/caption", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, caption }) });
+      const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+      if (!res.ok || typeof data.text !== "string") return data.error ?? "ذخیره نشد؛ دوباره امتحان کنید.";
+      const text = data.text;
+      setMsgs((list) => list.map((x) => (x.id === id ? { ...x, text, edited: true } : x)));
+      return null;
+    } catch {
+      return "اتصال برقرار نشد؛ دوباره امتحان کنید.";
+    }
+  };
+
+  /** A reaction from the viewer (picker, 1–6, double-tap = ❤️): shown at once, undone if the server says no. */
+  const reactToImage = async (id: string, reaction: Reaction | null) => {
+    const before = msgs.find((x) => x.id === id)?.reactions?.visitor ?? null;
+    const set = (v: Reaction | null) => setMsgs((list) => list.map((x) => (x.id === id ? { ...x, reactions: { visitor: v, support: x.reactions?.support ?? null } } : x)));
+    set(reaction);
+    try {
+      const res = await fetch("/api/livechat/react", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, reaction }) });
+      if (!res.ok) throw new Error();
+      const { reactions } = (await res.json()) as { reactions: ImageReactions };
+      setMsgs((list) => list.map((x) => (x.id === id ? { ...x, reactions } : x)));
+    } catch {
+      set(before);
+    }
+  };
 
   return (
     <>
@@ -441,16 +515,33 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
                   mine={m.sender === "visitor"}
                   label={labelFor(m, msgs[i - 1] ?? GREETING, myName)}
                   text={m.text}
-                  image={m.image ? { src: `/api/livechat/file/${m.id}`, ...m.image } : undefined}
+                  image={
+                    m.image
+                      ? {
+                          src: `/api/livechat/file/${m.id}`,
+                          ...m.image,
+                          reactions: [
+                            ...(m.reactions?.visitor ? [{ who: "شما", emoji: m.reactions.visitor }] : []),
+                            ...(m.reactions?.support ? [{ who: "پشتیبانی", emoji: m.reactions.support }] : []),
+                          ],
+                          comments: commentCount.get(m.id),
+                        }
+                      : undefined
+                  }
+                  quote={m.replyTo ? quoteFor(m.replyTo) : undefined}
                   onOpenImage={m.image ? () => setViewing(m.id) : undefined}
                   meta={
                     m.sender === "visitor" ? (
                       <>
+                        {m.edited && <span>ویرایش‌شده،</span>}
                         {time(m.at)}
                         {supportReadAt && m.at <= supportReadAt ? <CheckCheck className="h-3.5 w-3.5" aria-label="خوانده شد" /> : <Check className="h-3.5 w-3.5" aria-label="ارسال شد" />}
                       </>
                     ) : (
-                      time(m.at)
+                      <>
+                        {m.edited && <span>ویرایش‌شده،</span>}
+                        {time(m.at)}
+                      </>
                     )
                   }
                 />
@@ -462,6 +553,7 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
                   mine
                   label={i === 0 && msgs.at(-1)?.sender !== "visitor" ? myName || name.trim() || "شما" : undefined}
                   text={p.text}
+                  quote={p.replyTo ? quoteFor(p.replyTo) : undefined}
                   image={p.preview ? { src: p.preview, w: 4, h: 3, local: true, progress: p.failed ? undefined : p.progress } : undefined}
                   meta={p.failed ? undefined : p.preview ? <UploadMeta progress={p.progress} onCancel={() => cancelUpload(p.cid)} /> : <Clock className="h-3 w-3" />}
                   dim
@@ -615,7 +707,17 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
           )}
         </section>
       )}
-      {viewed && <ChatImageView src={`/api/livechat/file/${viewed.id}`} caption={viewed.text} onClose={() => setViewing(null)} />}
+      {viewIndex >= 0 && (
+        <ImageLightbox
+          items={lightboxItems}
+          index={viewIndex}
+          onIndex={(i) => setViewing(lightboxItems[i].id)}
+          onClose={() => setViewing(null)}
+          onReact={closed ? undefined : (it, reaction) => void reactToImage(it.id, reaction)}
+          onCaption={(it, caption) => editCaption(it.id, caption)}
+          onComment={closed ? undefined : (it, text) => send(text, undefined, it.id)}
+        />
+      )}
     </>
   );
 }
@@ -658,9 +760,29 @@ function UploadMeta({ progress, onCancel }: { progress?: number | null; onCancel
   );
 }
 
-type BubbleImage = { src: string; w: number; h: number; local?: boolean; progress?: number | null };
+type BubbleImage = { src: string; w: number; h: number; local?: boolean; progress?: number | null; reactions?: { who: string; emoji: string }[]; comments?: number };
+/** A comment's link to the image it's about (no src: that image was deleted). */
+type BubbleQuote = { src?: string; onOpen?: () => void };
 
-function Bubble({ mine, text, meta, dim, label, image, onOpenImage }: { mine: boolean; text: string; meta?: ReactNode; dim?: boolean; label?: string; image?: BubbleImage; onOpenImage?: () => void }) {
+function Bubble({
+  mine,
+  text,
+  meta,
+  dim,
+  label,
+  image,
+  onOpenImage,
+  quote,
+}: {
+  mine: boolean;
+  text: string;
+  meta?: ReactNode;
+  dim?: boolean;
+  label?: string;
+  image?: BubbleImage;
+  onOpenImage?: () => void;
+  quote?: BubbleQuote;
+}) {
   return (
     <div className={`flex flex-col ${mine ? "items-start" : "items-end"} ${label ? "pt-1" : ""}`}>
       {label && <span className="mb-1 px-1 text-[11px] font-bold text-app-muted">{label}</span>}
@@ -669,6 +791,22 @@ function Bubble({ mine, text, meta, dim, label, image, onOpenImage }: { mine: bo
           mine ? "rounded-tr-md bg-app-accent text-app-accent-ink" : "rounded-tl-md bg-app-card-2 text-app-ink"
         } ${dim ? "opacity-70" : ""}`}
       >
+        {quote && (
+          <button
+            type="button"
+            onClick={quote.onOpen}
+            disabled={!quote.onOpen}
+            className={`-mx-1.5 -mt-0.5 mb-1.5 flex items-center gap-2 rounded-lg px-1.5 py-1 text-[11px] ${mine ? "bg-black/15" : "bg-app-card"} enabled:hover:opacity-90`}
+          >
+            {quote.src ? (
+              // eslint-disable-next-line @next/next/no-img-element -- private, cookie-checked image
+              <img src={quote.src} alt="" className="h-7 w-7 rounded-md object-cover" />
+            ) : (
+              <span aria-hidden="true">📷</span>
+            )}
+            {quote.src ? "در جواب این تصویر" : "در جواب تصویری که حذف شد"}
+          </button>
+        )}
         {image && (
           <button type="button" onClick={onOpenImage} disabled={!onOpenImage} className="relative block cursor-zoom-in disabled:cursor-default" aria-label="نمایش تصویر در اندازه کامل">
             {/* eslint-disable-next-line @next/next/no-img-element -- private, cookie-checked image or a local preview */}
@@ -680,6 +818,7 @@ function Bubble({ mine, text, meta, dim, label, image, onOpenImage }: { mine: bo
               className={`max-h-64 max-w-full rounded-xl ${image.local ? "h-36 w-48 object-cover" : "h-auto w-auto"}`}
             />
             {image.progress !== undefined && <UploadOverlay progress={image.progress} />}
+            <ImageBadges reactions={image.reactions} comments={image.comments} />
           </button>
         )}
         {text && <span className={image ? "block px-2 pt-1.5" : undefined}>{text}</span>}

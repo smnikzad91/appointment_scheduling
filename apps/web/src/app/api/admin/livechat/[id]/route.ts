@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sameOrigin } from "@/lib/livechat/config";
 import { adminSession } from "@/lib/livechat/admin";
-import { adminReply, cleanText, closeChat, visitorOnline } from "@/lib/livechat/chats";
+import { adminReply, cleanText, closeChat, imageInChat, visitorOnline } from "@/lib/livechat/chats";
+import { isReaction } from "@/lib/livechat/reactions";
 import { imageOf } from "@/lib/livechat/images";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -25,14 +26,25 @@ export async function GET(_req: Request, { params }: Ctx) {
       user,
       messages: messages.map((m) => {
         const image = imageOf(m.image);
-        return { id: m.id, sender: m.sender, text: m.text, author: m.author, at: m.createdAt, delivered: m.tgMessageId !== null, image: image ? { w: image.w, h: image.h } : null };
+        return {
+          id: m.id,
+          sender: m.sender,
+          text: m.text,
+          author: m.author,
+          at: m.createdAt,
+          delivered: m.tgMessageId !== null,
+          image: image ? { w: image.w, h: image.h } : null,
+          reactions: image ? { visitor: isReaction(m.visitorReaction) ? m.visitorReaction : null, support: isReaction(m.supportReaction) ? m.supportReaction : null } : null,
+          edited: m.editedAt !== null,
+          replyTo: m.replyToId,
+        };
       }),
     },
     { headers: { "cache-control": "no-store" } },
   );
 }
 
-/** POST {text}: reply from the panel. */
+/** POST {text, replyTo?}: reply from the panel; `replyTo` = an image of the chat it comments on (from the viewer). */
 export async function POST(req: Request, { params }: Ctx) {
   if (!sameOrigin(req)) return forbidden();
   const admin = await adminSession();
@@ -40,10 +52,11 @@ export async function POST(req: Request, { params }: Ctx) {
   const { id } = await params;
   const chat = await prisma.liveChat.findUnique({ where: { id } });
   if (!chat) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const body = (await req.json().catch(() => null)) as { text?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { text?: unknown; replyTo?: unknown } | null;
   const text = cleanText(body?.text, 2000);
   if (!text) return NextResponse.json({ error: "empty" }, { status: 400 });
-  const error = await adminReply(chat, text, admin.author);
+  const about = body?.replyTo ? await imageInChat(chat.id, body.replyTo) : null;
+  const error = await adminReply(chat, text, admin.author, undefined, about);
   return error ? NextResponse.json({ error }, { status: 409 }) : NextResponse.json({ ok: true });
 }
 

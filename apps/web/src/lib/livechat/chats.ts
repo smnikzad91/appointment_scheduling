@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { esc, sendPhotoToSupport, sendToSupport } from "./telegram";
 import { imageOf, readChatImage, removeChatFiles, type ChatImage } from "./images";
 import { CHAT_IMAGE_DELETED, MESSAGE_MAX, ONLINE_MS, type ChatMessageOut } from "./rules";
+import { isReaction, type ImageReactions, type Reaction } from "./reactions";
 
 /**
  * Site live chat («گفتگو با پشتیبانی»). A visitor's messages are stored and forwarded to the support
@@ -20,10 +21,24 @@ export const sha256 = (s: string) => createHash("sha256").update(s).digest("hex"
 
 const SENDER_OUT: Record<LiveChatSender, ChatMessageOut["sender"]> = { VISITOR: "visitor", ADMIN: "admin", SYSTEM: "system" };
 
+const reactionsOf = (m: { visitorReaction: string | null; supportReaction: string | null }): ImageReactions => ({
+  visitor: isReaction(m.visitorReaction) ? m.visitorReaction : null,
+  support: isReaction(m.supportReaction) ? m.supportReaction : null,
+});
+
 // `author` (who answered) stays server-side; visitors just see «پشتیبانی».
 export const outMessage = (m: LiveChatMessage): ChatMessageOut => {
   const image = imageOf(m.image);
-  return { id: m.id, sender: SENDER_OUT[m.sender], text: m.text, at: m.createdAt.toISOString(), image: image ? { w: image.w, h: image.h } : null };
+  return {
+    id: m.id,
+    sender: SENDER_OUT[m.sender],
+    text: m.text,
+    at: m.createdAt.toISOString(),
+    image: image ? { w: image.w, h: image.h } : null, // the file itself: /api/livechat/file/<id>
+    ...(image ? { reactions: reactionsOf(m) } : {}),
+    ...(m.editedAt ? { edited: true } : {}),
+    ...(m.replyToId ? { replyTo: m.replyToId } : {}),
+  };
 };
 
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -48,9 +63,9 @@ export async function chatHistory(chatId: string) {
   return rows.reverse().map(outMessage);
 }
 
-/** Messages from `after` on (the newest the widget has — it skips ids it knows), oldest first. */
-export async function messagesAfter(chatId: string, after: Date) {
-  const rows = await prisma.liveChatMessage.findMany({ where: { chatId, createdAt: { gte: after } }, orderBy: { createdAt: "asc" }, take: HISTORY });
+/** Messages new or changed (reaction, caption edit…) since `since` — the widget's previous poll — oldest first; it merges them by id. */
+export async function messagesSince(chatId: string, since: Date) {
+  const rows = await prisma.liveChatMessage.findMany({ where: { chatId, updatedAt: { gte: since } }, orderBy: { createdAt: "asc" }, take: HISTORY });
   return rows.map(outMessage);
 }
 
@@ -75,14 +90,53 @@ export async function notifyTyping(chatId: string) {
   await prisma.liveChat.updateMany({ where: { id: chatId, endedByVisitor: false }, data: { supportTypingAt: new Date() } });
 }
 
+/**
+ * Sets (or with null, removes) one side's reaction to an image in an open conversation — one per side;
+ * double-tap in the viewer = ❤️. Returns both sides' reactions, or null when there's no such image.
+ */
+export async function setImageReaction(chatId: string, messageId: string, side: "visitor" | "support", reaction: Reaction | null): Promise<ImageReactions | null> {
+  const where = { id: messageId, chatId, image: { not: Prisma.DbNull } };
+  const n = await prisma.liveChatMessage.updateMany({ where, data: side === "visitor" ? { visitorReaction: reaction } : { supportReaction: reaction } });
+  if (!n.count) return null;
+  const row = await prisma.liveChatMessage.findUnique({ where: { id: messageId }, select: { visitorReaction: true, supportReaction: true } });
+  return row ? reactionsOf(row) : null;
+}
+
+/**
+ * Changes the caption of an image the given side sent, in an open conversation. Both sides see it
+ * («ویرایش‌شده»), and a note replying to the original goes to the Telegram support chat so the record
+ * there stays true. Returns the saved caption, or null when there's no such image of theirs.
+ */
+export async function editImageCaption(chat: LiveChat, messageId: string, sender: "VISITOR" | "ADMIN", caption: string, author?: string) {
+  const n = await prisma.liveChatMessage.updateMany({
+    where: { id: messageId, chatId: chat.id, sender, image: { not: Prisma.DbNull } },
+    data: { text: caption, editedAt: new Date() },
+  });
+  if (!n.count) return null;
+  const row = await prisma.liveChatMessage.findUniqueOrThrow({ where: { id: messageId }, select: { text: true, tgMessageId: true } });
+  const who = sender === "VISITOR" ? "" : ` <i>از پنل (${esc(author ?? "پشتیبانی")})</i>`;
+  void sendToSupport(`✏️ ${label(chat)}${who} توضیح تصویر را ویرایش کرد:\n${row.text ? esc(row.text) : "<i>(بدون توضیح)</i>"}`, row.tgMessageId).catch((e) =>
+    console.error("[livechat] caption edit note failed:", e instanceof Error ? e.message : e),
+  );
+  return row.text;
+}
+
+/** The image a comment replies to: must be an image message of this conversation. tg = its Telegram copy (for threading). */
+export async function imageInChat(chatId: string, messageId: unknown) {
+  if (typeof messageId !== "string" || !/^[a-z0-9]{10,40}$/.test(messageId)) return null;
+  const m = await prisma.liveChatMessage.findFirst({ where: { id: messageId, chatId, image: { not: Prisma.DbNull } }, select: { id: true, tgMessageId: true } });
+  return m ? { id: m.id, tg: m.tgMessageId } : null;
+}
+export type ImageRef = NonNullable<Awaited<ReturnType<typeof imageInChat>>>;
+
 export async function addMessage(
   chatId: string,
   sender: LiveChatSender,
   text: string,
-  opts: { tgMessageId?: number | null; author?: string | null; image?: ChatImage | null } = {},
+  opts: { tgMessageId?: number | null; author?: string | null; image?: ChatImage | null; replyToId?: string | null } = {},
 ) {
   const row = await prisma.liveChatMessage.create({
-    data: { chatId, sender, text, tgMessageId: opts.tgMessageId ?? null, author: opts.author ?? null, image: opts.image ?? undefined },
+    data: { chatId, sender, text, tgMessageId: opts.tgMessageId ?? null, author: opts.author ?? null, image: opts.image ?? undefined, replyToId: opts.replyToId ?? null },
   });
   // A support reply means support has read everything before it (and has stopped typing).
   await prisma.liveChat.update({
@@ -135,14 +189,17 @@ export async function chatInfoHtml(chat: LiveChat) {
 const introHtml = async (chat: LiveChat, body: string, late = false) =>
   `🟢 گفتگوی جدید ${label(chat)}${late ? " <i>(با تأخیر)</i>" : ""}\n${await chatInfoHtml(chat)}\n\n${body}\n\n<i>برای جواب، روی همین پیام Reply کنید.</i>`;
 
-/** Saves a visitor message (text, or an image with an optional caption) and forwards it to Telegram. */
-export async function visitorSend(chat: LiveChat, text: string, img?: { image: ChatImage; jpeg: Buffer }) {
+/**
+ * Saves a visitor message (text, or an image with an optional caption) and forwards it to Telegram.
+ * `about` = the image this message comments on (from imageInChat): quoted in the chat, threaded under the photo in Telegram.
+ */
+export async function visitorSend(chat: LiveChat, text: string, img?: { image: ChatImage; jpeg: Buffer }, about?: ImageRef | null) {
   const first = (await prisma.liveChatMessage.count({ where: { chatId: chat.id } })) === 0;
-  const row = await addMessage(chat.id, "VISITOR", text, { image: img?.image });
+  const row = await addMessage(chat.id, "VISITOR", text, { image: img?.image, replyToId: about?.id });
   // Replying to the previous Telegram message of this chat threads the conversation in Telegram.
-  const prev = first ? null : await lastTg(chat.id);
+  const prev = about?.tg ?? (first ? null : await lastTg(chat.id));
   const body = img ? `📷 ${esc(text)}`.trim() : esc(text);
-  const html = first ? await introHtml(chat, body) : `💬 ${label(chat)}\n${body}`;
+  const html = first ? await introHtml(chat, body) : `💬 ${label(chat)}${about ? " <i>دربارهٔ تصویر</i>" : ""}\n${body}`;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const tgId = img ? await sendPhotoToSupport(img.jpeg, html, prev) : await sendToSupport(html, prev);
@@ -173,7 +230,7 @@ export function chatByCode(code: string) {
 export async function purgeChatImages(chatId: string) {
   const n = await prisma.$executeRaw`
     UPDATE "live_chat_messages"
-    SET "image" = NULL,
+    SET "image" = NULL, "visitorReaction" = NULL, "supportReaction" = NULL, "updatedAt" = now(),
         "text" = CASE WHEN "text" = '' THEN ${CHAT_IMAGE_DELETED} ELSE ${CHAT_IMAGE_DELETED + "\n"} || "text" END
     WHERE "chatId" = ${chatId} AND "image" IS NOT NULL`;
   await removeChatFiles([chatId]);
@@ -208,13 +265,13 @@ export async function endChatByVisitor(chat: LiveChat) {
  * Support answers from the admin panel: stored like a Telegram reply (the visitor's widget picks it
  * up) and mirrored into the Telegram thread so it stays complete. Returns an error text or null.
  */
-export async function adminReply(chat: LiveChat, text: string, author: string, img?: { image: ChatImage; jpeg: Buffer }) {
+export async function adminReply(chat: LiveChat, text: string, author: string, img?: { image: ChatImage; jpeg: Buffer }, about?: ImageRef | null) {
   if (chat.endedByVisitor) return "مشتری این گفتگو را بسته؛ پیام به او نمی‌رسد.";
   if (chat.closedAt) await prisma.liveChat.update({ where: { id: chat.id }, data: { closedAt: null } }); // answering reopens it
-  const row = await addMessage(chat.id, "ADMIN", text, { author: author.slice(0, 60), image: img?.image });
-  const prev = await lastTg(chat.id);
+  const row = await addMessage(chat.id, "ADMIN", text, { author: author.slice(0, 60), image: img?.image, replyToId: about?.id });
+  const prev = about?.tg ?? (await lastTg(chat.id));
   // Mirror in the background: the visitor already has the reply, the panel needn't wait for Telegram.
-  const mirror = `↩️ ${label(chat)} <i>از پنل (${esc(author)})</i>\n${esc(text)}`;
+  const mirror = `↩️ ${label(chat)} <i>از پنل (${esc(author)})${about ? " دربارهٔ تصویر" : ""}</i>\n${esc(text)}`;
   void (img ? sendPhotoToSupport(img.jpeg, mirror, prev) : sendToSupport(mirror, prev))
     .then((tgId) => prisma.liveChatMessage.update({ where: { id: row.id }, data: { tgMessageId: tgId } }))
     .catch((e) => console.error("[livechat] panel reply mirror failed:", e instanceof Error ? e.message : e));

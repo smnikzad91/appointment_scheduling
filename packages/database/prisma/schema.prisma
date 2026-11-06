@@ -411,13 +411,25 @@ model LiveChatMessage {
   text        String
   /// An attached image {file, w, h} (private-uploads/livechat/<chatId>/, served only to this chat's visitor and admins).
   image       Json?
+  /// Each side's reaction to an image (❤️ 👍 😂 😮 😢 🙏, lib/livechat/reactions.ts); null = none.
+  visitorReaction String?
+  supportReaction String?
+  /// An image's caption was changed after sending («ویرایش‌شده»).
+  editedAt    DateTime?
+  /// A comment on an image: the image message it replies to (quoted in the chat, threaded under the photo in Telegram).
+  replyToId   String?
+  replyTo     LiveChatMessage?  @relation("LiveChatComments", fields: [replyToId], references: [id], onDelete: SetNull)
+  comments    LiveChatMessage[] @relation("LiveChatComments")
   /// Support replies: who answered (Telegram first name, or the admin's name in the panel).
   author      String?
   /// The Telegram message in the support chat that carries / is this message (reply routing).
   tgMessageId Int?
   createdAt   DateTime       @default(now())
+  /// Bumped by every change (reaction, caption edit…): the widget's poll picks up messages changed since its last poll.
+  updatedAt   DateTime       @default(now()) @updatedAt
 
   @@index([chatId, createdAt])
+  @@index([chatId, updatedAt])
   @@index([tgMessageId])
   @@map("live_chat_messages")
 }
