@@ -5,6 +5,7 @@ import { esc, sendPhotoToSupport, sendToSupport } from "./telegram";
 import { imageOf, readChatImage, removeChatFiles, type ChatImage } from "./images";
 import { CHAT_IMAGE_DELETED, MESSAGE_MAX, ONLINE_MS, type ChatMessageOut } from "./rules";
 import { isReaction, type ImageReactions, type Reaction } from "./reactions";
+import { matchAutoReply } from "./quickReplies";
 
 /**
  * Site live chat («گفتگو با پشتیبانی»). A visitor's messages are stored and forwarded to the support
@@ -133,15 +134,15 @@ export async function addMessage(
   chatId: string,
   sender: LiveChatSender,
   text: string,
-  opts: { tgMessageId?: number | null; author?: string | null; image?: ChatImage | null; replyToId?: string | null } = {},
+  opts: { tgMessageId?: number | null; author?: string | null; image?: ChatImage | null; replyToId?: string | null; auto?: boolean } = {},
 ) {
   const row = await prisma.liveChatMessage.create({
     data: { chatId, sender, text, tgMessageId: opts.tgMessageId ?? null, author: opts.author ?? null, image: opts.image ?? undefined, replyToId: opts.replyToId ?? null },
   });
-  // A support reply means support has read everything before it (and has stopped typing).
+  // A support reply means support has read everything before it (and has stopped typing) — not an automatic one.
   await prisma.liveChat.update({
     where: { id: chatId },
-    data: sender === "ADMIN" ? { lastMessageAt: row.createdAt, supportReadAt: row.createdAt, supportTypingAt: null } : { lastMessageAt: row.createdAt },
+    data: sender === "ADMIN" && !opts.auto ? { lastMessageAt: row.createdAt, supportReadAt: row.createdAt, supportTypingAt: null } : { lastMessageAt: row.createdAt },
   });
   return row;
 }
@@ -200,17 +201,47 @@ export async function visitorSend(chat: LiveChat, text: string, img?: { image: C
   const prev = about?.tg ?? (first ? null : await lastTg(chat.id));
   const body = img ? `📷 ${esc(text)}`.trim() : esc(text);
   const html = first ? await introHtml(chat, body) : `💬 ${label(chat)}${about ? " <i>دربارهٔ تصویر</i>" : ""}\n${body}`;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let delivered = false;
+  let tgId: number | null = null;
+  for (let attempt = 0; attempt < 2 && !delivered; attempt++) {
     try {
-      const tgId = img ? await sendPhotoToSupport(img.jpeg, html, prev) : await sendToSupport(html, prev);
+      tgId = img ? await sendPhotoToSupport(img.jpeg, html, prev) : await sendToSupport(html, prev);
       await prisma.liveChatMessage.update({ where: { id: row.id }, data: { tgMessageId: tgId } });
-      return { row, delivered: true };
+      delivered = true;
     } catch (e) {
       console.error("[livechat] forward failed:", e instanceof Error ? e.message : e);
       if (attempt === 0) await new Promise((r) => setTimeout(r, 1500));
     }
   }
-  return { row, delivered: false };
+  if (text) await autoReply(chat, text, tgId).catch((e) => console.error("[livechat] auto reply failed:", e instanceof Error ? e.message : e));
+  return { row, delivered };
+}
+
+/**
+ * A quick reply marked «پاسخ خودکار» whose keyword is in the visitor's message goes out by itself (each
+ * at most once per chat), labelled «پاسخ خودکار» for support; support sees a note under the message in Telegram.
+ */
+async function autoReply(chat: LiveChat, text: string, tgId: number | null) {
+  const fresh = await prisma.liveChat.findUnique({ where: { id: chat.id }, select: { autoReplied: true, closedAt: true } });
+  if (!fresh || fresh.closedAt) return;
+  const reply = await matchAutoReply(text, fresh.autoReplied);
+  if (!reply) return;
+  await prisma.liveChat.update({ where: { id: chat.id }, data: { autoReplied: { push: reply.id } } });
+  await addMessage(chat.id, "ADMIN", reply.text, { author: "پاسخ خودکار", auto: true });
+  void sendToSupport(`🤖 ${label(chat)} پاسخ خودکار «${esc(reply.title)}» فرستاده شد.`, tgId).catch(() => {});
+}
+
+/** «راضی بودید؟» — the visitor's 👍 (1) / 👎 (-1) at the end; support hears it in the Telegram thread. */
+export async function rateChat(chat: LiveChat, rating: 1 | -1) {
+  await prisma.liveChat.update({ where: { id: chat.id }, data: { rating, ratedAt: new Date() } });
+  const prev = await lastTg(chat.id);
+  if (prev) void sendToSupport(`${rating > 0 ? "👍" : "👎"} ${label(chat)} از گفتگو ${rating > 0 ? "راضی بود" : "راضی نبود"}.`, prev).catch(() => {});
+}
+
+/** A quick reply sent by support (Telegram «/r key»): stored like a reply from that support member. */
+export async function sendQuickReply(chat: LiveChat, text: string, tgMessageId: number, author: string | null) {
+  if (chat.closedAt) await prisma.liveChat.update({ where: { id: chat.id }, data: { closedAt: null } }); // answering reopens it
+  return addMessage(chat.id, "ADMIN", text, { tgMessageId, author });
 }
 
 /** Which conversation a Telegram reply belongs to. */

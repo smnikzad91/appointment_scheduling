@@ -9,12 +9,13 @@ import { CHAT_IMAGE_ACCEPT, CHAT_IMAGE_RULE_FA, chatImageProblem, MESSAGE_MAX, w
 import { UploadOverlay, uploadLabel } from "./UploadProgress";
 import { ImageLightbox, type LightboxItem } from "./ImageLightbox";
 import { ImageBadges } from "./ImageBadges";
+import { linkify } from "./linkify";
 import type { ImageReactions, Reaction } from "@/lib/livechat/reactions";
 
 /** A message on its way; `preview` = local object URL of an image (progress: null = shrinking, 0..1 = uploading). */
 type Pending = { cid: string; text: string; failed?: string; preview?: string; progress?: number | null; replyTo?: string };
 type Phase = "start" | "chat";
-type PollReply = { code: string; name: string | null; closed: boolean; supportReadAt: string | null; typing: boolean; imagesPurgedAt: string | null; messages: Msg[]; serverTime: string };
+type PollReply = { code: string; name: string | null; closed: boolean; supportReadAt: string | null; typing: boolean; imagesPurgedAt: string | null; rating: number | null; messages: Msg[]; serverTime: string };
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tehran" });
 const field =
@@ -47,6 +48,9 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
   const [error, setError] = useState<string | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [ending, setEnding] = useState(false);
+  // «راضی بودید؟»: the saved rating (closed by support), and the one picked in the «بستن گفتگو» dialog
+  const [rating, setRating] = useState<number | null>(null);
+  const [endRating, setEndRating] = useState<1 | -1 | null>(null);
   const [muted, toggleMuted] = useChimeMuted("chat");
   const [typing, setTyping] = useState(false);
   const [supportReadAt, setSupportReadAt] = useState<string | null>(null);
@@ -71,6 +75,7 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
     setPhase("chat");
     setOffline(false);
     setClosed(r.closed);
+    setRating(r.rating);
     setMyName(r.name ?? "");
     setTyping(r.typing && !r.closed);
     setSupportReadAt((cur) => (r.supportReadAt && (!cur || r.supportReadAt > cur) ? r.supportReadAt : cur));
@@ -324,6 +329,8 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
     setClosed(false);
     setTyping(false);
     setSupportReadAt(null);
+    setRating(null);
+    setEndRating(null);
     purgedSeen.current = null;
   }, []);
 
@@ -340,7 +347,7 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
   const endChat = async () => {
     setEnding(true);
     try {
-      await fetch("/api/livechat", { method: "DELETE" });
+      await fetch("/api/livechat", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ rating: endRating }) });
     } catch {
       /* the local reset below still happens; the cookie expires on its own */
     }
@@ -480,6 +487,7 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
                   این گفتگو تمام می‌شود و پیام‌هایش از این صفحه پاک می‌شود. اگر پشتیبانی بعداً جواب بدهد، دیگر اینجا نمی‌بینید. فقط می‌خواهید پنجره را کنار بگذارید؟
                   «کوچک کردن» را بزنید.
                 </p>
+                <RatePrompt value={endRating} onPick={(v) => setEndRating(v)} />
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <button type="button" onClick={endChat} disabled={ending} className="flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-app-danger text-sm font-bold text-white disabled:opacity-60">
                     {ending && <Loader2 className="h-4 w-4 animate-spin" />} بستن گفتگو
@@ -608,7 +616,14 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
           )}
 
           {phase === "chat" && closed ? (
-            <div className="border-t border-app-line p-3.5" style={SAFE_BOTTOM}>
+            <div className="space-y-3 border-t border-app-line p-3.5" style={SAFE_BOTTOM}>
+              <RatePrompt
+                value={rating as 1 | -1 | null}
+                onPick={(v) => {
+                  setRating(v);
+                  fetch("/api/livechat/rate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rating: v }) }).catch(() => {});
+                }}
+              />
               <button type="button" onClick={newChat} className="min-h-11 w-full rounded-xl bg-app-accent text-sm font-bold text-app-accent-ink">
                 شروع گفتگوی تازه
               </button>
@@ -722,6 +737,27 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
   );
 }
 
+/** «از این گفتگو راضی بودید؟ 👍 👎» — picking again changes it. */
+function RatePrompt({ value, onPick }: { value: 1 | -1 | null; onPick: (v: 1 | -1) => void }) {
+  return (
+    <div className="flex items-center justify-center gap-2 text-xs text-app-muted">
+      <span>{value ? "ممنون از نظرتان" : "از این گفتگو راضی بودید؟"}</span>
+      {([1, -1] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onPick(v)}
+          aria-pressed={value === v}
+          aria-label={v > 0 ? "راضی بودم" : "راضی نبودم"}
+          className={`flex h-9 w-9 items-center justify-center rounded-full border text-lg transition ${value === v ? "border-app-accent bg-app-accent/15" : "border-app-line hover:bg-app-card-2"}`}
+        >
+          {v > 0 ? "👍" : "👎"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 const GREETING: Msg = { id: "greeting", sender: "admin", text: "", at: "", image: null };
 
 /** Name above a message: only on the first of a run from the same side. */
@@ -821,7 +857,7 @@ function Bubble({
             <ImageBadges reactions={image.reactions} comments={image.comments} />
           </button>
         )}
-        {text && <span className={image ? "block px-2 pt-1.5" : undefined}>{text}</span>}
+        {text && <span className={image ? "block px-2 pt-1.5" : undefined}>{linkify(text)}</span>}
         {meta && <span className={`mt-0.5 flex items-center gap-1 text-[10px] opacity-70 ${image ? "px-2 pb-0.5" : ""}`}>{meta}</span>}
       </div>
     </div>

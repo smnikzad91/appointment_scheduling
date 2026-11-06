@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { botToken, supportChatId, webhookSecret } from "@/lib/livechat/config";
-import { addMessage, chatByCode, chatByTelegramMessage, chatInfoHtml, cleanText, closeChat, lastVisitorMessage, openChats, visitorOnline } from "@/lib/livechat/chats";
+import { addMessage, chatByCode, chatByTelegramMessage, chatInfoHtml, cleanText, closeChat, lastVisitorMessage, openChats, sendQuickReply, visitorOnline } from "@/lib/livechat/chats";
+import { listQuickReplies } from "@/lib/livechat/quickReplies";
 import { downloadTelegramFile, esc, KEYBOARD_COMMANDS, react, replyIn, type TgUpdate } from "@/lib/livechat/telegram";
 import { CHAT_IMAGE_MAX_BYTES, ChatImageError, saveChatImage } from "@/lib/livechat/images";
 import { logError } from "@/lib/errorLog";
@@ -12,6 +13,7 @@ const HELP = [
   "یا بدون Reply: <code>#K7Q2 متن جواب</code>",
   "",
   "📋 <b>گفتگوهای باز</b>: فهرست گفتگوهای ۳ روز اخیر (🟢 = الان در سایت)",
+  "⚡ <b>پاسخ‌های آماده</b>: فهرست؛ برای فرستادن، روی پیام مشتری Reply کنید و بنویسید <code>/r کلید</code>",
   "🔒 <b>بستن گفتگو</b> و ℹ️ <b>مشخصات مشتری</b>: اول روی پیام مشتری Reply را بزنید، بعد دکمه را.",
   "",
   "همه گفتگوها در پنل مدیریت سایت هم هست: «گفتگوی آنلاین».",
@@ -77,6 +79,24 @@ async function handle(msg: NonNullable<TgUpdate["message"]>) {
     chat = await chatByCode(tagged[1]);
     text = tagged[2] ?? "";
     if (!chat) return replyIn(here, `گفتگوی #${esc(tagged[1].toUpperCase())} پیدا نشد.`, msg.message_id);
+  }
+
+  if (cmd === "/r") {
+    const key = raw.split(/\s+/)[1]?.toLowerCase();
+    const all = await listQuickReplies();
+    if (!key) {
+      if (!all.length) return replyIn(here, "پاسخ آماده‌ای تعریف نشده؛ در پنل مدیریت «گفتگوی آنلاین» اضافه کنید.");
+      const lines = all.map((q) => `<code>/r ${esc(q.key)}</code> — ${esc(q.title)}${q.autoReply ? " 🤖" : ""}`);
+      return replyIn(here, `<b>پاسخ‌های آماده</b> (🤖 = خودکار هم فرستاده می‌شود)\n\n${lines.join("\n")}\n\nبرای فرستادن، روی پیام مشتری Reply کنید و کلید را بنویسید.`, msg.message_id);
+    }
+    const quick = all.find((q) => q.key === key);
+    if (!quick) return replyIn(here, `پاسخ آماده «${esc(key)}» پیدا نشد. /r فهرست را نشان می‌دهد.`, msg.message_id);
+    if (!target) return replyIn(here, "اول روی پیام مشتری Reply کنید، بعد <code>/r کلید</code> را بنویسید.", msg.message_id);
+    if (target.endedByVisitor) return replyIn(here, `⛔️ #${target.code} گفتگو را بسته؛ این پیام به او نمی‌رسد.`, msg.message_id);
+    const author = cleanText(msg.from?.first_name ?? "", 60).replace(/\n/g, " ") || null;
+    await sendQuickReply(target, quick.text, msg.message_id, author);
+    react(here, msg.message_id, visitorOnline(target) ? "👍" : "👀");
+    return replyIn(here, `✓ «${esc(quick.title)}» برای #${target.code} فرستاده شد.`, msg.message_id, false);
   }
 
   if (cmd === "/close" || cmd === "/info") {

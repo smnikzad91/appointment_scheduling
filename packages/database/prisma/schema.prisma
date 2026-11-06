@@ -402,6 +402,13 @@ model LiveChat {
   supportTypingAt DateTime?
   /// Closing deletes the chat's images; open widgets drop them when this is newer than they knew.
   imagesPurgedAt DateTime?
+  /// Quick replies already sent automatically in this chat (each at most once).
+  autoReplied    String[]  @default([])
+  /// «راضی بودید؟» at the end: 1 = 👍, -1 = 👎.
+  rating         Int?
+  ratedAt        DateTime?
+  /// The support ticket made from this chat (for a signed-in visitor), to follow up in «پشتیبانی».
+  ticketId       String?
   lastMessageAt  DateTime  @default(now())
   createdAt      DateTime  @default(now())
 
@@ -409,6 +416,23 @@ model LiveChat {
 
   @@index([lastMessageAt])
   @@map("live_chats")
+}
+
+/// Saved answers for the live chat (/admin/live-chat «پاسخ‌های آماده»): inserted from the panel, sent from Telegram with
+/// «/r key», and — with autoReply — sent by themselves when a visitor's message contains one of the keywords.
+model LiveChatQuickReply {
+  id        String   @id @default(cuid())
+  /// Short name for Telegram (/r topup): a-z, 0-9, -.
+  key       String   @unique
+  title     String
+  text      String
+  keywords  String[] @default([])
+  autoReply Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("live_chat_quick_replies")
 }
 
 model LiveChatMessage {

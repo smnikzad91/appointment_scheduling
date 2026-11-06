@@ -64,12 +64,13 @@ export async function sendPhotoToSupport(jpeg: Buffer, captionHtml: string, repl
 /** Fixed keyboard under the support chat's input: button text → command. */
 export const KEYBOARD_COMMANDS: Record<string, string> = {
   "📋 گفتگوهای باز": "/chats",
+  "⚡ پاسخ‌های آماده": "/r",
   "🔒 بستن گفتگو": "/close",
   "ℹ️ مشخصات مشتری": "/info",
   "❓ راهنما": "/help",
 };
 const SUPPORT_KEYBOARD = {
-  keyboard: [[{ text: "📋 گفتگوهای باز" }], [{ text: "🔒 بستن گفتگو" }, { text: "ℹ️ مشخصات مشتری" }], [{ text: "❓ راهنما" }]],
+  keyboard: [[{ text: "📋 گفتگوهای باز" }, { text: "⚡ پاسخ‌های آماده" }], [{ text: "🔒 بستن گفتگو" }, { text: "ℹ️ مشخصات مشتری" }], [{ text: "❓ راهنما" }]],
   resize_keyboard: true,
   is_persistent: true,
   input_field_placeholder: "Reply روی پیام مشتری و نوشتن جواب",
@@ -114,6 +115,7 @@ export async function ensureTelegramWebhook() {
         { command: "chats", description: "گفتگوهای باز" },
         { command: "close", description: "بستن گفتگو (روی پیام مشتری Reply کنید)" },
         { command: "info", description: "مشخصات مشتری (Reply)" },
+        { command: "r", description: "پاسخ آماده (Reply روی پیام مشتری: /r کلید)" },
         { command: "help", description: "راهنما" },
       ],
     });

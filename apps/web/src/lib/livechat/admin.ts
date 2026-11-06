@@ -41,6 +41,7 @@ export type AdminChatRow = {
   endedByVisitor: boolean;
   visitorSeenAt: Date | null;
   lastMessageAt: Date;
+  rating: number | null;
   lastSender: "VISITOR" | "ADMIN" | null;
   lastText: string | null;
   total: number;
@@ -53,7 +54,7 @@ export function listChats(filter: ChatFilter, q: string) {
   const like = `%${term}%`;
   const search = term ? Prisma.sql`AND (c."code" ILIKE ${like} OR c."name" ILIKE ${like} OR c."contact" ILIKE ${like})` : Prisma.empty;
   return prisma.$queryRaw<AdminChatRow[]>`
-    SELECT c."id", c."code", c."name", c."contact", c."userId", c."closedAt", c."endedByVisitor", c."visitorSeenAt", c."lastMessageAt",
+    SELECT c."id", c."code", c."name", c."contact", c."userId", c."closedAt", c."endedByVisitor", c."visitorSeenAt", c."lastMessageAt", c."rating",
       ${LAST_SENDER} AS "lastSender",
       (SELECT CASE WHEN m."text" = '' AND m."image" IS NOT NULL THEN '📷 تصویر' ELSE m."text" END FROM "live_chat_messages" m
         WHERE m."chatId" = c."id" AND m."sender" <> 'SYSTEM' ORDER BY m."createdAt" DESC LIMIT 1) AS "lastText",
@@ -74,6 +75,16 @@ export async function chatCounts(): Promise<Record<ChatFilter, number>> {
       count(*) FILTER (WHERE c."endedByVisitor")::int AS "ended"
     FROM "live_chats" c`;
   return r;
+}
+
+/** «راضی بودید؟» over the last 30 days: 👍 and 👎 counts. */
+export async function ratingSummary() {
+  const since = new Date(Date.now() - 30 * 86_400_000);
+  const [up, down] = await Promise.all([
+    prisma.liveChat.count({ where: { rating: 1, ratedAt: { gte: since } } }),
+    prisma.liveChat.count({ where: { rating: -1, ratedAt: { gte: since } } }),
+  ]);
+  return { up, down };
 }
 
 /** Sidebar badge + chime: open conversations waiting for a reply, and the newest visitor message in an open one. */

@@ -6,6 +6,7 @@ import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
 import type { TranslationKey } from "@/i18n/translations";
 import { toastError } from "@/lib/toastError";
+import { toast } from "sonner";
 import { toChatJpeg } from "@/lib/uploadImage";
 import { uploadWithProgress } from "@/lib/livechat/uploadWithProgress";
 import { useChimeMuted } from "@/lib/livechat/ding";
@@ -13,6 +14,8 @@ import { CHAT_IMAGE_ACCEPT, chatImageProblem } from "@/lib/livechat/rules";
 import { UploadOverlay } from "@/components/livechat/UploadProgress";
 import { ImageLightbox, type LightboxItem } from "@/components/livechat/ImageLightbox";
 import { ImageBadges } from "@/components/livechat/ImageBadges";
+import { QuickRepliesManager, QuickReplyPicker, useQuickReplies } from "./AdminQuickReplies";
+import { linkify } from "@/components/livechat/linkify";
 import type { ImageReactions, Reaction } from "@/lib/livechat/reactions";
 
 type Filter = "all" | "waiting" | "open" | "closed" | "ended";
@@ -38,6 +41,7 @@ type Row = {
   total: number;
   undelivered: number;
   online: boolean;
+  rating: number | null;
 };
 type Transcript = {
   chat: {
@@ -53,6 +57,9 @@ type Transcript = {
     visitorReadAt: string | null;
     createdAt: string;
     online: boolean;
+    userId: string | null;
+    rating: number | null;
+    ticketId: string | null;
   };
   user: { id: string; firstName: string; lastName: string; phone: string | null; role: string } | null;
   messages: {
@@ -106,7 +113,8 @@ export default function AdminLiveChat() {
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
   const [search, setSearch] = useState("");
-  const [data, setData] = useState<{ configured: boolean; counts: Record<Filter, number>; items: Row[] } | null>(null);
+  const [data, setData] = useState<{ configured: boolean; counts: Record<Filter, number>; ratings: { up: number; down: number }; items: Row[] } | null>(null);
+  const [managing, setManaging] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [muted, toggleMuted] = useChimeMuted("admin");
@@ -139,7 +147,19 @@ export default function AdminLiveChat() {
             {t("lcTitle")} {data && <span className="text-gray-400">({num(data.counts.all)})</span>}
           </h1>
           <p className="mt-0.5 text-xs text-gray-500">{data && !data.configured ? t("lcSubtitleOff") : t("lcSubtitleOn")}</p>
+          {data && data.ratings.up + data.ratings.down > 0 && (
+            <p className="mt-1 text-xs text-gray-500">
+              {t("lcRatings")}: 👍 {num(data.ratings.up)} — 👎 {num(data.ratings.down)}
+            </p>
+          )}
         </div>
+        <button
+          type="button"
+          onClick={() => setManaging(true)}
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 px-2.5 text-xs font-semibold text-gray-600 hover:text-gray-900 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white"
+        >
+          ⚡ {t("lcQuickReplies")}
+        </button>
         <button
           type="button"
           onClick={toggleMuted}
@@ -217,6 +237,7 @@ export default function AdminLiveChat() {
                     {num(r.total)} {t("lcMessages")}
                   </span>
                   {r.userId && <span className="text-sky-600 dark:text-sky-300">{t("lcAccount")}</span>}
+                  {r.rating !== null && <span title={t(r.rating > 0 ? "lcRatedUp" : "lcRatedDown")}>{r.rating > 0 ? "👍" : "👎"}</span>}
                   {r.undelivered > 0 && (
                     <span className="text-rose-500">
                       {num(r.undelivered)} {t("lcUndelivered")}
@@ -234,6 +255,7 @@ export default function AdminLiveChat() {
 
   return (
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
+      {managing && <QuickRepliesManager onClose={() => setManaging(false)} onChanged={() => window.dispatchEvent(new Event("livechat:quick-replies"))} />}
       <div className="lg:col-span-5">{list}</div>
       <div className="lg:sticky lg:top-24 lg:col-span-7">
         {openId ? (
@@ -287,6 +309,21 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
     document.addEventListener("visibilitychange", mark);
     return () => document.removeEventListener("visibilitychange", mark);
   }, [id, lastVisitorAt]);
+
+  const [ticketing, setTicketing] = useState(false);
+  async function makeTicket() {
+    setTicketing(true);
+    try {
+      const r = await fetch(`/api/admin/livechat/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "ticket" }) });
+      if (!r.ok) throw new Error();
+      toast.success(t("lcTicketMade"));
+      load();
+    } catch {
+      toastError(t("lcSendError"));
+    } finally {
+      setTicketing(false);
+    }
+  }
 
   async function close() {
     setClosing(true);
@@ -447,6 +484,26 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
         </div>
         <div className="flex flex-col items-end gap-2">
           <Status closedAt={chat.closedAt} endedByVisitor={chat.endedByVisitor} lastSender={messages.findLast((m) => m.sender !== "SYSTEM")?.sender ?? null} />
+          {chat.rating !== null && (
+            <span className={pill(chat.rating > 0 ? "good" : "warn")}>
+              {chat.rating > 0 ? "👍" : "👎"} {t(chat.rating > 0 ? "lcRatedUp" : "lcRatedDown")}
+            </span>
+          )}
+          {chat.ticketId ? (
+            <a href={`/admin/tickets/${chat.ticketId}`} className="flex min-h-9 items-center gap-1.5 rounded-xl border border-gray-300 px-3 text-xs font-bold text-brand-600 hover:bg-gray-50 dark:border-gray-700 dark:text-brand-300 dark:hover:bg-white/5">
+              {t("lcTicketOpen")}
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={makeTicket}
+              disabled={ticketing || !chat.userId}
+              title={chat.userId ? undefined : t("lcTicketNoAccount")}
+              className="flex min-h-9 items-center gap-1.5 rounded-xl border border-gray-300 px-3 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-white/5"
+            >
+              {ticketing && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {t("lcTicket")}
+            </button>
+          )}
           {!chat.closedAt && (
             <button
               type="button"
@@ -510,7 +567,7 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
                       />
                     </button>
                   )}
-                  {m.text && <span className={m.image ? "block px-2 pt-1.5" : undefined}>{m.text}</span>}
+                  {m.text && <span className={m.image ? "block px-2 pt-1.5" : undefined}>{linkify(m.text)}</span>}
                 </div>
                 {m.sender === "VISITOR" && !m.delivered && <span className="mt-1 px-1 text-[11px] text-rose-500">{t("lcNotDelivered")}</span>}
                 {m.sender === "ADMIN" &&
@@ -559,6 +616,7 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
 /** Reply box under a transcript (Enter sends, Shift+Enter = new line); images go with the typed text as caption. */
 function ReplyBox({ chatId, onSent }: { chatId: string; onSent: () => void }) {
   const t = useT();
+  const quick = useQuickReplies();
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [upload, setUpload] = useState<{ preview: string; progress: number | null } | null>(null);
@@ -655,6 +713,7 @@ function ReplyBox({ chatId, onSent }: { chatId: string; onSent: () => void }) {
         </div>
       )}
       <div className="flex items-end gap-2">
+        <QuickReplyPicker list={quick.list} disabled={sending} onPick={(text) => setText((cur) => (cur.trim() ? `${cur.trimEnd()}\n${text}` : text))} />
         <input
           ref={fileRef}
           type="file"

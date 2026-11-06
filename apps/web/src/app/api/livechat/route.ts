@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { lookupGeo } from "@/lib/analytics/record";
 import { isValidIranianMobile, normalizeIranianMobile } from "@/lib/persian";
 import { liveChatConfigured, sameOrigin } from "@/lib/livechat/config";
-import { CHAT_COOKIE, CHAT_COOKIE_DAYS, chatByToken, cleanText, createChat, endChatByVisitor, visitorSend } from "@/lib/livechat/chats";
+import { CHAT_COOKIE, CHAT_COOKIE_DAYS, chatByToken, cleanText, createChat, endChatByVisitor, rateChat, visitorSend } from "@/lib/livechat/chats";
 
 const fail = (error: string, status = 400) => Response.json({ error }, { status });
 
@@ -88,11 +88,13 @@ export async function POST(req: Request) {
   return Response.json({ ok: true, delivered });
 }
 
-/** DELETE: the visitor closes the conversation («بستن گفتگو»): ended for good, cookie removed. */
+/** DELETE {rating?: 1 | -1}: the visitor closes the conversation («بستن گفتگو»), optionally rating it: ended for good, cookie removed. */
 export async function DELETE(req: Request) {
   if (!sameOrigin(req)) return fail("forbidden", 403);
   const jar = await cookies();
   const chat = await chatByToken(jar.get(CHAT_COOKIE)?.value);
+  const body = (await req.json().catch(() => null)) as { rating?: unknown } | null;
+  if (chat && (body?.rating === 1 || body?.rating === -1)) await rateChat(chat, body.rating);
   if (chat) await endChatByVisitor(chat);
   jar.delete(CHAT_COOKIE);
   return Response.json({ ok: true });

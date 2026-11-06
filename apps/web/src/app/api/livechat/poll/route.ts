@@ -29,6 +29,7 @@ export async function GET(req: Request) {
       supportReadAt: chat.supportReadAt?.toISOString() ?? null,
       typing: Boolean(chat.supportTypingAt && Date.now() - chat.supportTypingAt.getTime() < TYPING_MS),
       imagesPurgedAt: chat.imagesPurgedAt?.toISOString() ?? null,
+      rating: chat.rating,
       messages,
       serverTime: serverTime.toISOString(),
     },
