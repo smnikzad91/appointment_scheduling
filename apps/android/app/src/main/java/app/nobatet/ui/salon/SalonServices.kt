@@ -235,7 +235,9 @@ private fun CategoriesDialog(
 }
 
 /** Quick picks for a service's length; owners typed hours into the minutes box (3 for «3 hours»). */
-private val DURATION_CHIPS = listOf(15, 30, 45, 60, 90, 120, 180, 240)
+/** Quick picks for a service's length, up to the 10-hour limit (MAX_SERVICE_MINUTES, as the web and the API). */
+private val DURATION_CHIPS = listOf(30, 45, 60, 90, 120, 180, 240, 360, 480, 600)
+private const val MAX_SERVICE_MINUTES = 600
 
 /** Below these the save asks first — seen in real data as hours typed as minutes and prices in thousands. */
 private const val SHORT_DURATION_MINUTES = 10
@@ -279,6 +281,7 @@ private fun ServiceDialog(
         when {
             name.isBlank() -> error = "نام خدمت را وارد کنید"
             d == null || d <= 0 -> error = "مدت خدمت را وارد کنید"
+            d > MAX_SERVICE_MINUTES -> error = "مدت خدمت حداکثر ۱۰ ساعت (۶۰۰ دقیقه) است"
             p == null -> error = "قیمت را وارد کنید"
             d < SHORT_DURATION_MINUTES && !confirmedShort -> {
                 val n = d.toString().toPersianDigits()

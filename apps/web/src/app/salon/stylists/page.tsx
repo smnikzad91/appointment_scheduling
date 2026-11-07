@@ -1,5 +1,6 @@
 "use client";
 
+import { MAX_SERVICE_MINUTES, MIN_SERVICE_MINUTES } from "@/lib/serviceDuration";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -228,6 +229,10 @@ export default function SalonStylistsPage() {
 
   function handleSaveOverride(stylist: OwnerStylist, serviceId: string) {
     const draft = draftFor(stylist, serviceId);
+    if (draft.duration.trim() && !(Number(draft.duration) >= MIN_SERVICE_MINUTES && Number(draft.duration) <= MAX_SERVICE_MINUTES)) {
+      toastError(`مدت باید بین ${toPersianDigits(MIN_SERVICE_MINUTES)} دقیقه تا ${toPersianDigits(MAX_SERVICE_MINUTES / 60)} ساعت (${toPersianDigits(MAX_SERVICE_MINUTES)} دقیقه) باشد`);
+      return;
+    }
     setOverrideDrafts((d) => {
       const rest = { ...d };
       delete rest[serviceId];
@@ -545,7 +550,7 @@ export default function SalonStylistsPage() {
                               className="h-11 text-end"
                               placeholder={toPersianDigits(service.durationMinutes)}
                               value={toPersianDigits(draft.duration)}
-                              onChange={(e) => setOverrideDrafts((d) => ({ ...d, [service.id]: { ...draft, duration: normalizeDigits(e.target.value).replace(/\D/g, "") } }))}
+                              onChange={(e) => setOverrideDrafts((d) => ({ ...d, [service.id]: { ...draft, duration: normalizeDigits(e.target.value).replace(/\D/g, "").slice(0, 3) } }))}
                             />
                           </label>
                           <label className="w-[4.5rem]">

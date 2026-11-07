@@ -64,6 +64,8 @@ const BY_API_MESSAGE: Record<string, string> = {
   "No account with this phone number": "حسابی با این شماره موبایل وجود ندارد",
   "Staff accounts sign in with their password": "این شماره متعلق به حساب مدیر یا آرایشگر است؛ از صفحه ورود با رمز عبور وارد شوید",
   "This salon isn't taking online bookings right now": "نوبت‌دهی آنلاین این سالن فعلاً بسته است؛ برای رزرو با خود سالن تماس بگیرید",
+  "durationMinutes must not be greater than 600": "مدت خدمت حداکثر ۱۰ ساعت است",
+  "overrideDurationMinutes must not be greater than 600": "مدت خدمت حداکثر ۱۰ ساعت است",
   "This booking's chat is closed": "گفتگوی این نوبت بسته است",
   "Too many messages; try again later": "پیام‌ها زیاد بود؛ کمی بعد دوباره امتحان کنید",
   "Write a message": "پیامتان را بنویسید",
