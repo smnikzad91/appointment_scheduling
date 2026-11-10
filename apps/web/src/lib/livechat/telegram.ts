@@ -1,7 +1,45 @@
+import https from "node:https";
+import { SocksProxyAgent } from "socks-proxy-agent";
 import { SITE_URL } from "@/lib/site";
 import { botToken, supportChatId, webhookSecret, WEBHOOK_PATH } from "./config";
 
 /** Minimal Telegram Bot API client for the site's live chat (its own bot, not the channel bot in lib/telegram.ts). */
+
+// Telegram is blocked (and its DNS poisoned) on the Iran server, so when TELEGRAM_PROXY is set every
+// call goes through that SOCKS proxy, with the proxy resolving the hostname (socks5 → socks5h).
+const PROXY = process.env.TELEGRAM_PROXY?.trim().replace(/^socks5:/, "socks5h:");
+let proxyAgent: SocksProxyAgent | undefined;
+
+async function tgFetch(url: string, init: { method?: string; headers?: Record<string, string>; body?: string | FormData; timeoutMs: number }): Promise<Response> {
+  if (!PROXY) return fetch(url, { method: init.method, headers: init.headers, body: init.body, signal: AbortSignal.timeout(init.timeoutMs) });
+  proxyAgent ??= new SocksProxyAgent(PROXY);
+  const headers: Record<string, string> = { ...init.headers };
+  let body: Buffer | undefined;
+  if (init.body instanceof FormData) {
+    const encoded = new Response(init.body);
+    body = Buffer.from(await encoded.arrayBuffer());
+    headers["content-type"] = encoded.headers.get("content-type") ?? "multipart/form-data";
+  } else if (init.body != null) {
+    body = Buffer.from(init.body);
+  }
+  if (body) headers["content-length"] = String(body.length);
+  return new Promise<Response>((resolve, reject) => {
+    const req = https.request(url, { agent: proxyAgent, method: init.method ?? "GET", headers }, (res) => {
+      const chunks: Buffer[] = [];
+      res.on("data", (c: Buffer) => chunks.push(c));
+      res.on("end", () => {
+        clearTimeout(timer);
+        const status = res.statusCode ?? 502;
+        resolve(new Response([204, 205, 304].includes(status) ? null : new Uint8Array(Buffer.concat(chunks)), { status }));
+      });
+      res.on("error", (e) => { clearTimeout(timer); reject(e); });
+    });
+    const timer = setTimeout(() => req.destroy(new Error("telegram request timed out")), init.timeoutMs);
+    req.on("error", (e) => { clearTimeout(timer); reject(e); });
+    if (body) req.write(body);
+    req.end();
+  });
+}
 
 type TgResult<T> = { ok: true; result: T } | { ok: false; description?: string };
 export type TgMessage = {
@@ -19,11 +57,11 @@ export type TgUpdate = { update_id: number; message?: TgMessage };
 export async function tg<T = unknown>(method: string, body: Record<string, unknown>): Promise<T> {
   const token = botToken();
   if (!token) throw new Error("live chat telegram bot not configured");
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+  const res = await tgFetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(10_000),
+    timeoutMs: 10_000,
   });
   const data = (await res.json().catch(() => ({ ok: false, description: `HTTP ${res.status}` }))) as TgResult<T>;
   if (!data.ok) throw new Error(`telegram ${method}: ${data.description ?? "failed"}`);
@@ -55,7 +93,7 @@ export async function sendPhotoToSupport(jpeg: Buffer, captionHtml: string, repl
   form.set("caption", captionHtml.slice(0, 1024));
   form.set("parse_mode", "HTML");
   if (replyToId) form.set("reply_parameters", JSON.stringify({ message_id: replyToId, allow_sending_without_reply: true }));
-  const res = await fetch(`https://api.telegram.org/bot${botToken()}/sendPhoto`, { method: "POST", body: form, signal: AbortSignal.timeout(30_000) });
+  const res = await tgFetch(`https://api.telegram.org/bot${botToken()}/sendPhoto`, { method: "POST", body: form, timeoutMs: 30_000 });
   const data = (await res.json().catch(() => ({ ok: false }))) as { ok: boolean; result?: TgMessage; description?: string };
   if (!data.ok || !data.result) throw new Error(`telegram sendPhoto: ${data.description ?? "failed"}`);
   return data.result.message_id;
@@ -95,12 +133,12 @@ export function react(chatId: number | string, messageId: number, emoji: string)
 /** Downloads a photo support sent to the bot (at most `maxBytes`). */
 export async function downloadTelegramFile(fileId: string, maxBytes: number) {
   const meta = (await (
-    await fetch(`https://api.telegram.org/bot${botToken()}/getFile?file_id=${encodeURIComponent(fileId)}`, { signal: AbortSignal.timeout(10_000) })
+    await tgFetch(`https://api.telegram.org/bot${botToken()}/getFile?file_id=${encodeURIComponent(fileId)}`, { timeoutMs: 10_000 })
   ).json()) as { ok: boolean; result?: { file_path?: string; file_size?: number } };
   const p = meta.result?.file_path;
   if (!meta.ok || !p) throw new Error("telegram getFile failed");
   if ((meta.result?.file_size ?? 0) > maxBytes) throw new Error("too large");
-  const res = await fetch(`https://api.telegram.org/file/bot${botToken()}/${p}`, { signal: AbortSignal.timeout(30_000) });
+  const res = await tgFetch(`https://api.telegram.org/file/bot${botToken()}/${p}`, { timeoutMs: 30_000 });
   if (!res.ok) throw new Error("telegram file download failed");
   return Buffer.from(await res.arrayBuffer());
 }
