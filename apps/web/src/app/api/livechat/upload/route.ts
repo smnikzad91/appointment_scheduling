@@ -1,4 +1,6 @@
 import { cookies } from "next/headers";
+import { after } from "next/server";
+import { answerLiveChat } from "@/lib/livechat/ai";
 import { sameOrigin } from "@/lib/livechat/config";
 import { CHAT_COOKIE, chatByToken, cleanText, outMessage, visitorSend } from "@/lib/livechat/chats";
 import { CHAT_UPLOAD_MAX_BYTES, ChatImageError, saveChatImage } from "@/lib/livechat/images";
@@ -21,6 +23,7 @@ export async function POST(req: Request) {
   try {
     const img = await saveChatImage(chat.id, Buffer.from(await file.arrayBuffer()));
     const { row, delivered } = await visitorSend(chat, cleanText(form?.get("caption")), img);
+    after(() => answerLiveChat(chat.id)); // a caption is answered; an image alone gets a short note
     return Response.json({ message: outMessage(row), delivered });
   } catch (error) {
     if (error instanceof ChatImageError) return fail(error.message);

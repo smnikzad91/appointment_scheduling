@@ -52,7 +52,15 @@ export type TgMessage = {
   document?: { file_id: string; mime_type?: string; file_size?: number; file_name?: string };
   reply_to_message?: { message_id: number };
 };
-export type TgUpdate = { update_id: number; message?: TgMessage };
+export type TgCallback = { id: string; from: { id: number; first_name?: string }; message?: { message_id: number; chat: { id: number } }; data?: string };
+export type TgUpdate = { update_id: number; message?: TgMessage; callback_query?: TgCallback };
+/** Inline buttons under a support message. */
+export type InlineKeyboard = { inline_keyboard: { text: string; callback_data: string }[][] };
+
+/** Answers a button press (a small toast in Telegram; `alert` = a dialog). */
+export async function answerCallback(id: string, text: string, alert = false) {
+  await tg("answerCallbackQuery", { callback_query_id: id, text: text.slice(0, 200), show_alert: alert }).catch(() => {});
+}
 
 export async function tg<T = unknown>(method: string, body: Record<string, unknown>): Promise<T> {
   const token = botToken();
@@ -74,15 +82,58 @@ export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;")
 const replyTo = (id?: number | null) => (id ? { reply_parameters: { message_id: id, allow_sending_without_reply: true } } : {});
 
 /** Sends to the support chat; returns the Telegram message id. */
-export async function sendToSupport(html: string, replyToId?: number | null) {
+export async function sendToSupport(html: string, replyToId?: number | null, keyboard?: InlineKeyboard | null) {
   const m = await tg<TgMessage>("sendMessage", {
     chat_id: supportChatId(),
     text: html.slice(0, 4096),
     parse_mode: "HTML",
     link_preview_options: { is_disabled: true },
+    ...(keyboard ? { reply_markup: keyboard } : {}),
     ...replyTo(replyToId),
   });
   return m.message_id;
+}
+
+/** Edits a support chat message in place (no notification). "not modified" counts as done. */
+export async function editSupportMessage(messageId: number, html: string, keyboard?: InlineKeyboard | null) {
+  try {
+    await tg("editMessageText", {
+      chat_id: supportChatId(),
+      message_id: messageId,
+      text: html.slice(0, 4096),
+      parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
+      reply_markup: keyboard ?? { inline_keyboard: [] },
+    });
+  } catch (e) {
+    if (e instanceof Error && /message is not modified/i.test(e.message)) return;
+    throw e;
+  }
+}
+
+let deleteWarned = false;
+/**
+ * Removes a message from the support chat (a supporter's reply once it's in the conversation message).
+ * In a private chat the bot may delete incoming messages under 48 h old; in a group it must be an admin
+ * with «Delete messages». false (logged once) when it can't.
+ */
+export async function deleteSupportMessage(messageId: number) {
+  try {
+    await tg("deleteMessage", { chat_id: supportChatId(), message_id: messageId });
+    return true;
+  } catch (e) {
+    if (e instanceof Error && /message to delete not found/i.test(e.message)) return true; // already gone
+    if (!deleteWarned) {
+      deleteWarned = true;
+      console.warn(`[livechat] can't delete supporter replies (in a group the bot must be an admin with «Delete messages»): ${e instanceof Error ? e.message : e}`);
+    }
+    return false;
+  }
+}
+
+/** Removes the inline buttons from a support message (text unchanged). */
+export async function clearSupportButtons(messageId: number) {
+  await tg("editMessageReplyMarkup", { chat_id: supportChatId(), message_id: messageId, reply_markup: { inline_keyboard: [] } }).catch(() => {});
 }
 
 /** Sends a photo (JPEG bytes) with an HTML caption to the support chat; returns the message id. */
@@ -111,11 +162,11 @@ const SUPPORT_KEYBOARD = {
   keyboard: [[{ text: "📋 گفتگوهای باز" }, { text: "⚡ پاسخ‌های آماده" }], [{ text: "🔒 بستن گفتگو" }, { text: "ℹ️ مشخصات مشتری" }], [{ text: "❓ راهنما" }]],
   resize_keyboard: true,
   is_persistent: true,
-  input_field_placeholder: "Reply روی پیام مشتری و نوشتن جواب",
+  input_field_placeholder: "«✍️ پاسخ» زیر گفتگو، بعد نوشتن جواب",
 };
 
 export async function replyIn(chatId: number | string, html: string, replyToId?: number, keyboard = true) {
-  await tg("sendMessage", {
+  const m = await tg<TgMessage>("sendMessage", {
     chat_id: chatId,
     text: html.slice(0, 4096),
     parse_mode: "HTML",
@@ -123,6 +174,7 @@ export async function replyIn(chatId: number | string, html: string, replyToId?:
     ...(keyboard ? { reply_markup: SUPPORT_KEYBOARD } : {}),
     ...replyTo(replyToId),
   });
+  return m.message_id;
 }
 
 /** A quiet reaction on the support member's message (delivered / seen later). Failures are ignored. */
@@ -143,17 +195,22 @@ export async function downloadTelegramFile(fileId: string, maxBytes: number) {
   return Buffer.from(await res.arrayBuffer());
 }
 
+// LIVECHAT_TELEGRAM_WEBHOOK_IP: the server's IP, so Telegram doesn't keep a stale DNS answer after a move.
+const webhookIp = () => {
+  const ip = process.env.LIVECHAT_TELEGRAM_WEBHOOK_IP?.trim();
+  return ip && /^\d{1,3}(\.\d{1,3}){3}$/.test(ip) ? { ip_address: ip } : {};
+};
+
 /** Points the bot's webhook at this site and sets its command menu (idempotent; run at startup). */
 export async function ensureTelegramWebhook() {
   if (!botToken()) return;
   try {
-    await tg("setWebhook", { url: `${SITE_URL.replace(/\/$/, "")}${WEBHOOK_PATH}`, secret_token: webhookSecret(), allowed_updates: ["message"], max_connections: 10 });
+    await tg("setWebhook", { url: `${SITE_URL.replace(/\/$/, "")}${WEBHOOK_PATH}`, secret_token: webhookSecret(), allowed_updates: ["message", "callback_query"], max_connections: 10, ...webhookIp() });
     await tg("setMyCommands", {
       commands: [
         { command: "chats", description: "گفتگوهای باز" },
-        { command: "close", description: "بستن گفتگو (روی پیام مشتری Reply کنید)" },
-        { command: "info", description: "مشخصات مشتری (Reply)" },
-        { command: "r", description: "پاسخ آماده (Reply روی پیام مشتری: /r کلید)" },
+        { command: "r", description: "پاسخ آماده (بعد از «✍️ پاسخ»: /r کلید)" },
+        { command: "cancel", description: "لغو «✍️ پاسخ» در حال نوشتن" },
         { command: "help", description: "راهنما" },
       ],
     });

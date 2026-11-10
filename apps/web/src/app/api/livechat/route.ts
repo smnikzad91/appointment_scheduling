@@ -1,4 +1,6 @@
 import { cookies } from "next/headers";
+import { after } from "next/server";
+import { answerLiveChat, liveChatAiOn } from "@/lib/livechat/ai";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { lookupGeo } from "@/lib/analytics/record";
@@ -23,6 +25,7 @@ export async function GET() {
   return Response.json(
     {
       enabled: true,
+      ai: await liveChatAiOn(),
       active: Boolean(chat),
       closed: Boolean(chat?.closedAt),
       me: me ? { name: [me.firstName, me.lastName].filter(Boolean).join(" "), contact: me.phone ?? "" } : null,
@@ -85,6 +88,8 @@ export async function POST(req: Request) {
     jar.set(CHAT_COOKIE, created.token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: CHAT_COOKIE_DAYS * 86_400 });
   }
   const { delivered } = await visitorSend(chat, text);
+  const chatId = chat.id;
+  after(() => answerLiveChat(chatId)); // AI first (unless a person has the chat)
   return Response.json({ ok: true, delivered });
 }
 

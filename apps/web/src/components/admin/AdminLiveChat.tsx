@@ -15,6 +15,7 @@ import { UploadOverlay } from "@/components/livechat/UploadProgress";
 import { ImageLightbox, type LightboxItem } from "@/components/livechat/ImageLightbox";
 import { ImageBadges } from "@/components/livechat/ImageBadges";
 import { QuickRepliesManager, QuickReplyPicker, useQuickReplies } from "./AdminQuickReplies";
+import { LiveChatAiPanel } from "./AdminLiveChatAi";
 import { linkify } from "@/components/livechat/linkify";
 import type { ImageReactions, Reaction } from "@/lib/livechat/reactions";
 
@@ -35,8 +36,9 @@ type Row = {
   userId: string | null;
   closedAt: string | null;
   endedByVisitor: boolean;
+  mode: ChatMode;
   lastMessageAt: string;
-  lastSender: "VISITOR" | "ADMIN" | null;
+  lastSender: "VISITOR" | "ADMIN" | "AI" | null;
   lastText: string | null;
   total: number;
   undelivered: number;
@@ -54,6 +56,7 @@ type Transcript = {
     city: string | null;
     closedAt: string | null;
     endedByVisitor: boolean;
+    mode: ChatMode;
     visitorReadAt: string | null;
     createdAt: string;
     online: boolean;
@@ -64,7 +67,7 @@ type Transcript = {
   user: { id: string; firstName: string; lastName: string; phone: string | null; role: string } | null;
   messages: {
     id: string;
-    sender: "VISITOR" | "ADMIN" | "SYSTEM";
+    sender: "VISITOR" | "ADMIN" | "SYSTEM" | "AI";
     text: string;
     author: string | null;
     at: string;
@@ -76,16 +79,24 @@ type Transcript = {
   }[];
 };
 
-const pill = (tone: "warn" | "good" | "none") =>
+type ChatMode = "AI" | "PENDING" | "HUMAN";
+
+const pill = (tone: "warn" | "good" | "none" | "bad" | "ai") =>
   `rounded-full px-2.5 py-0.5 text-xs ${
-    tone === "warn" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" : tone === "good" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+    tone === "bad"
+      ? "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"
+      : tone === "ai"
+        ? "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300"
+        : tone === "warn" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" : tone === "good" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
   }`;
 
-function Status({ closedAt, endedByVisitor, lastSender }: { closedAt: string | null; endedByVisitor: boolean; lastSender: string | null }) {
+function Status({ closedAt, endedByVisitor, lastSender, mode }: { closedAt: string | null; endedByVisitor: boolean; lastSender: string | null; mode: ChatMode }) {
   const t = useT();
   if (endedByVisitor) return <span className={pill("none")}>{t("lcStatusEnded")}</span>;
   if (closedAt) return <span className={pill("none")}>{t("lcStatusClosed")}</span>;
+  if (mode === "PENDING") return <span className={pill("bad")}>🙋 {t("lcStatusPending")}</span>;
   if (lastSender === "VISITOR") return <span className={pill("warn")}>{t("lcStatusWaiting")}</span>;
+  if (mode === "AI") return <span className={pill("ai")}>🤖 {t("lcStatusAi")}</span>;
   return <span className={pill("good")}>{t("lcStatusOpen")}</span>;
 }
 
@@ -115,6 +126,7 @@ export default function AdminLiveChat() {
   const [search, setSearch] = useState("");
   const [data, setData] = useState<{ configured: boolean; counts: Record<Filter, number>; ratings: { up: number; down: number }; items: Row[] } | null>(null);
   const [managing, setManaging] = useState(false);
+  const [aiPanel, setAiPanel] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [muted, toggleMuted] = useChimeMuted("admin");
@@ -159,6 +171,13 @@ export default function AdminLiveChat() {
           className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 px-2.5 text-xs font-semibold text-gray-600 hover:text-gray-900 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white"
         >
           ⚡ {t("lcQuickReplies")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setAiPanel(true)}
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 px-2.5 text-xs font-semibold text-gray-600 hover:text-gray-900 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white"
+        >
+          🤖 {t("lcAiTitle")}
         </button>
         <button
           type="button"
@@ -227,7 +246,7 @@ export default function AdminLiveChat() {
                     #{r.code}
                   </span>
                   <span className="ms-auto shrink-0">
-                    <Status closedAt={r.closedAt} endedByVisitor={r.endedByVisitor} lastSender={r.lastSender} />
+                    <Status closedAt={r.closedAt} endedByVisitor={r.endedByVisitor} lastSender={r.lastSender} mode={r.mode} />
                   </span>
                 </div>
                 <p className="mt-1 truncate text-xs text-gray-500">{r.lastText ?? "—"}</p>
@@ -255,6 +274,15 @@ export default function AdminLiveChat() {
 
   return (
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
+      {aiPanel && (
+        <LiveChatAiPanel
+          onClose={() => setAiPanel(false)}
+          onOpenChat={(id) => {
+            setAiPanel(false);
+            setOpenId(id);
+          }}
+        />
+      )}
       {managing && <QuickRepliesManager onClose={() => setManaging(false)} onChanged={() => window.dispatchEvent(new Event("livechat:quick-replies"))} />}
       <div className="lg:col-span-5">{list}</div>
       <div className="lg:sticky lg:top-24 lg:col-span-7">
@@ -279,6 +307,22 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
   const [missing, setMissing] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [toAi, setToAi] = useState(false);
+
+  /** «🤖 ادامه با دستیار»: the AI answers this chat again (a waiting visitor message right away). */
+  async function backToAi() {
+    setToAi(true);
+    try {
+      const r = await fetch(`/api/admin/livechat/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "ai" }) });
+      if (!r.ok) throw new Error();
+      load();
+      onChanged();
+    } catch {
+      toastError(t("lcSendError"));
+    } finally {
+      setToAi(false);
+    }
+  }
   const readFor = useRef("");
 
   const load = useCallback(() => {
@@ -483,7 +527,7 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
           </dl>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Status closedAt={chat.closedAt} endedByVisitor={chat.endedByVisitor} lastSender={messages.findLast((m) => m.sender !== "SYSTEM")?.sender ?? null} />
+          <Status closedAt={chat.closedAt} endedByVisitor={chat.endedByVisitor} lastSender={messages.findLast((m) => m.sender !== "SYSTEM")?.sender ?? null} mode={chat.mode} />
           {chat.rating !== null && (
             <span className={pill(chat.rating > 0 ? "good" : "warn")}>
               {chat.rating > 0 ? "👍" : "👎"} {t(chat.rating > 0 ? "lcRatedUp" : "lcRatedDown")}
@@ -502,6 +546,16 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
               className="flex min-h-9 items-center gap-1.5 rounded-xl border border-gray-300 px-3 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-white/5"
             >
               {ticketing && <Loader2 className="h-3.5 w-3.5 animate-spin" />} {t("lcTicket")}
+            </button>
+          )}
+          {!chat.closedAt && chat.mode !== "AI" && (
+            <button
+              type="button"
+              onClick={backToAi}
+              disabled={toAi}
+              className="flex min-h-9 items-center gap-1.5 rounded-xl border border-sky-300 px-3 text-xs font-bold text-sky-700 hover:bg-sky-50 disabled:opacity-60 dark:border-sky-500/40 dark:text-sky-300 dark:hover:bg-sky-500/10"
+            >
+              {toAi ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "🤖"} {t("lcBackToAi")}
             </button>
           )}
           {!chat.closedAt && (
@@ -528,12 +582,12 @@ function TranscriptPanel({ id, onBack, onChanged }: { id: string; onBack: () => 
             ) : (
               <li key={m.id} className={`flex flex-col ${m.sender === "VISITOR" ? "items-start" : "items-end"}`}>
                 <span className="mb-1 px-1 text-[11px] font-bold text-gray-400">
-                  {m.sender === "VISITOR" ? who : supportName(m)} — {dateTime(m.at)}
+                  {m.sender === "VISITOR" ? who : m.sender === "AI" ? `🤖 ${t("lcAiName")}` : supportName(m)} — {dateTime(m.at)}
                   {m.edited && ` (${t("lcEdited")})`}
                 </span>
                 <div
                   className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl ${m.image ? "p-1.5" : "px-3.5 py-2"} text-sm leading-6 ${
-                    m.sender === "VISITOR" ? "rounded-ss-md border border-brand-200 bg-brand-50 text-gray-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-gray-100" : "rounded-se-md bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+                    m.sender === "VISITOR" ? "rounded-ss-md border border-brand-200 bg-brand-50 text-gray-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-gray-100" : m.sender === "AI" ? "rounded-se-md border border-sky-200 bg-sky-50 text-gray-800 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-gray-100" : "rounded-se-md bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
                   }`}
                 >
                   {m.replyTo && (

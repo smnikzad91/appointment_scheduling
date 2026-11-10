@@ -373,6 +373,16 @@ enum LiveChatSender {
   VISITOR
   ADMIN
   SYSTEM
+  /// The AI assistant (lib/livechat/ai.ts), answering first while the chat's mode is AI.
+  AI
+}
+
+/// Who answers a live chat: the AI assistant first; PENDING = the visitor asked for a person
+/// («💬 گفتگو با پشتیبان انسانی», AI off); HUMAN = support answered. #پایان / closing → back to AI.
+enum LiveChatMode {
+  AI
+  PENDING
+  HUMAN
 }
 
 /// One visitor conversation from the site's chat widget. The visitor holds a random token in an httpOnly
@@ -409,10 +419,21 @@ model LiveChat {
   ratedAt        DateTime?
   /// The support ticket made from this chat (for a signed-in visitor), to follow up in «پشتیبانی».
   ticketId       String?
+  mode           LiveChatMode @default(AI)
+  /// When the visitor last asked for a person (no repeat SMS within 30 minutes).
+  handoverAt     DateTime?
+  /// The conversation's one Telegram message (edited in place as lines arrive), and the first line it shows
+  /// (set when a «ادامه» message continues a conversation near Telegram's length limit).
+  tgThreadId     Int?
+  tgThreadFrom   DateTime?
+  /// The «🔔» alert for a new visitor message (deleted once the chat is answered).
+  tgPingId       Int?
   lastMessageAt  DateTime  @default(now())
   createdAt      DateTime  @default(now())
 
-  messages LiveChatMessage[]
+  messages  LiveChatMessage[]
+  answering LiveChatAnswering[]
+  aiUsage   LiveChatAiUsage[]
 
   @@index([lastMessageAt])
   @@map("live_chats")
@@ -433,6 +454,55 @@ model LiveChatQuickReply {
   updatedAt DateTime @updatedAt
 
   @@map("live_chat_quick_replies")
+}
+
+/// «✍️ پاسخ» in Telegram: which conversation a support member is answering (sticky 15 minutes), kept in
+/// the database so a deploy (or the other pm2 instance) doesn't lose it.
+model LiveChatAnswering {
+  tgUserId BigInt   @id
+  chatId   String
+  chat     LiveChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  /// The «✍️ پاسخ به …» prompt message (deleted once used).
+  promptId Int?
+  at       DateTime @default(now())
+
+  @@index([chatId])
+  @@map("live_chat_answering")
+}
+
+/// One AI answer in the live chat and what it cost (OpenRouter generations are settled from its
+/// generation API; other providers are counted as untracked). Kept when the chat is deleted.
+model LiveChatAiUsage {
+  id               String    @id @default(cuid())
+  chatId           String?
+  chat             LiveChat? @relation(fields: [chatId], references: [id], onDelete: SetNull)
+  model            String
+  generationId     String?
+  promptTokens     Int?
+  cachedTokens     Int?
+  completionTokens Int?
+  costUsd          Decimal?  @db.Decimal(14, 8)
+  /// pending → settled | untracked | failed
+  status           String    @default("pending")
+  attempts         Int       @default(0)
+  createdAt        DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([chatId])
+  @@map("live_chat_ai_usage")
+}
+
+/// Live chat AI settings (/admin/live-chat): answer first or not, who gets the hand-over SMS, and the
+/// dollar rate the AI cost is shown in toman with.
+model LiveChatSettings {
+  id            String   @id @default("singleton")
+  aiEnabled     Boolean  @default(true)
+  handoverPhone String   @default("09119100991")
+  tomanPerUsd   Int?
+  updatedAt     DateTime @updatedAt
+
+  @@map("live_chat_settings")
 }
 
 model LiveChatMessage {
