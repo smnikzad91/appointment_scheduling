@@ -19,7 +19,7 @@ const LAST_SENDER = Prisma.sql`(SELECT m."sender" FROM "live_chat_messages" m WH
 function filterSql(f: ChatFilter) {
   switch (f) {
     case "waiting":
-      return Prisma.sql`c."closedAt" IS NULL AND ${LAST_SENDER} = 'VISITOR'`;
+      return Prisma.sql`c."closedAt" IS NULL AND (${LAST_SENDER} = 'VISITOR' OR c."mode" = 'PENDING')`;
     case "open":
       return Prisma.sql`c."closedAt" IS NULL`;
     case "closed":
@@ -39,10 +39,11 @@ export type AdminChatRow = {
   userId: string | null;
   closedAt: Date | null;
   endedByVisitor: boolean;
+  mode: "AI" | "PENDING" | "HUMAN";
   visitorSeenAt: Date | null;
   lastMessageAt: Date;
   rating: number | null;
-  lastSender: "VISITOR" | "ADMIN" | null;
+  lastSender: "VISITOR" | "ADMIN" | "AI" | null;
   lastText: string | null;
   total: number;
   undelivered: number;
@@ -54,7 +55,7 @@ export function listChats(filter: ChatFilter, q: string) {
   const like = `%${term}%`;
   const search = term ? Prisma.sql`AND (c."code" ILIKE ${like} OR c."name" ILIKE ${like} OR c."contact" ILIKE ${like})` : Prisma.empty;
   return prisma.$queryRaw<AdminChatRow[]>`
-    SELECT c."id", c."code", c."name", c."contact", c."userId", c."closedAt", c."endedByVisitor", c."visitorSeenAt", c."lastMessageAt", c."rating",
+    SELECT c."id", c."code", c."name", c."contact", c."userId", c."closedAt", c."endedByVisitor", c."mode"::text AS "mode", c."visitorSeenAt", c."lastMessageAt", c."rating",
       ${LAST_SENDER} AS "lastSender",
       (SELECT CASE WHEN m."text" = '' AND m."image" IS NOT NULL THEN '📷 تصویر' ELSE m."text" END FROM "live_chat_messages" m
         WHERE m."chatId" = c."id" AND m."sender" <> 'SYSTEM' ORDER BY m."createdAt" DESC LIMIT 1) AS "lastText",
@@ -69,7 +70,7 @@ export function listChats(filter: ChatFilter, q: string) {
 export async function chatCounts(): Promise<Record<ChatFilter, number>> {
   const [r] = await prisma.$queryRaw<Record<ChatFilter, number>[]>`
     SELECT count(*)::int AS "all",
-      count(*) FILTER (WHERE c."closedAt" IS NULL AND ${LAST_SENDER} = 'VISITOR')::int AS "waiting",
+      count(*) FILTER (WHERE c."closedAt" IS NULL AND (${LAST_SENDER} = 'VISITOR' OR c."mode" = 'PENDING'))::int AS "waiting",
       count(*) FILTER (WHERE c."closedAt" IS NULL)::int AS "open",
       count(*) FILTER (WHERE c."closedAt" IS NOT NULL AND NOT c."endedByVisitor")::int AS "closed",
       count(*) FILTER (WHERE c."endedByVisitor")::int AS "ended"
@@ -91,7 +92,8 @@ export async function ratingSummary() {
 export async function waitingSummary() {
   const [r] = await prisma.$queryRaw<{ n: number; last: Date | null }[]>`
     SELECT
-      (SELECT count(*)::int FROM "live_chats" c WHERE c."closedAt" IS NULL AND ${LAST_SENDER} = 'VISITOR') AS "n",
-      (SELECT max(m."createdAt") FROM "live_chat_messages" m JOIN "live_chats" c ON c."id" = m."chatId" WHERE m."sender" = 'VISITOR' AND c."closedAt" IS NULL) AS "last"`;
+      (SELECT count(*)::int FROM "live_chats" c WHERE c."closedAt" IS NULL AND (${LAST_SENDER} = 'VISITOR' OR c."mode" = 'PENDING')) AS "n",
+      -- the chime: visitor messages in chats a person handles (the AI answers the rest; a hand-over request counts too)
+      (SELECT greatest(max(m."createdAt"), max(c."handoverAt")) FROM "live_chat_messages" m JOIN "live_chats" c ON c."id" = m."chatId" WHERE m."sender" = 'VISITOR' AND c."closedAt" IS NULL AND c."mode" <> 'AI') AS "last"`;
   return { n: r?.n ?? 0, last: r?.last ? r.last.getTime() : 0 };
 }

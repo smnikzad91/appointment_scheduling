@@ -5,7 +5,7 @@ import { AlertTriangle, Bell, BellOff, Check, CheckCheck, Clock, ImagePlus, Load
 import { toChatJpeg } from "@/lib/uploadImage";
 import { uploadWithProgress } from "@/lib/livechat/uploadWithProgress";
 import { ding, primeSound, useChimeMuted } from "@/lib/livechat/ding";
-import { CHAT_IMAGE_ACCEPT, CHAT_IMAGE_RULE_FA, chatImageProblem, MESSAGE_MAX, withoutImage, type ChatMessageOut as Msg } from "@/lib/livechat/rules";
+import { AI_LABEL, CHAT_IMAGE_ACCEPT, CHAT_IMAGE_RULE_FA, chatImageProblem, HUMAN_BUTTON, MESSAGE_MAX, withoutImage, type ChatMessageOut as Msg, type ChatMode } from "@/lib/livechat/rules";
 import { UploadOverlay, uploadLabel } from "./UploadProgress";
 import { ImageLightbox, type LightboxItem } from "./ImageLightbox";
 import { ImageBadges } from "./ImageBadges";
@@ -15,7 +15,7 @@ import type { ImageReactions, Reaction } from "@/lib/livechat/reactions";
 /** A message on its way; `preview` = local object URL of an image (progress: null = shrinking, 0..1 = uploading). */
 type Pending = { cid: string; text: string; failed?: string; preview?: string; progress?: number | null; replyTo?: string };
 type Phase = "start" | "chat";
-type PollReply = { code: string; name: string | null; closed: boolean; supportReadAt: string | null; typing: boolean; imagesPurgedAt: string | null; rating: number | null; messages: Msg[]; serverTime: string };
+type PollReply = { code: string; name: string | null; closed: boolean; mode?: ChatMode; supportReadAt: string | null; typing: boolean; imagesPurgedAt: string | null; rating: number | null; messages: Msg[]; serverTime: string };
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tehran" });
 const field =
@@ -32,6 +32,10 @@ const DELIVERY_LATE = "پیام ذخیره شد و چند دقیقه دیگر خ
  */
 export default function LiveChat({ place }: { place: "guest" | "panel" }) {
   const [enabled, setEnabled] = useState(false);
+  /** The AI answers first (admin switch + configured); `mode`: ai | pending (asked for a person) | human. */
+  const [aiOn, setAiOn] = useState(false);
+  const [mode, setMode] = useState<ChatMode>("ai");
+  const [handing, setHanding] = useState(false);
   const [open, setOpen] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("start");
@@ -75,6 +79,7 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
     setPhase("chat");
     setOffline(false);
     setClosed(r.closed);
+    if (r.mode) setMode(r.mode);
     setRating(r.rating);
     setMyName(r.name ?? "");
     setTyping(r.typing && !r.closed);
@@ -95,7 +100,7 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
     setMsgs((list) => [...list.map((x) => byId.get(x.id) ?? x), ...fresh.filter((m) => !list.some((x) => x.id === m.id))]);
     if (!fresh.length) return;
     const fromSupport = fresh.filter((m) => m.sender !== "visitor").length;
-    if (fresh.some((m) => m.sender === "admin")) ding("chat");
+    if (fresh.some((m) => m.sender === "admin" || m.sender === "ai")) ding("chat");
     if (fromSupport && !openRef.current) setUnread((n) => n + fromSupport);
   });
 
@@ -151,9 +156,10 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
     let cancelled = false;
     fetch("/api/livechat", { cache: "no-store" })
       .then((r) => r.json())
-      .then((s: { enabled?: boolean; active?: boolean; me?: { name: string; contact: string } | null }) => {
+      .then((s: { enabled?: boolean; ai?: boolean; active?: boolean; me?: { name: string; contact: string } | null }) => {
         if (cancelled || !s.enabled) return;
         setEnabled(true);
+        setAiOn(Boolean(s.ai));
         primeSound();
         if (s.me) {
           setName((v) => v || s.me!.name);
@@ -327,12 +333,29 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
     for (const a of uploads.current.values()) a.abort();
     setPending([]);
     setClosed(false);
+    setMode("ai");
     setTyping(false);
     setSupportReadAt(null);
     setRating(null);
     setEndRating(null);
     purgedSeen.current = null;
   }, []);
+
+  /** «💬 گفتگو با پشتیبان انسانی»: the AI steps aside, support is alerted. */
+  const handover = async () => {
+    setHanding(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/livechat/handover", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (data.ok) setMode("pending");
+      else setError(data.error ?? "درخواست ثبت نشد؛ دوباره امتحان کنید.");
+    } catch {
+      setError("اتصال برقرار نشد؛ دوباره امتحان کنید.");
+    } finally {
+      setHanding(false);
+    }
+  };
 
   /** «✕»: with a conversation, ask first (it ends for good); without one, just hide the box. */
   const askClose = () => {
@@ -458,7 +481,13 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
               <h2 className="text-sm font-bold text-app-ink">پشتیبانی نوبتت</h2>
               <p className="flex items-center gap-1.5 text-xs text-app-muted">
                 <span className={`h-1.5 w-1.5 rounded-full ${phase === "chat" && offline ? "bg-amber-400" : "bg-emerald-400"}`} />
-                {phase === "chat" && offline ? "اتصال قطع شد؛ دوباره وصل می‌شویم…" : "معمولاً در چند دقیقه جواب می‌دهیم"}
+                {phase === "chat" && offline
+                  ? "اتصال قطع شد؛ دوباره وصل می‌شویم…"
+                  : phase === "chat" && mode === "pending"
+                    ? "در انتظار پشتیبان انسانی"
+                    : !aiOn || (phase === "chat" && mode === "human")
+                      ? "معمولاً در چند دقیقه جواب می‌دهیم"
+                      : "دستیار هوشمند · جواب فوری"}
               </p>
             </div>
             <div className="flex items-center gap-1">
@@ -511,7 +540,11 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
           )}
 
           <div ref={listRef} className="flex-1 space-y-2.5 overflow-y-auto px-3.5 py-4" aria-live="polite">
-            <Bubble mine={false} label="پشتیبانی" text="سلام 👋 سؤالتان درباره نوبتت را بنویسید؛ همین‌جا جواب می‌دهیم." />
+            {aiOn ? (
+              <Bubble mine={false} label={AI_LABEL} text={`سلام 👋 من دستیار هوشمند نوبتت هستم؛ سؤالتان را بپرسید. هر وقت خواستید، با «${HUMAN_BUTTON}» با همکاران پشتیبانی صحبت کنید.`} />
+            ) : (
+              <Bubble mine={false} label="پشتیبانی" text="سلام 👋 سؤالتان درباره نوبتت را بنویسید؛ همین‌جا جواب می‌دهیم." />
+            )}
             {msgs.map((m, i) =>
               m.sender === "system" ? (
                 <p key={m.id} className="rounded-xl bg-app-card-2 px-3 py-2 text-center text-xs leading-6 text-app-muted">
@@ -521,7 +554,7 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
                 <Bubble
                   key={m.id}
                   mine={m.sender === "visitor"}
-                  label={labelFor(m, msgs[i - 1] ?? GREETING, myName)}
+                  label={labelFor(m, msgs[i - 1] ?? (aiOn ? AI_GREETING : GREETING), myName)}
                   text={m.text}
                   image={
                     m.image
@@ -586,7 +619,7 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
             ))}
             {typing && phase === "chat" && !closed && (
               <div className="flex flex-col items-end pt-1" role="status">
-                <span className="mb-1 px-1 text-[11px] font-bold text-app-muted">پشتیبانی در حال نوشتن…</span>
+                <span className="mb-1 px-1 text-[11px] font-bold text-app-muted">{aiOn && mode === "ai" ? "دستیار در حال نوشتن…" : "پشتیبانی در حال نوشتن…"}</span>
                 <div className="flex items-center gap-1 rounded-2xl rounded-tl-md bg-app-card-2 px-4 py-3" aria-hidden="true">
                   {[0, 150, 300].map((d) => (
                     <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-app-muted" style={{ animationDelay: `${d}ms` }} />
@@ -594,7 +627,7 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
                 </div>
               </div>
             )}
-            {phase === "chat" && !typing && !error && msgs.length > 0 && msgs.every((m) => m.sender === "visitor") && (
+            {phase === "chat" && !typing && !error && msgs.length > 0 && msgs.every((m) => m.sender === "visitor") && !(aiOn && mode === "ai") && (
               <p className="flex items-center justify-center gap-1.5 text-center text-xs leading-6 text-app-muted">
                 {supportReadAt && (msgs.at(-1)?.at ?? "") <= supportReadAt ? (
                   <>
@@ -615,6 +648,23 @@ export default function LiveChat({ place }: { place: "guest" | "panel" }) {
             </p>
           )}
 
+          {phase === "chat" && !closed && aiOn && mode === "ai" && (
+            <div className="px-3 pb-2">
+              <button
+                type="button"
+                onClick={handover}
+                disabled={handing || offline}
+                className="flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-app-accent/40 bg-app-accent/10 text-sm font-bold text-app-ink hover:bg-app-accent/20 disabled:opacity-50"
+              >
+                {handing && <Loader2 className="h-4 w-4 animate-spin" />} {HUMAN_BUTTON}
+              </button>
+            </div>
+          )}
+          {phase === "chat" && !closed && mode === "pending" && (
+            <p role="status" className="mx-3 mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-app-ink">
+              ⏳ درخواست شما به پشتیبانی رسید و دستیار هوشمند کنار رفت؛ همکاران ما به‌زودی همین‌جا جواب می‌دهند.
+            </p>
+          )}
           {phase === "chat" && closed ? (
             <div className="space-y-3 border-t border-app-line p-3.5" style={SAFE_BOTTOM}>
               <RatePrompt
@@ -759,11 +809,12 @@ function RatePrompt({ value, onPick }: { value: 1 | -1 | null; onPick: (v: 1 | -
 }
 
 const GREETING: Msg = { id: "greeting", sender: "admin", text: "", at: "", image: null };
+const AI_GREETING: Msg = { id: "greeting", sender: "ai", text: "", at: "", image: null };
 
 /** Name above a message: only on the first of a run from the same side. */
 function labelFor(m: Msg, prev: Msg, myName: string) {
   if (prev.sender === m.sender) return undefined;
-  return m.sender === "visitor" ? myName || "شما" : "پشتیبانی";
+  return m.sender === "visitor" ? myName || "شما" : m.sender === "ai" ? AI_LABEL : "پشتیبانی";
 }
 
 function IconBtn({ onClick, label, children, pressed, danger }: { onClick: () => void; label: string; children: ReactNode; pressed?: boolean; danger?: boolean }) {

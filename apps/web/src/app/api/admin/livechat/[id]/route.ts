@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { answerLiveChat } from "@/lib/livechat/ai";
 import { prisma } from "@/lib/prisma";
 import { sameOrigin } from "@/lib/livechat/config";
 import { adminSession } from "@/lib/livechat/admin";
-import { addMessage, adminReply, cleanText, closeChat, imageInChat, visitorOnline } from "@/lib/livechat/chats";
+import { addMessage, adminReply, cleanText, closeChat, imageInChat, syncThread, visitorOnline } from "@/lib/livechat/chats";
 import { isReaction } from "@/lib/livechat/reactions";
 import { imageOf } from "@/lib/livechat/images";
 
@@ -61,7 +62,7 @@ export async function POST(req: Request, { params }: Ctx) {
 }
 
 /**
- * PATCH {action: "close"}: support closes the conversation (its images are deleted).
+ * PATCH {action: "close"}: support closes the conversation (its images are deleted). {action: "ai"}: back to the AI assistant.
  * PATCH {action: "ticket"}: turns it into a support ticket for the signed-in visitor (the transcript as its
  * message), to follow up in «پشتیبانی»; the visitor is told in the chat.
  */
@@ -76,6 +77,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
     await closeChat(chat);
     return NextResponse.json({ ok: true });
   }
+  if (body?.action === "ai") {
+    // «🤖 ادامه با دستیار»: the AI answers this chat again (and a waiting visitor message right away).
+    if (chat.closedAt || chat.mode === "AI") return NextResponse.json({ ok: true });
+    await prisma.liveChat.update({ where: { id: chat.id }, data: { mode: "AI", handoverAt: null } });
+    await syncThread(chat.id);
+    after(() => answerLiveChat(chat.id));
+    return NextResponse.json({ ok: true });
+  }
   if (body?.action !== "ticket") return NextResponse.json({ error: "bad action" }, { status: 400 });
   if (chat.ticketId) return NextResponse.json({ ticketId: chat.ticketId });
   const user = chat.userId ? await prisma.user.findUnique({ where: { id: chat.userId }, select: { id: true, deletedAt: true } }) : null;
@@ -84,7 +93,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const who = chat.name || "مشتری";
   const transcript = messages
     .reverse()
-    .map((m) => `${m.sender === "VISITOR" ? who : "پشتیبانی"}: ${m.text || (m.image ? "📷 تصویر" : "")}`)
+    .map((m) => `${m.sender === "VISITOR" ? who : m.sender === "AI" ? "دستیار هوشمند" : "پشتیبانی"}: ${m.text || (m.image ? "📷 تصویر" : "")}`)
     .join("\n");
   const ticket = await prisma.ticket.create({
     data: { userId: user.id, subject: `گفتگوی آنلاین #${chat.code}`.slice(0, 120), message: `متن گفتگوی آنلاین:\n\n${transcript}`.slice(0, 10_000), images: [] },

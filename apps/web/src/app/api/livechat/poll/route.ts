@@ -26,6 +26,7 @@ export async function GET(req: Request) {
       code: chat.code,
       name: chat.name,
       closed: Boolean(chat.closedAt),
+      mode: chat.mode.toLowerCase(),
       supportReadAt: chat.supportReadAt?.toISOString() ?? null,
       typing: Boolean(chat.supportTypingAt && Date.now() - chat.supportTypingAt.getTime() < TYPING_MS),
       imagesPurgedAt: chat.imagesPurgedAt?.toISOString() ?? null,

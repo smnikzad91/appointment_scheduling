@@ -21,7 +21,7 @@ export const TYPING_MS = 6_000;
  */
 export type ChatMessageOut = {
   id: string;
-  sender: "visitor" | "admin" | "system";
+  sender: "visitor" | "admin" | "system" | "ai";
   text: string;
   at: string;
   image: { w: number; h: number } | null;
@@ -38,3 +38,8 @@ export function chatImageProblem(file: { type?: string; name?: string; size: num
   if (file.size > CHAT_IMAGE_MAX_MB * 1024 * 1024) return `حجم تصویر بیشتر از ${CHAT_IMAGE_MAX_MB.toLocaleString("fa-IR")} مگابایت است.`;
   return null;
 }
+
+/** Who answers a chat: the AI first; "pending" = the visitor asked for a person; "human" = support is on it. */
+export type ChatMode = "ai" | "pending" | "human";
+export const HUMAN_BUTTON = "💬 گفتگو با پشتیبان انسانی";
+export const AI_LABEL = "دستیار هوشمند 🤖";

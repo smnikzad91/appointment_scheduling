@@ -1,4 +1,6 @@
 import { cookies } from "next/headers";
+import { after } from "next/server";
+import { answerLiveChat } from "@/lib/livechat/ai";
 import { sameOrigin } from "@/lib/livechat/config";
 import { CHAT_COOKIE, chatByToken, cleanText, imageInChat, outMessage, visitorSend } from "@/lib/livechat/chats";
 import { allowSend } from "@/lib/livechat/rateLimit";
@@ -17,5 +19,6 @@ export async function POST(req: Request) {
   if (!allowSend(chat.id)) return fail("پیام‌ها خیلی پشت سر هم است؛ چند ثانیه صبر کنید.", 429);
   const about = body?.replyTo ? await imageInChat(chat.id, body.replyTo) : null;
   const { row, delivered } = await visitorSend(chat, text, undefined, about);
+  after(() => answerLiveChat(chat.id)); // AI first (unless a person has the chat)
   return Response.json({ message: outMessage(row), delivered });
 }

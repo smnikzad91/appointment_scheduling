@@ -34,6 +34,9 @@ export async function register() {
     if (botToken()) void ensureTelegramWebhook();
     const retry = () => liveChatConfigured() && chat.retryUndelivered().catch((e) => console.error("[livechat] retry:", e instanceof Error ? e.message : e));
     const prune = () => chat.pruneLiveChats().catch((e) => console.error("[livechat] prune:", e instanceof Error ? e.message : e));
+    const { settleAiCosts } = await import("@/lib/livechat/aiUsage");
+    const settle = () => settleAiCosts().catch((e) => console.error("[livechat] AI cost:", e instanceof Error ? e.message : e));
+    setInterval(settle, 30_000).unref();
     void prune();
     setInterval(retry, 5 * 60_000).unref();
     setInterval(prune, DAY_MS).unref();

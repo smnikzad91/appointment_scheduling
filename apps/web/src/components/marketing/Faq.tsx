@@ -3,25 +3,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import SectionHead from "./SectionHead";
-
-const FAQS = [
-  {
-    question: "مشتری چطور نوبت می‌گیرد؟",
-    answer: "از لینک سالن یا اپ مشتری، خدمت و آرایشگر و ساعت خالی را انتخاب می‌کند و با کد پیامکی شماره موبایلش را تأیید می‌کند.",
-  },
-  {
-    question: "امکان تغییر یا لغو نوبت هست؟",
-    answer: "بله، تا زمانی که سالن تعیین می‌کند. قوانین بازگشت بیعانه را هم خود سالن تنظیم می‌کند.",
-  },
-  {
-    question: "پرداخت بیعانه از چه درگاهی انجام می‌شود؟",
-    answer: "از درگاه‌های بانکی داخلی و با همه کارت‌های عضو شتاب.",
-  },
-  {
-    question: "سالن ما فقط بانوان است؛ عکس آرایشگرها نمایش داده می‌شود؟",
-    answer: "نمایش عکس و پروفایل عمومی آرایشگرها اختیاری است و می‌توانید آن را خاموش کنید.",
-  },
-];
+import { FAQS } from "@/content/faqs";
 
 export default function Faq() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
