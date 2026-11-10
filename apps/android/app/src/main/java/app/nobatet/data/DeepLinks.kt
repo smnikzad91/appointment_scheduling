@@ -12,11 +12,13 @@ import java.time.LocalDate
  * - `/s/{slug}` — a salon page; `?book=1&services=a,b&stylist=x&date=YYYY-MM-DD` opens booking prefilled
  * - `/book/@{handle}` — a share-kit short link (salon or stylist), resolved by apps/api `GET /book/:handle`
  * - `/r/{code}` — the «وقت نوبت بعدی» SMS link, resolved by apps/api `GET /rebook/:code`
+ * - `/wallet-return` — «بازگشت» on nodepass.ir's payment page after a top-up: the wallet, in any panel
  */
 sealed interface DeepLink {
     data class Salon(val slug: String, val book: Boolean = false, val serviceIds: List<String> = emptyList(), val stylistId: String? = null, val date: LocalDate? = null) : DeepLink
     data class Handle(val handle: String) : DeepLink
     data class Rebook(val code: String) : DeepLink
+    data object Wallet : DeepLink
 
     companion object {
         private val host = Uri.parse(BuildConfig.WEB_BASE_URL).host
@@ -36,6 +38,7 @@ sealed interface DeepLink {
                 }
                 "book" -> seg.getOrNull(1)?.trim()?.trimStart('@')?.lowercase()?.takeIf { Regex("[a-z0-9._-]{1,60}").matches(it) }?.let { Handle(it) }
                 "r" -> seg.getOrNull(1)?.takeIf { it.isNotBlank() }?.let { Rebook(it) }
+                "wallet-return" -> Wallet
                 else -> null
             }
         }

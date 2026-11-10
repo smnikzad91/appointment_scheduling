@@ -1,5 +1,6 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.panels.tourTarget
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
@@ -86,7 +87,7 @@ fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChang
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AppCard {
+            AppCard(Modifier.tourTarget("working-hours")) {
                 SectionTitle("روزهای کاری")
                 WEEK.forEachIndexed { i, (_, name) ->
                     val h = hours[i]
@@ -131,7 +132,7 @@ fun StylistScheduleScreen(container: AppContainer, stylist: SelfStylist, onChang
                 Muted("تا روز")
                 DayStrip((0L until 60L).map { today.plusDays(it) }, offTo, today) { offTo = it }
                 AppTextField(offReason, { offReason = it.take(200) }, label = { Text("علت (اختیاری)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                PrimaryButton("ثبت مرخصی") {
+                PrimaryButton("ثبت مرخصی", Modifier.tourTarget("time-off")) {
                     val from = offFrom
                     val to = offTo
                     if (from == null || to == null) {

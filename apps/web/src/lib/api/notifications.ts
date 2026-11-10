@@ -56,6 +56,19 @@ export interface SlotOpenedData {
   stylistId: string | null;
   stylistName: string | null;
   serviceIds: string[];
+  /** The freed time is held for this customer alone until `until` (first on the waitlist); `code` goes in the booking link. */
+  hold?: { code: string; startAt: string; until: string; stylistId: string };
+}
+
+/** Payload of NEW_MESSAGE: a message in a booking's chat, from the other side. */
+export interface ChatMessageData {
+  appointmentId: string;
+  salonName: string;
+  customerName: string;
+  startAt: string;
+  from: "CUSTOMER" | "SALON";
+  senderName: string;
+  preview: string;
 }
 
 export type AppNotification = {
@@ -73,6 +86,7 @@ export type AppNotification = {
   | { type: "BALANCE_PAID"; data: BookingData }
   | { type: "REVIEW_APPROVED"; data: ReviewApprovedData }
   | { type: "SLOT_OPENED"; data: SlotOpenedData }
+  | { type: "NEW_MESSAGE"; data: ChatMessageData }
 );
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });

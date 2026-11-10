@@ -81,12 +81,13 @@ class BookingsViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    fun cancel(id: String) {
+    /** `acceptPrepaymentLoss`: the customer was warned that cancelling this confirmed prepaid booking keeps the pre-payment. */
+    fun cancel(id: String, acceptPrepaymentLoss: Boolean = false) {
         if (_state.value.cancelling != null) return
         viewModelScope.launch {
             _state.update { it.copy(cancelling = id) }
             try {
-                container.api.setStatus(id, StatusUpdate(AppointmentStatus.CANCELLED))
+                container.api.setStatus(id, StatusUpdate(AppointmentStatus.CANCELLED, acceptPrepaymentLoss = if (acceptPrepaymentLoss) true else null))
                 _state.update { s -> s.copy(cancelling = null, bookings = s.bookings.map { if (it.id == id) it.copy(status = AppointmentStatus.CANCELLED) else it }) }
                 Toasts.success("نوبت لغو شد")
             } catch (e: Exception) {

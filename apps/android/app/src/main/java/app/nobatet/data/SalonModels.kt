@@ -11,6 +11,13 @@ enum class SalonKind { SALON, INDEPENDENT }
 @Serializable
 enum class ServiceLocation { IN_SALON, STUDIO, HOME, CLIENT_HOME }
 
+/** Who a salon / independent stylist serves (apps/api Salon.clientGender); null = not set yet. */
+@Serializable
+enum class ClientGender(val label: String, val badge: String) {
+    WOMEN("بانوان", "ویژه بانوان"),
+    MEN("آقایان", "ویژه آقایان"),
+}
+
 @Serializable
 data class SalonCard(
     val id: String,
@@ -21,6 +28,7 @@ data class SalonCard(
     /** null = an independent stylist's private (home) address. */
     val address: String? = null,
     val kind: SalonKind = SalonKind.SALON,
+    val clientGender: ClientGender? = null,
     val serviceLocations: List<ServiceLocation> = emptyList(),
     val hostSalonName: String? = null,
     val logoUrl: String? = null,
@@ -84,6 +92,7 @@ data class SalonDetail(
     val address: String? = null,
     val approximateLocation: Boolean = false,
     val kind: SalonKind = SalonKind.SALON,
+    val clientGender: ClientGender? = null,
     val serviceLocations: List<ServiceLocation> = emptyList(),
     val serviceArea: String? = null,
     val hostSalonName: String? = null,
@@ -99,9 +108,25 @@ data class SalonDetail(
     val services: List<SalonService> = emptyList(),
     val stylists: List<SalonStylist> = emptyList(),
     val galleryImages: List<GalleryImage> = emptyList(),
+    /** false once the salon's plan (or free month) ran out: apps/api refuses online bookings (403) */
+    val onlineBooking: Boolean = true,
 ) {
     val independent: Boolean get() = kind == SalonKind.INDEPENDENT
     val activeServices: List<SalonService> get() = services.filter { it.active }
+}
+
+/**
+ * Services grouped under their categories (by `order`), as apps/web lib/serviceGroups.ts: services with no
+ * category — or one that no longer exists — come last as «سایر خدمات», or with no heading (null) when no
+ * category is in use, so every service stays bookable.
+ */
+fun groupServicesByCategory(categories: List<ServiceCategory>, services: List<SalonService>): List<Pair<String?, List<SalonService>>> {
+    val known = categories.map { it.id }.toSet()
+    val groups = categories.sortedBy { it.order }
+        .map { c -> c.name as String? to services.filter { it.categoryId == c.id } }
+        .filter { it.second.isNotEmpty() }
+    val rest = services.filter { it.categoryId == null || it.categoryId !in known }
+    return if (rest.isEmpty()) groups else groups + ((if (groups.isEmpty()) null else "سایر خدمات") to rest)
 }
 
 @Serializable
@@ -187,6 +212,8 @@ data class StatusUpdate(
     val status: AppointmentStatus,
     /** COMPLETED only: ON_SITE (received directly) or WALLET (requested from the customer's wallet) */
     val balanceMethod: String? = null,
+    /** A customer cancelling a confirmed prepaid booking agreed the pre-payment isn't refunded (the API answers 409 without it). */
+    val acceptPrepaymentLoss: Boolean? = null,
 )
 
 /** How a place reads to customers (apps/web lib/independent.ts placeLabel). */

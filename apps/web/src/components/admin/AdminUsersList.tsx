@@ -10,11 +10,14 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Modal } from "@/components/ui/modal";
 import DeleteConfirmModal from "@/components/admin/DeleteConfirmModal";
+import AdminWalletAdjustModal, { type WalletAdjustTarget } from "@/components/admin/AdminWalletAdjustModal";
+import { Wallet } from "lucide-react";
 import { toast } from "sonner";
 import SelectField from "@/components/admin/SelectField";
 import type { UserRole } from "@/types/content";
 import type { TranslationKey } from "@/i18n/translations";
 import { normalizeDigits } from "@/lib/persian";
+import { toJalali } from "@/lib/jalali";
 
 /** Lowercase, Latin digits, Persian ی/ک, no half-spaces — so «علي» finds «علی» and «۰۹۱۲» finds 0912. */
 function normalizeSearch(s: string): string {
@@ -46,12 +49,13 @@ type GridCtx = {
   isRTL: boolean;
   onEdit: (user: UserRow) => void;
   onDelete: (id: string, name: string) => void;
-  labels: { edit: string; del: string; roles: Record<UserRole, string> };
+  onWallet: (user: UserRow) => void;
+  labels: { edit: string; del: string; wallet: string; roles: Record<UserRole, string> };
 };
 
 // ── Themes ─────────────────────────────────────────────────────────────────────
 const agLight = themeQuartz.withParams({
-  accentColor:             "#465fff",
+  accentColor:             "#9c5e4b",
   backgroundColor:         "#ffffff",
   foregroundColor:         "#111827",
   borderColor:             "#e5e7eb",
@@ -67,7 +71,7 @@ const agLight = themeQuartz.withParams({
 });
 
 const agDark = themeQuartz.withParams({
-  accentColor:             "#465fff",
+  accentColor:             "#9c5e4b",
   backgroundColor:         "#111827",
   foregroundColor:         "#f9fafb",
   borderColor:             "#374151",
@@ -191,11 +195,27 @@ function ActionsCell({ data, context }: { data: UserRow; context: GridCtx }) {
       <IconBtn label={context.labels.edit} color="text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-500/10" onClick={() => context.onEdit(data)}>
         <PencilIcon className="w-4 h-4" />
       </IconBtn>
+      <IconBtn label={context.labels.wallet} color="text-brand-500 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10" onClick={() => context.onWallet(data)}>
+        <Wallet className="w-4 h-4" />
+      </IconBtn>
       <IconBtn label={context.labels.del} color="text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10" onClick={() => context.onDelete(data.id, `${data.firstName} ${data.lastName}`)}>
         <TrashBinIcon className="w-4 h-4" />
       </IconBtn>
     </div>
   );
+}
+
+type UserGroup = "all" | "new" | UserRole;
+
+/** 00:00 on the 1st of the current Persian month («عضو جدید این ماه»), in the admin's local time. */
+function jalaliMonthStart(): Date {
+  return toJalali(new Date()).setDay(1).setHour(0).setMinute(0).setSecond(0).setMillisecond(0).toDate();
+}
+
+function inGroup(u: UserRow, group: UserGroup, monthStart: Date): boolean {
+  if (group === "all") return true;
+  if (group === "new") return new Date(u.createdAt) >= monthStart;
+  return u.role === group;
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -207,7 +227,13 @@ export default function AdminUsersList() {
 
   const [users, setUsers] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
-  const shownUsers = useMemo(() => users.filter((u) => matchesUser(u, search)), [users, search]);
+  // the summary card picked above the table: everyone, one role, or this month's sign-ups
+  const [group, setGroup] = useState<UserGroup>("all");
+  const monthStart = useMemo(() => jalaliMonthStart(), []);
+  const shownUsers = useMemo(
+    () => users.filter((u) => inGroup(u, group, monthStart) && matchesUser(u, search)),
+    [users, group, monthStart, search],
+  );
   const [loading, setLoading] = useState(true);
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -219,6 +245,8 @@ export default function AdminUsersList() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
 
+  const [walletTarget, setWalletTarget] = useState<WalletAdjustTarget | null>(null);
+
   const fetchUsers = () => {
     setLoading(true);
     fetch("/api/admin/users")
@@ -229,18 +257,20 @@ export default function AdminUsersList() {
 
   useEffect(() => { queueMicrotask(fetchUsers); }, []);
 
-  // Stats derived from user list
-  const stats = useMemo(() => {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    return {
-      total:     users.length,
-      owners:    users.filter((u) => u.role === "salon_owner").length,
-      stylists:  users.filter((u) => u.role === "stylist").length,
-      customers: users.filter((u) => u.role === "customer").length,
-      newMonth:  users.filter((u) => new Date(u.createdAt) >= monthStart).length,
-    };
-  }, [users]);
+  // one card per role (every role, so the cards add up to the total) + this Persian month's sign-ups
+  const cards = useMemo(() => {
+    const count = (g: UserGroup) => users.filter((u) => inGroup(u, g, monthStart)).length;
+    const list: { group: UserGroup; label: TranslationKey }[] = [
+      { group: "all",                 label: "statTotalUsers" },
+      { group: "salon_owner",         label: "statSalonOwners" },
+      { group: "independent_stylist", label: "statIndependentStylists" },
+      { group: "stylist",             label: "statStylists" },
+      { group: "customer",            label: "statCustomers" },
+      { group: "platform_admin",      label: "statAdmins" },
+      { group: "new",                 label: "statNewThisMonth" },
+    ];
+    return list.map((c) => ({ ...c, value: count(c.group) }));
+  }, [users, monthStart]);
 
   const handleEdit = (user: UserRow) => {
     setEditTarget(user);
@@ -303,9 +333,11 @@ export default function AdminUsersList() {
     isRTL,
     onEdit: handleEdit,
     onDelete: handleDelete,
+    onWallet: (u: UserRow) => setWalletTarget({ id: u.id, name: `${u.firstName} ${u.lastName}`.trim(), walletBalance: u.walletBalance }),
     labels: {
       edit: t("userEdit"),
       del:  t("userDelete"),
+      wallet: t("walletAdjust"),
       roles: {
         platform_admin: t(ROLE_LABEL.platform_admin),
         salon_owner:    t(ROLE_LABEL.salon_owner),
@@ -325,7 +357,7 @@ export default function AdminUsersList() {
       { field: "phone", headerName: t("colPhone"), width: 150, sortable: false, filter: false, cellRenderer: PhoneCell },
       { field: "walletBalance", headerName: t("colWallet"), width: 130, sortable: true, filter: false, cellRenderer: WalletCell },
       { field: "createdAt", headerName: t("colJoined"), width: 150, sortable: true, filter: false, cellRenderer: DateCell },
-      { headerName: t("colActions"), width: 110, sortable: false, filter: false, cellRenderer: ActionsCell },
+      { headerName: t("colActions"), width: 140, sortable: false, filter: false, cellRenderer: ActionsCell },
     ];
     return isRTL ? [...cols].reverse() : cols;
   }, [t, isRTL]);
@@ -337,19 +369,27 @@ export default function AdminUsersList() {
     <div className="p-6 space-y-6" dir={isRTL ? "rtl" : "ltr"}>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
-        {[
-          { label: t("statTotalUsers"),   value: stats.total },
-          { label: t("statSalonOwners"),  value: stats.owners },
-          { label: t("statStylists"),     value: stats.stylists },
-          { label: t("statCustomers"),    value: stats.customers },
-          { label: t("statNewThisMonth"), value: stats.newMonth },
-        ].map((s) => (
-          <div key={s.label} className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-            <p className="text-sm text-gray-500 dark:text-gray-400">{s.label}</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{loading ? "…" : s.value}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7">
+        {cards.map((c) => {
+          const active = group === c.group;
+          return (
+            <button
+              key={c.group}
+              type="button"
+              aria-pressed={active}
+              // a second click on the picked card shows everyone again
+              onClick={() => setGroup(active && c.group !== "all" ? "all" : c.group)}
+              className={`rounded-2xl border p-5 text-start transition-colors ${
+                active
+                  ? "border-brand-500 bg-brand-50 ring-2 ring-brand-500/20 dark:border-brand-400 dark:bg-brand-500/10"
+                  : "border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
+              }`}
+            >
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t(c.label)}</p>
+              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{loading ? "…" : c.value}</p>
+            </button>
+          );
+        })}
       </div>
 
       {/* Header */}
@@ -357,7 +397,7 @@ export default function AdminUsersList() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t("allUsers")}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {search.trim() ? `${shownUsers.length} / ${users.length}` : users.length} {isRTL ? "کاربر" : "users"}
+            {search.trim() || group !== "all" ? `${shownUsers.length} / ${users.length}` : users.length} {isRTL ? "کاربر" : "users"}
           </p>
         </div>
         <div className="relative w-full sm:w-80">
@@ -382,7 +422,7 @@ export default function AdminUsersList() {
         ) : users.length === 0 ? (
           <div className="p-10 text-center text-sm text-gray-400">{t("userEmpty")}</div>
         ) : shownUsers.length === 0 ? (
-          <div className="p-10 text-center text-sm text-gray-400">{t("userSearchNone")}</div>
+          <div className="p-10 text-center text-sm text-gray-400">{t(search.trim() ? "userSearchNone" : "userFilterNone")}</div>
         ) : (
           <div className="ag-blog-table">
             <AgGridReact<UserRow>
@@ -464,6 +504,8 @@ export default function AdminUsersList() {
           </div>
         </form>
       </Modal>
+
+      <AdminWalletAdjustModal target={walletTarget} onClose={() => setWalletTarget(null)} onDone={fetchUsers} />
 
       {/* Delete Modal */}
       <DeleteConfirmModal

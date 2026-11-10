@@ -8,6 +8,7 @@ import { Calculator, CalendarCheck2, CalendarClock, ExternalLink, Hourglass, QrC
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
 import { getMySalon, listMySalonAppointments, listMyStylists, updateAppointmentStatus, type OwnerSalon, type OwnerAppointment, type OwnerStylist } from "@/lib/api/ownerSalon";
 import ZeroCommissionNotice from "@/components/app/ZeroCommissionNotice";
+import InsightsHomeCards from "@/components/app/insights/InsightsHomeCards";
 import { isIndependent } from "@/lib/independent";
 import { SubscriptionNotice, useMySubscription } from "@/components/app/Subscription";
 import { formatToman } from "@/lib/persian";
@@ -92,7 +93,7 @@ export default function SalonOverviewPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
+      <section data-tour="home-hero" className="relative overflow-hidden rounded-[32px] bg-[#2a1d26] p-5 text-[#f8f1e9] shadow-app dark:bg-[#33232f] dark:ring-1 dark:ring-app-line">
         {/* Arch motif — a salon mirror, echoing the landing page. */}
         <span className="pointer-events-none absolute -bottom-16 -left-10 h-48 w-36 rounded-t-full border-[10px] border-app-accent/35" aria-hidden />
         <span className="pointer-events-none absolute -bottom-20 left-16 h-40 w-28 rounded-t-full bg-app-accent/25" aria-hidden />
@@ -151,11 +152,13 @@ export default function SalonOverviewPage() {
       <ReviewsLinkCard token={token} scope="salon" onlyWhenPending className="mt-3" />
       <WalletBalanceCard href="/salon/wallet" className="mt-3" />
 
-      <div className="mt-3 grid grid-cols-3 gap-2.5">
+      <div data-tour="home-stats" className="mt-3 grid grid-cols-3 gap-2.5">
         <StatTile icon={CalendarCheck2} label="نوبت امروز" value={today.length} tone="accent" />
         <StatTile icon={Hourglass} label="منتظر تایید" value={needsConfirmation.length} tone={needsConfirmation.length ? "pending" : "ink"} />
         <StatTile icon={CalendarClock} label="نوبت‌های آینده" value={upcoming.length} />
       </div>
+
+      <InsightsHomeCards token={token} className="mt-3" />
 
       <LinkCard
         href="/salon/accounting"

@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, CalendarRange, CalendarX2, List } from "lucide-react";
-import { salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
+import { formatSalonDateTime, salonWallTimeToInstant, toSalonWallTime } from "@/lib/salonTime";
 import { AppointmentList, AppointmentSheet, useAppointmentActions, type AppAppointment, type AppointmentStatus, type BalanceMethod } from "./appointments";
 import SalonBookingSheet from "./SalonBookingSheet";
+import AppointmentChatSheet from "./AppointmentChatSheet";
+import { getUnreadChats } from "@/lib/api/appointmentChat";
 import AppointmentCalendar from "./AppointmentCalendar";
 import AppointmentWeek from "./AppointmentWeek";
 import { ChipTabs, EmptyState, ErrorBanner, ListSkeleton, PageHeader, cx } from "./ui";
@@ -58,6 +60,19 @@ export default function AppointmentsScreen({
   }, [load]);
 
   useEffect(reload, [reload]);
+
+  // The booking chat with a customer (?chat=<appointment id> opens it, e.g. from the bell); unread counts per booking.
+  const [chatId, setChatId] = useState<string | null>(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("chat")));
+  const [unread, setUnread] = useState<Record<string, number>>({});
+  const chatToken = edit?.token;
+  useEffect(() => {
+    if (!chatToken) return;
+    const check = () => document.visibilityState === "visible" && getUnreadChats(chatToken).then(setUnread).catch(() => {});
+    check();
+    const t = setInterval(check, 30_000);
+    return () => clearInterval(t);
+  }, [chatToken]);
+  const chatWith = chatId ? appointments?.find((a) => a.id === chatId) : null;
 
   useEffect(() => {
     // Read once after mount (not during render) so SSR and hydration agree.
@@ -158,6 +173,7 @@ export default function AppointmentsScreen({
           showStylist={showStylist}
           onOpen={actions.open}
           order={tab === "upcoming" || tab === "pending" ? "asc" : "desc"}
+          unread={unread}
         />
       )}
 
@@ -168,7 +184,19 @@ export default function AppointmentsScreen({
         onSetStatus={actions.setStatus}
         onEdit={edit ? actions.edit : undefined}
         busyStatus={actions.busyStatus}
+        onChat={chatToken ? (a) => setChatId(a.id) : undefined}
+        unread={actions.selected ? unread[actions.selected.id] : 0}
       />
+      {chatWith && chatToken && (
+        <AppointmentChatSheet
+          token={chatToken}
+          appointmentId={chatWith.id}
+          title={`گفتگو با ${chatWith.customer.firstName} ${chatWith.customer.lastName}`.trim()}
+          subtitle={`نوبت ${formatSalonDateTime(chatWith.startAt)}`}
+          onClose={() => setChatId(null)}
+          onRead={() => setUnread((u) => ({ ...u, [chatWith.id]: 0 }))}
+        />
+      )}
       {edit && newAt && (
         <SalonBookingSheet
           key={newAt.n}

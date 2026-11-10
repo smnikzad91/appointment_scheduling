@@ -9,12 +9,16 @@ import { normalizeDigits, toPersianDigits } from "@/lib/persian";
 import { formatSalonDate } from "@/lib/salonTime";
 import { toastError } from "@/lib/toastError";
 
-// «برداشت از کیف پول»: the amount leaves the balance now; the platform pays it to the Sheba by bank
-// transfer and marks it paid (or rejects it — then it's back in the wallet). One pending at a time.
+// «برداشت از کیف پول»: the amount leaves the balance now; the platform pays it, minus the fee (1%, at
+// most 20,000 toman — lib/withdrawals.ts), to the Sheba by bank transfer and marks it paid (or rejects
+// it — then the whole amount is back in the wallet). One pending at a time.
 
 interface Withdrawal {
   id: string;
   amountToman: number;
+  feeToman: number;
+  /** amount − fee: what reaches the bank account */
+  payoutToman: number;
   sheba: string;
   accountHolder: string;
   status: "pending" | "paid" | "rejected" | "cancelled";
@@ -29,6 +33,7 @@ const STATUS: Record<Withdrawal["status"], string> = { pending: "در انتظا
 export default function WalletWithdraw({ balanceToman, onChange }: { balanceToman: number; onChange: () => void }) {
   const [items, setItems] = useState<Withdrawal[] | null>(null);
   const [min, setMin] = useState(50_000);
+  const [feeRule, setFeeRule] = useState({ percent: 1, max: 20_000 });
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ amount: "", sheba: "", holder: "" });
   const [busy, setBusy] = useState(false);
@@ -36,12 +41,18 @@ export default function WalletWithdraw({ balanceToman, onChange }: { balanceToma
   const load = useCallback(() => {
     fetch("/api/user/finance/withdrawals")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => { setItems(d.items); setMin(d.minToman); })
+      .then((d) => {
+        setItems(d.items);
+        setMin(d.minToman);
+        if (d.feePercent != null) setFeeRule({ percent: d.feePercent, max: d.feeMaxToman });
+      })
       .catch(() => setItems([]));
   }, []);
   useEffect(() => { queueMicrotask(load); }, [load]);
 
   if (!items) return null;
+  const amount = Number(form.amount) || 0;
+  const fee = Math.min(feeRule.max, Math.round((amount * feeRule.percent) / 100));
   const pending = items.find((w) => w.status === "pending");
   const last = items.find((w) => w.status !== "pending");
 
@@ -62,7 +73,7 @@ export default function WalletWithdraw({ balanceToman, onChange }: { balanceToma
     const d = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) return toastError(d.error ?? "ثبت درخواست انجام نشد");
-    toast.success("درخواست برداشت ثبت شد");
+    toast.success(`درخواست برداشت ثبت شد؛ ${fa(d.payoutToman ?? amount - fee)} تومان به حساب شما واریز می‌شود`);
     setOpen(false);
     load();
     onChange();
@@ -80,6 +91,11 @@ export default function WalletWithdraw({ balanceToman, onChange }: { balanceToma
       {pending ? (
         <Card className="space-y-1 p-4">
           <p className="text-sm font-bold text-app-ink">برداشت {fa(pending.amountToman)} تومان: {STATUS.pending}</p>
+          {pending.feeToman > 0 && (
+            <p className="text-xs text-app-muted">
+              واریزی به حساب: {fa(pending.payoutToman)} تومان (کارمزد {fa(pending.feeToman)} تومان)
+            </p>
+          )}
           <p className="text-xs text-app-muted" dir="ltr">{pending.sheba}</p>
           <p className="text-xs text-app-muted">معمولاً تا یک روز کاری به حساب شما واریز می‌شود.</p>
           <button type="button" onClick={() => cancel(pending.id)} className="text-sm text-app-danger">لغو درخواست</button>
@@ -91,7 +107,8 @@ export default function WalletWithdraw({ balanceToman, onChange }: { balanceToma
       )}
       {last && (
         <p className="px-1 text-xs text-app-muted">
-          آخرین برداشت: {fa(last.amountToman)} تومان، {formatSalonDate(last.createdAt)} — {STATUS[last.status]}
+          آخرین برداشت: {fa(last.amountToman)} تومان
+          {last.feeToman > 0 && <> (واریزی {fa(last.payoutToman)} تومان)</>}، {formatSalonDate(last.createdAt)} — {STATUS[last.status]}
           {last.trackingCode && <>، کد پیگیری <span dir="ltr">{last.trackingCode}</span></>}
           {last.adminNote && <>، {last.adminNote}</>}
         </p>
@@ -107,6 +124,17 @@ export default function WalletWithdraw({ balanceToman, onChange }: { balanceToma
           <Field label="مبلغ (تومان)" hint={`موجودی: ${fa(balanceToman)} تومان`}>
             <TextInput inputMode="numeric" dir="ltr" className="text-end" value={form.amount ? fa(form.amount) : ""} onChange={(e) => setForm((f) => ({ ...f, amount: normalizeDigits(e.target.value).replace(/\D/g, "").slice(0, 9) }))} />
           </Field>
+          <div className="rounded-2xl bg-app-card-2 px-4 py-3 text-sm leading-7">
+            <p className="flex justify-between text-app-muted">
+              <span>کارمزد برداشت ({fa(feeRule.percent)}٪، حداکثر {fa(feeRule.max)} تومان)</span>
+              <span>{fa(fee)} تومان</span>
+            </p>
+            <p className="flex justify-between font-bold text-app-ink">
+              <span>واریزی به حساب شما</span>
+              <span>{fa(Math.max(0, amount - fee))} تومان</span>
+            </p>
+            <p className="mt-1 text-xs leading-6 text-app-muted">کل مبلغ از کیف پول کم می‌شود و پس از کسر کارمزد، معمولاً تا یک روز کاری به حساب شما واریز می‌شود.</p>
+          </div>
           <Field label="شماره شبا" hint="۲۴ رقم بعد از IR">
             <div className="flex items-center gap-2" dir="ltr">
               <span className="font-bold text-app-muted">IR</span>

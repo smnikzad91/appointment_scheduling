@@ -19,6 +19,12 @@ instead of «آرایشگرها»). The admin panel stays on the website (the ap
   splash — keep it in step with apps/web `components/common/SplashScreen.tsx` / `.app-splash`.
 - Shell: the web's AppShell — logo + «نوبتت» + panel name, bell, avatar → «حساب کاربری» sheet
   (panel links, light/dark, sign out), and its tab bar.
+- First-run tour (`ui/panels/PanelTour.kt`, steps in `PanelTours.kt`): the web's PanelTour, same steps and
+  wording as apps/web `panelTours.ts` — keep the two in step. A step opens its `tab` and spotlights an element
+  tagged `Modifier.tourTarget("<key>")` (the web's `data-tour`; the shell tags `actions`, `account`, `tab:<i>`),
+  waiting up to 6 s and paging through lazy lists registered with `TourScrollable(listState)` to find it;
+  `optional` steps are skipped when it never shows. Opens once per panel and account (SharedPreferences `tour`,
+  `tour-done:<salon|independent|stylist|customer>:<userId>`) and again from «تور آشنایی با پنل» in the account sheet.
 
 ## Backend
 - apps/api: `https://nobatet.app/backend/` (`BuildConfig.API_BASE_URL`), token as `Authorization: Bearer`.
@@ -29,7 +35,8 @@ instead of «آرایشگرها»). The admin panel stays on the website (the ap
 ## Website links
 `nobatet.app/s/{slug}` (with `?book=1&services=&stylist=&date=`), `/book/@{handle}` and `/r/{code}` open in
 the app (`data/DeepLinks.kt`): the customer panel shows that salon and starts the booking; other roles get a
-note. They skip the "open with" chooser once apps/web serves `/.well-known/assetlinks.json` with the
+note. `/wallet-return` (the «بازگشت» link on nodepass.ir's payment page — the app's top-ups send it as
+`returnPath`) opens the wallet in any panel; in a browser apps/web redirects it to the account's wallet page. They skip the "open with" chooser once apps/web serves `/.well-known/assetlinks.json` with the
 signing key: set `ANDROID_CERT_SHA256` in `apps/web/.env.production` (comma-separated SHA-256
 fingerprints; add Play's app-signing key too if Google re-signs) and redeploy. The app's own «open the
 website» buttons go through `openInBrowser` so they don't loop back into the app.

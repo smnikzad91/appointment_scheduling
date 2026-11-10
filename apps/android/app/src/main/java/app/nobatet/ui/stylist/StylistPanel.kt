@@ -9,6 +9,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +38,11 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
     var page by remember { mutableStateOf<StylistPage?>(null) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var showNotifications by remember { mutableStateOf(false) }
+    // «بازگشت» on nodepass's page after a top-up (DeepLink.Wallet)
+    val link by container.links.link.collectAsState()
+    LaunchedEffect(link) {
+        if (link == app.nobatet.data.DeepLink.Wallet) { container.links.link.value = null; showNotifications = false; page = StylistPage.WALLET }
+    }
 
     fun loadStylist() = scope.launch {
         runCatching { container.api.myStylist() }.onSuccess { stylist = it; error = null }
@@ -70,18 +76,22 @@ fun StylistPanel(container: AppContainer, user: ApiUser, onSignOut: () -> Unit) 
         return
     }
     val context = androidx.compose.ui.platform.LocalContext.current
+    var feedbackOpen by rememberSaveable { mutableStateOf(false) }
+    if (feedbackOpen) app.nobatet.ui.panels.FeedbackDialog(container, "STYLIST") { feedbackOpen = false }
     PanelScaffold(
         panelName = "پنل آرایشگر",
         identity = app.nobatet.ui.panels.ShellIdentity(s.displayName, s.avatarUrl),
         accountName = "${user.firstName} ${user.lastName}".trim(),
         accountLinks = listOf(
             app.nobatet.ui.panels.AccountLink("کیف پول", Icons.Outlined.AccountBalanceWallet) { page = StylistPage.WALLET },
+            app.nobatet.ui.panels.feedbackLink { feedbackOpen = true },
             app.nobatet.ui.panels.tutorialsLink(context, "stylist"),
         ),
         onSignOut = onSignOut,
         selectedTab = tab,
         onSelectTab = { tab = it; if (it <= 1) loadAppointments() },
         actions = { app.nobatet.ui.customer.NotificationBell(container) { showNotifications = true } },
+        tour = app.nobatet.ui.panels.PanelTourSpec("stylist:${user.id}", app.nobatet.ui.panels.stylistTour),
         tabs = listOf(
             PanelTab("امروز", Icons.Outlined.Home) { StylistHomeScreen(s, appointments, actions, onGoToTab = { tab = it }) { page = it } },
             PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth, title = "نوبت‌های من") { StylistAppointmentsScreen(s, appointments, actions) },

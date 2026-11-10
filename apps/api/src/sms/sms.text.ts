@@ -29,8 +29,12 @@ export const faMoney = (n: number) => faDigits(Math.round(n).toLocaleString("en-
 /** «کیف پول نوبتت ۳۰۰٬۰۰۰ تومان شارژ شد\nموجودی: ۶۱۰٬۴۰۰ تومان» — one segment for any real amount. */
 export const topUpPaidText = (p: { amount: string; balance: string }) => `کیف پول نوبتت ${p.amount} تومان شارژ شد\nموجودی: ${p.balance} تومان`;
 
+/** «کیف پول نوبتت منفی ۱۰٬۰۰۰ تومان شد؛ برای ادامه پیامک نوبت‌ها شارژ کنید» — exactly one segment. */
+export const lowBalanceText = (p: { limit: string }) => `کیف پول نوبتت منفی ${p.limit} تومان شد؛ برای ادامه پیامک نوبت‌ها شارژ کنید`;
+
 /**
- * «برداشت ۵۰۰٬۰۰۰ تومان به حسابتان واریز شد\nپیگیری: 1402…» — the tracking line is left out when it
+ * «برداشت ۴۹۵٬۰۰۰ تومان به حسابتان واریز شد\nپیگیری: 1402…» (paid: the amount after the withdrawal fee,
+ * i.e. what reached the account) — the tracking line is left out when it
  * would push the text past one segment; «درخواست برداشت … تومان رد شد؛ مبلغ به کیف پول برگشت».
  */
 export const withdrawalText = (kind: "withdrawal-paid" | "withdrawal-rejected", p: { amount: string; trackingCode: string }) => {
@@ -40,9 +44,105 @@ export const withdrawalText = (kind: "withdrawal-paid" | "withdrawal-rejected", 
   return p.trackingCode && withCode.length <= SMS_SEGMENT ? withCode : base;
 };
 
+/**
+ * After approval, the free trial: «نوبتت: یک ماه رایگان پلن «سالن استارتر» برای سالنتان فعال شد (تا
+ * ۲۸ آبان). بعد از آن برای ادامه رزرو آنلاین، پلن را از کیف پول بخرید.» — two segments at most
+ * (a long plan name is cut). `length` is «یک ماه» for 30 days, else «۱۴ روز».
+ */
+export const trialStartedText = (p: { plan: string; until: string; length: string }, independent: boolean) =>
+  fitSms(
+    { plan: p.plan },
+    ["plan"],
+    (q) => `نوبتت: ${p.length} رایگان پلن «${q.plan}» برای ${independent ? "شما" : "سالنتان"} فعال شد (تا ${p.until}). بعد از آن برای ادامه رزرو آنلاین، پلن را از کیف پول بخرید.`,
+    SMS_TWO_SEGMENTS,
+  );
+
+/**
+ * To the owner a few days before their free trial ends (TrialReminderService), at most two segments
+ * (the plan name is cut first): «نوبتت: ماه رایگان سالنتان ۳ روز دیگر (۲۸ آبان) تمام و رزرو
+ * آنلاین بسته می‌شود. برای ادامه، پلن «سالن استارتر» را از کیف پول بخرید.»
+ */
+export const trialEndingText = (p: { plan: string; until: string; left: string }, independent: boolean) =>
+  fitSms(
+    { plan: p.plan },
+    ["plan"],
+    (q) => `نوبتت: ماه رایگان ${independent ? "شما" : "سالنتان"} ${p.left} (${p.until}) تمام و رزرو آنلاین بسته می‌شود. برای ادامه، پلن «${q.plan}» را از کیف پول بخرید.`,
+    SMS_TWO_SEGMENTS,
+  );
+
+/** «یک ماه» / «۱۴ روز»: how long a trial from `from` to `until` is, in salon-local calendar days. */
+export function trialLength(from: Date, until: Date, timeZone = "Asia/Tehran"): string {
+  // calendar days in the salon's timezone: a trial ends at 23:59:59 of its last day
+  const day = (d: Date) => Date.parse(new Intl.DateTimeFormat("en-CA", { timeZone }).format(d));
+  const days = Math.round((day(until) - day(from)) / 86_400_000);
+  return days === 30 ? "یک ماه" : `${faDigits(days)} روز`;
+}
+
+/** «۲۸ آبان» — a Jalali day and month in the salon's timezone. */
+export const jalaliDayMonth = (at: Date, timeZone: string) =>
+  new Intl.DateTimeFormat("fa-IR-u-ca-persian", { timeZone, day: "numeric", month: "long" }).format(at);
+
+/**
+ * To the owner when the platform admin changes their salon's status, one segment (the name is cut
+ * first; an independent stylist's page is «صفحه رزرو شما»): approved «سالن «رز» در نوبتت تایید شد؛
+ * صفحه رزرو فعال است», rejected «ثبت‌نام «رز» در نوبتت تایید نشد؛ با پشتیبانی تماس بگیرید»,
+ * suspended «صفحه «رز» در نوبتت معلق شد؛ با پشتیبانی تماس بگیرید», reactivated «صفحه «رز» در
+ * نوبتت دوباره فعال شد».
+ */
+export const salonStatusText = (change: "approved" | "rejected" | "suspended" | "reactivated", p: { name: string; independent: boolean }) =>
+  fitSms({ name: p.name }, ["name"], (q) => {
+    switch (change) {
+      case "approved":
+        return p.independent ? `صفحه رزرو شما «${q.name}» در نوبتت تایید و فعال شد` : `سالن «${q.name}» در نوبتت تایید شد؛ صفحه رزرو فعال است`;
+      case "rejected":
+        return `ثبت‌نام «${q.name}» در نوبتت تایید نشد؛ با پشتیبانی تماس بگیرید`;
+      case "suspended":
+        return `صفحه «${q.name}» در نوبتت معلق شد؛ با پشتیبانی تماس بگیرید`;
+      case "reactivated":
+        return `صفحه «${q.name}» در نوبتت دوباره فعال شد`;
+    }
+  });
+
+/** Which message a status change sends its owner; null = none (no change, or back to «waiting»). */
+export function salonStatusChange(from: string, to: string): "approved" | "rejected" | "suspended" | "reactivated" | null {
+  if (from === to) return null;
+  if (to === "ACTIVE") return from === "PENDING" ? "approved" : "reactivated";
+  if (to === "SUSPENDED") return from === "PENDING" ? "rejected" : "suspended";
+  return null;
+}
+
+/**
+ * For the platform admin when someone signs up, one segment (the names are cut first):
+ * «سالن تازه ثبت‌نام کرد: رز، قائم‌شهر؛ منتظر تایید» / «آرایشگر مستقل تازه: سارا، تهران؛ منتظر تایید» /
+ * «آرایشگر تازه در سالن رز: مریم احمدی».
+ */
+export const adminNewAccountText = (p: { who: "salon" | "independent" | "stylist"; name: string; place: string }) =>
+  fitSms({ name: p.name, place: p.place }, ["name", "place"], (q) =>
+    p.who === "stylist"
+      ? `آرایشگر تازه در ${q.place}: ${q.name}؛ منتظر تایید`
+      : `${p.who === "salon" ? "سالن تازه ثبت‌نام کرد" : "آرایشگر مستقل تازه"}: ${q.name}، ${q.place}؛ منتظر تایید`,
+  );
+
+/** To a salon's owner: the platform admin's decision on a stylist they invited (one segment, names cut first). */
+export const stylistApprovalText = (p: { approved: boolean; name: string; salon: string }) =>
+  fitSms({ name: p.name, salon: p.salon }, ["salon", "name"], (q) =>
+    p.approved ? `آرایشگر ${q.name} در ${q.salon} تایید شد و در نوبتت فعال است` : `آرایشگر ${q.name} در ${q.salon} تایید نشد؛ با پشتیبانی تماس بگیرید`,
+  );
+
+/**
+ * To the platform admin: «برداشت مریم احمدی: واریز ۴۹۵٬۰۰۰ تومان؛ در پنل مدیریت بررسی کنید» —
+ * `amount` is what to transfer (after the fee). The name is cut first.
+ */
+export const adminWithdrawalText = (p: { amount: string; name: string }) =>
+  fitSms(p, ["name"], (q) => `برداشت ${q.name}: واریز ${q.amount} تومان؛ در پنل مدیریت بررسی کنید`);
+
 /** «باقی‌مانده نوبتت در سالن رز: ۱۹۰٬۰۰۰ تومان؛ در پنل از کیف پول پرداخت کنید» (the salon name is cut first). */
 export const balanceRequestText = (p: { amount: string; salon: string }) =>
   fitSms(p, ["salon"], (q) => `باقی‌مانده نوبتت در ${q.salon}: ${q.amount} تومان؛ در پنل از کیف پول پرداخت کنید`);
+
+/** «یادآوری: باقی‌مانده نوبت سالن رز ۱۹۰٬۰۰۰ تومان؛ در پنل بپردازید» (the salon name is cut to fit one segment). */
+export const balanceReminderText = (p: { amount: string; salon: string }) =>
+  fitSms(p, ["salon"], (q) => `یادآوری: باقی‌مانده نوبت ${q.salon} ${q.amount} تومان؛ در پنل بپردازید`);
 
 /** One Unicode SMS segment; longer texts go out in parts (some phones show them as separate messages). */
 export const SMS_SEGMENT = 70;
@@ -119,6 +219,23 @@ export const customerBookingText = (kind: CustomerBookingKind, p: BookingParams,
   }
 };
 
+type NamedBooking = { day: string; time: string; customer: string };
+
+/**
+ * One segment that still says who the booking is for: when the full text doesn't fit, the weekday goes
+ * first («چهارشنبه ۶ آبان» → «۶ آبان»; date + time still identify the booking), then the last name,
+ * and only then is the name cut with «…» — not «نوبت خ…، چهارشنبه ۶ آبان …».
+ */
+export function fitNamedBooking<T extends NamedBooking>(p: T, build: (q: T) => string): string {
+  const day = p.day.replace(/^\S+\s+/, ""); // the weekday is the first word
+  const first = p.customer.trim().split(/\s+/)[0] ?? p.customer;
+  for (const q of [p, { ...p, day }, { ...p, day, customer: first }]) {
+    const text = build(q);
+    if (text.length <= SMS_SEGMENT) return text;
+  }
+  return fitSms({ ...p, day, customer: first }, ["customer"], build);
+}
+
 /** The stylist's 1-hour reminder: who, no services — «یادآوری نوبتت: ساعت ۰۹:۰۰ نوبت نگار رضایی». */
 export const stylistReminderText = (p: { time: string; customer: string }) =>
   fitSms(p, ["customer"], (q) => `یادآوری نوبتت: ساعت ${q.time} نوبت ${q.customer}`);
@@ -129,24 +246,24 @@ export const stylistReminderText = (p: { time: string; customer: string }) =>
  */
 export const stylistNewBookingText = (p: { day: string; time: string; customer: string; homeVisit?: boolean; prepaid?: boolean }) => {
   const { homeVisit, prepaid, ...rest } = p;
-  // the customer already paid half from their wallet: say so, so the stylist checks it promptly
+  // the customer already pre-paid part of it from their wallet: say so, so the stylist checks it promptly
   if (prepaid) {
     return homeVisit
-      ? fitSms(rest, ["customer"], (q) => `منزل ${q.customer} پیش‌پرداخت‌شده، ${q.day} ${q.time}؛ تایید کنید`)
-      : fitSms(rest, ["customer"], (q) => `نوبت پیش‌پرداخت‌شده ${q.customer}، ${q.day} ${q.time}؛ تایید کنید`);
+      ? fitNamedBooking(rest, (q) => `منزل ${q.customer} پیش‌پرداخت‌شده، ${q.day} ${q.time}؛ تایید کنید`)
+      : fitNamedBooking(rest, (q) => `نوبت پیش‌پرداخت‌شده ${q.customer}، ${q.day} ${q.time}؛ تایید کنید`);
   }
   // A home visit has its own, shorter wording so it always fits one segment (the name is cut first).
-  if (homeVisit) return fitSms(rest, ["customer"], (q) => `نوبت در منزل ${q.customer}، ${q.day} ${q.time}؛ در پنل تایید کنید`);
-  return fitSms(rest, ["customer"], (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتت تایید کنید`);
+  if (homeVisit) return fitNamedBooking(rest, (q) => `نوبت در منزل ${q.customer}، ${q.day} ${q.time}؛ در پنل تایید کنید`);
+  return fitNamedBooking(rest, (q) => `نوبت جدید ${q.customer}، ${q.day} ${q.time}؛ در پنل نوبتت تایید کنید`);
 };
 
-/** Once, 24 h after a booking ended while it's still open: «نوبت نگار رضایی، سه‌شنبه ۱۴ مهر ۰۸:۰۰ هنوز باز است؛ وضعیتش را در پنل مشخص کنید». */
-export const stylistStateNudgeText = (p: { day: string; time: string; customer: string }) =>
-  fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز باز است؛ وضعیتش را در پنل مشخص کنید`);
+/** Once, 24 h after a booking ended while it's still open: «نوبت نگار رضایی، سه‌شنبه ۱۴ مهر ۰۸:۰۰ باز مانده؛ وضعیتش را در پنل مشخص کنید». */
+export const stylistStateNudgeText = (p: NamedBooking) =>
+  fitNamedBooking(p, (q) => `نوبت ${q.customer}، ${q.day} ${q.time} باز مانده؛ وضعیتش را در پنل مشخص کنید`);
 
 /** Once, when an online booking is still unconfirmed a couple of hours later. */
-export const stylistConfirmNudgeText = (p: { day: string; time: string; customer: string }) =>
-  fitSms(p, ["customer"], (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل نوبتت تایید کنید`);
+export const stylistConfirmNudgeText = (p: NamedBooking) =>
+  fitNamedBooking(p, (q) => `نوبت ${q.customer}، ${q.day} ${q.time} هنوز تایید نشده؛ در پنل تایید کنید`);
 
 /**
  * "Time to book again" to the customer: one segment (≤70 chars), no link — Iranian operators'
@@ -186,3 +303,49 @@ export function smsParts(text: string): number {
   // UCS-2 counts UTF-16 code units (an emoji is two).
   return text.length <= SMS_SEGMENT ? 1 : Math.ceil(text.length / 67);
 }
+
+/**
+ * A prepaid booking confirmed or cancelled by the salon/stylist: what happened to the pre-payment and
+ * the customer's wallet balance now (owner's request, 2026-10-30). Up to two segments — it can't fit
+ * one with the date, the amount and the balance — and the salon's (or independent stylist's) name is
+ * cut first:
+ * «نوبتت چهارشنبه ۱۴ آبان ساعت ۰۸:۰۰ در سالن رز تایید شد.\nپیش‌پرداخت ۲۵۰٬۰۰۰ تومان از کیف پول کسر شد؛ موجودی: ۱٬۲۵۰٬۰۰۰ تومان»
+ * «… لغو شد.\nپیش‌پرداخت ۲۵۰٬۰۰۰ تومان به کیف پول برگشت؛ موجودی: …»; `forfeited` — the customer cancelled
+ * after it was confirmed — «… لغو شد.\nپیش‌پرداخت … تومان برنمی‌گردد؛ موجودی: …» (they were warned before cancelling).
+ * `place` is «در {salon}» or, for an independent stylist, «با {first name}».
+ */
+export const prepaidOutcomeText = (
+  outcome: "confirmed" | "cancelled" | "forfeited",
+  p: { day: string; time: string; place: string; amount: string; balance: string },
+) =>
+  fitSms(
+    p,
+    ["place"],
+    (q) =>
+      outcome === "confirmed"
+        ? `نوبتت ${q.day} ساعت ${q.time} ${q.place} تایید شد.\nپیش‌پرداخت ${q.amount} تومان از کیف پول کسر شد؛ موجودی: ${q.balance} تومان`
+        : outcome === "cancelled"
+          ? `نوبتت ${q.day} ساعت ${q.time} ${q.place} لغو شد.\nپیش‌پرداخت ${q.amount} تومان به کیف پول برگشت؛ موجودی: ${q.balance} تومان`
+          : `نوبتت ${q.day} ساعت ${q.time} ${q.place} لغو شد.\nپیش‌پرداخت ${q.amount} تومان برنمی‌گردد؛ موجودی: ${q.balance} تومان`,
+    SMS_TWO_SEGMENTS,
+  );
+
+/**
+ * To the stylist about one of their prepaid bookings (one segment, the customer's name kept as far as
+ * possible — fitNamedBooking): confirmed / cancelled by the salon owner, or cancelled by the customer
+ * — refunded while still pending, kept (to the owner's wallet: «به سالن رسید», «به شما رسید» when the
+ * stylist is the owner) once confirmed. Not sent when the stylist did it themselves.
+ */
+export type PrepaidStylistEvent = "confirmed" | "cancelled" | "customer-cancelled" | "customer-cancelled-kept";
+export const prepaidStylistText = (event: PrepaidStylistEvent, p: NamedBooking, opts: { ownWallet?: boolean } = {}) => {
+  switch (event) {
+    case "confirmed":
+      return fitNamedBooking(p, (q) => `نوبت پیش‌پرداخت‌شده ${q.customer}، ${q.day} ${q.time} تایید شد`);
+    case "cancelled":
+      return fitNamedBooking(p, (q) => `نوبت ${q.customer}، ${q.day} ${q.time} لغو شد؛ پیش‌پرداخت به مشتری برگشت`);
+    case "customer-cancelled":
+      return fitNamedBooking(p, (q) => `${q.customer} نوبت ${q.day} ${q.time} را لغو کرد؛ پیش‌پرداخت به او برگشت`);
+    case "customer-cancelled-kept":
+      return fitNamedBooking(p, (q) => `${q.customer} نوبت ${q.day} ${q.time} را لغو کرد؛ پیش‌پرداخت به ${opts.ownWallet ? "شما" : "سالن"} رسید`);
+  }
+};

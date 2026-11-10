@@ -1,5 +1,7 @@
 package app.nobatet.ui.wallet
 
+import androidx.compose.foundation.layout.Box
+import app.nobatet.ui.panels.tourTarget
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -19,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +37,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,21 +48,28 @@ import app.nobatet.data.AppContainer
 import app.nobatet.data.NewTopUp
 import app.nobatet.data.NewWithdrawal
 import app.nobatet.data.TopUp
+import app.nobatet.data.WALLET_DIRECTIONS
+import app.nobatet.data.WALLET_PERIODS
+import app.nobatet.data.WALLET_SORTS
+import app.nobatet.data.WalletFilters
 import app.nobatet.data.WalletInfo
 import app.nobatet.data.WalletTx
 import app.nobatet.data.Withdrawal
 import app.nobatet.data.formatCardNumber
 import app.nobatet.data.persianError
 import app.nobatet.data.walletTxLabel
+import app.nobatet.data.withdrawalFee
 import app.nobatet.data.withdrawalStatusLabel
 import app.nobatet.ui.components.AppCard
 import app.nobatet.ui.components.AppChip
 import app.nobatet.ui.components.AppDialog
 import app.nobatet.ui.components.AppTextButton
+import app.nobatet.util.openInBrowser
 import app.nobatet.ui.components.AppTextField
 import app.nobatet.ui.components.LoadError
 import app.nobatet.ui.components.Loading
 import app.nobatet.ui.components.Muted
+import app.nobatet.ui.components.PickerField
 import app.nobatet.ui.components.PrimaryButton
 import app.nobatet.ui.components.SecondaryButton
 import app.nobatet.ui.components.SectionTitle
@@ -74,37 +86,127 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 
 // «کیف پول» for every role (apps/web components/app/WalletScreen.tsx): automatic top-up (card to
-// card, confirmed by the bank SMS), the balance (or «بدهی»), withdrawal to a Sheba and the history.
+// card through nodepass.ir), the balance (or «بدهی»), withdrawal to a Sheba and the history.
 
 private fun fa(n: Long) = formatAmount(n)
 private fun fa(n: Int) = formatAmount(n.toLong())
 
 private fun instant(iso: String?): Instant? = iso?.let { runCatching { Instant.parse(it) }.getOrNull() }
 
-/** The whole wallet page: top-up, balance + withdrawal, history. */
+private const val PAGE_SIZE = 20
+
+/**
+ * The whole wallet page: top-up, balance + withdrawal, history. The history is paged ([PAGE_SIZE]) and
+ * filtered by direction, type and period and sorted by date or amount — all by the route (apps/web
+ * lib/walletQuery.ts), as the web's WalletHistory.
+ */
 @Composable
 fun WalletScreen(container: AppContainer) {
+    val c = LocalAppColors.current
     var wallet by remember { mutableStateOf<WalletInfo?>(null) }
     var failed by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
-    LaunchedEffect(reload) {
-        runCatching { container.web.wallet() }.onSuccess { wallet = it; failed = false }.onFailure { if (wallet == null) failed = true }
+    var filters by remember { mutableStateOf(WalletFilters()) }
+    var page by remember { mutableIntStateOf(1) }
+    var picking by remember { mutableStateOf<String?>(null) }
+    val scroll = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    // a newer request (filters, page) cancels the older one, so a slow answer can't replace it
+    LaunchedEffect(reload, filters, page) {
+        loading = true
+        runCatching { container.web.wallet(filters.params(page, PAGE_SIZE)) }
+            .onSuccess { w ->
+                // the last page emptied (fewer rows after a refresh): step back to the new last page
+                if (w.items.isEmpty() && w.total > 0 && page > 1) page = (w.total + PAGE_SIZE - 1) / PAGE_SIZE
+                wallet = w; failed = false
+            }
+            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it; failed = true }
+        loading = false
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        WalletTopUp(container, onPaid = { reload++ })
+    fun change(next: WalletFilters) { filters = next; page = 1 }
+
+    Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.tourTarget("wallet-topup")) { WalletTopUp(container, onPaid = { reload++ }) }
         val w = wallet
         when {
             w != null -> {
                 BalanceCard(w.balanceToman)
                 WalletWithdraw(container, w.balanceToman) { reload++ }
-                SectionTitle("گردش کیف پول")
-                if (w.items.isEmpty()) Muted("هنوز تراکنشی ثبت نشده است.")
-                w.items.forEach { TxRow(it) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SectionTitle("گردش کیف پول", Modifier.weight(1f))
+                    if (filters != WalletFilters()) AppTextButton(onClick = { change(WalletFilters()) }) { Text("پاک کردن فیلترها") }
+                }
+                app.nobatet.ui.components.ChipTabs(WALLET_DIRECTIONS, filters.direction) { change(filters.copy(direction = it)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PickerField("نوع تراکنش", if (filters.kind.isEmpty()) "همه نوع‌ها" else walletTxLabel(filters.kind), Modifier.weight(1f)) { picking = "kind" }
+                    PickerField("بازه زمانی", WALLET_PERIODS.first { it.first == filters.period }.second, Modifier.weight(1f)) { picking = "period" }
+                }
+                PickerField("مرتب‌سازی", WALLET_SORTS.first { it.first == filters.sort }.second, Modifier.fillMaxWidth()) { picking = "sort" }
+                if (w.total > 0) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Muted("${w.total.toString().toPersianDigits()} تراکنش")
+                    if (w.inToman > 0) Text("واریز ${fa(w.inToman)} تومان", color = c.done, fontSize = 12.sp)
+                    if (w.outToman > 0) Text("برداشت ${fa(w.outToman)} تومان", color = c.danger, fontSize = 12.sp)
+                }
+                if (failed) LoadError("گردش کیف پول بارگذاری نشد", onRetry = { reload++ })
+                when {
+                    w.items.isEmpty() && filters.filtered -> {
+                        Muted("تراکنشی با این فیلترها نیست.")
+                        SecondaryButton(onClick = { change(WalletFilters()) }) { Text("پاک کردن فیلترها") }
+                    }
+                    w.items.isEmpty() -> Muted("هنوز تراکنشی ثبت نشده است.")
+                    else -> Column(Modifier.alpha(if (loading) 0.6f else 1f), verticalArrangement = Arrangement.spacedBy(12.dp)) { w.items.forEach { TxRow(it) } }
+                }
+                val pages = maxOf(1, (w.total + PAGE_SIZE - 1) / PAGE_SIZE)
+                if (pages > 1) {
+                    fun goTo(p: Int) { page = p; scope.launch { scroll.animateScrollTo(0) } }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AppTextButton(onClick = { goTo(page - 1) }, enabled = page > 1 && !loading) { Text("قبلی") }
+                        Muted("صفحه ${page.toString().toPersianDigits()} از ${pages.toString().toPersianDigits()}", Modifier.weight(1f))
+                        AppTextButton(onClick = { goTo(page + 1) }, enabled = page < pages && !loading) { Text("بعدی") }
+                    }
+                }
+                picking?.let { what ->
+                    val options = when (what) {
+                        "kind" -> listOf("" to "همه نوع‌ها") + w.kinds.map { it to walletTxLabel(it) }.sortedBy { it.second }
+                        "period" -> WALLET_PERIODS
+                        else -> WALLET_SORTS
+                    }
+                    val current = when (what) { "kind" -> filters.kind; "period" -> filters.period; else -> filters.sort }
+                    OptionDialog(
+                        when (what) { "kind" -> "نوع تراکنش"; "period" -> "بازه زمانی"; else -> "مرتب‌سازی" }, options, current,
+                        onDismiss = { picking = null },
+                    ) { v ->
+                        picking = null
+                        change(when (what) { "kind" -> filters.copy(kind = v); "period" -> filters.copy(period = v); else -> filters.copy(sort = v) })
+                    }
+                }
             }
             failed -> LoadError("کیف پول بارگذاری نشد", onRetry = { reload++ })
             else -> Loading(rows = 3)
         }
     }
+}
+
+/** One choice from a short list (the web's PickerSelect). */
+@Composable
+private fun OptionDialog(title: String, options: List<Pair<String, String>>, value: String, onDismiss: () -> Unit, onPick: (String) -> Unit) {
+    val c = LocalAppColors.current
+    AppDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                options.forEach { (v, label) ->
+                    Row(Modifier.fillMaxWidth().clickable { onPick(v) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(label, color = c.ink, fontWeight = if (v == value) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f))
+                        if (v == value) Icon(Icons.Outlined.Check, null, tint = c.accent)
+                    }
+                }
+            }
+        },
+        confirmButton = { AppTextButton(onClick = onDismiss) { Text("بستن") } },
+    )
 }
 
 @Composable
@@ -171,7 +273,7 @@ private val QUICK = listOf(100_000, 200_000, 500_000, 1_000_000)
 
 /**
  * Automatic top-up (apps/web WalletTopUp): an amount → the card and the exact rial amount (both must
- * be copied before «واریز کردم»), polled every 8 s until the bank SMS confirms it. Also embedded in
+ * be copied and the exact-amount box ticked before «واریز کردم»), polled every 8 s until nodepass.ir confirms it. Also embedded in
  * the booking summary and the pay-balance sheet with [suggestedToman].
  */
 @Composable
@@ -187,6 +289,7 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
     var copiedCard by remember { mutableStateOf(false) }
     var copiedAmount by remember { mutableStateOf(false) }
     var paidClicked by remember { mutableStateOf(false) }
+    var exactConfirmed by remember { mutableStateOf(false) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
@@ -230,21 +333,47 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
         val left = ((instant(t.expiresAt)?.toEpochMilli() ?: now) - now).coerceAtLeast(0) / 1000
         AppCard {
             SectionTitle("واریز کارت به کارت")
-            Muted("دقیقاً همین مبلغ را به همین کارت واریز کنید. چند ریال آخر مبلغ، پرداخت شما را شناسایی می‌کند؛ با مبلغ دیگری، موجودی خودکار اضافه نمی‌شود.")
             CopyRow("شماره کارت — ${card.bankName}، ${card.ownerName}", formatCardNumber(card.cardNumber).toPersianDigits(), null, copiedCard) {
                 copy(card.cardNumber); copiedCard = true
             }
-            CopyRow("مبلغ دقیق (ریال)", fa(t.payableRial.toLongOrNull() ?: 0), "حدود ${fa((t.payableRial.toLongOrNull() ?: 0) / 10)} تومان", copiedAmount) {
+            CopyRow("مبلغ دقیق (ریال)", fa(t.payableRial.toLongOrNull() ?: 0), "حدود ${fa((t.payableRial.toLongOrNull() ?: 0) / 10)} تومان", copiedAmount, copyLabel = "کپی مبلغ دقیق") {
                 copy(t.payableRial); copiedAmount = true
             }
+            Row(
+                Modifier.fillMaxWidth().background(c.pending.copy(alpha = 0.12f), RoundedCornerShape(16.dp)).padding(12.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Icon(Icons.Outlined.WarningAmber, null, tint = c.pending, modifier = Modifier.padding(top = 2.dp, end = 8.dp))
+                Text(
+                    "توجه بسیار مهم: لطفاً دقیقاً همین مبلغ نمایش‌داده‌شده را بدون کم یا زیاد کردن واریز نمایید. هرگونه مغایرت در مبلغ، فرآیند تأیید خودکار را با خطا مواجه می‌کند. چند ریال آخر مبلغ، پرداخت شما را شناسایی می‌کند.",
+                    color = c.ink, fontSize = 14.sp, lineHeight = 24.sp,
+                )
+            }
             if (!paidClicked) {
-                PrimaryButton(if (copiedCard && copiedAmount) "واریز کردم" else "اول شماره کارت و مبلغ را کپی کنید", Modifier.fillMaxWidth(), enabled = copiedCard && copiedAmount) { paidClicked = true }
+                Row(Modifier.fillMaxWidth().clickable { exactConfirmed = !exactConfirmed }, verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = exactConfirmed, onCheckedChange = { exactConfirmed = it })
+                    Text("تأیید می‌کنم که مبلغ پرداختی دقیقاً با مبلغ فاکتور یکسان است", color = c.ink, fontSize = 14.sp)
+                }
+                val ready = copiedCard && copiedAmount
+                PrimaryButton(
+                    if (!ready) "اول شماره کارت و مبلغ را کپی کنید" else if (exactConfirmed) "واریز کردم" else "اول یکسان بودن مبلغ را تأیید کنید",
+                    Modifier.fillMaxWidth(), enabled = ready && exactConfirmed,
+                ) { paidClicked = true }
             } else {
                 Text(
                     "در انتظار پیامک بانک… معمولاً کمتر از یک دقیقه طول می‌کشد؛ بعد از تایید، موجودی خودکار اضافه می‌شود.",
                     color = c.ink, fontSize = 14.sp,
                     modifier = Modifier.fillMaxWidth().background(c.accentSoft, RoundedCornerShape(16.dp)).padding(horizontal = 16.dp, vertical = 12.dp),
                 )
+            }
+            t.trackingCode?.takeIf { it.isNotBlank() }?.let { code ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Muted("کد پیگیری: ")
+                    Text(code, color = c.ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, style = androidx.compose.ui.text.TextStyle(textDirection = TextDirection.Ltr))
+                    t.statusUrl?.takeIf { it.startsWith("https://") }?.let { url ->
+                        AppTextButton(onClick = { context.openInBrowser(url) }) { Text("صفحه پرداخت در nodepass", color = c.accent, fontSize = 14.sp) }
+                    }
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Muted("مهلت واریز: " + "%02d:%02d".format(left / 60, left % 60).toPersianDigits(), Modifier.weight(1f))
@@ -271,8 +400,8 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
         PrimaryButton("ادامه", Modifier.fillMaxWidth(), enabled = amount.isNotEmpty() && !busy) {
             busy = true
             scope.launch {
-                runCatching { container.web.createTopUp(NewTopUp(amount.toInt())) }
-                    .onSuccess { topUp = it; copiedCard = false; copiedAmount = false; paidClicked = false; now = System.currentTimeMillis() }
+                runCatching { container.web.createTopUp(NewTopUp(amount.toInt(), returnPath = "/wallet-return")) }
+                    .onSuccess { topUp = it; copiedCard = false; copiedAmount = false; paidClicked = false; exactConfirmed = false; now = System.currentTimeMillis() }
                     .onFailure { Toasts.error(persianError(it, "ساخت درخواست انجام نشد", container.json)) }
                 busy = false
             }
@@ -281,7 +410,7 @@ fun WalletTopUp(container: AppContainer, suggestedToman: Int? = null, onPaid: ()
 }
 
 @Composable
-private fun CopyRow(label: String, value: String, hint: String?, done: Boolean, onCopy: () -> Unit) {
+private fun CopyRow(label: String, value: String, hint: String?, done: Boolean, copyLabel: String = "کپی", onCopy: () -> Unit) {
     val c = LocalAppColors.current
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Muted(label)
@@ -291,7 +420,7 @@ private fun CopyRow(label: String, value: String, hint: String?, done: Boolean, 
         ) {
             Text(value, color = c.ink, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), style = androidx.compose.ui.text.TextStyle(textDirection = TextDirection.Ltr))
             Icon(if (done) Icons.Outlined.Check else Icons.Outlined.ContentCopy, null, tint = if (done) c.done else c.accent)
-            Text(if (done) " کپی شد" else " کپی", color = if (done) c.done else c.accent, fontWeight = FontWeight.Bold)
+            Text(if (done) " کپی شد" else " $copyLabel", color = if (done) c.done else c.accent, fontWeight = FontWeight.Bold)
         }
         hint?.let { Muted(it) }
     }
@@ -304,10 +433,13 @@ private fun WalletWithdraw(container: AppContainer, balance: Int, onChange: () -
     val scope = rememberCoroutineScope()
     var items by remember { mutableStateOf<List<Withdrawal>?>(null) }
     var min by remember { mutableIntStateOf(50_000) }
+    var feeRule by remember { mutableStateOf(1 to 20_000) }
     var reload by remember { mutableIntStateOf(0) }
     var open by remember { mutableStateOf(false) }
     LaunchedEffect(reload) {
-        runCatching { container.web.withdrawals() }.onSuccess { items = it.items; min = it.minToman }.onFailure { items = emptyList() }
+        runCatching { container.web.withdrawals() }
+            .onSuccess { items = it.items; min = it.minToman; feeRule = it.feePercent to it.feeMaxToman }
+            .onFailure { items = emptyList() }
     }
     val list = items ?: return
     val pending = list.firstOrNull { it.status == "pending" }
@@ -315,6 +447,7 @@ private fun WalletWithdraw(container: AppContainer, balance: Int, onChange: () -
     if (pending != null) {
         AppCard {
             Text("برداشت ${fa(pending.amountToman)} تومان: ${withdrawalStatusLabel("pending")}", color = c.ink, fontWeight = FontWeight.Bold)
+            if (pending.feeToman > 0) Muted("واریزی به حساب: ${fa(pending.payoutToman)} تومان (کارمزد ${fa(pending.feeToman)} تومان)")
             Muted(pending.sheba)
             Muted("معمولاً تا یک روز کاری به حساب شما واریز می‌شود.")
             AppTextButton(onClick = {
@@ -332,19 +465,22 @@ private fun WalletWithdraw(container: AppContainer, balance: Int, onChange: () -
     if (last != null) {
         val date = instant(last.createdAt)?.toSalonDateTime(null)?.toLocalDate()?.persianLabel() ?: ""
         Muted(buildString {
-            append("آخرین برداشت: ${fa(last.amountToman)} تومان، $date — ${withdrawalStatusLabel(last.status)}")
+            append("آخرین برداشت: ${fa(last.amountToman)} تومان")
+            if (last.feeToman > 0) append(" (واریزی ${fa(last.payoutToman)} تومان)")
+            append("، $date — ${withdrawalStatusLabel(last.status)}")
             last.trackingCode?.let { append("، کد پیگیری $it") }
             if (last.adminNote.isNotBlank()) append("، ${last.adminNote}")
         })
     }
-    if (open) WithdrawSheet(container, balance, list.firstOrNull(), onDismiss = { open = false }) {
+    if (open) WithdrawSheet(container, balance, list.firstOrNull(), feeRule, onDismiss = { open = false }) { payout ->
         open = false; reload++; onChange()
-        Toasts.success("درخواست برداشت ثبت شد")
+        Toasts.success("درخواست برداشت ثبت شد؛ ${fa(payout)} تومان به حساب شما واریز می‌شود")
     }
 }
 
 @Composable
-private fun WithdrawSheet(container: AppContainer, balance: Int, previous: Withdrawal?, onDismiss: () -> Unit, onDone: () -> Unit) {
+private fun WithdrawSheet(container: AppContainer, balance: Int, previous: Withdrawal?, feeRule: Pair<Int, Int>, onDismiss: () -> Unit, onDone: (payout: Int) -> Unit) {
+    val c = LocalAppColors.current
     val scope = rememberCoroutineScope()
     // the Sheba and holder of the last request, so a regular withdrawal is just the amount
     var amount by remember { mutableStateOf(balance.coerceAtLeast(0).toString()) }
@@ -361,6 +497,20 @@ private fun WithdrawSheet(container: AppContainer, balance: Int, previous: Withd
                     label = { Text("مبلغ (تومان)") }, supportingText = { Text("موجودی: ${fa(balance)} تومان") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
                 )
+                // the fee (1%, at most 20,000 toman) and what reaches the account
+                val typed = amount.toIntOrNull() ?: 0
+                val fee = withdrawalFee(typed, feeRule.first, feeRule.second)
+                Column(
+                    Modifier.fillMaxWidth().background(c.card2, RoundedCornerShape(16.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Row { Muted("کارمزد برداشت (${fa(feeRule.first)}٪، حداکثر ${fa(feeRule.second)} تومان)", Modifier.weight(1f)); Muted("${fa(fee)} تومان") }
+                    Row {
+                        Text("واریزی به حساب شما", color = c.ink, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text("${fa((typed - fee).coerceAtLeast(0))} تومان", color = c.ink, fontWeight = FontWeight.Bold)
+                    }
+                    Muted("کل مبلغ از کیف پول کم می‌شود و پس از کسر کارمزد به حساب شما واریز می‌شود.")
+                }
                 AppTextField(
                     sheba.toPersianDigits(), { sheba = it.normalizeDigits().filter(Char::isDigit).take(24) },
                     label = { Text("شماره شبا") }, prefix = { Text("IR") }, supportingText = { Text("۲۴ رقم بعد از IR") }, singleLine = true,
@@ -374,7 +524,7 @@ private fun WithdrawSheet(container: AppContainer, balance: Int, previous: Withd
                 busy = true
                 scope.launch {
                     runCatching { container.web.createWithdrawal(NewWithdrawal(amount.toIntOrNull() ?: 0, "IR$sheba", holder.trim())) }
-                        .onSuccess { onDone() }
+                        .onSuccess { onDone(it.payoutToman) }
                         .onFailure { Toasts.error(persianError(it, "ثبت درخواست انجام نشد", container.json)) }
                     busy = false
                 }

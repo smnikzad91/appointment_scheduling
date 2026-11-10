@@ -50,13 +50,19 @@ export function payBookingBalance(token: string, id: string) {
   return salonApiFetch<CustomerBooking>(`/appointments/${id}/pay-balance`, { method: "POST", headers: authHeaders(token) });
 }
 
-export function cancelBooking(token: string, id: string) {
+/** `acceptPrepaymentLoss`: the customer saw that cancelling a confirmed prepaid booking keeps the
+ * pre-payment (the API refuses that cancellation with 409 without it). */
+export function cancelBooking(token: string, id: string, acceptPrepaymentLoss = false) {
   return salonApiFetch<CustomerBooking>(`/appointments/${id}/status`, {
     method: "PATCH",
     headers: authHeaders(token),
-    body: JSON.stringify({ status: "CANCELLED" }),
+    body: JSON.stringify({ status: "CANCELLED", ...(acceptPrepaymentLoss && { acceptPrepaymentLoss: true }) }),
   });
 }
+
+/** Cancelling now keeps the pre-payment: the salon confirmed this prepaid booking (apps/api wallet/prepayment.ts). */
+export const cancelKeepsPrepayment = (b: Pick<CustomerBooking, "status" | "prepaidToman" | "prepaymentStatus">) =>
+  b.status === "CONFIRMED" && !!b.prepaidToman && b.prepaymentStatus === "HELD";
 
 /** Edit your own review: omit a field to keep it, send null to clear it. It goes back to PENDING. */
 export function updateReview(token: string, reviewId: string, patch: { rating?: number | null; comment?: string | null }) {

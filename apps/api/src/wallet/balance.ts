@@ -15,11 +15,13 @@ export function balanceDue(a: { priceToman: number; chargedToman?: number | null
   return Math.max(0, (a.chargedToman ?? a.priceToman) - a.prepaidToman);
 }
 
-/** Fields to set when an appointment becomes COMPLETED with the chosen method. */
-export function balanceOnCompletion(a: { priceToman: number; prepaidToman: number }, method: BalanceMethod | undefined) {
+/** Fields to set when an appointment becomes COMPLETED with the chosen method (a wallet request is dated, for its reminder). */
+export function balanceOnCompletion(a: { priceToman: number; prepaidToman: number }, method: BalanceMethod | undefined, now = new Date()) {
   const due = balanceDue(a);
-  if (due <= 0) return { balanceMethod: null, balanceDueToman: 0 };
-  return { balanceMethod: method ?? BalanceMethod.ON_SITE, balanceDueToman: method === BalanceMethod.WALLET ? due : 0 };
+  const stamp = { balanceRequestedAt: null as Date | null, balanceReminderSentAt: null };
+  if (due <= 0) return { balanceMethod: null, balanceDueToman: 0, ...stamp };
+  const wallet = method === BalanceMethod.WALLET;
+  return { balanceMethod: method ?? BalanceMethod.ON_SITE, balanceDueToman: wallet ? due : 0, ...stamp, balanceRequestedAt: wallet ? now : null };
 }
 
 /** Leaving COMPLETED: drop the request, or give a paid balance back (owner, stylist → customer). */
@@ -30,7 +32,7 @@ export async function undoBalance(
   stylistUserId: string,
 ) {
   if (!a.balanceMethod) return;
-  const reset = { balanceMethod: null, balanceDueToman: 0, balancePaidAt: null, balanceStylistToman: 0, balancePayoutId: null };
+  const reset = { balanceMethod: null, balanceDueToman: 0, balancePaidAt: null, balanceStylistToman: 0, balancePayoutId: null, balanceRequestedAt: null, balanceReminderSentAt: null };
   if (!a.balancePaidAt) {
     await tx.appointment.update({ where: { id: a.id }, data: reset });
     return;

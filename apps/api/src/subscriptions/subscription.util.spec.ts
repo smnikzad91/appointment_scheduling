@@ -1,4 +1,4 @@
-import { jalaliPeriod, purchaseEnd, purchaseStart, subscriptionStatus, trialEnd, unusedPurchaseCredit } from './subscription.util.js';
+import { jalaliPeriod, onlineBookingOpen, purchaseEnd, purchaseStart, subscriptionStatus, trialEnd, unusedPurchaseCredit } from './subscription.util.js';
 
 describe('jalaliPeriod', () => {
   it('uses the Jalali month in the salon timezone', () => {
@@ -24,10 +24,15 @@ describe('subscriptionStatus', () => {
 });
 
 describe('trialEnd', () => {
-  it('adds the trial days, or no end date when the trial is off', () => {
-    const now = new Date('2026-10-01T08:00:00Z');
-    expect(trialEnd(14, now)).toEqual(new Date('2026-10-15T08:00:00Z'));
+  it('ends at 23:59:59 Tehran on the last day, or no end date when the trial is off', () => {
+    const now = new Date('2026-10-01T08:00:00Z'); // 9 Mehr, 11:30 Tehran
+    expect(trialEnd(14, now)).toEqual(new Date('2026-10-15T20:29:59Z')); // 23 Mehr 23:59:59
     expect(trialEnd(0, now)).toBeNull();
+  });
+
+  it('counts the Tehran day even just after midnight', () => {
+    const now = new Date('2026-10-19T21:10:00Z'); // 28 Mehr 00:40 Tehran
+    expect(trialEnd(30, now)).toEqual(new Date('2026-11-19T20:29:59Z')); // 28 Aban 23:59:59
   });
 });
 
@@ -58,5 +63,15 @@ describe('switching plans: unused credit', () => {
   });
   it('nothing for a period already over', () => {
     expect(unusedPurchaseCredit([{ amountToman: 300_000, startsAt: new Date(now.getTime() - 40 * day), endsAt: new Date(now.getTime() - day) }], now)).toBe(0);
+  });
+});
+
+describe('onlineBookingOpen', () => {
+  const now = new Date('2026-10-19T12:00:00Z');
+  it('is closed only once the plan (trial or bought) has ended', () => {
+    expect(onlineBookingOpen({ planId: 'p', planExpiresAt: new Date('2026-10-20T00:00:00Z') }, now)).toBe(true);
+    expect(onlineBookingOpen({ planId: 'p', planExpiresAt: null }, now)).toBe(true);
+    expect(onlineBookingOpen({ planId: null, planExpiresAt: null }, now)).toBe(true);
+    expect(onlineBookingOpen({ planId: 'p', planExpiresAt: new Date('2026-10-19T11:59:00Z') }, now)).toBe(false);
   });
 });

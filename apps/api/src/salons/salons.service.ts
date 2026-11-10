@@ -1,14 +1,20 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { SalonKind, SalonStatus } from "@appointment-scheduling/database";
+import { SalonKind, SalonStatus, type ClientGender } from "@appointment-scheduling/database";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { UpdateSalonDto } from "./dto/update-salon.dto.js";
 import { publicLocation } from "./public-location.util.js";
 import { assertIranCoordinates, resolveProvinceCity } from "../common/location.js";
 import { UpdateSalonStatusDto } from "./dto/update-salon-status.dto.js";
+import { SmsService } from "../sms/sms.service.js";
+import { jalaliDayMonth, salonStatusChange, salonStatusText, trialLength, trialStartedText } from "../sms/sms.text.js";
+import { onlineBookingOpen } from "../subscriptions/subscription.util.js";
 
 @Injectable()
 export class SalonsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sms: SmsService,
+  ) {}
 
   async findPublicBySlug(slug: string) {
     const salon = await this.prisma.salon.findFirst({
@@ -25,7 +31,7 @@ export class SalonsService {
         galleryImages: { orderBy: { createdAt: "desc" }, select: { id: true, url: true, caption: true, stylistId: true } },
       },
     });
-    return salon && publicLocation(salon);
+    return salon && { ...publicLocation(salon), onlineBooking: onlineBookingOpen(salon) };
   }
 
   async listPublic() {
@@ -55,6 +61,12 @@ export class SalonsService {
 
   // --- platform-admin moderation ---
 
+  async setClientGender(id: string, clientGender: ClientGender | null) {
+    const found = await this.prisma.salon.findUnique({ where: { id }, select: { id: true } });
+    if (!found) throw new NotFoundException("Salon not found");
+    return this.prisma.salon.update({ where: { id }, data: { clientGender }, select: { id: true, clientGender: true } });
+  }
+
   listForAdmin(status?: SalonStatus) {
     return this.prisma.salon.findMany({
       where: status ? { status } : undefined,
@@ -66,9 +78,34 @@ export class SalonsService {
     });
   }
 
-  async setStatus(id: string, dto: UpdateSalonStatusDto) {
-    const salon = await this.prisma.salon.findUnique({ where: { id } });
+  /**
+   * The platform admin approves (→ ACTIVE), rejects / suspends (→ SUSPENDED) or re-activates a salon.
+   * A real change texts the owner what happened (salonStatusText) — the platform's SMS, no charge,
+   * never failing the change. A closed (deleted) owner has no phone and gets nothing. The first
+   * approval is followed by the free-trial text (trialStartedText) while the trial still runs.
+   */
+  async setStatus(id: string, dto: UpdateSalonStatusDto, now = new Date()) {
+    const salon = await this.prisma.salon.findUnique({
+      where: { id },
+      include: { owner: { select: { phone: true } }, plan: { select: { name: true } } },
+    });
     if (!salon) throw new NotFoundException("Salon not found");
-    return this.prisma.salon.update({ where: { id }, data: { status: dto.status } });
+    const updated = await this.prisma.salon.update({ where: { id }, data: { status: dto.status } });
+    const change = salonStatusChange(salon.status, dto.status);
+    const to = salon.owner?.phone;
+    if (change && to) {
+      const independent = salon.kind === SalonKind.INDEPENDENT;
+      const text = salonStatusText(change, { name: salon.name, independent });
+      const trial =
+        change === "approved" && salon.plan && salon.trialEndsAt && salon.trialEndsAt > now
+          ? { plan: salon.plan.name, until: jalaliDayMonth(salon.trialEndsAt, salon.timezone), length: trialLength(salon.createdAt, salon.trialEndsAt, salon.timezone) }
+          : null;
+      // one after the other, so the trial text arrives after «تایید شد»
+      void (async () => {
+        await this.sms.send({ kind: "salon-status-owner", to, params: { change, name: salon.name }, text });
+        if (trial) await this.sms.send({ kind: "trial-started-owner", to, params: trial, text: trialStartedText(trial, independent) });
+      })().catch(() => {});
+    }
+    return updated;
   }
 }

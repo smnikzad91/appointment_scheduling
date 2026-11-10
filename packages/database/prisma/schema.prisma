@@ -17,6 +17,22 @@ enum Role {
 }
 
 /// SALON = a beauty salon with its own stylists; INDEPENDENT = one freelance stylist's own business.
+/// Who a salon or independent stylist serves: آقایان (MEN) or بانوان (WOMEN). Picked at sign-up, editable in
+/// settings and by the platform admin; customers filter the search by it.
+enum ClientGender {
+  MEN
+  WOMEN
+}
+
+/// A stylist a salon invites waits for the platform admin's approval, separate from the salon's own: PENDING
+/// stylists stay switched off (active = false), so customers never see or book them. Stylists from before
+/// this existed, an owner's own profile and an independent stylist's are APPROVED.
+enum StylistApproval {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum SalonKind {
   SALON
   INDEPENDENT
@@ -83,6 +99,14 @@ enum NotificationType {
   BOOKING_UPDATED
   BALANCE_REQUESTED
   BALANCE_PAID
+  /// A message in a booking's chat (customer ↔ salon), to the other side.
+  NEW_MESSAGE
+}
+
+/// Who wrote a booking chat message: the customer, or the salon side (its owner or the booking's stylist).
+enum AppointmentChatSide {
+  CUSTOMER
+  SALON
 }
 
 enum PayoutMethod {
@@ -157,6 +181,9 @@ model User {
   /// Promotional SMS ("time to book again") stopped by the customer — via the link in the text
   /// (/r/<code>) or their dashboard. Transactional texts (codes, reminders, booking changes) still go.
   promoSmsOptOut     Boolean             @default(false)
+  /// Last «کیف پول را شارژ کنید» SMS: booking SMS paid by this user stop once their wallet is at
+  /// SMS_DEBT_LIMIT_TOMAN (apps/api SmsService); sent at most once a day.
+  lowBalanceSmsAt    DateTime?
   /// Closed by the platform admin while history still points at the account (bookings, a stylist
   /// profile, a salon, wallet records): personal data wiped, no login (apps/web lib/userDeletion.ts).
   deletedAt          DateTime?
@@ -322,6 +349,123 @@ model ContactMessage {
   @@map("contact_messages")
 }
 
+/// Public «نظرات و پیشنهادات» form (/feedback, apps/web lib/feedback.ts); read at /admin/feedback.
+model Feedback {
+  id        String    @id @default(cuid())
+  /// SUGGESTION | CRITICISM | PRAISE | BUG | OTHER
+  kind      String
+  /// Who sent it: CUSTOMER | SALON_OWNER | STYLIST | VISITOR (null = not said)
+  role      String?
+  name      String?
+  phone     String?
+  message   String
+  /// The signed-in sender, if any (no relation: the message stays if the account is deleted).
+  userId    String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+  @@map("feedback")
+}
+
+/// Site live chat («گفتگو با پشتیبانی», apps/web src/lib/livechat): who wrote a message.
+enum LiveChatSender {
+  VISITOR
+  ADMIN
+  SYSTEM
+}
+
+/// One visitor conversation from the site's chat widget. The visitor holds a random token in an httpOnly
+/// cookie (only its sha256 is stored); support answers from Telegram by replying to the bot's message
+/// (routed back through LiveChatMessage.tgMessageId) or from /admin/live-chat.
+model LiveChat {
+  id             String    @id @default(cuid())
+  tokenHash      String    @unique
+  /// Short id shown in Telegram (#K7Q2).
+  code           String    @unique
+  name           String?
+  contact        String?
+  /// The signed-in sender, if any (no relation: the chat stays if the account is deleted).
+  userId         String?
+  page           String?
+  country        String?
+  city           String?
+  closedAt       DateTime?
+  /// The visitor closed it from the widget: their cookie no longer opens it, replies can't reach them.
+  endedByVisitor Boolean   @default(false)
+  /// Read receipts: support saw everything up to here (panel open or a reply) / the visitor saw support's replies.
+  supportReadAt  DateTime?
+  visitorReadAt  DateTime?
+  /// The visitor's widget last asked for news (polls every few seconds while open): «الان در سایت».
+  visitorSeenAt  DateTime?
+  /// An admin is typing in the panel («پشتیبانی در حال نوشتن…» while recent).
+  supportTypingAt DateTime?
+  /// Closing deletes the chat's images; open widgets drop them when this is newer than they knew.
+  imagesPurgedAt DateTime?
+  /// Quick replies already sent automatically in this chat (each at most once).
+  autoReplied    String[]  @default([])
+  /// «راضی بودید؟» at the end: 1 = 👍, -1 = 👎.
+  rating         Int?
+  ratedAt        DateTime?
+  /// The support ticket made from this chat (for a signed-in visitor), to follow up in «پشتیبانی».
+  ticketId       String?
+  lastMessageAt  DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  messages LiveChatMessage[]
+
+  @@index([lastMessageAt])
+  @@map("live_chats")
+}
+
+/// Saved answers for the live chat (/admin/live-chat «پاسخ‌های آماده»): inserted from the panel, sent from Telegram with
+/// «/r key», and — with autoReply — sent by themselves when a visitor's message contains one of the keywords.
+model LiveChatQuickReply {
+  id        String   @id @default(cuid())
+  /// Short name for Telegram (/r topup): a-z, 0-9, -.
+  key       String   @unique
+  title     String
+  text      String
+  keywords  String[] @default([])
+  autoReply Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("live_chat_quick_replies")
+}
+
+model LiveChatMessage {
+  id          String         @id @default(cuid())
+  chatId      String
+  chat        LiveChat       @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender      LiveChatSender
+  text        String
+  /// An attached image {file, w, h} (private-uploads/livechat/<chatId>/, served only to this chat's visitor and admins).
+  image       Json?
+  /// Each side's reaction to an image (❤️ 👍 😂 😮 😢 🙏, lib/livechat/reactions.ts); null = none.
+  visitorReaction String?
+  supportReaction String?
+  /// An image's caption was changed after sending («ویرایش‌شده»).
+  editedAt    DateTime?
+  /// A comment on an image: the image message it replies to (quoted in the chat, threaded under the photo in Telegram).
+  replyToId   String?
+  replyTo     LiveChatMessage?  @relation("LiveChatComments", fields: [replyToId], references: [id], onDelete: SetNull)
+  comments    LiveChatMessage[] @relation("LiveChatComments")
+  /// Support replies: who answered (Telegram first name, or the admin's name in the panel).
+  author      String?
+  /// The Telegram message in the support chat that carries / is this message (reply routing).
+  tgMessageId Int?
+  createdAt   DateTime       @default(now())
+  /// Bumped by every change (reaction, caption edit…): the widget's poll picks up messages changed since its last poll.
+  updatedAt   DateTime       @default(now()) @updatedAt
+
+  @@index([chatId, createdAt])
+  @@index([chatId, updatedAt])
+  @@index([tgMessageId])
+  @@map("live_chat_messages")
+}
+
 model Ticket {
   id        String       @id @default(cuid())
   userId    String
@@ -352,24 +496,6 @@ model TicketReply {
   @@map("ticket_replies")
 }
 
-model AdminCard {
-  id          String   @id @default(cuid())
-  cardNumber  String   @unique
-  ownerName   String
-  bankName    String
-  /// Bank SMS sender of this card's account (e.g. "BankMellat" or a number); with smsTemplate,
-  /// deposits are confirmed automatically from the SMS (apps/bank-sms-agent → /api/bank-sms).
-  smsSender   String?
-  /// The deposit SMS with {amount} (rial), optional {balance}, {card}, {date}, {time}, {*}.
-  smsTemplate String?
-  createdAt   DateTime @default(now())
-
-  topUps  WalletTopUp[]
-  bankSms BankSms[]
-
-  @@map("admin_cards")
-}
-
 enum TopUpStatus {
   PENDING
   PAID
@@ -377,14 +503,19 @@ enum TopUpStatus {
   CANCELLED
 }
 
-/// A wallet top-up by card-to-card, confirmed by the bank's deposit SMS: the customer pays
-/// amountToman×10 + offsetRial (1–1000 rial) — that exact rial amount identifies them while pending.
+/// A wallet top-up by card-to-card through nodepass.ir: the customer pays payableRial (amountToman×10 +
+/// offsetRial, 1–1000 rial, picked by nodepass) to the card on the row; nodepass's webhook pays it.
 model WalletTopUp {
   id              String             @id @default(cuid())
   userId          String
   user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  adminCardId     String
-  adminCard       AdminCard          @relation(fields: [adminCardId], references: [id])
+  /// nodepass.ir payment (its clientOrderId is this id); null on top-ups from before 2026-10-23,
+  /// which were matched by the platform's own bank-SMS device
+  nodepassPaymentId String?          @unique
+  trackingCode    String?
+  cardNumber      String?
+  cardOwnerName   String?
+  cardBankName    String?
   amountToman     Int
   offsetRial      Int
   payableRial     BigInt
@@ -397,10 +528,8 @@ model WalletTopUp {
   paidSmsAt       DateTime?
   paidSmsAttempts Int                @default(0)
   createdAt       DateTime           @default(now())
-  bankSms         BankSms?
   transaction     WalletTransaction?
 
-  @@index([adminCardId, status, payableRial])
   @@index([userId, createdAt])
   @@map("wallet_top_ups")
 }
@@ -425,6 +554,8 @@ enum WalletTxKind {
   BALANCE_REFUND
   /// a booking SMS (to its customer or stylist), charged to the booking's stylist at the gateway's cost (apps/api SmsService)
   SMS_COST
+  /// set by the platform admin on /admin/users (e.g. a card payment nodepass couldn't match); `note` says why
+  ADMIN_ADJUSTMENT
 }
 
 /// How the stylist takes the rest of a completed booking's price (chosen when marking it done).
@@ -479,6 +610,9 @@ model WithdrawalRequest {
   userId             String
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   amountToman        Int
+  /// the withdrawal fee at request time (1% capped at 20,000 toman, apps/web lib/withdrawals.ts): the bank
+  /// transfer is amountToman − feeToman; the whole amountToman leaves the wallet. 0 on requests before 2026-11.
+  feeToman           Int                 @default(0)
   sheba              String
   accountHolder      String
   status             WithdrawalStatus    @default(PENDING)
@@ -490,6 +624,10 @@ model WithdrawalRequest {
   /// claimed/sent, or given up after decidedSmsAttempts failures
   decidedSmsAt       DateTime?
   decidedSmsAttempts Int                 @default(0)
+  /// "new withdrawal request" SMS to the platform admin (ADMIN_ALERT_PHONE, same service): set when
+  /// claimed/sent, or given up after requestedSmsAttempts failures
+  requestedSmsAt       DateTime?
+  requestedSmsAttempts Int               @default(0)
   transactions       WalletTransaction[]
 
   @@index([status, createdAt])
@@ -526,46 +664,6 @@ enum PrepaymentStatus {
   REFUNDED
 }
 
-enum BankSmsStatus {
-  MATCHED
-  UNMATCHED
-  NOT_DEPOSIT
-  IGNORED
-}
-
-/// Every SMS the bank-SMS device forwarded, kept raw for audit; `hash` makes resends idempotent.
-model BankSms {
-  id          String        @id @default(cuid())
-  hash        String        @unique
-  deviceId    String
-  sender      String
-  body        String
-  receivedAt  DateTime
-  adminCardId String?
-  adminCard   AdminCard?    @relation(fields: [adminCardId], references: [id], onDelete: SetNull)
-  amountRial  BigInt?
-  balanceRial BigInt?
-  status      BankSmsStatus
-  note        String        @default("")
-  topUpId     String?       @unique
-  topUp       WalletTopUp?  @relation(fields: [topUpId], references: [id], onDelete: SetNull)
-  createdAt   DateTime      @default(now())
-
-  @@index([status, createdAt])
-  @@map("bank_sms")
-}
-
-/// The bank-SMS device's last heartbeat (signal, SIM, queue), for the admin page and alerts.
-model BankSmsDevice {
-  id         String   @id
-  lastSeenAt DateTime
-  signal     Int?
-  info       Json?
-  updatedAt  DateTime @updatedAt
-
-  @@map("bank_sms_devices")
-}
-
 model Salon {
   id               String            @id @default(cuid())
   ownerId          String
@@ -591,16 +689,27 @@ model Salon {
   longitude        Float?
   status           SalonStatus       @default(PENDING)
   kind             SalonKind         @default(SALON)
+  /// null = not set yet (businesses from before 2026-11; the admin sets them) — listed under both search filters
+  clientGender     ClientGender?
   // INDEPENDENT only: where they work, and (home visits) the areas they cover.
   serviceLocations ServiceLocation[] @default([])
   serviceArea      String?
   // INDEPENDENT + IN_SALON: the salon they work in (free text, shown on their page).
   hostSalonName    String?
+  // Sign-up «از کجا با ما آشنا شدید؟» (apps/api auth/signup-source.ts keys); null = not asked (older
+  // sign-ups, the Android app). signupSourceNote: their own words when they picked OTHER.
+  signupSource     String?
+  signupSourceNote String?
   // Subscription (apps/api src/subscriptions): no plan = no limits (salons from before plans
   // existed, until the admin assigns one). planExpiresAt null = no end date.
   planId           String?
   plan             PricingPlan?      @relation(fields: [planId], references: [id], onDelete: Restrict)
   planExpiresAt    DateTime?
+  /// End of the free trial given at sign-up (PricingSettings.trialDays); cleared once a plan is
+  /// bought or set by the admin. Non-null and in the future = «دوره آزمایشی».
+  trialEndsAt      DateTime?
+  /// When the «free month ends in 3 days» SMS went to the owner (TrialReminderService); once per salon.
+  trialReminderSentAt DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -621,6 +730,7 @@ model Salon {
 
   @@index([province, city])
   @@index([kind, status])
+  @@index([clientGender])
   // Bounding-box prefilter for "near me" (see apps/api src/salons/salon-search.service.ts).
   @@index([latitude, longitude])
   @@map("salons")
@@ -657,6 +767,10 @@ model Stylist {
   // the owner when adding the stylist; changing it only affects appointments completed afterwards.
   commissionPercent Int      @default(20)
   active            Boolean  @default(true)
+  /// The platform admin's decision on an invited stylist (see StylistApproval); the owner can't switch a
+  /// stylist on until it's APPROVED.
+  approval          StylistApproval @default(APPROVED)
+  approvalDecidedAt DateTime?
   createdAt         DateTime @default(now())
 
   services      StylistService[]
@@ -671,6 +785,7 @@ model Stylist {
   expenses      StylistExpense[]
 
   @@index([salonId])
+  @@index([approval])
   @@map("stylists")
 }
 
@@ -799,6 +914,9 @@ model Appointment {
   /// owner's wallet (COMPLETED / NO_SHOW); REFUNDED = back to the customer (CANCELLED). Null = none.
   prepaidToman             Int               @default(0)
   prepaymentStatus         PrepaymentStatus?
+  /// Booked by the customer (site or app, POST /appointments) rather than by the salon or a stylist.
+  /// Set since 2026-10-20; older rows were backfilled from prepaymentStatus (online bookings pre-pay).
+  bookedOnline             Boolean           @default(false)
   /// Of a SETTLED pre-payment, the part paid to a salon's stylist (their commission share); the rest went to the owner.
   prepaymentStylistToman   Int               @default(0)
   /// The rest of the price after the pre-payment, set when marked COMPLETED (apps/api wallet/balance.ts):
@@ -808,6 +926,12 @@ model Appointment {
   balanceMethod            BalanceMethod?
   balanceDueToman          Int               @default(0)
   balancePaidAt            DateTime?
+  /// When the WALLET request was made (marked COMPLETED); 3 days unpaid → one reminder SMS (BalanceReminderService, balanceReminderSentAt).
+  balanceRequestedAt       DateTime?
+  balanceReminderSentAt    DateTime?
+  /// Booking chat (apps/api appointment-chat): each side read the other's messages up to here.
+  chatCustomerReadAt       DateTime?
+  chatSalonReadAt          DateTime?
   balanceStylistToman      Int               @default(0)
   balancePayoutId          String?           @unique
   createdAt                DateTime          @default(now())
@@ -818,6 +942,7 @@ model Appointment {
   walletTransactions WalletTransaction[]
   prepaymentPayout   StylistPayout?
 
+  messages                 AppointmentMessage[]
   @@index([salonId, startAt])
   @@index([stylistId, startAt])
   @@map("appointments")
@@ -1075,6 +1200,45 @@ model FavoriteSalon {
 // "Tell me if a time opens up": a customer waiting for a salon-local day (optionally one stylist)
 // that had no free slot. When an appointment on that day is cancelled, waiting customers get a
 // SLOT_OPENED notification (notifiedAt set, so each entry is notified once).
+/// A freed time held for the first customer on the waitlist (apps/api WaitlistService): for HOLD_MINUTES only
+/// they can book it online (others see it taken); then it's released and everyone else waiting is told. `code`
+/// travels in their SLOT_OPENED link (?hold=) so the booking sheet shows the held time as free to them.
+model SlotHold {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  salonId         String
+  stylistId       String
+  customerId      String
+  waitlistEntryId String?
+  startAt         DateTime
+  endAt           DateTime
+  expiresAt       DateTime
+  /// Expired (and the rest were told) or used (the holder booked it).
+  releasedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([stylistId, startAt])
+  @@index([releasedAt, expiresAt])
+  @@map("slot_holds")
+}
+
+/// A message in a booking's chat between the customer and the salon («دیر می‌رسم»، «آدرس کجاست؟»).
+model AppointmentMessage {
+  id            String              @id @default(cuid())
+  appointmentId String
+  appointment   Appointment         @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  side          AppointmentChatSide
+  /// The account that wrote it (no relation: the history stays if the account is deleted).
+  senderId      String
+  /// Shown above it: the customer's name, or the stylist's / salon's name on the salon side (as at sending).
+  senderName    String
+  text          String
+  createdAt     DateTime            @default(now())
+
+  @@index([appointmentId, createdAt])
+  @@map("appointment_messages")
+}
+
 model WaitlistEntry {
   id         String    @id @default(cuid())
   customerId String
@@ -1098,9 +1262,16 @@ model WaitlistEntry {
 
 // Salon subscription plans: the landing page's pricing section and each salon's limits. Edited at
 // /admin/pricing (apps/web, Prisma directly); enforced by apps/api (src/subscriptions).
+/// Who a plan is for: an independent stylist's one-person business or a salon (Salon.kind).
+enum PlanAudience {
+  SALON
+  INDEPENDENT
+}
+
 model PricingPlan {
-  id                String   @id @default(cuid())
+  id                String       @id @default(cuid())
   name              String
+  audience          PlanAudience @default(SALON)
   description       String?
   // null = negotiated price ("توافقی"), 0 = free
   monthlyPriceToman Int?
@@ -1110,13 +1281,13 @@ model PricingPlan {
   smsPerMonth       Int?
   // Extra feature lines, shown after the generated stylist/SMS lines
   features          String[]
-  recommended       Boolean  @default(false)
-  ctaLabel          String   @default("انتخاب پلن")
-  ctaHref           String   @default("/signup-salon")
-  sortOrder         Int      @default(0)
-  active            Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  recommended       Boolean      @default(false)
+  ctaLabel          String       @default("انتخاب پلن")
+  ctaHref           String       @default("/signup-salon")
+  sortOrder         Int          @default(0)
+  active            Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   salons    Salon[]
   purchases PlanPurchase[]
@@ -1132,6 +1303,30 @@ model PricingSettings {
   updatedAt DateTime @updatedAt
 
   @@map("pricing_settings")
+}
+
+enum SmsLogStatus {
+  SENT
+  FAILED
+  /// not sent: the paying stylist's wallet was at SMS_DEBT_LIMIT_TOMAN or below
+  SKIPPED_LOW_BALANCE
+}
+
+/// Every booking SMS (one paid from a stylist's wallet — SmsService.send with a charge): sent,
+/// failed or skipped for low balance. No phone number or text is kept (personal data).
+model SmsLog {
+  id            String       @id @default(cuid())
+  kind          String
+  payerUserId   String
+  appointmentId String?
+  parts         Int
+  costToman     Int          @default(0)
+  status        SmsLogStatus
+  createdAt     DateTime     @default(now())
+
+  @@index([payerUserId, createdAt])
+  @@index([appointmentId])
+  @@map("sms_logs")
 }
 
 // Reminder SMS sent per salon per Jalali month ("1405-07", salon timezone), checked against the

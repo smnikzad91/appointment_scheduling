@@ -1,5 +1,6 @@
 "use client";
 
+import { MAX_SERVICE_MINUTES, MIN_SERVICE_MINUTES } from "@/lib/serviceDuration";
 import { useCallback, useEffect, useState } from "react";
 import { BellRing, Check, Scissors } from "lucide-react";
 import { useApiAccessToken } from "@/components/dashboard-shared/useApiAccessToken";
@@ -62,6 +63,10 @@ export default function StylistServicesPage() {
       toastError(`فاصله یادآوری باید بین ۱ تا ${toPersianDigits(REBOOK_MAX_DAYS)} روز باشد`);
       return;
     }
+    if (draft.duration.trim() && !(Number(draft.duration) >= MIN_SERVICE_MINUTES && Number(draft.duration) <= MAX_SERVICE_MINUTES)) {
+      toastError(`مدت باید بین ${toPersianDigits(MIN_SERVICE_MINUTES)} دقیقه تا ${toPersianDigits(MAX_SERVICE_MINUTES / 60)} ساعت (${toPersianDigits(MAX_SERVICE_MINUTES)} دقیقه) باشد`);
+      return;
+    }
     setSavingId(entry.serviceId);
     setError(null);
     try {
@@ -113,7 +118,7 @@ export default function StylistServicesPage() {
             const setDraft = (patch: Partial<Draft>) => setDrafts((d) => ({ ...d, [entry.serviceId]: { ...draft, ...patch } }));
             const rebookOn = draft.rebook ?? entry.service.rebookReminderEnabled;
             return (
-              <Card key={entry.serviceId} className="app-rise p-4" style={riseStyle(i)}>
+              <Card key={entry.serviceId} data-tour={i === 0 ? "service-card" : undefined} className="app-rise p-4" style={riseStyle(i)}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-[15px] font-bold text-app-ink">{entry.service.name}</p>
@@ -151,7 +156,7 @@ export default function StylistServicesPage() {
                       className="h-11 text-end"
                       placeholder={toPersianDigits(entry.service.durationMinutes)}
                       value={draft.duration}
-                      onChange={(e) => setDraft({ duration: normalizeDigits(e.target.value).replace(/\D/g, "") })}
+                      onChange={(e) => setDraft({ duration: normalizeDigits(e.target.value).replace(/\D/g, "").slice(0, 3) })}
                     />
                   </label>
                   <button

@@ -1,5 +1,6 @@
 import { Type } from "class-transformer";
 import { IsOptionalImageUrl } from "../../common/image-url.js";
+import { MAX_SERVICE_MINUTES } from "../../catalog/dto/service.dto.js";
 import { IsArray, IsBoolean, IsDateString, IsInt, IsOptional, IsPositive, IsString, Max, Min, ValidateNested } from "class-validator";
 
 export class InviteStylistDto {
@@ -70,6 +71,7 @@ export class StylistServiceEntryDto {
   @IsOptional()
   @IsInt()
   @IsPositive()
+  @Max(MAX_SERVICE_MINUTES)
   overrideDurationMinutes?: number | null;
 
   /** The stylist's share for this service; null/omitted = their default commissionPercent. */
@@ -96,6 +98,7 @@ export class UpdateStylistServiceOverrideDto {
   @IsOptional()
   @IsInt()
   @IsPositive()
+  @Max(MAX_SERVICE_MINUTES)
   overrideDurationMinutes?: number | null;
 
   /** null = follow the service's setting. */

@@ -15,26 +15,29 @@ export async function register() {
         const { logError } = await import("@/lib/errorLog");
         await logError({ error, path: "instrumentation:pruneOrphanedUploads" });
       });
-  // …and SMS on the bank-SMS SIM from senders on no card, after 30 days (lib/bankSms/retention.ts)
-  const { pruneForeignSms } = await import("@/lib/bankSms/retention");
-  const smsSweep = () =>
-    pruneForeignSms()
-      .then((n) => n > 0 && console.info(`[bank-sms] removed ${n} non-bank SMS older than 30 days`))
-      .catch(async (error) => {
-        const { logError } = await import("@/lib/errorLog");
-        await logError({ error, path: "instrumentation:pruneForeignSms" });
-      });
   // …and public-site analytics older than 120 days (lib/analytics/record.ts)
   const { pruneOldVisits } = await import("@/lib/analytics/record");
   const visitSweep = () => pruneOldVisits().catch(() => 0);
   void sweep();
-  void smsSweep();
   void visitSweep();
   setInterval(() => {
     void sweep();
-    void smsSweep();
     void visitSweep();
   }, DAY_MS).unref();
+
+  // Live chat (lib/livechat), in one pm2 instance only: point the bot's webhook here, re-send visitor
+  // messages Telegram refused (every 5 min) and drop chats idle for half a year (daily).
+  if ((process.env.NODE_APP_INSTANCE ?? "0") === "0") {
+    const chat = await import("@/lib/livechat/chats");
+    const { ensureTelegramWebhook } = await import("@/lib/livechat/telegram");
+    const { botToken, liveChatConfigured } = await import("@/lib/livechat/config");
+    if (botToken()) void ensureTelegramWebhook();
+    const retry = () => liveChatConfigured() && chat.retryUndelivered().catch((e) => console.error("[livechat] retry:", e instanceof Error ? e.message : e));
+    const prune = () => chat.pruneLiveChats().catch((e) => console.error("[livechat] prune:", e instanceof Error ? e.message : e));
+    void prune();
+    setInterval(retry, 5 * 60_000).unref();
+    setInterval(prune, DAY_MS).unref();
+  }
 }
 
 // Records server errors Next.js catches itself — uncaught throws in Server Components, route

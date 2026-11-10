@@ -3,6 +3,7 @@ import { seoMetadata } from "@/lib/pageSeo";
 import Link from "next/link";
 import { findProvince } from "@appointment-scheduling/iran-locations";
 import SalonSearch from "@/components/discovery/SalonSearch";
+import { genderFromParam } from "@/lib/clientGender";
 import { activeCities } from "@/lib/cityPages";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import GuestBackdrop from "@/components/guest/GuestBackdrop";
@@ -11,7 +12,7 @@ import { rise } from "@/components/guest/motion";
 import GuestTabBar from "@/components/guest/GuestTabBar";
 
 interface PageProps {
-  searchParams: Promise<{ province?: string; city?: string; q?: string; type?: string }>;
+  searchParams: Promise<{ province?: string; city?: string; q?: string; type?: string; gender?: string }>;
 }
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
@@ -57,6 +58,7 @@ export default async function SalonsPage({ searchParams }: PageProps) {
               city,
               q: sp.q?.slice(0, 60),
               kind: sp.type === "independent" ? "INDEPENDENT" : sp.type === "salon" ? "SALON" : undefined,
+              gender: genderFromParam(sp.gender),
             }}
           />
         </div>

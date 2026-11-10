@@ -3,7 +3,7 @@ package app.nobatet.data
 import kotlinx.serialization.Serializable
 
 // «کیف پول» (apps/web /api/user/finance/**, same token), for every role: automatic top-ups (card to
-// card, confirmed by the bank SMS — the only way in), the history, withdrawals to a Sheba. Booking
+// card through nodepass.ir — the only way in), the history, withdrawals to a Sheba. Booking
 // pre-payments, the rest of a booking, plan purchases, wallet payouts and SMS costs all move this
 // balance (see apps/web CLAUDE.md «Finance Flow»).
 
@@ -22,13 +22,21 @@ data class TopUp(
     val expiresAt: String = "",
     val creditedToman: Int? = null,
     val card: TopUpCard? = null,
+    /** nodepass.ir's receipt code («کد پیگیری»), for support if the payment isn't confirmed */
+    val trackingCode: String? = null,
+    /** nodepass.ir's page for this payment (its «بازگشت» comes back to /wallet-return) */
+    val statusUrl: String? = null,
 )
 
 @Serializable
 data class TopUpList(val available: Boolean = false, val items: List<TopUp> = emptyList())
 
 @Serializable
-data class NewTopUp(val amountToman: Int)
+data class NewTopUp(
+    val amountToman: Int,
+    /** where nodepass's status page «بازگشت» goes: apps/web /wallet-return, which this app opens (DeepLinks.kt) */
+    val returnPath: String,
+)
 
 @Serializable
 data class WalletTx(
@@ -47,12 +55,42 @@ data class WalletTx(
 data class WalletTxAppointment(val startAt: String, val salonName: String, val timezone: String? = null)
 
 @Serializable
-data class WalletInfo(val balanceToman: Int = 0, val items: List<WalletTx> = emptyList())
+data class WalletInfo(
+    val balanceToman: Int = 0,
+    val items: List<WalletTx> = emptyList(),
+    /** rows matching the filters, over every page */
+    val total: Int = 0,
+    val page: Int = 1,
+    /** money in / out over all the matching rows, not just this page */
+    val inToman: Int = 0,
+    val outToman: Int = 0,
+    /** the kinds this account has at all, for the type filter */
+    val kinds: List<String> = emptyList(),
+)
+
+/** The history's filters (apps/web WalletHistory); the defaults are «no filter». */
+data class WalletFilters(val direction: String = "all", val kind: String = "", val period: String = "all", val sort: String = "newest") {
+    val filtered: Boolean get() = direction != "all" || kind.isNotEmpty() || period != "all"
+
+    fun params(page: Int, pageSize: Int) = buildMap {
+        put("page", page.toString()); put("pageSize", pageSize.toString())
+        put("direction", direction); put("period", period); put("sort", sort)
+        if (kind.isNotEmpty()) put("kind", kind)
+    }
+}
+
+val WALLET_DIRECTIONS = listOf("all" to "همه", "in" to "واریز", "out" to "برداشت")
+val WALLET_PERIODS = listOf("all" to "همه زمان‌ها", "7" to "۷ روز اخیر", "30" to "۳۰ روز اخیر", "90" to "۳ ماه اخیر", "365" to "یک سال اخیر")
+val WALLET_SORTS = listOf("newest" to "جدیدترین", "oldest" to "قدیمی‌ترین", "credit" to "بیشترین واریز", "debit" to "بیشترین برداشت")
 
 @Serializable
 data class Withdrawal(
     val id: String,
     val amountToman: Int,
+    /** the withdrawal fee fixed at request time (1%, at most 20,000 toman); 0 on older requests */
+    val feeToman: Int = 0,
+    /** amount − fee: what reaches the bank account */
+    val payoutToman: Int = amountToman,
     val sheba: String,
     val accountHolder: String,
     /** pending | paid | rejected | cancelled */
@@ -63,14 +101,23 @@ data class Withdrawal(
 )
 
 @Serializable
-data class WithdrawalList(val minToman: Int = 50_000, val items: List<Withdrawal> = emptyList())
+data class WithdrawalList(
+    val minToman: Int = 50_000,
+    /** the fee rule (apps/web lib/withdrawals.ts), for the «واریزی به حساب شما» line while typing */
+    val feePercent: Int = 1,
+    val feeMaxToman: Int = 20_000,
+    val items: List<Withdrawal> = emptyList(),
+)
+
+/** The withdrawal fee for an amount: [percent]% of it, at most [max] toman. */
+fun withdrawalFee(amountToman: Int, percent: Int = 1, max: Int = 20_000) = minOf(max, Math.round(amountToman * percent / 100.0).toInt())
 
 @Serializable
 data class NewWithdrawal(val amountToman: Int, val sheba: String, val accountHolder: String)
 
 /** apps/api GET /wallet/me — the balance and the booking pre-payment rule. */
 @Serializable
-data class WalletMe(val balanceToman: Int = 0, val prepaymentPercent: Int = 50)
+data class WalletMe(val balanceToman: Int = 0, val prepaymentPercent: Int = 25)
 
 /** apps/web WalletHistory KIND_LABEL */
 fun walletTxLabel(kind: String) = when (kind) {
@@ -90,6 +137,7 @@ fun walletTxLabel(kind: String) = when (kind) {
     "balance_income_reversal" -> "برگشت باقی‌مانده دریافتی"
     "balance_refund" -> "بازگشت باقی‌مانده پرداختی"
     "sms_cost" -> "هزینه پیامک"
+    "admin_adjustment" -> "اصلاح موجودی توسط پشتیبانی"
     else -> kind
 }
 

@@ -4,6 +4,9 @@ import { IsBoolean, IsInt, IsOptional, IsPositive, IsString, Max, Min } from "cl
 export const REBOOK_DAYS_MIN = 1;
 export const REBOOK_DAYS_MAX = 365;
 
+/** A service (or a stylist's own length for it) lasts at most 10 hours — apps/web lib/serviceDuration.ts says the same. */
+export const MAX_SERVICE_MINUTES = 600;
+
 export class CreateServiceDto {
   @IsString()
   name!: string;
@@ -18,6 +21,7 @@ export class CreateServiceDto {
 
   @IsInt()
   @IsPositive()
+  @Max(MAX_SERVICE_MINUTES)
   durationMinutes!: number;
 
   @IsInt()
@@ -52,6 +56,7 @@ export class UpdateServiceDto {
   @IsOptional()
   @IsInt()
   @IsPositive()
+  @Max(MAX_SERVICE_MINUTES)
   durationMinutes?: number;
 
   @IsOptional()

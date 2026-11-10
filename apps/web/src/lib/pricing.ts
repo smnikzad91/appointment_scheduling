@@ -4,6 +4,8 @@ import { toPersianDigits } from "@/lib/persian";
 export interface PricingPlanData {
   id: string;
   name: string;
+  /** Who can pick it: salons, or independent stylists (their one-person business) */
+  audience: PlanAudience;
   description: string | null;
   /** null = negotiated ("توافقی"), 0 = free */
   monthlyPriceToman: number | null;
@@ -20,6 +22,8 @@ export interface PricingPlanData {
   /** Admin listing only: salons currently on this plan */
   salonCount?: number;
 }
+
+export type PlanAudience = "SALON" | "INDEPENDENT";
 
 export interface PricingSettingsData {
   trialDays: number;
@@ -59,6 +63,17 @@ export function planFeatureLines(plan: Pick<PricingPlanData, "maxStylists" | "sm
   // (no SMS allowance line: since 2026-10-05 each booking SMS is charged at cost to the booking's stylist)
   return [...lines, ...plan.features];
 }
+
+/** «۱ ماه رایگان» / «۱۴ روز رایگان» — the free-trial badge; null when there's no trial. */
+export function trialBadge(trialDays: number): string | null {
+  if (trialDays <= 0) return null;
+  if (trialDays % 30 === 0) return `${toPersianDigits(trialDays / 30)} ماه رایگان`;
+  return `${toPersianDigits(trialDays)} روز رایگان`;
+}
+
+/** Shown under every price list: SMS are paid from the wallet, never part of a plan. */
+export const SMS_BILLING_NOTE =
+  "پیامک‌ها جزو اشتراک نیستند: هزینه هر پیامک نوبت از کیف پول آرایشگر کم می‌شود. در ماه رایگان هم برای ارسال پیامک باید کیف پول را شارژ کنید.";
 
 /** Same-site paths or http(s) links only — never javascript: and friends. */
 export function isSafeCtaHref(href: string): boolean {

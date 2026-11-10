@@ -62,7 +62,7 @@ export default function Features() {
               key={feature.title}
               className="g-glass-soft g-reveal group rounded-3xl p-6 transition duration-300 hover:-translate-y-1 hover:border-g-accent/30 hover:bg-white/[0.05]"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-g-accent/25 bg-g-accent/10 text-g-accent transition group-hover:shadow-[0_0_24px_-4px_rgb(242_135_106/0.7)]">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-g-accent/25 bg-g-accent/10 text-g-accent transition group-hover:shadow-[0_0_24px_-4px_rgb(198_138_114/0.7)]">
                 <feature.icon className="h-5 w-5" aria-hidden />
               </span>
               <h3 className="mt-5 font-bold text-g-ink">{feature.title}</h3>

@@ -1,5 +1,6 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.panels.tourTarget
 import app.nobatet.ui.components.Toasts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -142,7 +143,7 @@ fun StylistAppointmentsScreen(stylist: SelfStylist, appointments: List<StaffAppo
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            AppointmentsViewSwitch(view, setView, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp))
+            AppointmentsViewSwitch(view, setView, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp).tourTarget("appointments-view"))
             val list = appointments
             if (view == AppointmentsView.LIST && list != null) BucketChips(list, bucket) { bucket = it }
             when {
@@ -159,7 +160,7 @@ fun StylistAppointmentsScreen(stylist: SelfStylist, appointments: List<StaffAppo
         }
         FloatingActionButton(
             onClick = { actions.creating = true }, containerColor = c.accent, contentColor = c.accentInk,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp).tourTarget("new-booking"),
         ) { Icon(Icons.Outlined.Add, contentDescription = "نوبت تازه") }
     }
 }

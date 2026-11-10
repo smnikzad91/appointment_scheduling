@@ -107,7 +107,7 @@ export default function StepOtp() {
         ارسال شد.
       </p>
 
-      <div className="flex flex-row-reverse gap-2" dir="ltr">
+      <div className="flex gap-2" dir="ltr">
         {digits.map((digit, i) => (
           <input
             key={i}

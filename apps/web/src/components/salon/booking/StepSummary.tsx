@@ -12,7 +12,7 @@ import { SalonApiError } from "@/lib/api/salonApiClient";
 import { getWallet, prepaymentOf, type WalletInfo } from "@/lib/api/wallet";
 import WalletTopUp from "@/components/app/WalletTopUp";
 
-// Online bookings pre-pay part of the price (50%) from the customer's wallet — the only way to pay.
+// Online bookings pre-pay part of the price (PREPAYMENT_PERCENT in apps/api, 25%) from the customer's wallet — the only way to pay.
 // Short of balance, the sheet offers a top-up of the difference right here and waits for it.
 const MIN_TOP_UP_TOMAN = 10_000;
 
@@ -145,7 +145,7 @@ export default function StepSummary() {
             </div>
             <p className="text-xs leading-6 text-g-faint">
               {!stylist && salon.kind !== "INDEPENDENT" && "مبلغ نهایی با آرایشگری که تعیین می‌شود قطعی می‌شود. "}
-              اگر نوبت لغو شود، پیش‌پرداخت کامل به کیف پول شما برمی‌گردد.
+              اگر سالن نوبت را لغو کند یا شما پیش از تایید سالن لغو کنید، پیش‌پرداخت کامل به کیف پول شما برمی‌گردد؛ بعد از تایید سالن، لغو از طرف شما پیش‌پرداخت را برنمی‌گرداند.
             </p>
           </>
         )}

@@ -2,6 +2,7 @@
 // user goes through here so they always get Persian. Keep in sync with the API's messages.
 
 const BY_API_MESSAGE: Record<string, string> = {
+  "This phone number is already a stylist at another salon": "این شماره آرایشگر سالن دیگری است",
   "This time slot is no longer available": "این زمان همین حالا پر شد؛ لطفاً زمان دیگری انتخاب کنید",
   "Enter the bank transfer's tracking code": "کد پیگیری واریز بانکی را وارد کنید",
   "This request is no longer pending": "این درخواست دیگر در انتظار نیست",
@@ -62,6 +63,14 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Too many code requests, try again later": "درخواست کد بیش از حد مجاز است؛ یک دقیقه بعد دوباره تلاش کنید",
   "No account with this phone number": "حسابی با این شماره موبایل وجود ندارد",
   "Staff accounts sign in with their password": "این شماره متعلق به حساب مدیر یا آرایشگر است؛ از صفحه ورود با رمز عبور وارد شوید",
+  "This salon isn't taking online bookings right now": "نوبت‌دهی آنلاین این سالن فعلاً بسته است؛ برای رزرو با خود سالن تماس بگیرید",
+  "durationMinutes must not be greater than 600": "مدت خدمت حداکثر ۱۰ ساعت است",
+  "overrideDurationMinutes must not be greater than 600": "مدت خدمت حداکثر ۱۰ ساعت است",
+  "This booking's chat is closed": "گفتگوی این نوبت بسته است",
+  "Too many messages; try again later": "پیام‌ها زیاد بود؛ کمی بعد دوباره امتحان کنید",
+  "Write a message": "پیامتان را بنویسید",
+  "This stylist is waiting for the platform's approval": "این آرایشگر هنوز تایید مدیریت نوبتت را نگرفته؛ بعد از تایید فعال می‌شود",
+  "Invalid approval filter": "فیلتر وضعیت نامعتبر است",
   "Your plan's stylist limit is reached": "ظرفیت آرایشگر پلن شما پر است؛ برای افزودن، یک آرایشگر را غیرفعال کنید یا پلن را ارتقا دهید",
   "Your subscription has expired": "اشتراک سالن به پایان رسیده است؛ از تنظیمات و با موجودی کیف پول تمدید کنید",
   "This plan is no longer available": "این پلن دیگر در دسترس نیست؛ پلن دیگری انتخاب کنید",
@@ -99,6 +108,7 @@ const BY_API_MESSAGE: Record<string, string> = {
   "Period is too long": "بازه انتخاب‌شده خیلی طولانی است؛ بازه کوتاه‌تری انتخاب کنید",
   "Customers may only cancel their own appointment": "فقط نوبت‌های خودتان را می‌توانید لغو کنید",
   "This appointment can no longer be cancelled": "این نوبت دیگر قابل لغو نیست",
+  "This booking is confirmed; cancelling it now keeps the pre-payment": "این نوبت تایید شده؛ با لغو آن پیش‌پرداخت برگشت داده نمی‌شود",
   "Not your salon": "این مورد مربوط به سالن شما نیست",
   "Not allowed to update this appointment": "اجازه تغییر این نوبت را ندارید",
   "Phone number already registered": "با این شماره موبایل قبلاً حساب ساخته شده است؛ وارد شوید",

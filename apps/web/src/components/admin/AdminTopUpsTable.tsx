@@ -5,14 +5,15 @@ import { useT } from "@/i18n/useT";
 import { useLocaleFormat } from "@/i18n/useLocaleFormat";
 import { formatSalonDateTime, DEFAULT_SALON_TIME_ZONE } from "@/lib/salonTime";
 
-// «درخواست‌های افزایش موجودی» on /admin/bank-sms: the latest wallet top-up requests — who, the
-// amount asked (toman) and the exact amount to pay (rial, with the identifying 1–1000 rial), status,
-// when, and the platform card. A table on desktop, cards on phones; filter by status.
+// «درخواست‌های افزایش موجودی» on /admin/finance: the latest wallet top-up requests (nodepass.ir) — who,
+// the amount asked (toman) and the exact amount to pay (rial, with the identifying 1–1000 rial), status,
+// when, the card and nodepass's tracking code. A table on desktop, cards on phones; filter by status.
 
 export interface TopUpRow {
   id: string;
   user: { firstName: string; lastName: string; phone: string | null };
   cardNumber: string;
+  trackingCode: string | null;
   amountToman: number;
   payableRial: string;
   status: "pending" | "paid" | "expired" | "cancelled";
@@ -67,7 +68,7 @@ export default function AdminTopUpsTable({ rows }: { rows: TopUpRow[] | undefine
                 filter === s ? "bg-brand-500 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
               }`}
             >
-              {s ? label[s] : t("receivedSmsAll")} {num(s ? counts[s] ?? 0 : rows?.length ?? 0)}
+              {s ? label[s] : t("filterAll")} {num(s ? counts[s] ?? 0 : rows?.length ?? 0)}
             </button>
           ))}
         </div>
@@ -110,7 +111,10 @@ export default function AdminTopUpsTable({ rows }: { rows: TopUpRow[] | undefine
                     </td>
                     <td className="px-4 py-3">{badge(r)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-gray-500">{statusTime(r)}</td>
-                    <td dir="ltr" className="whitespace-nowrap px-4 py-3 text-start font-mono text-xs text-gray-500">•••• {r.cardNumber.slice(-4)}</td>
+                    <td dir="ltr" className="whitespace-nowrap px-4 py-3 text-start font-mono text-xs text-gray-500">
+                      {r.cardNumber && <>•••• {r.cardNumber.slice(-4)}</>}
+                      {r.trackingCode && <p>{r.trackingCode}</p>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -135,7 +139,8 @@ export default function AdminTopUpsTable({ rows }: { rows: TopUpRow[] | undefine
                   </div>
                   <div className="text-end text-xs text-gray-500">
                     <p>{statusTime(r)}</p>
-                    <p dir="ltr" className="font-mono">•••• {r.cardNumber.slice(-4)}</p>
+                    {r.cardNumber && <p dir="ltr" className="font-mono">•••• {r.cardNumber.slice(-4)}</p>}
+                    {r.trackingCode && <p dir="ltr" className="font-mono">{r.trackingCode}</p>}
                   </div>
                 </div>
               </div>

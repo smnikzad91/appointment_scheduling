@@ -34,9 +34,9 @@ const appt = (prepaymentStatus: 'HELD' | 'SETTLED' | 'REFUNDED', extra: { stylis
 });
 
 describe('booking pre-payment', () => {
-  it('is half the price, rounded up to a whole toman', () => {
-    expect(prepaymentFor(100_000)).toBe(50_000);
-    expect(prepaymentFor(75_001)).toBe(37_501);
+  it('is a quarter of the price, rounded up to a whole toman', () => {
+    expect(prepaymentFor(100_000)).toBe(25_000);
+    expect(prepaymentFor(75_001)).toBe(18_751);
     expect(prepaymentFor(0)).toBe(0);
   });
 
@@ -132,7 +132,8 @@ describe("a salon stylist's share of the pre-payment", () => {
 });
 
 describe('pre-payment when staff change the services', () => {
-  const held = { id: 'a1', customerId: 'cust', prepaidToman: 200_000, prepaymentStatus: 'HELD' as const };
+  // booked before 2026-10-19 at 50%: it keeps that share when the price changes
+  const held = { id: 'a1', customerId: 'cust', priceToman: 400_000, prepaidToman: 200_000, prepaymentStatus: 'HELD' as const };
   const withAmount = (wallets: Record<string, number>) => {
     const f = fakeTx(wallets);
     const updateMany = vi.fn(({ where, data }) =>
@@ -142,7 +143,7 @@ describe('pre-payment when staff change the services', () => {
     return f;
   };
 
-  it('refunds down to half a lower price', async () => {
+  it('refunds in proportion to a lower price (the booking keeps its own share)', async () => {
     const wallets = { cust: 0 };
     const { tx, state, ledger } = withAmount(wallets);
     expect(await refundExcessPrepayment(tx, held, 150_000)).toBe(125_000);
@@ -158,5 +159,24 @@ describe('pre-payment when staff change the services', () => {
     expect(await refundExcessPrepayment(tx, held, 400_000)).toBe(0);
     expect(await refundExcessPrepayment(tx, { ...held, prepaymentStatus: 'REFUNDED' as never }, 100_000)).toBe(0);
     expect(wallets.cust).toBe(0);
+  });
+});
+
+describe('refundExcessPrepayment for a booking made at 25%', () => {
+  it('refunds down to a quarter of the lower price', async () => {
+    const wallets: Record<string, number> = { cust: 0 };
+    const state: Record<string, unknown> = {};
+    const tx = {
+      appointment: { updateMany: vi.fn(({ data }) => (Object.assign(state, data), Promise.resolve({ count: 1 }))) },
+      $queryRaw: vi.fn((_s: TemplateStringsArray, amount: number, userId: string) => {
+        wallets[userId] = (wallets[userId] ?? 0) + amount;
+        return Promise.resolve([{ walletBalance: wallets[userId] }]);
+      }),
+      walletTransaction: { create: vi.fn() },
+    };
+    const booking = { id: 'a2', customerId: 'cust', priceToman: 400_000, prepaidToman: 100_000, prepaymentStatus: 'HELD' as const };
+    expect(await refundExcessPrepayment(tx as never, booking, 200_000)).toBe(50_000);
+    expect(state).toMatchObject({ prepaidToman: 50_000 });
+    expect(wallets.cust).toBe(50_000);
   });
 });

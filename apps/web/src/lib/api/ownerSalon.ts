@@ -26,6 +26,8 @@ export interface OwnerSalon {
   timezone: string;
   /** INDEPENDENT = an independent stylist's own business (they're its only stylist). */
   kind: SalonKind;
+  /** Who it serves; null = not set yet (older businesses — the admin sets it). */
+  clientGender: "MEN" | "WOMEN" | null;
   /** INDEPENDENT only: where they work, and the areas home visits cover. */
   serviceLocations: ServiceLocation[];
   serviceArea: string | null;
@@ -43,6 +45,8 @@ export interface OwnerSubscription {
   plan: { id: string; name: string; monthlyPriceToman: number | null; maxStylists: number | null; smsPerMonth: number | null } | null;
   /** null = no end date */
   expiresAt: string | null;
+  /** set while the sign-up's free month runs (a plan bought meanwhile starts after it) */
+  trialEndsAt: string | null;
   /** limit null = unlimited */
   stylists: { active: number; limit: number | null };
   /** This Jalali month's reminder SMS; limit null = unlimited (no plan) */
@@ -98,6 +102,8 @@ export interface UpdateSalonInput {
   logoUrl?: string | null; // null removes the photo
   coverImageUrl?: string | null;
   brandColor?: string;
+  /** آقایان / بانوان */
+  clientGender?: "MEN" | "WOMEN";
   latitude?: number;
   longitude?: number;
   /** Independent stylists only. */
@@ -221,6 +227,8 @@ export interface OwnerStylist {
   avatarUrl: string | null;
   coverImageUrl: string | null;
   active: boolean;
+  /** The platform admin's approval of an invited stylist; they can't be switched on until APPROVED. */
+  approval: "PENDING" | "APPROVED" | "REJECTED";
   /** Stylist's share of the money received for their appointments, 0–100. */
   commissionPercent: number;
   /** mustSetPassword: invited but hasn't used their "set your password" link yet. */
@@ -244,6 +252,14 @@ export interface StylistServiceEntry {
 
 export function listMyStylists(token: string) {
   return salonApiFetch<OwnerStylist[]>("/salons/mine/stylists", { headers: authHeaders(token) });
+}
+
+/**
+ * The owner works as a stylist in their own salon too: creates (or switches back on) their own
+ * stylist profile — 0% commission, every active service; hours are set on /salon/schedule.
+ */
+export function addSelfAsStylist(token: string) {
+  return salonApiFetch<OwnerStylist>("/salons/mine/self-stylist", { method: "POST", headers: authHeaders(token) });
 }
 
 export interface InviteStylistInput {

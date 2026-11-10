@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Bell, BellRing, CalendarCheck2, CalendarClock, CalendarPlus, CalendarX, CheckCheck, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Bell, BellRing, CalendarCheck2, CalendarClock, CalendarPlus, CalendarX, CheckCheck, MessageCircle, MessageSquareText, Wallet, type LucideIcon } from "lucide-react";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -10,7 +10,8 @@ import {
   type AppNotification,
 } from "@/lib/api/notifications";
 import { formatToman, toPersianDigits } from "@/lib/persian";
-import { formatSalonDateTime } from "@/lib/salonTime";
+import { formatSalonDateTime, toSalonWallTime } from "@/lib/salonTime";
+import { formatMinutesAsClock } from "@/lib/persian";
 import { dateKeyToDate, formatJalaliFull } from "@/lib/jalali";
 import { PAYOUT_METHOD_LABEL } from "@/lib/api/accounting";
 import { Stars } from "@/components/common/StarRating";
@@ -129,13 +130,36 @@ function describe(n: AppNotification, scope: Scope): { icon: LucideIcon; tone: s
     }
     case "SLOT_OPENED": {
       const d = n.data;
-      const params = new URLSearchParams({ book: "1", services: d.serviceIds.join(","), date: d.dateKey, ...(d.stylistId && { stylist: d.stylistId }) });
+      const stylist = d.hold?.stylistId ?? d.stylistId;
+      const params = new URLSearchParams({ book: "1", services: d.serviceIds.join(","), date: d.dateKey, ...(stylist && { stylist }), ...(d.hold && { hold: d.hold.code }) });
+      if (d.hold) {
+        const held = new Date(d.hold.until) > new Date();
+        return {
+          icon: BellRing,
+          tone: "text-app-done",
+          title: `وقت خالی در ${d.salonName} برای شما نگه داشته شد`,
+          detail: held
+            ? `${formatSalonDateTime(d.hold.startAt)} — تا ساعت ${formatMinutesAsClock(toSalonWallTime(d.hold.until).minuteOfDay)} فقط شما می‌توانید رزروش کنید.`
+            : `${formatSalonDateTime(d.hold.startAt)} — زمان نگه‌داشتن تمام شد؛ اگر هنوز خالی است رزرو کنید.`,
+          href: `/s/${d.salonSlug}?${params}`,
+        };
+      }
       return {
         icon: BellRing,
         tone: "text-app-done",
         title: `وقت خالی در ${d.salonName}${d.stylistName ? ` با ${d.stylistName}` : ""}`,
         detail: `${formatJalaliFull(dateKeyToDate(d.dateKey))} — یک نوبت لغو شد؛ تا کسی دیگر نگرفته رزرو کنید.`,
         href: `/s/${d.salonSlug}?${params}`,
+      };
+    }
+    case "NEW_MESSAGE": {
+      const d = n.data;
+      return {
+        icon: MessageCircle,
+        tone: "text-app-accent",
+        title: scope === "customer" ? `پیام تازه از ${d.senderName}` : `پیام ${d.customerName} درباره نوبت ${formatSalonDateTime(d.startAt)}`,
+        detail: d.preview,
+        href: `${appointmentsHref}?chat=${d.appointmentId}`,
       };
     }
     case "REVIEW_APPROVED": {

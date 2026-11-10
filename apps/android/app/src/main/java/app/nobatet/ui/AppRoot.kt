@@ -41,13 +41,18 @@ fun AppRoot(container: AppContainer) {
         ) askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
     }
 
-    // website links book a salon: only the customer panel opens them
+    // website links book a salon: only the customer panel opens them; the wallet link every panel but the admin's
     val link by container.links.link.collectAsStateWithLifecycle()
     LaunchedEffect(link, state) {
         val s = state
-        if (link != null && s is SessionState.SignedIn && s.user.role != Role.CUSTOMER) {
-            container.links.link.value = null
-            app.nobatet.ui.components.Toasts.info("برای رزرو نوبت از این لینک، با حساب مشتری وارد شوید")
+        val l = link
+        if (l != null && s is SessionState.SignedIn && s.user.role != Role.CUSTOMER) {
+            if (l is app.nobatet.data.DeepLink.Wallet) {
+                if (s.user.role == Role.PLATFORM_ADMIN) container.links.link.value = null
+            } else {
+                container.links.link.value = null
+                app.nobatet.ui.components.Toasts.info("برای رزرو نوبت از این لینک، با حساب مشتری وارد شوید")
+            }
         }
     }
     UpdateCheck(container)

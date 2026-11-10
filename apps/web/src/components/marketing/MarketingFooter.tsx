@@ -20,6 +20,7 @@ const COLUMNS = [
       { label: "وبلاگ", href: "/blog" },
       { label: "سؤالات متداول سالن‌ها", href: "/faq" },
       { label: "تماس با ما", href: "/contact" },
+      { label: "نظرات و پیشنهادات", href: "/feedback" },
     ],
   },
   {

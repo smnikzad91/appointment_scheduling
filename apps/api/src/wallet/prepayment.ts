@@ -1,18 +1,21 @@
 import { BadRequestException, ConflictException, HttpException, HttpStatus } from "@nestjs/common";
 import { AppointmentStatus, PayoutMethod, Prisma, PrepaymentStatus, WalletTxKind } from "@appointment-scheduling/database";
 
-// Booking pre-payment, paid only from the customer's wallet (topped up by card-to-card, confirmed
-// by the bank SMS — apps/web lib/bankSms). Rules (decided by the platform owner, 2026-10-05):
-//   * every online booking pre-pays half its price, taken when it's booked; staff-made bookings
+// Booking pre-payment, paid only from the customer's wallet (topped up by card-to-card through
+// nodepass.ir — apps/web lib/topUps.ts). Rules (decided by the platform owner, 2026-10-05):
+//   * every online booking pre-pays PREPAYMENT_PERCENT of its price (25% since 2026-10-19, 50%
+//     before — bookings keep the share they paid), taken when it's booked; staff-made bookings
 //     (phone, walk-in) don't — the customer isn't there to pay;
-//   * any cancellation, by anyone, refunds it in full to the customer's wallet;
+//   * a cancellation refunds it in full to the customer's wallet — except when the customer cancels
+//     a booking the salon already CONFIRMED: then it's kept and paid out like a no-show, all to the
+//     salon owner (owner's rule, 2026-10-30; the customer is warned before cancelling);
 //   * COMPLETED: it goes to the salon owner's wallet, except a salon stylist's commission share of
 //     it, which goes to the stylist's wallet and is recorded as a WALLET payout to them (so their
 //     balance with the salon drops by it); NO_SHOW: all of it to the owner (no service was done);
 //   * a mistaken status tap is undone: leaving COMPLETED/NO_SHOW takes it back from the owner.
 // Every wallet change writes a WalletTransaction in the same DB transaction.
 
-export const PREPAYMENT_PERCENT = 50;
+export const PREPAYMENT_PERCENT = 25;
 
 export function prepaymentFor(priceToman: number): number {
   return Math.ceil((priceToman * PREPAYMENT_PERCENT) / 100);
@@ -74,18 +77,21 @@ export function prepaymentStateFor(status: AppointmentStatus): PrepaymentStatus 
 }
 
 /**
- * Staff changed an open prepaid booking's services and the price went down: the pre-payment must
- * not stay above half the new price, so the excess goes back to the customer's wallet (inside the
- * edit's transaction). A higher price takes nothing more — the customer didn't agree to it; they
- * pay the rest on site. Conditional on the stored amount, so two edits can't both refund it.
+ * Staff changed an open prepaid booking's services and the price went down: the pre-payment shrinks
+ * in the same proportion (the booking keeps the share it was booked with — 50% for bookings made
+ * before 2026-10-19, PREPAYMENT_PERCENT after), so the excess goes back to the customer's wallet
+ * (inside the edit's transaction). A same or higher price takes and gives nothing — the customer
+ * didn't agree to more; they pay the rest on site. Conditional on the stored amount, so two edits
+ * can't both refund it.
  */
 export async function refundExcessPrepayment(
   tx: Prisma.TransactionClient,
-  a: { id: string; customerId: string; prepaidToman: number; prepaymentStatus: PrepaymentStatus | null },
+  a: { id: string; customerId: string; priceToman: number; prepaidToman: number; prepaymentStatus: PrepaymentStatus | null },
   newPriceToman: number,
 ) {
   if (a.prepaymentStatus !== PrepaymentStatus.HELD) return 0;
-  const target = Math.min(a.prepaidToman, prepaymentFor(newPriceToman));
+  if (a.priceToman <= 0 || newPriceToman >= a.priceToman) return 0;
+  const target = Math.min(a.prepaidToman, Math.ceil((a.prepaidToman * newPriceToman) / a.priceToman));
   const excess = a.prepaidToman - target;
   if (excess <= 0) return 0;
   const switched = await tx.appointment.updateMany({
@@ -120,10 +126,25 @@ export interface PrepaidAppointment {
  * first, so two status changes racing each other can't both move the money. `commissionPercent`
  * is the stylist's frozen rate when it becomes COMPLETED (AppointmentsService.accountingFor).
  */
-export async function applyPrepayment(tx: Prisma.TransactionClient, a: PrepaidAppointment, next: AppointmentStatus, commissionPercent = 0) {
+/** The customer cancelled a booking the salon had confirmed: the pre-payment isn't refunded (see the header). */
+export function forfeitsPrepayment(cancelledByCustomer: boolean, current: AppointmentStatus, next: AppointmentStatus): boolean {
+  return cancelledByCustomer && current === AppointmentStatus.CONFIRMED && next === AppointmentStatus.CANCELLED;
+}
+
+/**
+ * `forfeit` (forfeitsPrepayment): a cancellation that keeps the pre-payment — SETTLED to the owner,
+ * like a no-show, instead of REFUNDED; the switch then also requires the booking to still be CONFIRMED.
+ */
+export async function applyPrepayment(
+  tx: Prisma.TransactionClient,
+  a: PrepaidAppointment,
+  next: AppointmentStatus,
+  commissionPercent = 0,
+  { forfeit = false }: { forfeit?: boolean } = {},
+) {
   const from = a.prepaymentStatus;
   if (!from || a.prepaidToman <= 0) return;
-  const to = prepaymentStateFor(next);
+  const to = forfeit ? PrepaymentStatus.SETTLED : prepaymentStateFor(next);
   if (to === from) return;
   // Refunded means the customer already has it back; reopening would need taking it again.
   if (from === PrepaymentStatus.REFUNDED) throw new BadRequestException("A cancelled prepaid booking can't be reopened");
@@ -133,7 +154,7 @@ export async function applyPrepayment(tx: Prisma.TransactionClient, a: PrepaidAp
       ? stylistShareOfPrepayment(a.prepaidToman, commissionPercent)
       : 0;
   const switched = await tx.appointment.updateMany({
-    where: { id: a.id, prepaymentStatus: from },
+    where: { id: a.id, prepaymentStatus: from, ...(forfeit && { status: AppointmentStatus.CONFIRMED }) },
     data: { prepaymentStatus: to, prepaymentStylistToman: stylistPart },
   });
   if (switched.count !== 1) throw new ConflictException("This appointment just changed — reload and try again");
@@ -148,7 +169,10 @@ export async function applyPrepayment(tx: Prisma.TransactionClient, a: PrepaidAp
     }
   }
   if (to === PrepaymentStatus.SETTLED) {
-    await moveWallet(tx, a.ownerId, a.prepaidToman - stylistPart, WalletTxKind.PREPAYMENT_INCOME, { appointmentId: a.id });
+    await moveWallet(tx, a.ownerId, a.prepaidToman - stylistPart, WalletTxKind.PREPAYMENT_INCOME, {
+      appointmentId: a.id,
+      ...(forfeit && { note: "پیش‌پرداخت نوبتی که مشتری بعد از تایید لغو کرد" }),
+    });
     if (stylistPart > 0) {
       const payout = await tx.stylistPayout.create({
         data: {

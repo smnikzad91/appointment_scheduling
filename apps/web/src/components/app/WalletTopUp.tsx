@@ -1,16 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { AlertTriangle, Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, Field, TextInput } from "./ui";
 import { useOptionalWallet } from "@/context/WalletContext";
 import { normalizeDigits, toPersianDigits } from "@/lib/persian";
 import { toastError } from "@/lib/toastError";
 
-// «افزایش خودکار موجودی»: card-to-card to the platform's card, confirmed by the bank's SMS
-// (apps/bank-sms-agent). The customer pays the requested amount plus 1–1000 rial — that exact rial
-// amount identifies them — so both the card number and the amount must be copied before «واریز کردم».
+// «افزایش خودکار موجودی»: card-to-card through nodepass.ir (lib/topUps.ts), which gives the card and
+// confirms the deposit. The customer pays the requested amount plus 1–1000 rial — that exact rial
+// amount identifies them — so both the card number and the amount must be copied, and the exact-amount
+// box ticked, before «واریز کردم» (owner's wording for the warning and the box, 2026-10-30).
 // This is the only way to add money to a wallet. In the public booking sheet (no NextAuth session)
 // it's given the customer's apps/api token, which these routes accept too (requestSession).
 
@@ -22,6 +23,10 @@ interface TopUp {
   expiresAt: string;
   creditedToman: number | null;
   card: { cardNumber: string; ownerName: string; bankName: string } | null;
+  /** nodepass.ir's receipt code */
+  trackingCode?: string | null;
+  /** nodepass's status page for this payment */
+  statusUrl?: string | null;
 }
 
 const QUICK = [100_000, 200_000, 500_000, 1_000_000];
@@ -39,6 +44,7 @@ export default function WalletTopUp({ accessToken, suggestedToman, onPaid }: { a
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState({ card: false, amount: false });
   const [paidClicked, setPaidClicked] = useState(false);
+  const [exactConfirmed, setExactConfirmed] = useState(false);
   const [now, setNow] = useState(0);
 
   useEffect(() => {
@@ -78,13 +84,14 @@ export default function WalletTopUp({ accessToken, suggestedToman, onPaid }: { a
 
   async function start(amountToman: number) {
     setBusy(true);
-    const r = await fetch("/api/user/finance/top-ups", { method: "POST", headers: { "Content-Type": "application/json", ...auth }, body: JSON.stringify({ amountToman }) });
+    const r = await fetch("/api/user/finance/top-ups", { method: "POST", headers: { "Content-Type": "application/json", ...auth }, body: JSON.stringify({ amountToman, returnPath: window.location.pathname }) });
     const d = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) return toastError(d.error ?? "ساخت درخواست انجام نشد");
     setTopUp(d);
     setCopied({ card: false, amount: false });
     setPaidClicked(false);
+    setExactConfirmed(false);
     setNow(Date.now());
   }
 
@@ -106,7 +113,7 @@ export default function WalletTopUp({ accessToken, suggestedToman, onPaid }: { a
 
   if (available === null) return null;
   if (!available) {
-    // no platform card with a deposit SMS template yet
+    // nodepass isn't configured (NODEPASS_API_KEY)
     return (
       <Card className="p-5">
         <p className="text-sm leading-7 text-app-muted">شارژ کیف پول فعلاً در دسترس نیست؛ کمی بعد دوباره سر بزنید.</p>
@@ -123,17 +130,39 @@ export default function WalletTopUp({ accessToken, suggestedToman, onPaid }: { a
     return (
       <Card className="space-y-4 p-5">
         <h2 className="text-lg font-bold text-app-ink">واریز کارت به کارت</h2>
-        <p className="text-sm leading-7 text-app-muted">
-          دقیقاً همین مبلغ را به همین کارت واریز کنید. چند ریال آخر مبلغ، پرداخت شما را شناسایی می‌کند؛ با مبلغ دیگری، موجودی خودکار اضافه نمی‌شود.
-        </p>
         <CopyRow label={`شماره کارت — ${topUp.card.bankName}، ${topUp.card.ownerName}`} value={toPersianDigits(card.replace(/(.{4})/g, "$1 ").trim())} ltr done={copied.card} onCopy={() => copy("card", card)} />
-        <CopyRow label="مبلغ دقیق (ریال)" value={fa(topUp.payableRial)} hint={`حدود ${fa(Math.floor(Number(topUp.payableRial) / 10))} تومان`} done={copied.amount} onCopy={() => copy("amount", topUp.payableRial)} />
+        <CopyRow label="مبلغ دقیق (ریال)" value={fa(topUp.payableRial)} hint={`حدود ${fa(Math.floor(Number(topUp.payableRial) / 10))} تومان`} copyLabel="کپی مبلغ دقیق" done={copied.amount} onCopy={() => copy("amount", topUp.payableRial)} />
+        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-app-pending/40 bg-app-pending/10 p-3">
+          <AlertTriangle className="mt-1 h-5 w-5 shrink-0 text-app-pending" aria-hidden />
+          <p className="text-sm leading-7 text-app-ink">
+            <strong>توجه بسیار مهم:</strong> لطفاً دقیقاً همین مبلغ نمایش‌داده‌شده را بدون کم یا زیاد کردن واریز نمایید. هرگونه مغایرت در مبلغ، فرآیند تأیید خودکار را با خطا مواجه می‌کند. چند ریال آخر مبلغ، پرداخت شما را شناسایی می‌کند.
+          </p>
+        </div>
         {!paidClicked ? (
-          <Button block disabled={!copied.card || !copied.amount} onClick={() => setPaidClicked(true)}>
-            {copied.card && copied.amount ? "واریز کردم" : "اول شماره کارت و مبلغ را کپی کنید"}
-          </Button>
+          <>
+            <label className="flex cursor-pointer items-start gap-3 text-sm leading-7 text-app-ink">
+              <input type="checkbox" checked={exactConfirmed} onChange={(e) => setExactConfirmed(e.target.checked)} className="mt-1.5 h-4 w-4 shrink-0 accent-[var(--app-accent)]" />
+              تأیید می‌کنم که مبلغ پرداختی دقیقاً با مبلغ فاکتور یکسان است
+            </label>
+            <Button block disabled={!copied.card || !copied.amount || !exactConfirmed} onClick={() => setPaidClicked(true)}>
+              {!copied.card || !copied.amount ? "اول شماره کارت و مبلغ را کپی کنید" : exactConfirmed ? "واریز کردم" : "اول یکسان بودن مبلغ را تأیید کنید"}
+            </Button>
+          </>
         ) : (
           <p className="rounded-2xl bg-app-accent-soft px-4 py-3 text-sm text-app-ink">در انتظار پیامک بانک… معمولاً کمتر از یک دقیقه طول می‌کشد؛ بعد از تایید، موجودی خودکار اضافه می‌شود.</p>
+        )}
+        {topUp.trackingCode && (
+          <p className="text-sm text-app-muted">
+            کد پیگیری: <span dir="ltr" className="font-bold text-app-ink">{topUp.trackingCode}</span>
+            {topUp.statusUrl && (
+              <>
+                {" · "}
+                <a href={topUp.statusUrl} target="_blank" rel="noopener noreferrer" className="text-app-accent underline">
+                  صفحه پرداخت در nodepass
+                </a>
+              </>
+            )}
+          </p>
         )}
         <div className="flex items-center justify-between text-sm text-app-muted">
           <span>مهلت واریز: {toPersianDigits(`${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`)}</span>
@@ -161,14 +190,14 @@ export default function WalletTopUp({ accessToken, suggestedToman, onPaid }: { a
   );
 }
 
-function CopyRow({ label, value, hint, ltr, done, onCopy }: { label: string; value: string; hint?: string; ltr?: boolean; done: boolean; onCopy: () => void }) {
+function CopyRow({ label, value, hint, ltr, copyLabel = "کپی", done, onCopy }: { label: string; value: string; hint?: string; ltr?: boolean; copyLabel?: string; done: boolean; onCopy: () => void }) {
   return (
     <div className="rounded-2xl border border-app-line p-3">
       <p className="text-xs text-app-muted">{label}</p>
       <div className="mt-1 flex items-center justify-between gap-3">
         <span dir={ltr ? "ltr" : undefined} className="text-lg font-black tracking-wide text-app-ink">{value}</span>
         <button type="button" onClick={onCopy} className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm ${done ? "bg-app-done/10 text-app-done" : "bg-app-accent text-app-accent-ink"}`}>
-          {done ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {done ? "کپی شد" : "کپی"}
+          {done ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {done ? "کپی شد" : copyLabel}
         </button>
       </div>
       {hint && <p className="mt-1 text-xs text-app-muted">{hint}</p>}

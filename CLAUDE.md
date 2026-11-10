@@ -19,9 +19,6 @@
      api/                 npm workspace "api" — NestJS backend, source of truth for the
                            salon domain (salons, stylists, services, appointments).
                            Owns auth (JWT). Postgres via @appointment-scheduling/database.
-     bank-sms-agent/      Node 18 script (no deps, not a workspace) for a BeagleBone Black + SIM800C that
-                           forwards the bank card's deposit SMS to apps/web → automatic wallet top-ups
-                           (see its README and apps/web/CLAUDE.md «Automatic top-ups»)
      android-customer/    (not yet scaffolded) Kotlin/Gradle, customer-facing app
      android-stylist/     (not yet scaffolded) Kotlin/Gradle, stylist-facing app
    packages/
@@ -29,9 +26,16 @@
      iran-locations/      Iran's 31 provinces → counties (TS, type-strippable like database); salon
                            province/city are validated against it (api) and drive the cascading
                            selects (web). Add a missing county there — nothing else changes.
-   story-highlights/      Instagram Story Highlight slides per panel (generated PNGs, committed) —
+   branding/              brand package (2026-10-31): brand.md (palette, which logo on light/dark, min sizes), SVG/PNG
+                       masters, social (Instagram profile, highlight cover), android-store (Play icon, feature
+                       graphic, notification SVG). Served copies live in apps/web/branding → public/icons,
+                       public/images/logo, src/app/{favicon.ico,og-image.png}, and the Android res/mipmap-*.
+story-highlights/      Instagram Story Highlight slides per panel (generated PNGs, committed) —
                            `node scripts/story-highlights/build.mjs` rebuilds them from the Help Center
                            guides + screenshots; see story-highlights/README.md
+   ad-videos/             ad videos (MP4s, committed), one folder per series: 01-platform-intro/ (story 9:16 +
+                           feed post 4:5 per audience + feature tours, `node scripts/ad-videos/build.mjs`),
+                           02-for-customers/, 03-guide-series/ (one per Help Center guide, `build.mjs guide-`); rendered from the Help Center screenshots — see ad-videos/README.md
    archive/
      mqttcloud-legacy/    dead code stripped from apps/web (MQTT broker feature, unrelated
                            to this product) — kept for reference, not wired up

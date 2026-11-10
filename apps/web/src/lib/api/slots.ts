@@ -21,6 +21,9 @@ export async function getAvailableSlots({ salon, stylistId, serviceIds, dateKey 
 
   const params = new URLSearchParams({ date: dateKey, serviceIds: serviceIds.join(",") });
   if (stylistId) params.set("stylistId", stylistId);
+  // A waiting customer's link (SLOT_OPENED, ?hold=…): the time held for them shows as free to them only.
+  const hold = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("hold") : null;
+  if (hold && /^[\w-]{6,30}$/.test(hold)) params.set("hold", hold);
 
   return salonApiFetch<TimeSlot[]>(`/salons/${encodeURIComponent(salon.slug)}/availability?${params.toString()}`);
 }

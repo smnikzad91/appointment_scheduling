@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.nobatet.data.SalonDetail
+import app.nobatet.data.groupServicesByCategory
 import app.nobatet.data.ServiceLocation
 import app.nobatet.data.TimeSlot
 import app.nobatet.data.label
@@ -138,11 +139,15 @@ private fun ServicesStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState
             AppTextButton(onClick = { vm.chooseStylist(null) }) { Text("همه خدمات سالن") }
         }
     }
-    salon.activeServices.filter { s -> stylist == null || salon.independent || stylist.services.any { it.serviceId == s.id } }.forEach { s ->
-        Choice(s.id in b.serviceIds, onClick = { vm.toggleService(s.id) }) {
-            Column {
-                Text(s.name, color = c.ink, style = MaterialTheme.typography.titleSmall)
-                Muted("${formatDuration(s.durationMinutes)}، ${formatToman(s.priceToman)}")
+    val offered = salon.activeServices.filter { s -> stylist == null || salon.independent || stylist.services.any { it.serviceId == s.id } }
+    groupServicesByCategory(salon.serviceCategories, offered).forEach { (name, services) ->
+        if (name != null) Muted(name)
+        services.forEach { s ->
+            Choice(s.id in b.serviceIds, onClick = { vm.toggleService(s.id) }) {
+                Column {
+                    Text(s.name, color = c.ink, style = MaterialTheme.typography.titleSmall)
+                    Muted("${formatDuration(s.durationMinutes)}، ${formatToman(s.priceToman)}")
+                }
             }
         }
     }
@@ -258,7 +263,7 @@ private fun SummaryStep(vm: SalonViewModel, salon: SalonDetail, b: BookingState)
         SummaryLine("کیف پول", formatToman(wallet.balanceToman))
         Muted(
             (if (b.stylistId == null && !salon.independent) "مبلغ نهایی با آرایشگری که تعیین می‌شود قطعی می‌شود. " else "") +
-                "اگر نوبت لغو شود، پیش‌پرداخت کامل به کیف پول شما برمی‌گردد.",
+                "اگر سالن نوبت را لغو کند یا شما پیش از تایید سالن لغو کنید، پیش‌پرداخت کامل به کیف پول شما برمی‌گردد؛ بعد از تایید سالن، لغو از طرف شما پیش‌پرداخت را برنمی‌گرداند.",
         )
     }
     val short = vm.walletShort()

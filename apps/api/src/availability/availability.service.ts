@@ -48,7 +48,7 @@ export class AvailabilityService {
     const perStylistSlots = await Promise.all(
       stylists.map((stylist) => {
         const { durationMinutes } = sumEffectivePricing(effectiveServicePricing(services, stylist.services));
-        return this.computeStylistSlots(stylist.id, dayOfWeek, dayStart, durationMinutes, isToday, nowMinute);
+        return this.computeStylistSlots(stylist.id, dayOfWeek, dayStart, durationMinutes, isToday, nowMinute, query.hold);
       }),
     );
 
@@ -71,16 +71,22 @@ export class AvailabilityService {
     durationMinutes: number,
     isToday: boolean,
     nowMinute: number,
+    holdCode?: string,
   ): Promise<TimeSlot[]> {
     const hours = await this.prisma.workingHour.findFirst({ where: { stylistId, dayOfWeek } });
     if (!hours) return [];
 
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60_000);
 
-    const [timeOff, appointments] = await Promise.all([
+    const [timeOff, appointments, holds] = await Promise.all([
       this.prisma.timeOff.findMany({ where: { stylistId, startAt: { lt: dayEnd }, endAt: { gt: dayStart } } }),
       this.prisma.appointment.findMany({
         where: { stylistId, status: { in: ACTIVE_STATUSES }, startAt: { lt: dayEnd }, endAt: { gt: dayStart } },
+      }),
+      // freed times held for the first customer on the waitlist — free only to them (their link's code)
+      this.prisma.slotHold.findMany({
+        where: { stylistId, releasedAt: null, expiresAt: { gt: new Date() }, startAt: { lt: dayEnd }, endAt: { gt: dayStart }, ...(holdCode && { code: { not: holdCode } }) },
+        select: { startAt: true, endAt: true },
       }),
     ]);
 
@@ -91,7 +97,7 @@ export class AvailabilityService {
       const slotEnd = new Date(dayStart.getTime() + end * 60_000);
 
       const blockedByTimeOff = timeOff.some((t) => slotStart < t.endAt && slotEnd > t.startAt);
-      const blockedByAppointment = appointments.some((a) => start < minutesSince(dayStart, a.endAt) && end > minutesSince(dayStart, a.startAt));
+      const blockedByAppointment = [...appointments, ...holds].some((a) => start < minutesSince(dayStart, a.endAt) && end > minutesSince(dayStart, a.startAt));
       const isPast = isToday && start <= nowMinute;
 
       slots.push({ startMinute: start, available: !blockedByTimeOff && !blockedByAppointment && !isPast });

@@ -7,10 +7,13 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +44,11 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var self by remember { mutableStateOf<SelfStylist?>(null) }
     var showNotifications by remember { mutableStateOf(false) }
+    // «بازگشت» on nodepass's page after a top-up (DeepLink.Wallet)
+    val link by container.links.link.collectAsState()
+    LaunchedEffect(link) {
+        if (link == app.nobatet.data.DeepLink.Wallet) { container.links.link.value = null; showNotifications = false; page = SalonPage.WALLET }
+    }
     fun loadSelf() = scope.launch { runCatching { container.api.myStylist() }.onSuccess { self = it } }
     LaunchedEffect(Unit) { data.loadAll(); if (independent) loadSelf() }
 
@@ -61,29 +69,38 @@ fun SalonPanel(container: AppContainer, user: ApiUser, independent: Boolean, onS
         return
     }
     page?.let { p ->
-        SalonPageScreen(p, container, data, onBack = { page = null })
+        SalonPageScreen(p, container, data, onBack = { page = null }, onOpenPage = { page = it })
         return
     }
     val context = androidx.compose.ui.platform.LocalContext.current
+    var feedbackOpen by rememberSaveable { mutableStateOf(false) }
+    if (feedbackOpen) app.nobatet.ui.panels.FeedbackDialog(container, "SALON_OWNER") { feedbackOpen = false }
     PanelScaffold(
         panelName = if (independent) "پنل آرایشگر مستقل" else "پنل سالن",
         identity = app.nobatet.ui.panels.ShellIdentity(salon.name, salon.logoUrl, square = true),
         accountName = "${user.firstName} ${user.lastName}".trim(),
         accountLinks = listOf(
             app.nobatet.ui.panels.AccountLink("کیف پول", Icons.Outlined.AccountBalanceWallet) { page = SalonPage.WALLET },
+            app.nobatet.ui.panels.AccountLink("آمار بازدید", Icons.Outlined.Visibility) { page = SalonPage.VISITS },
+            app.nobatet.ui.panels.AccountLink("آنالیز رفتار مشتری", Icons.Outlined.Insights) { page = SalonPage.CUSTOMERS },
+            app.nobatet.ui.panels.feedbackLink { feedbackOpen = true },
             app.nobatet.ui.panels.tutorialsLink(context, if (independent) "independent" else "owner"),
         ),
         onSignOut = onSignOut,
         selectedTab = tab,
         onSelectTab = { tab = it; if (it <= 1) data.loadAppointments() },
         actions = { app.nobatet.ui.customer.NotificationBell(container) { showNotifications = true } },
+        // an independent stylist gets their own tour (no stylists tab)
+        tour = remember(independent, user.id) {
+            app.nobatet.ui.panels.PanelTourSpec("${if (independent) "independent" else "salon"}:${user.id}", app.nobatet.ui.panels.businessTour(independent))
+        },
         tabs = listOf(
             PanelTab("خانه", Icons.Outlined.Home) { SalonHomeScreen(container, data, sheets, onGoToTab = { tab = it }) { page = it } },
             PanelTab("نوبت‌ها", Icons.Outlined.CalendarMonth, title = "نوبت‌ها") { SalonAppointmentsScreen(data, sheets) },
             PanelTab("خدمات", Icons.Outlined.ContentCut, title = "خدمات", subtitle = "${data.services.count { it.active }.toString().toPersianDigits()} خدمت فعال") { SalonServicesScreen(container, data) },
             if (independent) PanelTab("ساعات کاری", Icons.Outlined.Schedule, title = "ساعات کاری", subtitle = "مشتری‌ها فقط در همین ساعت‌ها می‌توانند با شما نوبت بگیرند.") {
                 self?.let { StylistScheduleScreen(container, it) { loadSelf() } } ?: Loading()
-            } else PanelTab("آرایشگرها", Icons.Outlined.Groups, title = "آرایشگرها", subtitle = stylistsSubtitle(data)) { SalonStylistsScreen(container, data) },
+            } else PanelTab("آرایشگرها", Icons.Outlined.Groups, title = "آرایشگرها", subtitle = stylistsSubtitle(data)) { SalonStylistsScreen(container, data, ownerId = user.id) { page = SalonPage.SCHEDULE } },
             PanelTab(
                 "تنظیمات", Icons.Outlined.Settings, title = if (independent) "تنظیمات کسب‌وکار" else "تنظیمات سالن",
                 subtitle = if (independent) "این اطلاعات در صفحه رزرو شما به مشتری‌ها نشان داده می‌شود." else "این اطلاعات در صفحه رزرو سالن به مشتری‌ها نشان داده می‌شود.",

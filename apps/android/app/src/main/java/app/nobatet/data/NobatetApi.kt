@@ -207,6 +207,14 @@ interface NobatetApi {
     @GET("salons/mine/subscription")
     suspend fun mySubscription(): OwnerSubscription
 
+    /** «آمار بازدید» of the owner's public page: days = 7 | 30 | 90. */
+    @GET("salons/mine/insights/visits")
+    suspend fun visitInsights(@Query("days") days: Int): VisitInsights
+
+    /** «آنالیز رفتار مشتری» from past bookings: days = 30 | 90 | 365. */
+    @GET("salons/mine/insights/customers")
+    suspend fun customerInsights(@Query("days") days: Int): CustomerInsights
+
     /** Plans the owner can buy from the wallet, and the credit for switching away from the running one. */
     @GET("salons/mine/subscription/plans")
     suspend fun purchasablePlans(): PurchasablePlans
@@ -244,6 +252,10 @@ interface NobatetApi {
 
     @POST("salons/mine/stylists")
     suspend fun inviteStylist(@Body body: InviteStylistRequest): OwnerStylist
+
+    /** The owner works as a stylist in their own salon too: their own stylist profile (0% commission, every active service). */
+    @POST("salons/mine/self-stylist")
+    suspend fun addSelfStylist(): OwnerStylist
 
     @POST("salons/mine/stylists/{id}/setup-link")
     suspend fun newSetupLink(@Path("id") id: String): SetupLink
@@ -306,7 +318,15 @@ interface UpdateApi {
 
 /** apps/web's own routes (https://nobatet.app/api/…), with the same apps/api token. */
 interface WebApi {
-    /** Automatic top-ups (card to card, confirmed by the bank SMS): recent ones + whether any card is set up. */
+    /** Plans a new salon / independent stylist can sign up with, and the free-trial days (public). */
+    @GET("api/public/pricing")
+    suspend fun signUpPlans(): SignUpPlans
+
+    /** «نظرات و پیشنهادات» (public; a signed-in sender's account is kept). */
+    @POST("api/public/feedback")
+    suspend fun sendFeedback(@Body body: FeedbackRequest): kotlinx.serialization.json.JsonObject
+
+    /** Automatic top-ups (card to card through nodepass.ir): recent ones + whether top-ups are available. */
     @GET("api/user/finance/top-ups")
     suspend fun topUps(): TopUpList
 
@@ -319,9 +339,12 @@ interface WebApi {
     @DELETE("api/user/finance/top-ups/{id}")
     suspend fun cancelTopUp(@Path("id") id: String): kotlinx.serialization.json.JsonObject
 
-    /** Balance and the last 50 movements. */
+    /**
+     * Balance and a page of movements: page, pageSize, direction (all|in|out), kind, period (all|7|30|90|365),
+     * sort (newest|oldest|credit|debit) — apps/web lib/walletQuery.ts. None: the newest 50.
+     */
     @GET("api/user/finance/wallet")
-    suspend fun wallet(): WalletInfo
+    suspend fun wallet(@QueryMap params: Map<String, String> = emptyMap()): WalletInfo
 
     @GET("api/user/finance/withdrawals")
     suspend fun withdrawals(): WithdrawalList

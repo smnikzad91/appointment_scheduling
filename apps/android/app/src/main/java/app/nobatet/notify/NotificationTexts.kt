@@ -86,6 +86,11 @@ fun describe(n: AppNotification, scope: NotificationScope): NotificationText {
                 NotificationTarget.SALON_PAGE, n.str("salonSlug"),
             )
         }
+        // A booking chat message (the app has no chat screen yet: it opens the bookings; the web one has the chat)
+        "NEW_MESSAGE" -> NotificationText(
+            if (scope == NotificationScope.CUSTOMER) "پیام تازه از ${n.str("senderName") ?: salon}" else "پیام $customer" + (when_?.let { " درباره نوبت $it" } ?: ""),
+            n.str("preview"), appointments,
+        )
         "REVIEW_APPROVED" -> {
             val about = if (n.str("target") == "SALON") salon else "${n.str("stylistName") ?: "آرایشگر"} ($salon)"
             NotificationText("نظر شما درباره $about منتشر شد", "حالا در صفحه سالن برای همه نمایش داده می‌شود.", appointments)

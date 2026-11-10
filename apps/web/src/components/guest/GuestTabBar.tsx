@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarCheck, Home, LifeBuoy, Search, UserRound } from "lucide-react";
+import LiveChat from "@/components/livechat/LiveChat";
 
 // Phone bottom bar for the public site — same shape as the panels' tab bar (AppShell), in the
 // guest theme. Also on /s/[slug], where the sticky «رزرو نوبت» bar floats just above it; not on the
@@ -22,6 +23,8 @@ export default function GuestTabBar() {
 
   return (
     <>
+      {/* «گفتگو با پشتیبانی» — not on a salon's own page, where a visitor would take it for the salon's chat */}
+      {!pathname.startsWith("/s/") && <LiveChat place="guest" />}
       {/* keeps the last content clear of the bar */}
       <div aria-hidden className="h-[calc(62px+env(safe-area-inset-bottom))] md:hidden" />
       <nav aria-label="پیمایش اصلی" className="app-pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-g-line bg-g-bg/75 backdrop-blur-xl md:hidden">
@@ -37,7 +40,7 @@ export default function GuestTabBar() {
               >
                 <span
                   className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors duration-300 ${
-                    active ? "bg-g-accent/15 text-g-accent shadow-[0_0_18px_-6px_rgb(242_135_106/0.8)]" : "text-g-faint"
+                    active ? "bg-g-accent/15 text-g-accent shadow-[0_0_18px_-6px_rgb(198_138_114/0.8)]" : "text-g-faint"
                   }`}
                 >
                   <t.icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.3 : 1.8} aria-hidden />

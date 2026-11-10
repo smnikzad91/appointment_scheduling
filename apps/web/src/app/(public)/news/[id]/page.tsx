@@ -98,7 +98,7 @@ export default async function NewsDetailPage({ params }: Props) {
     publisher: {
       "@type": "Organization",
       name: SITE_NAME,
-      logo: { "@type": "ImageObject", url: `${SITE_URL}/images/logo/logo_symbol_transparent.png` },
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/images/logo/nobatet-symbol-v2.png` },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
   };

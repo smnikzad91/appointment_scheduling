@@ -1,5 +1,6 @@
 package app.nobatet.ui.stylist
 
+import app.nobatet.ui.panels.tourTarget
 import app.nobatet.ui.components.AppSwitch
 import app.nobatet.ui.components.AppTextButton
 import app.nobatet.ui.components.AppTextField
@@ -48,7 +49,7 @@ fun StylistServicesScreen(container: AppContainer, stylist: SelfStylist, onChang
         val services = stylist.services.filter { it.service.active }
         if (services.isEmpty()) Empty("هنوز خدمتی به شما اختصاص داده نشده", "مدیر سالن خدمات شما را مشخص می‌کند.")
         else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(services, key = { it.serviceId }) { ServiceEditor(container, it, onChanged) }
+            items(services, key = { it.serviceId }) { Box(Modifier.tourTarget("service-card")) { ServiceEditor(container, it, onChanged) } }
         }
     }
 }

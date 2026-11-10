@@ -236,7 +236,7 @@ function VisitLog({ from, to, lang }: { from: string; to: string; lang: string }
           {t("anLog")} {data && <span className="font-normal text-gray-400">({num(data.total.toLocaleString("en-US"))})</span>}
         </h2>
         <select value={kind} onChange={(e) => { setKind(e.target.value); setPage(1); }} className={input}>
-          <option value="">{t("receivedSmsAll")}</option>
+          <option value="">{t("filterAll")}</option>
           {(Object.keys(kindLabel) as LogRow["kind"][]).map((k) => <option key={k} value={k}>{kindLabel[k]}</option>)}
         </select>
         <input value={path} onChange={(e) => setPath(e.target.value)} placeholder={t("anPathFilter")} dir="ltr" className={`${input} w-44`} />

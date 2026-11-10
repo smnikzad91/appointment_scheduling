@@ -28,7 +28,7 @@ type GridCtx = {
 
 // ── Themes ────────────────────────────────────────────────────────────────────
 const agLight = themeQuartz.withParams({
-  accentColor:             "#465fff",
+  accentColor:             "#9c5e4b",
   backgroundColor:         "#ffffff",
   foregroundColor:         "#111827",
   borderColor:             "#e5e7eb",
@@ -44,7 +44,7 @@ const agLight = themeQuartz.withParams({
 });
 
 const agDark = themeQuartz.withParams({
-  accentColor:             "#465fff",
+  accentColor:             "#9c5e4b",
   backgroundColor:         "#111827",
   foregroundColor:         "#f9fafb",
   borderColor:             "#374151",

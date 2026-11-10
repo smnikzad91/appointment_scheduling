@@ -2,7 +2,8 @@
 
 One highlight per panel, generated from the Help Center guides (`/tutorials`): for every guide a
 cover slide, then one slide per step: the step's screenshot with the same highlight frames as the
-Help Center, and each frame's Persian caption beside it. 1080×1920 PNG (9:16); titles, captions and
+Help Center, and each frame's Persian caption beside it, on the dark brand palette (branding/brand.md).
+1080×1920 PNG (9:16); titles, captions and
 text stay clear of the top/bottom ~250 px that Instagram's own UI covers.
 
 | Folder | Highlight |

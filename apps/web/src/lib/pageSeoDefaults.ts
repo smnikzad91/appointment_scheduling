@@ -36,6 +36,7 @@ export const PAGE_SEO_KEYS = [
   "blog",
   "news",
   "contact",
+  "feedback",
   "privacy",
   "terms",
 ] as const;
@@ -141,6 +142,13 @@ export const PAGE_SEO_DEFAULTS: Record<PageSeoKey, PageSeoEntry> = {
     title: "تماس با ما",
     description: "سوال، پیشنهاد یا مشکل دارید؟ از طریق فرم تماس با تیم نوبتت در ارتباط باشید.",
     keywords: ["تماس با ما", "پشتیبانی", "ارتباط", "نوبتت"],
+  },
+  feedback: {
+    label: { fa: "نظرات و پیشنهادات", en: "Feedback" },
+    path: "/feedback",
+    title: "نظرات و پیشنهادات",
+    description: "نظر، پیشنهاد یا انتقادتان درباره نوبتت را بنویسید؛ هر پیام را می‌خوانیم و نوبتت را با نظر شما بهتر می‌کنیم.",
+    keywords: ["نظرات و پیشنهادات", "انتقادات و پیشنهادات", "نوبتت"],
   },
   privacy: {
     label: { fa: "حریم خصوصی", en: "Privacy" },

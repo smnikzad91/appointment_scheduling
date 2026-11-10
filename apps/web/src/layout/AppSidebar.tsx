@@ -27,11 +27,14 @@ import {
 } from "../icons/index";
 import { useT } from "@/i18n/useT";
 import { useLanguage } from "@/context/LanguageContext";
+import { useWaitingChats } from "@/components/livechat/useWaitingChats";
 
 type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
+  /** A count shown after the name (e.g. live chats waiting for a reply); 0 hides it. */
+  badge?: number;
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
@@ -42,12 +45,15 @@ const AppSidebar: React.FC = () => {
   const t = useT();
   const { lang } = useLanguage();
   const isRTL = lang === "fa";
+  const waitingChats = useWaitingChats();
 
   const navItems = useMemo<NavItem[]>(() => [
     { icon: <GridIcon />,       name: t("navDashboard"),    path: "/admin" },
     { icon: <UserCircleIcon />, name: t("navUserProfile"),  path: "/admin/profile" },
     { icon: <GroupIcon />,      name: t("navUsers"),        path: "/admin/users" },
     { icon: <ListIcon />,       name: t("navSalons"),       path: "/admin/salons" },
+    { icon: <GroupIcon />,      name: t("navStylistApproval"), path: "/admin/stylists" },
+    { icon: <ChatIcon />,       name: t("navLiveChat"), path: "/admin/live-chat", badge: waitingChats },
     { icon: <CalenderIcon />,   name: t("navAppointments"), path: "/admin/appointments" },
     { icon: <GridIcon />,       name: t("navAnalytics"),    path: "/admin/analytics" },
     { icon: <BoxCubeIcon />,    name: t("navAppReleases"),  path: "/admin/app-releases" },
@@ -57,12 +63,11 @@ const AppSidebar: React.FC = () => {
     { icon: <MegaphoneIcon />,  name: t("navAnnouncements"),  path: "/admin/announcements" },
     { icon: <FaqIcon />,        name: t("navFaq"),             path: "/admin/faqs" },
     { icon: <EnvelopeIcon />,  name: t("navContact"),         path: "/admin/contact" },
+    { icon: <ChatIcon />,      name: t("navFeedback"),        path: "/admin/feedback" },
     { icon: <ShieldIcon />,    name: t("navLegal"),           path: "/admin/legal" },
     { icon: <PageIcon />,      name: t("navSeoSettings"),     path: "/admin/seo-settings" },
     { icon: <ChatIcon />,       name: t("navTickets"),      path: "/admin/tickets" },
     { icon: <DollarLineIcon />, name: t("navFinance"),      path: "/admin/finance" },
-    { icon: <DollarLineIcon />, name: t("bankSmsNav"),      path: "/admin/bank-sms" },
-    { icon: <EnvelopeIcon />,   name: t("receivedSmsNav"),  path: "/admin/received-sms" },
     {
       icon: <DocsIcon />,
       name: t("navBlog"),
@@ -83,7 +88,7 @@ const AppSidebar: React.FC = () => {
         { name: t("navNewsPublic"), path: "/news" },
       ],
     },
-  ], [t]);
+  ], [t, waitingChats]);
 
   const [openSubmenu, setOpenSubmenu] = useState<{ type: "main"; index: number } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
@@ -177,6 +182,11 @@ const AppSidebar: React.FC = () => {
                     {nav.icon}
                   </span>
                   {expanded && <span className="flex-1 text-start">{nav.name}</span>}
+                  {expanded && !!nav.badge && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white">
+                      {nav.badge.toLocaleString(isRTL ? "fa-IR" : "en-US")}
+                    </span>
+                  )}
                 </Link>
               )
             )}
@@ -231,7 +241,7 @@ const AppSidebar: React.FC = () => {
     >
       {/* Logo */}
       <div className={`flex h-16 shrink-0 items-center border-b border-gray-100 px-4 dark:border-gray-800 ${expanded ? "justify-start gap-2.5" : "justify-center"}`}>
-        <Image src="/images/logo/logo_symbol_transparent.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
+        <Image src="/images/logo/nobatet-symbol-v2.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
         {expanded && (
           <Link href="/admin" className="text-base font-bold tracking-tight text-gray-900 dark:text-white">
             نوبتت

@@ -99,7 +99,7 @@ export class AuthService {
     await this.useOtp(dto.phone, dto.code);
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const slug = await generateUniqueSlug(this.prisma, dto.salonName);
-    const subscription = await this.subscriptions.initialFor(dto.planId);
+    const subscription = await this.subscriptions.initialFor(dto.planId, independent ? SalonKind.INDEPENDENT : SalonKind.SALON);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const owner = await tx.user.create({
@@ -127,10 +127,13 @@ export class AuthService {
           phone: dto.salonPhone ?? dto.phone,
           // New salons need platform-admin approval before they're publicly visible.
           status: SalonStatus.PENDING,
+          signupSource: dto.signupSource ?? null,
+          signupSourceNote: (dto.signupSource === "OTHER" && dto.signupSourceNote?.trim()) || null,
           ...subscription,
           ...(independent && {
             kind: SalonKind.INDEPENDENT,
             serviceLocations: dto.serviceLocations,
+            clientGender: dto.clientGender ?? null,
             serviceArea: dto.serviceArea ?? null,
             hostSalonName: dto.hostSalonName ?? null,
           }),
@@ -153,6 +156,11 @@ export class AuthService {
       return owner;
     });
 
+    this.sms.notifyAdmin({
+      who: independent ? "independent" : "salon",
+      name: independent ? `${dto.firstName} ${dto.lastName}`.trim() : dto.salonName.trim(),
+      place: location.city,
+    });
     return this.buildAuthResponse(user);
   }
 

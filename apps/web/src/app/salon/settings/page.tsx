@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CLIENT_GENDERS, CLIENT_GENDER_LABEL } from "@/lib/clientGender";
 import Link from "next/link";
 import ReviewsLinkCard from "@/components/app/ReviewsLinkCard";
 import { SubscriptionCard, useMySubscription } from "@/components/app/Subscription";
@@ -51,6 +52,7 @@ export default function SalonSettingsPage() {
           phone: s.phone,
           instagram: s.instagram ?? "",
           brandColor: s.brandColor,
+          ...(s.clientGender && { clientGender: s.clientGender }),
           latitude: s.latitude ?? undefined,
           longitude: s.longitude ?? undefined,
           ...(isIndependent(s) && { serviceLocations: s.serviceLocations, serviceArea: s.serviceArea ?? "", hostSalonName: s.hostSalonName ?? "" }),
@@ -173,6 +175,25 @@ export default function SalonSettingsPage() {
             placeholder={independent ? "چند خط درباره خودتان، تخصص‌ها و سابقه کار" : "چند خط درباره سالن، تخصص‌ها و فضای آن"}
           />
         </Field>
+        <Field label={independent ? "مشتری‌های شما" : "سالن ویژه"} hint="مشتری‌ها در جستجو با همین گزینه شما را پیدا می‌کنند">
+          <div role="radiogroup" aria-label={independent ? "مشتری‌های شما" : "سالن ویژه"} className="grid grid-cols-2 gap-2">
+            {CLIENT_GENDERS.map((g) => (
+              <button
+                key={g}
+                type="button"
+                role="radio"
+                aria-checked={form.clientGender === g}
+                onClick={() => update({ clientGender: g })}
+                className={cx(
+                  "h-12 rounded-2xl border text-[15px] font-bold transition",
+                  form.clientGender === g ? "border-app-accent bg-app-accent-soft text-app-accent" : "border-app-line bg-app-card text-app-muted",
+                )}
+              >
+                {CLIENT_GENDER_LABEL[g]}
+              </button>
+            ))}
+          </div>
+        </Field>
         <ProvinceCitySelect
           value={{ province: form.province ?? "", city: form.city ?? "" }}
           onChange={(v) => update(v)}
@@ -261,7 +282,7 @@ export default function SalonSettingsPage() {
       </Card>
 
       <SectionTitle>رنگ برند</SectionTitle>
-      <Card className="p-4">
+      <Card data-tour="brand-color" className="p-4">
         <div className="flex flex-wrap gap-3">
           {BRAND_SWATCHES.map((color) => (
             <button

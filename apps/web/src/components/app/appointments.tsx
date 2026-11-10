@@ -2,7 +2,7 @@
 
 import { PLACE_LABEL } from "@/lib/independent";
 import { useCallback, useEffect, useState } from "react";
-import { Check, CheckCheck, Pencil, Phone, UserX, X, type LucideIcon } from "lucide-react";
+import { Check, CheckCheck, MessageCircle, Pencil, Phone, UserX, X, type LucideIcon } from "lucide-react";
 import type { StylistAppointment } from "@/lib/api/stylistSelf";
 import { formatMinutesAsClock, formatToman, toPersianDigits } from "@/lib/persian";
 import { addDaysToDateKey, formatSalonDate, toSalonWallTime } from "@/lib/salonTime";
@@ -63,11 +63,14 @@ export function AppointmentCard({
   showStylist,
   onOpen,
   index = 0,
+  unread = 0,
 }: {
   appointment: AppAppointment;
   showStylist?: boolean;
   onOpen: (a: AppAppointment) => void;
   index?: number;
+  /** Unread booking chat messages from the customer. */
+  unread?: number;
 }) {
   const { start, duration } = wall(a);
   const muted = a.status === "CANCELLED" || a.status === "NO_SHOW";
@@ -101,6 +104,12 @@ export function AppointmentCard({
             </>
           )}
           <span>{formatToman(a.priceToman)}</span>
+          {unread > 0 && (
+            <span className="ms-auto flex items-center gap-1 rounded-full bg-app-accent px-2 py-0.5 text-[11px] font-black text-app-accent-ink">
+              <MessageCircle className="h-3 w-3" aria-hidden />
+              {toPersianDigits(unread)}
+            </span>
+          )}
         </span>
       </span>
     </button>
@@ -114,11 +123,14 @@ export function AppointmentList({
   onOpen,
   order = "asc",
   hideDayHeaders,
+  unread,
 }: {
   appointments: AppAppointment[];
   showStylist?: boolean;
   onOpen: (a: AppAppointment) => void;
   order?: "asc" | "desc";
+  /** Unread booking chat messages per appointment id. */
+  unread?: Record<string, number>;
   /** For a single day whose heading is already shown (the calendar view). */
   hideDayHeaders?: boolean;
 }) {
@@ -135,7 +147,7 @@ export function AppointmentList({
           )}
           <div className="flex flex-col gap-2.5">
             {group.items.map((a) => (
-              <AppointmentCard key={a.id} appointment={a} showStylist={showStylist} onOpen={onOpen} index={index++} />
+              <AppointmentCard key={a.id} appointment={a} showStylist={showStylist} onOpen={onOpen} index={index++} unread={unread?.[a.id]} />
             ))}
           </div>
         </section>
@@ -169,10 +181,15 @@ export function AppointmentSheet({
   onSetStatus,
   onEdit,
   busyStatus,
+  onChat,
+  unread = 0,
 }: {
   appointment: AppAppointment | null;
   showStylist?: boolean;
   onClose: () => void;
+  /** Opens the booking's chat with the customer. */
+  onChat?: (a: AppAppointment) => void;
+  unread?: number;
   /** Opens the edit form; offered while the appointment is still open. */
   onEdit?: (a: AppAppointment) => void;
   onSetStatus: (a: AppAppointment, status: AppointmentStatus, balanceMethod?: BalanceMethod) => void;
@@ -230,6 +247,15 @@ export function AppointmentSheet({
             {toPersianDigits(a.customer.phone)}
           </span>
         </a>
+      )}
+
+      {onChat && (
+        <Button variant="secondary" block icon={MessageCircle} onClick={() => onChat(a)} className="mb-2.5">
+          پیام به مشتری
+          {unread > 0 && (
+            <span className="ms-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-app-accent px-1.5 text-[11px] font-black text-app-accent-ink">{toPersianDigits(unread)}</span>
+          )}
+        </Button>
       )}
 
       {onEdit && actions.length > 0 && (

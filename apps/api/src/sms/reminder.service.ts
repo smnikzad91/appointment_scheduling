@@ -213,9 +213,10 @@ export class ReminderService implements OnApplicationBootstrap, OnModuleDestroy 
       const prepaid = a.prepaidToman > 0;
       const text = stylistNewBookingText({ ...params, homeVisit: a.serviceLocation === "CLIENT_HOME", prepaid });
       // A prepaid booking is always announced (the customer paid): counted against the allowance
-      // when there is some, sent anyway when there isn't.
+      // when there is some, sent anyway when there isn't — and even when the stylist's wallet is at
+      // the SMS debt limit (evenInDebt; still charged).
       if (!(await this.subscriptions.takeReminderSms(a.salonId, now, smsParts(text))) && !prepaid) continue;
-      if (await this.sms.send({ kind: "new-booking-stylist", to: a.stylist.user.phone, params, text }, { userId: a.stylist.userId, appointmentId: a.id, note: "اطلاع نوبت جدید به آرایشگر" })) sent++;
+      if (await this.sms.send({ kind: "new-booking-stylist", to: a.stylist.user.phone, params, text }, { userId: a.stylist.userId, appointmentId: a.id, note: "اطلاع نوبت جدید به آرایشگر", evenInDebt: prepaid })) sent++;
     }
     return sent;
   }

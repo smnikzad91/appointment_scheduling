@@ -6,6 +6,8 @@ import type { Salon, Booking } from "@/types/salon";
 import type { ServiceLocation } from "@/lib/independent";
 import { useBackgroundDraft } from "@/lib/useBackgroundDraft";
 import { trackBookingEvent } from "@/lib/analytics/client";
+import { toastError } from "@/lib/toastError";
+import { toPersianDigits } from "@/lib/persian";
 
 export type BookingStep = "services" | "stylist" | "datetime" | "contact" | "otp" | "summary" | "success";
 
@@ -93,7 +95,7 @@ export function BookingProvider({ salon, prefill, children }: { salon: Salon; pr
     () => ({ ...INITIAL_STATE, serviceLocation: independent && salon.serviceLocations.length === 1 ? salon.serviceLocations[0] : null }),
     [independent, salon.serviceLocations],
   );
-  const [isOpen, setIsOpen] = useState(!!prefill);
+  const [isOpen, setIsOpen] = useState(!!prefill && salon.onlineBooking);
   // With services already chosen, start at the day/time step; back still reaches the earlier ones.
   const [step, setStep] = useState<BookingStep>(prefill?.serviceIds.length ? "datetime" : "services");
   const [state, setState] = useState<BookingState>(() =>
@@ -107,20 +109,29 @@ export function BookingProvider({ salon, prefill, children }: { salon: Salon; pr
     setResult(null);
   }, [initialState]);
 
+  // The salon's plan ran out (apps/api refuses the booking too): say so instead of opening the sheet.
+  const refuseIfClosed = useCallback(() => {
+    if (salon.onlineBooking) return false;
+    toastError(`نوبت‌دهی آنلاین ${salon.name} فعلاً بسته است؛ برای رزرو تماس بگیرید: ${toPersianDigits(salon.phone)}`);
+    return true;
+  }, [salon]);
+
   const open = useCallback(() => {
+    if (refuseIfClosed()) return;
     reset();
     setIsOpen(true);
     trackBookingEvent("booking_open");
-  }, [reset]);
+  }, [reset, refuseIfClosed]);
 
   const openWithService = useCallback(
     (serviceId: string, stylistId?: string) => {
+      if (refuseIfClosed()) return;
       reset();
       setState((s) => ({ ...s, serviceIds: [serviceId], stylistId: stylistId ?? null }));
       setIsOpen(true);
       trackBookingEvent("booking_open");
     },
-    [reset],
+    [reset, refuseIfClosed],
   );
 
   const close = useCallback(() => setIsOpen(false), []);
@@ -144,7 +155,7 @@ export function BookingProvider({ salon, prefill, children }: { salon: Salon; pr
     `booking:${salon.slug}`,
     () => (isOpen && step !== "success" ? { step, state } : null),
     (draft) => {
-      if (!steps.includes(draft.step)) return;
+      if (!salon.onlineBooking || !steps.includes(draft.step)) return;
       const afterOtp = steps.includes("otp") && steps.indexOf(draft.step) > steps.indexOf("otp");
       setState({ ...initialState, ...draft.state });
       setStep(afterOtp && !draft.state.accessToken ? "contact" : draft.step);

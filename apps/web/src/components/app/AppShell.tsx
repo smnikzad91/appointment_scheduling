@@ -4,14 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, Moon, Sun, type LucideIcon } from "lucide-react";
+import { Compass, LogOut, Moon, Sun, type LucideIcon } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import Image from "next/image";
 import { SITE_NAME } from "@/lib/site";
 import Sheet from "./Sheet";
 import InstallAppBanner from "./InstallAppBanner";
+import LiveChat from "@/components/livechat/LiveChat";
 import { Avatar, ListGroup, cx } from "./ui";
 import { clearAllDrafts } from "@/lib/formDrafts";
+import PanelTour, { usePanelTour, type TourStep } from "./PanelTour";
 
 export interface AppTab {
   href: string;
@@ -46,6 +48,7 @@ export default function AppShell({
   accountLinks = [],
   identity,
   actions,
+  tour,
   children,
 }: {
   panelName: string;
@@ -54,6 +57,8 @@ export default function AppShell({
   identity?: ShellIdentity | null;
   /** Extra app-bar buttons, shown before the avatar (e.g. the notification bell). */
   actions?: React.ReactNode;
+  /** First-run guided tour; targets are `data-tour` values (`tab:<href>`, `account`, `actions`, …). */
+  tour?: { id: string; steps: TourStep[] };
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -61,6 +66,7 @@ export default function AppShell({
   const { theme, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const panelTour = usePanelTour(tour && session?.user?.id ? `${tour.id}:${session.user.id}` : null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
@@ -84,15 +90,19 @@ export default function AppShell({
       >
         <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
           <div className="flex items-center gap-2.5">
-            <Image src="/images/logo/logo_symbol_transparent.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
+            <Image src="/images/logo/nobatet-symbol-v2.png" alt="" width={36} height={36} priority className="h-9 w-9 shrink-0" />
             <div className="leading-tight">
               <p className="text-[15px] font-black text-app-ink">{SITE_NAME}</p>
               <p className="text-[11px] font-medium text-app-muted">{panelName}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            {actions}
-            <button type="button" onClick={() => setAccountOpen(true)} aria-label="حساب کاربری" className="rounded-full active:scale-90">
+            {actions && (
+              <span data-tour="actions" className="flex items-center">
+                {actions}
+              </span>
+            )}
+            <button type="button" data-tour="account" onClick={() => setAccountOpen(true)} aria-label="حساب کاربری" className="rounded-full active:scale-90">
               <Avatar name={shown.name} src={shown.src} shape={shown.shape} size={38} className="ring-2 ring-app-card" />
             </button>
           </div>
@@ -105,6 +115,7 @@ export default function AppShell({
       </main>
 
       <InstallAppBanner />
+      <LiveChat place="panel" />
 
       {/* Tab bar */}
       <nav
@@ -118,6 +129,7 @@ export default function AppShell({
               <Link
                 key={tab.href}
                 href={tab.href}
+                data-tour={`tab:${tab.href}`}
                 aria-current={active ? "page" : undefined}
                 className="flex min-h-[62px] flex-1 select-none flex-col items-center justify-center gap-1 active:scale-95"
               >
@@ -160,6 +172,19 @@ export default function AppShell({
               {link.label}
             </Link>
           ))}
+          {tour && (
+            <button
+              type="button"
+              onClick={() => {
+                setAccountOpen(false);
+                panelTour.start();
+              }}
+              className="flex h-14 w-full items-center gap-3 px-4 text-[15px] font-semibold text-app-ink active:bg-app-card-2"
+            >
+              <Compass className="h-5 w-5 text-app-muted" aria-hidden />
+              تور آشنایی با پنل
+            </button>
+          )}
           <button
             type="button"
             onClick={toggleTheme}
@@ -181,6 +206,8 @@ export default function AppShell({
           </button>
         </ListGroup>
       </Sheet>
+
+      {tour && panelTour.open && <PanelTour steps={tour.steps} onClose={panelTour.close} />}
     </div>
   );
 }

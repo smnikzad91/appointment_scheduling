@@ -50,6 +50,8 @@ data class SelfStylist(
     val avatarUrl: String? = null,
     val coverImageUrl: String? = null,
     val active: Boolean = true,
+    /** The platform admin's approval when a salon invited them; customers can't book them until APPROVED. */
+    val approval: String = "APPROVED",
     val commissionPercent: Double = 0.0,
     val workingHours: List<WorkingHour> = emptyList(),
     val services: List<SelfStylistService> = emptyList(),

@@ -30,8 +30,8 @@ export default async function TutorialsPage({ searchParams }: { searchParams: Pr
           هر کاری در {SITE_NAME}، <span className="g-gradient-text">قدم‌به‌قدم</span>
         </h1>
         <p className="g-rise mt-4 text-[15px] leading-8 text-g-muted" style={rise(2)}>
-          {toPersianDigits(TUTORIALS.length)} راهنمای تصویری در {toPersianDigits(steps)} مرحله، با همان صفحه‌هایی که در اپ می‌بینید. نقش خود را انتخاب کنید یا
-          دنبال کاری که می‌خواهید انجام دهید بگردید.
+          {toPersianDigits(steps)} آموزش تصویری در {toPersianDigits(TUTORIALS.length)} راهنما، با همان صفحه‌هایی که در اپ می‌بینید. هر کارت یک مرحله است؛
+          روی آن بزنید یا با دکمه پخش، آن را مثل استوری اینستاگرام ببینید.
         </p>
       </header>
       <TutorialsIndex initialRole={initialRole} />

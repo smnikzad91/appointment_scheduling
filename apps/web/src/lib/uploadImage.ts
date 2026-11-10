@@ -156,3 +156,32 @@ export function releaseUploads(urls: (string | null | undefined)[]): void {
     keepalive: true,
   }).catch(() => {});
 }
+
+/**
+ * Live chat pictures: always re-encoded to a JPEG (≤1600 px, under ~900 KB) — the canvas drops EXIF
+ * metadata such as GPS, and the server accepts JPEG bytes only (lib/livechat/images.ts).
+ */
+export async function toChatJpeg(file: File): Promise<Blob> {
+  const image = await decode(file);
+  if (!image) {
+    throw new UploadError(
+      isHeic(file)
+        ? "این گوشی عکس را با فرمت HEIC ذخیره کرده که مرورگر نمی‌تواند باز کند؛ از عکس اسکرین‌شات بگیرید و آن را بفرستید"
+        : "این فایل باز نشد؛ تصویر دیگری بفرستید",
+    );
+  }
+  try {
+    for (const [edge, quality] of [
+      [1600, 0.85],
+      [1600, 0.72],
+      [1280, 0.7],
+      [1024, 0.6],
+    ] as const) {
+      const blob = await encode(image, edge, quality);
+      if (blob && blob.size <= TARGET_BYTES) return blob;
+    }
+    throw new UploadError("این تصویر خیلی بزرگ است؛ تصویر کوچک‌تری بفرستید");
+  } finally {
+    image.close();
+  }
+}

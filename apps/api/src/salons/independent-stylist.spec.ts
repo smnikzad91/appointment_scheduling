@@ -102,7 +102,7 @@ describe('StylistsService for an independent stylist', () => {
     };
     const salons = { findMine: vi.fn().mockResolvedValue({ id: 's1', ownerId: 'u1', kind }) };
     const subscriptions = { assertCanAddStylist: vi.fn() };
-    const service = new StylistsService(prisma as unknown as PrismaService, salons as unknown as SalonsService, subscriptions as unknown as SubscriptionsService);
+    const service = new StylistsService(prisma as unknown as PrismaService, salons as unknown as SalonsService, subscriptions as unknown as SubscriptionsService, { notifyAdmin: vi.fn() } as unknown as SmsService);
     return { service, prisma };
   }
 

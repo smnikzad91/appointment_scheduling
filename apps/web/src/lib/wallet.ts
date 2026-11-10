@@ -11,7 +11,7 @@ export async function moveWallet(
   userId: string,
   amountToman: number,
   kind: WalletTxKind,
-  refs: { withdrawalId?: string; topUpId?: string } = {},
+  refs: { withdrawalId?: string; topUpId?: string; note?: string } = {},
 ): Promise<number | null> {
   const guard = amountToman < 0 ? Prisma.sql`AND "walletBalance" >= ${-amountToman}` : Prisma.empty;
   const rows = await tx.$queryRaw<{ walletBalance: number }[]>`

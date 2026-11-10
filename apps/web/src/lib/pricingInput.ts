@@ -39,9 +39,13 @@ export function parsePlanInput(body: unknown): { data: PlanInput } | { error: st
     return { error: "Button link must be a site path (/…) or an http(s) URL" };
   }
 
+  if (b.audience !== undefined && b.audience !== "SALON" && b.audience !== "INDEPENDENT") return { error: "Invalid audience" };
+  const audience = b.audience === "INDEPENDENT" ? "INDEPENDENT" : "SALON";
+
   return {
     data: {
       name,
+      audience,
       description,
       monthlyPriceToman,
       maxStylists,

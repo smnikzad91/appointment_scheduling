@@ -28,7 +28,7 @@ export type SmsMessage =
   | {
       /** The customer booked online (or it's still unconfirmed hours later); the stylist is asked
        * to confirm it in their panel. */
-      kind: "new-booking-stylist" | "confirm-nudge-stylist" | "state-nudge-stylist";
+      kind: "new-booking-stylist" | "confirm-nudge-stylist" | "state-nudge-stylist" | "prepaid-event-stylist";
       to: string;
       params: { day: string; time: string; customer: string };
       text: string;
@@ -41,7 +41,7 @@ export type SmsMessage =
       text: string;
     }
   | {
-      /** A wallet top-up was confirmed by the bank SMS (or matched by the admin) — wallet/top-up-sms. */
+      /** A wallet top-up was paid (nodepass.ir, apps/web lib/topUps.ts) — wallet/top-up-sms. */
       kind: "topup-paid";
       to: string;
       params: { amount: string; balance: string };
@@ -55,6 +55,62 @@ export type SmsMessage =
       text: string;
     }
   | {
+      /** The platform admin (ADMIN_ALERT_PHONE): someone asked to withdraw from their wallet — wallet/withdrawal-sms. */
+      kind: "admin-withdrawal-request";
+      to: string;
+      params: { amount: string; name: string };
+      text: string;
+    }
+  | {
+      /** The platform admin (ADMIN_ALERT_PHONE): a new salon / independent stylist / stylist signed up. */
+      kind: "admin-new-account";
+      to: string;
+      params: { who: "salon" | "independent" | "stylist"; name: string; place: string };
+      text: string;
+    }
+  | {
+      /** The platform admin approved / rejected / suspended / re-activated a salon (to its owner). */
+      kind: "salon-status-owner";
+      to: string;
+      params: { change: SalonStatusChange; name: string };
+      text: string;
+    }
+  | {
+      /** The platform admin approved / rejected a stylist the salon invited (to its owner). */
+      kind: "stylist-approval-owner";
+      to: string;
+      params: { approved: boolean; name: string; salon: string };
+      text: string;
+    }
+  | {
+      /** Sent right after the «approved» text: the sign-up's free trial of their plan runs until `until`. */
+      kind: "trial-started-owner";
+      to: string;
+      params: { plan: string; until: string; length: string };
+      text: string;
+    }
+  | {
+      /** A few days before the free trial ends, if no plan was bought (TrialReminderService). */
+      kind: "trial-ending-owner";
+      to: string;
+      params: { plan: string; until: string; left: string };
+      text: string;
+    }
+  | {
+      /** The stylist's wallet reached SMS_DEBT_LIMIT_TOMAN: their booking SMS stop until they top up. */
+      kind: "low-balance-stylist";
+      to: string;
+      params: { limit: string };
+      text: string;
+    }
+  | {
+      /** The request above, still unpaid 3 days later: one reminder (BalanceReminderService). */
+      kind: "balance-reminder-customer";
+      to: string;
+      params: { amount: string; salon: string };
+      text: string;
+    }
+  | {
       /** The stylist asked for the rest of a completed booking from the customer's wallet. */
       kind: "balance-request-customer";
       to: string;
@@ -63,6 +119,9 @@ export type SmsMessage =
     };
 
 export type SmsKind = SmsMessage["kind"];
+
+/** What the admin did to a salon, as its owner hears it (salonStatusText). */
+export type SalonStatusChange = "approved" | "rejected" | "suspended" | "reactivated";
 
 /** A provider. Throw on failure — SmsService logs it to the admin error log. */
 export interface SmsDriver {
@@ -77,4 +136,7 @@ export interface SmsCharge {
   appointmentId?: string;
   /** shown in the wallet history, e.g. «یادآوری به مشتری» */
   note: string;
+  /** Sent even when the wallet is at the debt limit (still charged): a prepaid booking's text to its
+   * stylist — the customer has paid and is waiting for them (owner's rule, 2026-10-30). */
+  evenInDebt?: boolean;
 }

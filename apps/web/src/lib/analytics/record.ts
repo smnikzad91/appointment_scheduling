@@ -14,7 +14,7 @@ const VISITOR_SALT = "nobatet-visit-2026";
 // Iran is approximate — mobile operators often resolve to Tehran.
 type GeoLookup = (ip: string) => { country?: string; city?: string } | null;
 let geoip: GeoLookup | null | undefined;
-function lookupGeo(ip: string) {
+export function lookupGeo(ip: string) {
   if (geoip === undefined) {
     try {
       geoip = (createRequire(import.meta.url)("geoip-lite") as { lookup: GeoLookup }).lookup;
