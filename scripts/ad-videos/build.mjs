@@ -12,8 +12,9 @@
 // Text stays inside the area Instagram's own UI doesn't cover. Needs Playwright's Chromium
 // (CHROMIUM_PATH to override) and ffmpeg.
 
-import { chromium } from "playwright";
-import { spawn } from "node:child_process";
+import { chromium } from "playwright-core";
+import { spawn, execFileSync } from "node:child_process";
+import { ABSTRACTS } from "./abstracts.mjs";
 import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -27,6 +28,11 @@ const SERIES = "01-platform-intro";
 const ONLY = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "";
 // --stills: instead of the videos, one frame per second of each into ad-videos/01-platform-intro/_preview/
 const STILLS = process.argv.includes("--stills");
+const COVER_ONLY = process.argv.includes("--cover-only");
+// --abstract: instead of the video itself, a new ~15 s 9:16 story that sums it up (scripts/ad-videos/abstracts.mjs:
+// headline, three points, its own narration) and points to the full video, with a frame of it as the preview.
+// Written to ad-videos/05-story-abstracts/<id>.mp4.
+const ABSTRACT = process.argv.includes("--abstract");
 const FPS = 30;
 
 const FONT = readFileSync(path.join(WEB, "public/fonts/Vazirmatn-Variable.woff2")).toString("base64");
@@ -40,6 +46,12 @@ const shot = (id) => {
   return shotCache.get(id);
 };
 
+// ── narration (2026-11-11): every scene registers its source-time window and what the voice says ──
+let NARR = [];
+const plain = (t) => String(t ?? "").replace(/\*/g, "").trim();
+const sentence = (t) => { t = plain(t); return t && !/[.!؟?…]$/.test(t) ? t + "." : t; };
+/** Register narration for the source-time window [a, b] (b null = until the end of the video). */
+const say = (a, b, ...parts) => { const text = parts.map(sentence).filter(Boolean).join(" "); if (text) NARR.push({ a, b, text }); };
 const fa = (v) => String(v).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
@@ -83,7 +95,8 @@ function words(text, start, step = 0.09) {
         .map((w) => `<span class="w${grad ? " grad" : ""}" style="${anims(an("wordIn", start + step * i++, 0.55))}">${esc(w)}</span>`)
         .join(" ");
     })
-    .join(" ");
+    // no space before punctuation that follows a highlighted phrase ("*مطمئن*، …" → «مطمئن،»)
+    .reduce((s, p) => (!s ? p : /^<span[^>]*>[،؛:.!؟,)»]/.test(p) ? s + p : `${s} ${p}`), "");
 }
 
 const ICONS = {
@@ -156,7 +169,7 @@ const featureList = (items, start, step = 0.45) =>
 /** Where people reach us — shown on the videos that end with `contact: true`. */
 const CONTACT = { instagram: "@nobatet.app", phone: "09024158946" };
 
-const cta = (start, { line, button, sub = "nobatet.app", contact = false }) => `
+const cta = (start, { line, button, sub = "nobatet.app", contact = false }) => (say(start, null, line, contact ? "سؤالی دارید؟ به پیج اینستاگرام نوبتت پیام بدهید یا تماس بگیرید." : "", sub.startsWith("nobatet.app/tutorials") ? "راهنمای کامل در سایت نوبتت." : `${button}، در نوبتت دات اپ!`), `
   <div class="cta">
     <div class="ctaLogo" style="${anims(an("logoPop", start + 0.1, 0.8))}"><img src="data:image/png;base64,${ICON}"></div>
     <div class="ctaName" style="${anims(an("wordIn", start + 0.45, 0.6))}">نوبتت</div>
@@ -170,7 +183,7 @@ const cta = (start, { line, button, sub = "nobatet.app", contact = false }) => `
             <span>${icon("phone")}<b dir="ltr">${fa(CONTACT.phone)}</b></span></div>`
         : ""
     }
-  </div>`;
+  </div>`);
 
 // ── styles ────────────────────────────────────────────────────────────────────────────────────
 
@@ -274,7 +287,7 @@ const FORMATS = {
 
 /** Hook used by the salon-owner videos: a ringing phone that gets crossed out. */
 const ringHook = (end, { title, sub }) =>
-  scene(
+  (say(0, end, title, sub), scene(
     0,
     end,
     `<div class="hero">
@@ -289,25 +302,26 @@ const ringHook = (end, { title, sub }) =>
         .join("")}</div>
       ${sub ? `<p style="${anims(an("fadeIn", end - 1.1, 0.5))}">${esc(sub)}</p>` : ""}
     </div>`,
-  );
+  ));
 
 
 // ── customer series helpers ──
 
 /** Hero hook: kicker, headline (*word* = gradient), a line under it. */
 const hook = (end, { kicker, title, sub, ic }) =>
-  scene(
+  (say(0, end, kicker && /[؟?]$/.test(kicker) ? kicker : "", title, sub), scene(
     0,
     end,
     `<div class="hero">${ic ? `<div class="ring" style="width:220px;height:220px;${anims(an("logoPop", 0.1, 0.8))}"><div class="disc">${icon(ic)}</div></div>` : ""}
       ${kicker ? `<span class="kicker" style="${anims(an("popIn", 0.15, 0.5))}">${esc(kicker)}</span>` : ""}
       <h1>${words(title, 0.4)}</h1>
       ${sub ? `<p style="${anims(an("fadeIn", 1.4, 0.6))}">${esc(sub)}</p>` : ""}</div>`,
-  );
+  ));
 
 /** Story: numbered captions over a phone that walks through `steps` (each with an optional tap). */
 function storySteps(t0, step, steps) {
   const end = t0 + steps.length * step + 0.4;
+  steps.forEach((s, i) => say(t0 + i * step, t0 + (i + 1) * step, s.text));
   return {
     end,
     html: scene(
@@ -329,6 +343,7 @@ function storySteps(t0, step, steps) {
 /** Feed post: one point at a time beside the phone (icon, title, text), with progress dots. */
 function postPoints(t0, step, points) {
   const end = t0 + points.length * step + 0.3;
+  points.forEach((f, i) => say(t0 + i * step, t0 + (i + 1) * step, f.title, f.text));
   return {
     end,
     html: scene(
@@ -445,6 +460,7 @@ function customerVideos() {
     },
     {
       id: "post-c01-why-nobatet",
+      coverSeg: 1, // cover: the first step, not the bare opening title
       dir,
       format: "post",
       dur: 22,
@@ -467,6 +483,7 @@ function customerVideos() {
     },
     {
       id: "post-c02-first-booking",
+      coverSeg: 1, // cover: the first step, not the bare opening title
       dir,
       format: "post",
       dur: 17,
@@ -507,6 +524,7 @@ function generalVideos() {
           { id: "customer-book-4", text: "مشتری‌ها: رزرو در چند لمس", ic: "calendar", tap: [85, 61] },
         ]);
         const t1 = who.end;
+        say(t1, t1 + 5.2, "هرچه برای نوبت‌دهی لازم دارید", "لینک رزرو و کد کیوآر، پیامک یادآوری خودکار، پیش‌پرداخت با کیف پول، حسابداری و آمار بازدید، و تقویم شمسی.");
         const feats = scene(
           t1,
           t1 + 5.2,
@@ -554,6 +572,7 @@ function generalVideos() {
     },
     {
       id: "post-04-all-features",
+      coverSeg: 1, // cover: the first step, not the bare opening title
       format: "post",
       dur: 27,
       cover: 5,
@@ -577,6 +596,7 @@ function generalVideos() {
     },
     {
       id: "post-05-whats-new",
+      coverSeg: 1, // cover: the first step, not the bare opening title
       format: "post",
       dur: 17,
       cover: 5,
@@ -672,6 +692,9 @@ function guideStep(t, i, a, d) {
   );
 }
 
+/** First sentence of a guide step's body (the voice reads the title and this). */
+const firstSentence = (b) => (String(b).split(/(?<=[.؛!؟])\s/)[0] ?? "").replace(/[؛]$/, ".");
+
 function guideVideos() {
   return GUIDE_PANELS.flatMap((panel) =>
     TUTORIALS.filter((t) => t.role === panel.role).map((t, n) => {
@@ -685,6 +708,11 @@ function guideVideos() {
       });
       const end = clock;
       const file = `${String(n + 1).padStart(2, "0")}-${t.slug}`;
+      const guideNarr = () => {
+        say(0, coverEnd, `راهنمای ${panel.label}: ${t.title}`, `در ${fa(t.steps.length)} مرحله`);
+        let c = coverEnd;
+        for (const { i, d } of steps) { const st = t.steps[i]; say(c, c + d, `مرحله ${["اول","دوم","سوم","چهارم","پنجم","ششم","هفتم","هشتم","نهم","دهم"][i] ?? fa(i + 1)}: ${st.title}`, firstSentence(st.body)); c += d; }
+      };
       return {
         id: `guide-${panel.role}-${file}`,
         file,
@@ -694,6 +722,7 @@ function guideVideos() {
         dur: +(end + 3.6).toFixed(1),
         cover: 1.6,
         body: () => [
+          (guideNarr(), ""),
           scene(
             0,
             coverEnd,
@@ -718,14 +747,14 @@ function guideVideos() {
 
 /** A centred title card at any point of the timeline (like `hook`, but starting at `start`). */
 const heroAt = (start, end, { kicker, title, sub, ic }) =>
-  scene(
+  (say(start, end, kicker && /[؟?]$/.test(kicker) ? kicker : "", title, sub), scene(
     start,
     end,
     `<div class="hero">${ic ? `<div class="ring" style="width:200px;height:200px;${anims(an("logoPop", start + 0.1, 0.7))}"><div class="disc">${icon(ic)}</div></div>` : ""}
       ${kicker ? `<span class="kicker" style="${anims(an("popIn", start + 0.15, 0.5))}">${esc(kicker)}</span>` : ""}
       <h1>${words(title, start + 0.35)}</h1>
       ${sub ? `<p style="${anims(an("fadeIn", start + 1.2, 0.6))}">${esc(sub)}</p>` : ""}</div>`,
-  );
+  ));
 
 /** postPoints at any start time. */
 function pointsAt(t0, step, points) {
@@ -884,6 +913,8 @@ const VIDEOS = [
     cover: 9.5,
     body: () => [
       ringHook(3.6, { title: "هنوز نوبت‌ها را *تلفنی* می‌گیرید؟" }),
+      (say(3.6, 8, "با نوبتت، مشتری‌ها بیست و چهار ساعته و بدون تماس، خودشان آنلاین نوبت می‌گیرند."), ""),
+      (say(8, 12.6, "شما فقط تقویم را مدیریت می‌کنید", "پیامک یادآوری خودکار، بیعانه با درگاه داخلی، تقویم شمسی، بدون تداخل نوبت، و پنل جدا برای هر آرایشگر."), ""),
       scene(
         3.6,
         8,
@@ -925,6 +956,8 @@ const VIDEOS = [
         { id: "customer-book-9", text: "تمام! نوبتتان ثبت شد" },
       ];
       const t0 = 3.2, step = 2.1, end = t0 + steps.length * step + 0.4;
+      say(0, t0, "نوبت آرایشگاه، بدون تماس و بدون انتظار", "خدمت، آرایشگر و ساعت دلخواه را خودتان انتخاب کنید؛ هر ساعت از شبانه‌روز");
+      steps.forEach((s, i) => say(t0 + i * step, t0 + (i + 1) * step, s.text));
       return [
         scene(
           0,
@@ -956,6 +989,9 @@ const VIDEOS = [
     dur: 16.5,
     cover: 5.5,
     body: () => [
+      (say(0, 3.2, "آرایشگر مستقل هستید؟", "با نام خودتان کار می‌کنید، در سالن یا در منزل"), ""),
+      (say(3.2, 7.8, "یک صفحه رزرو با نام خودتان", "لینکش را در بیو اینستاگرام بگذارید"), ""),
+      (say(7.8, 12.8, "همه‌چیز در یک اپ", "خدمات و قیمت‌ها، ساعت کاری و مرخصی، پیامک یادآوری خودکار، نظرات مشتری‌ها، و درآمد و سود خالص."), ""),
       scene(
         0,
         3.2,
@@ -1006,6 +1042,7 @@ const VIDEOS = [
         { id: "owner-accounting-1", ic: "chart", title: "حسابداری و گزارش", text: "درآمد، سهم آرایشگرها و سود خالص سالن به تفکیک ماه شمسی." },
       ];
       const t0 = 3.4, step = 2.5, end = t0 + feats.length * step + 0.3;
+      feats.forEach((f, i) => say(t0 + i * step, t0 + (i + 1) * step, f.title, f.text));
       return [
         ringHook(t0, { title: "مدیریت نوبت سالن، *بدون تلفن و دفتر*" }),
         scene(
@@ -1030,6 +1067,7 @@ const VIDEOS = [
   },
   {
     id: "post-02-how-it-works",
+    coverSeg: 1, // cover: the first step, not the bare opening title
     format: "post",
     dur: 16.5,
     cover: 4,
@@ -1040,6 +1078,8 @@ const VIDEOS = [
         { id: "owner-manage-1", title: "نوبت‌ها خودکار ثبت می‌شوند", text: "مشتری فقط ساعت‌های خالی را می‌بیند و پیامک یادآوری خودکار می‌رود." },
       ];
       const t0 = 2.8, step = 3.2, end = t0 + steps.length * step + 0.3;
+      say(0, t0, "سه قدم تا اولین نوبت آنلاین");
+      steps.forEach((s, i) => say(t0 + i * step, t0 + (i + 1) * step, `قدم ${["اول", "دوم", "سوم"][i]}: ${s.title}`, s.text));
       return [
         scene(
           0,
@@ -1068,6 +1108,7 @@ const VIDEOS = [
   },
   {
     id: "post-03-customer-booking",
+    coverSeg: 1, // cover: the first step, not the bare opening title
     format: "post",
     dur: 16,
     cover: 4.5,
@@ -1080,6 +1121,8 @@ const VIDEOS = [
         { id: "customer-book-9", text: "تمام! نوبتتان ثبت شد" },
       ];
       const t0 = 2.8, step = 2.1, end = t0 + steps.length * step + 0.4;
+      say(0, t0, "نوبت آرایشگاه، بدون تماس و بدون انتظار");
+      steps.forEach((s, i) => say(t0 + i * step, t0 + (i + 1) * step, s.text));
       return [
         scene(
           0,
@@ -1138,68 +1181,188 @@ const EXTRA_STYLE = `
 
 function html(video) {
   const f = FORMATS[video.format];
-  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><style>${style(f.W, f.H)}${EXTRA_STYLE}</style></head>
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><style>${style(f.W, f.H)}${EXTRA_STYLE}${video.extraStyle ?? ""}</style></head>
 <body style="${f.vars}">${background(f.W, f.H)}${video.body().join("")}</body></html>`;
 }
 
-// ── render ────────────────────────────────────────────────────────────────────────────────────
+// ── story abstracts ──
+const ABS_DUR = 15, ABS_SWITCH = 7.6;
+const ABS_STYLE = `
+.absHero { position: absolute; left: 70px; right: 70px; top: calc(var(--top) + 90px); bottom: var(--bottom); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 34px; }
+.absHero h1 { font-size: 92px; line-height: 1.35; font-weight: 900; }
+.absHero .feats { width: 100%; max-width: 820px; margin-top: 18px; }
+.absHero .feats li { font-size: 44px; padding: 22px 26px; text-align: right; }
+.absHero .feats .ic { width: 72px; height: 72px; }
+.absMore { position: absolute; left: 70px; right: 70px; top: calc(var(--top) + 90px); bottom: var(--bottom); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; text-align: center; }
+.absMore h2 { font-size: 66px; line-height: 1.4; font-weight: 900; }
+.absPrev { position: relative; border-radius: 40px; overflow: hidden; box-shadow: 0 50px 80px -30px rgb(0 0 0 / .8), 0 0 0 4px rgb(198 138 114 / .55); }
+.absPrev img { display: block; max-width: 740px; max-height: 920px; }
+.absPlay { position: absolute; left: 50%; top: 50%; width: 170px; height: 170px; margin: -85px 0 0 -85px; border-radius: 50%; background: linear-gradient(135deg, #efbda0, #c68a72 50%, #9c5e4b); color: #121319; display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 50px -10px rgb(0 0 0 / .7); }
+.absPlay svg { width: 80px; height: 80px; margin-left: 12px; }
+`;
+function abstractVideo(v) {
+  const a = ABSTRACTS[v.id];
+  if (!a) throw new Error(`no abstract for ${v.id}`);
+  const [ic, kicker, title, points, narr] = a;
+  const long = path.join(OUT, v.dir ?? SERIES, v.flat ? "" : v.format, `${v.file ?? v.id}.mp4`);
+  const frameDir = path.join(OUT, "05-story-abstracts", "_frames");
+  mkdirSync(frameDir, { recursive: true });
+  const frame = path.join(frameDir, `${v.file ?? v.id}.jpg`);
+  if (!existsSync(frame)) {
+    const d = +execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", long]).toString();
+    execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", (d * (v.frameAt ?? 0.35)).toFixed(2), "-i", long, "-frames:v", "1", "-q:v", "3", frame]);
+  }
+  const img = readFileSync(frame).toString("base64");
+  const play = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg>';
+  return {
+    id: v.id, file: v.file ?? v.id, format: "story", dur: ABS_DUR, extraStyle: ABS_STYLE,
+    body: () => [
+      (say(0, null, narr), ""),
+      brand(0),
+      scene(0, ABS_SWITCH, `<div class="absHero">
+        <div class="ring" style="width:190px;height:190px;${anims(an("logoPop", 0.1, 0.8))}"><div class="disc">${icon(ic)}</div></div>
+        <span class="kicker" style="${anims(an("popIn", 0.3, 0.5))}">${esc(kicker)}</span>
+        <h1>${words(title, 0.5)}</h1>
+        <ul class="feats">${points.map((t, i) => `<li style="${anims(an("popIn", 2.2 + i * 0.9, 0.55))}"><span class="ic">${icon("check")}</span>${esc(t)}</li>`).join("")}</ul>
+      </div>`),
+      scene(ABS_SWITCH, null, `<div class="absMore">
+        <h2>${words(v.id.startsWith("guide-") ? "راهنمای *قدم‌به‌قدم* در پست امروز" : "ویدیوی *کاملش* در پست امروز", ABS_SWITCH + 0.2)}</h2>
+        <div style="${anims(an("phoneIn", ABS_SWITCH + 0.5, 0.9))}"><div class="absPrev" style="${anims(an("float", 0, 4, { ease: "ease-in-out", iter: "infinite" }))}">
+          <img src="data:image/jpeg;base64,${img}">
+          <div class="absPlay" style="${anims(an("popIn", ABS_SWITCH + 1.3, 0.5), an("pulse", 0, 1.6, { ease: "ease-in-out", iter: "infinite" }))}">${play}</div>
+        </div></div>
+        <span class="url" style="${anims(an("fadeIn", ABS_SWITCH + 1.8, 0.6))}">nobatet.app</span>
+      </div>`),
+    ],
+  };
+}
+
+// ── render (2026-11-11: voice-over + music) ───────────────────────────────────────────────────
+// --narr: writes ad-videos/narration.json (every video's narration windows + text) for the TTS step.
+// Render: each narration window that its voice clip doesn't fit gets a HOLD just before the window's
+// fade-out: finite animations stop at that source time while infinite ones (floating phone, drifting
+// background, pulsing button) keep running on the real clock, so nothing looks frozen.
+import { createHash } from "node:crypto";
+const VOICE_DIR = process.env.VOICE_DIR ?? path.join(OUT, "_voice");
+const MUSIC = process.env.MUSIC_DIR ?? path.join(OUT, "_music");
+const LEAD = 0.3, TAIL = 0.45, HOLD_BEFORE_END = 0.7, END_PAD = 1.2;
+export const voiceKey = (text, style) => createHash("sha1").update(style + "|" + text).digest("hex").slice(0, 16);
+const styleOf = (video) => (video.id.startsWith("guide-") ? "friendly" : "excited");
+const probeDur = (f) => new Promise((res, rej) => {
+  const p = spawn("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f]);
+  let o = ""; p.stdout.on("data", (d) => (o += d)); p.on("close", (c) => (c ? rej(new Error("ffprobe " + f)) : res(+o)));
+});
+
+function collect(video) {
+  NARR = [];
+  const page = html(video);
+  const dur = video.dur;
+  const segs = NARR.map((n) => ({ a: n.a, b: n.b ?? dur, end: n.b == null, text: n.text })).sort((x, y) => x.a - y.a);
+  return { page, dur, segs };
+}
+
+if (process.argv.includes("--narr")) {
+  const list = VIDEOS.map((v) => (ABSTRACT ? abstractVideo(v) : v)).map((v) => { const { dur, segs } = collect(v); return { id: v.id, format: v.format, style: styleOf(v), dur, segs: segs.map((x) => ({ ...x, key: voiceKey(x.text, styleOf(v)) })) }; });
+  const { writeFileSync } = await import("node:fs");
+  writeFileSync(path.join(OUT, ABSTRACT ? "narration-abstracts.json" : "narration.json"), JSON.stringify(list, null, 1));
+  console.log(`${list.length} videos, ${list.reduce((n, v) => n + v.segs.length, 0)} narration lines → ad-videos/narration.json`);
+  process.exit(0);
+}
+
+const music = (video) => path.join(MUSIC, `${video.id.startsWith("guide-") ? "guide" : video.id.includes("-c0") || video.id.includes("customer") ? "customer" : "salon"}.mp3`);
 
 const browser = await chromium.launch({ executablePath: chromiumPath() });
 try {
-  for (const video of VIDEOS.filter((v) => v.id.includes(ONLY))) {
+  for (const original of VIDEOS.filter((v) => v.id.includes(ONLY))) {
+    const video = ABSTRACT ? abstractVideo(original) : original;
     const { W, H } = FORMATS[video.format];
-    const dir = path.join(OUT, video.dir ?? SERIES, video.flat ? "" : video.format);
+    const dir = ABSTRACT ? path.join(OUT, "05-story-abstracts") : path.join(OUT, video.dir ?? SERIES, video.flat ? "" : video.format);
     mkdirSync(dir, { recursive: true });
+    const { page: pageHtml, dur, segs } = collect(video);
+    const style = styleOf(video);
+
+    // holds: [source time, extra seconds]
+    const holds = [];
+    for (const sg of segs) {
+      const v = await probeDur(path.join(VOICE_DIR, `${voiceKey(sg.text, style)}.mp3`));
+      sg.voiceDur = v;
+      const need = LEAD + v + (sg.end ? END_PAD : TAIL);
+      const extra = Math.max(0, need - (sg.b - sg.a));
+      sg.hold = sg.end ? sg.b : Math.max(sg.a + 0.2, sg.b - HOLD_BEFORE_END);
+      if (extra > 0) holds.push([sg.hold, extra]);
+    }
+    // timeline: the source ranges kept (all of it, or each chosen segment's window), each with its holds
+    const ranges = [[0, dur]];
+    const tl = []; // { s0, s1, o0 } plays s0→s1 from output time o0; s0 === s1 is a hold
+    let o = 0;
+    for (const [A, B] of ranges) {
+      let c = A;
+      for (const [h, e] of holds.filter(([h]) => h >= A && h <= B).sort((x, y) => x[0] - y[0])) {
+        tl.push({ s0: c, s1: h, o0: o }); o += h - c;
+        tl.push({ s0: h, s1: h, o0: o, len: e }); o += e; c = h;
+      }
+      tl.push({ s0: c, s1: B, o0: o }); o += B - c;
+    }
+    const total = o;
+    const outOf = (src) => { const p = tl.find((x) => x.s1 > x.s0 && src >= x.s0 && src <= x.s1) ?? tl.find((x) => x.s0 === src); return p.o0 + (src - p.s0); };
+    const srcOf = (out) => { for (const x of tl) { const len = x.len ?? x.s1 - x.s0; if (out <= x.o0 + len) return x.len ? x.s0 : x.s0 + (out - x.o0); } return dur; };
+
     const page = await browser.newPage({ viewport: { width: W, height: H } });
-    await page.setContent(html(video), { waitUntil: "load" });
+    await page.setContent(pageHtml, { waitUntil: "load" });
     await page.evaluate(async () => {
       await document.fonts.ready;
       await Promise.all([...document.images].map((i) => i.decode().catch(() => {})));
     });
-    const seek = (t) =>
-      page.evaluate((ms) => {
+    const seek = (src, real) =>
+      page.evaluate(([ms, realMs]) => {
         for (const a of document.getAnimations()) {
           a.pause();
-          a.currentTime = ms;
+          a.currentTime = a.effect.getTiming().iterations === Infinity ? realMs : ms;
         }
-      }, t * 1000);
+      }, [src * 1000, real * 1000]);
 
-    if (STILLS) {
-      const pdir = path.join(OUT, video.dir ?? SERIES, "_preview");
-      mkdirSync(pdir, { recursive: true });
-      for (let t = 0.5; t < video.dur; t += 1) {
-        await seek(t);
-        await page.screenshot({ path: path.join(pdir, `${video.id}_${String(t * 10).padStart(3, "0")}.jpg`), type: "jpeg", quality: 80 });
-      }
+    const base = path.join(dir, video.file ?? video.id);
+    const coverSrc = segs.length ? segs[ABSTRACT ? 0 : Math.min(video.coverSeg ?? 0, segs.length - 1)].hold : video.cover;
+    if (COVER_ONLY) {
+      await seek(coverSrc, outOf(coverSrc));
+      await page.screenshot({ path: `${base}.jpg`, type: "jpeg", quality: 92 });
       await page.close();
+      console.log(`${path.relative(ROOT, base)}.jpg  (cover only, at ${outOf(coverSrc).toFixed(1)} s)`);
       continue;
     }
-
-    const file = path.join(dir, `${video.file ?? video.id}.mp4`);
-    const ff = spawn(
-      "ffmpeg",
-      ["-loglevel", "error", "-y", "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "-",
-        "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
-        "-map", "0:v", "-map", "1:a", "-shortest",
-        "-c:v", "libx264", "-preset", "slow", "-crf", "19", "-pix_fmt", "yuv420p", "-profile:v", "high",
-        "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", file],
-      { stdio: ["pipe", "inherit", "inherit"] },
-    );
+    const silent = `${base}.silent.mp4`;
+    const ff = spawn("ffmpeg", ["-loglevel", "error", "-y", "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "-",
+      "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-profile:v", "high", silent], { stdio: ["pipe", "inherit", "inherit"] });
     const done = new Promise((res, rej) => ff.on("close", (c) => (c === 0 ? res() : rej(new Error(`ffmpeg exited ${c}`)))));
-
-    const frames = Math.round(video.dur * FPS);
+    const frames = Math.round(total * FPS);
     for (let i = 0; i < frames; i++) {
-      await seek(i / FPS);
-      const jpg = await page.screenshot({ type: "jpeg", quality: 95 });
+      const out = i / FPS;
+      await seek(srcOf(out), out);
+      const jpg = await page.screenshot({ type: "jpeg", quality: 90 });
       if (!ff.stdin.write(jpg)) await new Promise((r) => ff.stdin.once("drain", r));
     }
     ff.stdin.end();
     await done;
 
-    await seek(video.cover);
-    await page.screenshot({ path: path.join(dir, `${video.file ?? video.id}.jpg`), type: "jpeg", quality: 92 });
+    // voice clips at their windows + music ducked under them
+    const n = segs.length;
+    const inputs = segs.flatMap((sg) => ["-i", path.join(VOICE_DIR, `${voiceKey(sg.text, style)}.mp3`)]);
+    const delays = segs.map((sg, k) => `[${k + 1}:a]adelay=${Math.round((outOf(sg.a) + LEAD) * 1000)}:all=1[a${k}]`).join(";");
+    const fc = `${delays};${segs.map((_, k) => `[a${k}]`).join("")}amix=inputs=${n}:normalize=0,loudnorm=I=-15:TP=-1.5,apad,asplit[vo][sc];`
+      + `[${n + 1}:a]atrim=0:${total.toFixed(2)},volume=0.28,afade=t=in:d=0.5,afade=t=out:st=${(total - 1.8).toFixed(2)}:d=1.8[mu];`
+      + `[mu][sc]sidechaincompress=threshold=0.04:ratio=6:attack=20:release=400[duck];[vo][duck]amix=inputs=2:normalize=0,alimiter=limit=0.89[aout]`;
+    await new Promise((res, rej) => {
+      const p = spawn("ffmpeg", ["-loglevel", "error", "-y", "-i", silent, ...inputs, "-stream_loop", "-1", "-i", music(video), "-filter_complex", fc,
+        "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-shortest", "-movflags", "+faststart", `${base}.mp4`], { stdio: "inherit" });
+      p.on("close", (c) => (c ? rej(new Error("mux " + c)) : res()));
+    });
+    spawn("rm", ["-f", silent]);
+
+    // cover: the opening hook (or the segment named by coverSeg), fully shown, just before it starts to fade
+    await seek(coverSrc, outOf(coverSrc));
+    await page.screenshot({ path: `${base}.jpg`, type: "jpeg", quality: 92 });
     await page.close();
-    console.log(`${path.relative(ROOT, file)}  (${video.dur} s, ${W}×${H})`);
+    console.log(`${path.relative(ROOT, base)}.mp4  (${total.toFixed(1)} s, was ${dur} s, ${W}×${H})`);
   }
 } finally {
   await browser.close();

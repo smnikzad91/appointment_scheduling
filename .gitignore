@@ -50,3 +50,5 @@ apps/web/public/uploads/demo/
 .uptime-state.json*.tmp
 story-highlights/_preview/
 ad-videos/**/_preview/
+ad-videos/_voice/
+ad-videos/**/_frames/

@@ -1,0 +1,782 @@
+[
+ {
+  "id": "story-01-salon-online-booking",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "هنوز نوبت‌ها را تلفنی می‌گیرید؟ با نوبتت مشتری‌ها شبانه‌روز خودشان آنلاین نوبت می‌گیرند. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "65d865308a470d49"
+   }
+  ]
+ },
+ {
+  "id": "story-02-customer-booking",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "نوبت آرایشگاه، بدون تماس و بدون انتظار؛ هر ساعت از شبانه‌روز. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "447f10acf07fb68a"
+   }
+  ]
+ },
+ {
+  "id": "story-03-independent-stylist",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "آرایشگر مستقل هستید؟ یک صفحه رزرو با نام خودتان بسازید و لینکش را در بیو بگذارید. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "152b1fc07392358e"
+   }
+  ]
+ },
+ {
+  "id": "post-01-salon-features",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "تقویم نوبت، یادآوری پیامکی، پنل آرایشگر و حسابداری؛ همه برای مدیریت نوبت سالن، در یک اپ. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "727daff8a6467412"
+   }
+  ]
+ },
+ {
+  "id": "post-02-how-it-works",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "فقط سه قدم: سالن را تعریف کنید، لینک رزرو را منتشر کنید و نوبت‌ها خودکار ثبت می‌شوند. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "d89e27a61596278f"
+   }
+  ]
+ },
+ {
+  "id": "post-03-customer-booking",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "سالن نزدیک، خدمت، آرایشگر و ساعت خالی؛ نوبتتان در چند لمس ثبت می‌شود. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "7619abb59d9f39ac"
+   }
+  ]
+ },
+ {
+  "id": "story-04-platform-tour",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "یک اپ برای سالن، آرایشگر و مشتری؛ فارسی و با تقویم شمسی. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "edd4e357eb0a7c29"
+   }
+  ]
+ },
+ {
+  "id": "story-05-free-month",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "یک ماه کامل نوبت‌دهی آنلاین رایگان، با همه امکانات و بدون کارت بانکی. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "dec6c21d19ac8113"
+   }
+  ]
+ },
+ {
+  "id": "post-04-all-features",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "از لینک رزرو و پیش‌پرداخت تا حسابداری و آمار بازدید؛ هشت ابزار برای مدیریت نوبت سالن. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "9a08d22013b7ac96"
+   }
+  ]
+ },
+ {
+  "id": "post-05-whats-new",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "پیش‌پرداخت آنلاین، آمار رفتار مشتری، پوستر آماده و پلن مناسب هر سالن؛ امکانات تازه نوبتت. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "a15dbc7f67dbe8f9"
+   }
+  ]
+ },
+ {
+  "id": "story-c01-find-salon",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "آرایشگاه خوب کجاست؟ سالن‌های نزدیک را با امتیاز، نمونه کار و قیمت پیدا کنید. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "5344be4c9bc538a1"
+   }
+  ]
+ },
+ {
+  "id": "story-c02-book-in-a-minute",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "نوبت آرایشگاه در کمتر از یک دقیقه؛ حتی نیمه‌شب، وقتی سالن بسته است. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "a28e4ff45690e34c"
+   }
+  ]
+ },
+ {
+  "id": "story-c03-safe-prepayment",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "پیش‌پرداخت مطمئن، بدون کارت به کارت؛ پولتان تا انجام نوبت نزد نوبتت امانت می‌ماند. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "dfcceca0d029cef2"
+   }
+  ]
+ },
+ {
+  "id": "story-c04-never-forget",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "یادآوری پیامکی، رزرو دوباره با یک لمس و لیست انتظار؛ دیگر هیچ نوبتی یادتان نمی‌رود. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "194a1c3c1b0f6fb0"
+   }
+  ]
+ },
+ {
+  "id": "post-c01-why-nobatet",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "چرا نوبتت؟ ساعت‌های واقعاً خالی، پیش‌پرداخت امن و نظر مشتری‌های واقعی. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "709a8dc014bdf49e"
+   }
+  ]
+ },
+ {
+  "id": "post-c02-first-booking",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "اولین نوبت آنلاین فقط پنج لمس است؛ بدون رمز و بدون تماس. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "d5b5463d8c3f4bb1"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-01-register-salon",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "سالنتان را در چند دقیقه در نوبتت ثبت کنید و محلش را روی نقشه بگذارید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "9a5b6c557b8d1a8b"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-02-salon-profile",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "با کاور، لوگو و رنگ برند، صفحه رزرو سالنتان را حرفه‌ای کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "93e5eaa8c672de3e"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-03-add-stylists",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "برای هر آرایشگر حساب بسازید، سهمش را تعیین کنید و لینک فعال‌سازی را بفرستید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "c9f90f8fe7cb8b50"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-04-salon-services",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "خدمات سالن را با مدت و قیمت بسازید و در دسته‌بندی‌ها مرتب کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "23c33cfb35864329"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-05-book-for-customer",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "برای مشتری‌ای که زنگ زده یا حضوری آمده، در چند ثانیه نوبت ثبت کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "f40e11a3ac4499d2"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-06-manage-appointments",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "نوبت‌های آنلاین را تایید کنید و برنامه سالن را در نمای هفته و ماه ببینید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "6fd88432b30716a4"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-07-reviews-and-gallery",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "نظرهای مشتری‌ها را تایید کنید و نمونه کارهای سالن را با نام آرایشگر بگذارید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "f62c5ae5ee7c3790"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-08-salon-accounting",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "درآمد، سهم آرایشگرها، هزینه‌ها و سود خالص سالن را ماه‌به‌ماه ببینید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "1b886f51861149a6"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-09-prepaid-online-bookings",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "مشتری ۲۵ درصد را پیش‌پرداخت می‌کند و بعد از انجام نوبت، به کیف پول سالن می‌آید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "2e49b4f72623ef29"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-10-salon-wallet-and-plan",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "کیف پول سالن را شارژ کنید، پلن بخرید و موجودی را برداشت کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "8f041eefd7fde4d8"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-11-salon-insights",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "ببینید چند نفر صفحه سالن را دیدند، از کجا آمدند و چند نفر نوبت گرفتند. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "3e620389828944f2"
+   }
+  ]
+ },
+ {
+  "id": "guide-owner-12-share-booking-link",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "لینک رزرو را کپی کنید، کد QR را چاپ کنید و پوستر آماده اینستاگرام بسازید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "24b9ea56a40d4b46"
+   }
+  ]
+ },
+ {
+  "id": "guide-stylist-01-activate-stylist-account",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "با لینکی که مدیر سالن فرستاده رمز بگذارید و وارد پنل آرایشگر شوید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "0487f3ef1ae555a7"
+   }
+  ]
+ },
+ {
+  "id": "guide-stylist-02-stylist-appointments",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "نوبت‌های پیش رو را ببینید، تایید کنید و بعد از کار «انجام شد» بزنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "67d864fab113b324"
+   }
+  ]
+ },
+ {
+  "id": "guide-stylist-03-stylist-booking-and-reviews",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "برای مشتری خودتان نوبت ثبت کنید و نظرهای مربوط به خودتان را مدیریت کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "9cbbcbbbfc5eb43d"
+   }
+  ]
+ },
+ {
+  "id": "guide-stylist-04-stylist-earnings",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "سهم هر ماه، پرداخت‌های سالن و مانده طلبتان را یک‌جا ببینید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "5324d226c31bb2c4"
+   }
+  ]
+ },
+ {
+  "id": "guide-stylist-05-stylist-expenses",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "خرید مواد و ابزار را ثبت کنید تا درآمد خالص هر ماهتان را ببینید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "5bdbc345121c43fc"
+   }
+  ]
+ },
+ {
+  "id": "guide-stylist-06-working-hours",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "روزها و ساعت‌های کاری‌تان را تعیین کنید و مرخصی‌ها را ثبت کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "c4ba074b8bd62819"
+   }
+  ]
+ },
+ {
+  "id": "guide-stylist-07-stylist-services-portfolio",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "قیمت خدمات خودتان را تنظیم کنید، خودتان را معرفی کنید و نمونه کار بگذارید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "21cad45f2a4f1c13"
+   }
+  ]
+ },
+ {
+  "id": "guide-stylist-08-stylist-wallet-and-share",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "سهم پیش‌پرداخت‌ها به کیف پولتان می‌آید؛ لینک و پوستر رزرو خودتان را هم بسازید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "039914a463ec9b18"
+   }
+  ]
+ },
+ {
+  "id": "guide-independent-01-independent-stylist-signup",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "با نام کاری خودتان ثبت‌نام کنید تا مشتری‌های نزدیک شما را پیدا کنند. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "1e2df57ce8ba0cc2"
+   }
+  ]
+ },
+ {
+  "id": "guide-independent-02-independent-stylist-panel",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "خدمات و قیمت‌ها، ساعت کاری و محل کارتان را تنظیم کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "1c5ef1a0f27e5bcc"
+   }
+  ]
+ },
+ {
+  "id": "guide-independent-03-independent-stylist-bookings",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "نوبت‌ها را با محل انجامشان ببینید؛ در سالن یا در منزل مشتری. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "b9a8b5fa4e1ea71b"
+   }
+  ]
+ },
+ {
+  "id": "guide-independent-04-independent-stylist-accounting",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "درآمد، هزینه‌هایی مثل اجاره صندلی و سود خالص هر ماه را ببینید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "bc07bab9404f6ebd"
+   }
+  ]
+ },
+ {
+  "id": "guide-independent-05-independent-stylist-page",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "صفحه رزرو شما با نشان آرایشگر مستقل، در جستجوی مشتری‌ها دیده می‌شود. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "b78ee28cc7a1a3be"
+   }
+  ]
+ },
+ {
+  "id": "guide-independent-06-independent-stylist-wallet",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "پیش‌پرداخت مشتری‌ها به کیف پول خودتان می‌آید؛ پلن را هم از همان کیف پول بخرید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "fce7b4748b58305f"
+   }
+  ]
+ },
+ {
+  "id": "guide-customer-01-find-a-salon",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "با جستجو، فیلتر شهر یا «نزدیک من» سالن مناسب را پیدا کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "4c7f6b3edfa5d06c"
+   }
+  ]
+ },
+ {
+  "id": "guide-customer-02-book-online",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "خدمت، آرایشگر و ساعت را انتخاب کنید و با کد پیامکی نوبتتان را ثبت کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "81c7118b1c95d76e"
+   }
+  ]
+ },
+ {
+  "id": "guide-customer-03-my-bookings",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "وضعیت نوبت‌ها را ببینید، در صورت نیاز لغو کنید یا با یک لمس دوباره رزرو کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "6e196a565781b46d"
+   }
+  ]
+ },
+ {
+  "id": "guide-customer-04-customer-account",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "حساب بسازید تا نوبت‌ها، سالن‌های محبوب و نظرهایتان یک‌جا بماند. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "cd28d1892a09a9db"
+   }
+  ]
+ },
+ {
+  "id": "guide-customer-05-reviews-and-saved-salons",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "نظر بدهید، سالن‌های محبوب را ذخیره کنید و برای روزهای پر در لیست انتظار بمانید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "ce89fa1bdc7e6d89"
+   }
+  ]
+ },
+ {
+  "id": "guide-customer-06-wallet-and-support",
+  "format": "story",
+  "style": "friendly",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "کیف پول را شارژ کنید، تیکت پشتیبانی بفرستید و پروفایلتان را به‌روز کنید. راهنمای قدم‌به‌قدمش در پست امروز است.",
+    "key": "699c82e75d0d02a7"
+   }
+  ]
+ },
+ {
+  "id": "post-60-salon-owners",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "سالن‌تان را آنلاین کنید؛ رزرو شبانه‌روزی، پیش‌پرداخت، یادآوری پیامکی و حسابداری در یک اپ. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "3c9811bec110ed52"
+   }
+  ]
+ },
+ {
+  "id": "post-60-independent-stylists",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "آرایشگر مستقل هستید؟ صفحه رزرو با نام خودتان، در سالن یا منزل مشتری. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "a6a3d2f3193c7025"
+   }
+  ]
+ },
+ {
+  "id": "post-60-customers",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "دیگر تماس نگیرید و منتظر نمانید؛ نوبت آرایشگاه، آنلاین و هر ساعت. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "ff34fdfae4bfb33a"
+   }
+  ]
+ },
+ {
+  "id": "post-60-platform-overview",
+  "format": "story",
+  "style": "excited",
+  "dur": 15,
+  "segs": [
+   {
+    "a": 0,
+    "b": 15,
+    "end": true,
+    "text": "یک اپ برای همه دنیای زیبایی: سالن، آرایشگر، آرایشگر مستقل و مشتری. ویدیوی کاملش را در پست امروز ببینید.",
+    "key": "c6b0dd144991ca0b"
+   }
+  ]
+ }
+]
